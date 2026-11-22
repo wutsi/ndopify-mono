@@ -1,19 +1,18 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta content="width=device-width, initial-scale=1" name="viewport">
-    <title th:text="${page.title} + ' | ' + (${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name})">Serge vous propose ce logement | Ndopify</title>
-    <!--/* A personal page (the link of the proposal e-mail): never indexed nor shared, nor its address sent as Referer. */-->
-    <meta content="noindex, nofollow" name="robots">
-    <meta content="no-referrer" name="referrer">
-    <meta content="#1d7edf" name="theme-color">
-    <link rel="icon" th:href="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
-    <link rel="apple-touch-icon" th:href="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
-    <link rel="stylesheet" th:href="@{/assets/css/styles.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/listing.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/proposal.css}">
-</head>
+<head th:replace="~{fragments/head :: head(
+    ${page.title + ' | ' + (#strings.isEmpty(tenant.name) ? 'Ndopify' : tenant.name)},
+    null,
+    null,
+    null,
+    null,
+    null,
+    'noindex, nofollow',
+    'no-referrer',
+    ${ {'listing','proposal'} },
+    false,
+    true,
+    null)}"></head>
 <!--/*
   A match proposed to the customer of a search mandate (MatchController), from the prototype src/main/html/proposition.html:
   the listing's page (fragments/listing-body.html, as listing.html, from page.listing: ListingPage), without the share button nor the AI assistant,

@@ -1,15 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta content="width=device-width, initial-scale=1" name="viewport">
-    <title>Page introuvable — Ndopify</title>
-    <meta content="noindex, nofollow" name="robots">
-    <meta content="#1d7edf" name="theme-color">
-    <link rel="icon" th:href="@{/assets/images/icon.png}">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link rel="stylesheet" th:href="@{/assets/css/styles.css}">
-</head>
+<head th:replace="~{fragments/head :: head('Page introuvable — Ndopify', null, null, null, null, null, 'noindex, nofollow', null, null, false, false, null)}"></head>
 <!--/*
   The 404 page: an unknown address, or a listing ndopify-server doesn't publish anymore (HttpClientErrorHandler).
   Rendered by Spring Boot's error controller, outside of the page that failed: Ndopify's own logo, not the tenant's.

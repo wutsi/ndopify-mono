@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title, description, canonical, ogTitle, ogDescription, ogImage, robots, referrer, styles, cdn, brand, structuredData)">
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title th:text="${title}">Ndopify</title>
+    <meta th:if="${description != null}" name="description" th:content="${description}">
+    <th:block th:if="${canonical != null}">
+        <link rel="canonical" th:href="${canonical}">
+    </th:block>
+    <th:block th:if="${ogTitle != null}">
+        <meta content="website" property="og:type">
+        <meta property="og:title" th:content="${ogTitle}">
+        <meta property="og:description" th:content="${ogDescription}">
+        <th:block th:with="logoUrl=${#strings.isEmpty(tenant?.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
+            <meta property="og:image" th:content="${ogImage != null} ? ${ogImage} : ${logoUrl}">
+        </th:block>
+        <meta th:if="${canonical != null}" property="og:url" th:content="${canonical}">
+        <meta content="summary_large_image" name="twitter:card">
+    </th:block>
+    <meta th:if="${robots != null}" name="robots" th:content="${robots}">
+    <meta th:if="${referrer != null}" name="referrer" th:content="${referrer}">
+    <meta content="#1d7edf" name="theme-color">
+    <link rel="icon"
+          th:href="${!brand or #strings.isEmpty(tenant?.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
+    <link rel="apple-touch-icon"
+          th:href="${!brand or #strings.isEmpty(tenant?.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
+    <link th:if="${cdn}" rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css">
+    <link rel="stylesheet" th:href="@{/assets/css/styles.css}">
+    <link th:each="name : ${styles}" rel="stylesheet" th:href="@{/assets/css/{name}.css(name=${name})}">
+    <th:block th:if="${structuredData != null}">
+        <th:block th:replace="${structuredData}"></th:block>
+    </th:block>
+</head>
+</html>

@@ -1,40 +1,18 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta content="width=device-width, initial-scale=1" name="viewport">
-    <title>Ndopify — Confiez votre recherche de logement à un agent vérifié</title>
-    <meta
-        content="Décrivez votre recherche : un agent vérifié de votre secteur la prend en charge, vous propose des biens qui vous correspondent et organise vos visites, sur place ou en vidéo. Gratuit jusqu'à la signature du bail."
-        name="description">
-    <!--/* The tenant's logo and icon, falling back to Ndopify's when it has none. */-->
-    <th:block th:with="logoUrl=${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl},
-                       iconUrl=${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
-        <link rel="canonical" th:href="${tenant.publicPortalUrl}" th:if="${!#strings.isEmpty(tenant.publicPortalUrl)}">
-        <meta content="website" property="og:type">
-        <meta content="Ndopify — Un agent vérifié pour votre recherche de logement" property="og:title">
-        <meta
-            content="Un agent vérifié de votre secteur, des biens choisis pour vous, des visites organisées. Gratuit jusqu'à la signature du bail."
-            property="og:description">
-        <meta property="og:image" th:content="${logoUrl}">
-        <meta property="og:url" th:content="${tenant.publicPortalUrl}"
-              th:if="${!#strings.isEmpty(tenant.publicPortalUrl)}">
-        <meta content="summary_large_image" name="twitter:card">
-        <meta content="#1d7edf" name="theme-color">
-        <link rel="icon" th:href="${iconUrl}">
-        <link rel="apple-touch-icon" th:href="${iconUrl}">
-        <link rel="stylesheet" th:href="@{/assets/css/styles.css}">
-        <script th:inline="javascript" type="application/ld+json">
-            {
-                "@context": "https://schema.org",
-                "@type": "Organization",
-                "name": /*[[${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}]]*/ "Ndopify",
-                "url": /*[[${tenant.publicPortalUrl}]]*/ null,
-                "logo": /*[[${logoUrl}]]*/ null
-            }
-        </script>
-    </th:block>
-</head>
+<head th:replace="~{fragments/head :: head(
+    'Ndopify — Confiez votre recherche de logement à un agent vérifié',
+    |Décrivez votre recherche : un agent vérifié de votre secteur la prend en charge, vous propose des biens qui vous correspondent et organise vos visites, sur place ou en vidéo. Gratuit jusqu'à la signature du bail.|,
+    ${#strings.isEmpty(tenant.publicPortalUrl) ? null : tenant.publicPortalUrl},
+    'Ndopify — Un agent vérifié pour votre recherche de logement',
+    |Un agent vérifié de votre secteur, des biens choisis pour vous, des visites organisées. Gratuit jusqu'à la signature du bail.|,
+    null,
+    null,
+    null,
+    null,
+    false,
+    true,
+    ~{fragments/structured-data :: organization})}"></head>
 <!--/*
   The home page, for people looking for a rental (HomeController). Served from the prototype src/main/html/mvp/index.html.
   Every call to action opens Partner Central's "Trouver un bien" wizard (findPropertyUrl), and is left out without it.

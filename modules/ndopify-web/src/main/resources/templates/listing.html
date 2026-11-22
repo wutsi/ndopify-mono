@@ -1,41 +1,18 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta content="width=device-width, initial-scale=1" name="viewport">
-    <title th:text="${page.title} + ' | ' + (${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name})">Appartement | Ndopify</title>
-    <meta name="description" th:content="${page.metaDescription}">
-    <!--/* The tenant's logo and icon, falling back to Ndopify's when it has none; the hero photo is the page's image. */-->
-    <th:block th:with="logoUrl=${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl},
-                       iconUrl=${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
-        <link rel="canonical" th:if="${page.canonicalUrl}" th:href="${page.canonicalUrl}">
-        <meta content="website" property="og:type">
-        <meta property="og:title" th:content="${page.title}">
-        <meta property="og:description" th:content="${page.metaDescription}">
-        <meta property="og:image" th:content="${#lists.isEmpty(page.photos)} ? ${logoUrl} : ${page.photos[0].socialUrl}">
-        <meta property="og:url" th:if="${page.canonicalUrl}" th:content="${page.canonicalUrl}">
-        <meta content="summary_large_image" name="twitter:card">
-        <meta content="#1d7edf" name="theme-color">
-        <link rel="icon" th:href="${iconUrl}">
-        <link rel="apple-touch-icon" th:href="${iconUrl}">
-    </th:block>
-    <link href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css" rel="stylesheet">
-    <link rel="stylesheet" th:href="@{/assets/css/styles.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/listing.css}">
-    <script type="application/ld+json" th:inline="javascript">
-        {
-            "@context": "https://schema.org",
-            "@type": /*[[${page.schemaType}]]*/ "Apartment",
-            "name": /*[[${page.title}]]*/ "Appartement",
-            "url": /*[[${page.canonicalUrl}]]*/ null,
-            "numberOfRooms": /*[[${page.rooms}]]*/ null,
-            "numberOfBathroomsTotal": /*[[${page.bathrooms}]]*/ null,
-            "floorSize": /*[[${page.area} != null ? ${ {'@type': 'QuantitativeValue', 'value': page.area, 'unitCode': 'MTK'} } : null]]*/ null,
-            "address": {"@type": "PostalAddress", "addressLocality": /*[[${page.city}]]*/ null, "addressCountry": /*[[${page.countryCode}]]*/ "CM"},
-            "geo": /*[[${page.latitude} != null and ${page.longitude} != null ? ${ {'@type': 'GeoCoordinates', 'latitude': page.latitude, 'longitude': page.longitude} } : null]]*/ null
-        }
-    </script>
-</head>
+<head th:replace="~{fragments/head :: head(
+    ${page.title + ' | ' + (#strings.isEmpty(tenant.name) ? 'Ndopify' : tenant.name)},
+    ${page.metaDescription},
+    ${page.canonicalUrl},
+    ${page.title},
+    ${page.metaDescription},
+    ${#lists.isEmpty(page.photos) ? null : page.photos[0].socialUrl},
+    null,
+    null,
+    ${ {'listing'} },
+    true,
+    true,
+    ~{fragments/structured-data :: listing(${page})})}"></head>
 <!--/*
   A listing's public page (ListingController), from the prototype src/main/html/annonce.html. Every text comes
   formatted in `page` (ListingPage); a section the listing has nothing for is left out.

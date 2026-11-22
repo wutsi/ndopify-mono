@@ -1,20 +1,18 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta content="width=device-width, initial-scale=1" name="viewport">
-    <title th:text="'Votre visite | ' + (${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name})">Votre visite | Ndopify</title>
-    <!--/* A personal page (the link of the visit e-mails): never indexed nor shared, nor its address sent as Referer. */-->
-    <meta content="noindex, nofollow" name="robots">
-    <meta content="no-referrer" name="referrer">
-    <meta content="#1d7edf" name="theme-color">
-    <link rel="icon" th:href="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
-    <link rel="apple-touch-icon" th:href="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
-    <link rel="stylesheet" th:href="@{/assets/css/styles.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/listing.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/proposal.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/visit.css}">
-</head>
+<head th:replace="~{fragments/head :: head(
+    ${'Votre visite | ' + (#strings.isEmpty(tenant.name) ? 'Ndopify' : tenant.name)},
+    null,
+    null,
+    null,
+    null,
+    null,
+    'noindex, nofollow',
+    'no-referrer',
+    ${ {'listing','proposal','visit'} },
+    false,
+    true,
+    null)}"></head>
 <!--/*
   The customer's visit, the link of the "visite" e-mail (VisitController): the listing and the agent on top, then one
   block per status, the server renders only the current one. Two types, shown wherever the date is: ON_SITE, at the

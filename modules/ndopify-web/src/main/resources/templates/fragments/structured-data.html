@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/* The Organization block shared by the home, agent and owner pages. */-->
+<th:block th:fragment="organization"
+          th:with="logoUrl=${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
+    <script th:inline="javascript" type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": /*[[${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}]]*/ "Ndopify",
+            "url": /*[[${tenant.publicPortalUrl}]]*/ null,
+            "logo": /*[[${logoUrl}]]*/ null
+        }
+    </script>
+</th:block>
+<!--/* A listing's structured data. */-->
+<th:block th:fragment="listing(page)">
+    <script type="application/ld+json" th:inline="javascript">
+        {
+            "@context": "https://schema.org",
+            "@type": /*[[${page.schemaType}]]*/ "Apartment",
+            "name": /*[[${page.title}]]*/ "Appartement",
+            "url": /*[[${page.canonicalUrl}]]*/ null,
+            "numberOfRooms": /*[[${page.rooms}]]*/ null,
+            "numberOfBathroomsTotal": /*[[${page.bathrooms}]]*/ null,
+            "floorSize": /*[[${page.area} != null ? ${ {'@type': 'QuantitativeValue', 'value': page.area, 'unitCode': 'MTK'} } : null]]*/ null,
+            "address": {"@type": "PostalAddress", "addressLocality": /*[[${page.city}]]*/ null, "addressCountry": /*[[${page.countryCode}]]*/ "CM"},
+            "geo": /*[[${page.latitude} != null and ${page.longitude} != null ? ${ {'@type': 'GeoCoordinates', 'latitude': page.latitude, 'longitude': page.longitude} } : null]]*/ null
+        }
+    </script>
+</th:block>
+</body>
+</html>
