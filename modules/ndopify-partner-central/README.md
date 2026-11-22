@@ -78,8 +78,12 @@ Signed-in pages:
   (`.../dismiss`). Another agent's mandate a match belongs to is never named nor linked.
 - **Installable app (PWA)** — `public/manifest.json` and the generated service worker (`/sw.js`) let a phone install
   the app; a failed navigation shows the self-contained French `/offline.html`. The manifest ships `any` and
-  `maskable` icons at 192 and 512 px (`assets/images/icon-*.png`), with `apple-touch-icon.png` (180 px),
-  `favicon-16/32.png` and `/favicon.ico` for the rest. HTML and API responses are never cached, only the versioned
+  `maskable` icons at 192 and 512 px (`assets/images/icon-*.png`) cut from `assets/images/icon.png`, the 500 px
+  master of Partner Central's own house/N mark: the `any` icons are the artwork as supplied (white corners), the
+  `maskable` ones a full-bleed `#1d7edf` tile with the mark inside the maskable safe circle;
+  `assets/images/apple-touch-icon.png` (180 px) is the iOS install icon. The tab has **no favicon**: no page declares
+  a `<link rel="icon">`, `favicon.ico` and `favicon-16/32.png` are gone, and `/favicon.ico` stays public so that the
+  browser's automatic 404 is not a sign-in redirect. HTML and API responses are never cached, only the versioned
   assets.
 
 Every form posts without JavaScript; the scripts in `src/main/assets/js/` (`join.js`, `find-property.js`,
