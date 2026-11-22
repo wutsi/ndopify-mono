@@ -20,11 +20,6 @@
     </section>
 </main>
 
-<footer class="site-footer">
-    <div class="container site-footer__inner">
-        <img alt="Ndopify" height="32" th:src="@{/assets/images/icon.png}" width="32">
-        <small>© 2026 Ndopify. Logements vérifiés. Locations fiables.</small>
-    </div>
-</footer>
+<footer th:replace="~{fragments/site-footer :: footer('© 2026 Ndopify. Logements vérifiés. Locations fiables.', false)}"></footer>
 </body>
 </html>

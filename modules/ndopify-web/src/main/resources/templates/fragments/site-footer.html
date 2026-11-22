@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/*
+  The site footer. "brand" false is the 404's static, nav-less footer; the two taglines are the tenant pages' own copy.
+*/-->
+<footer class="site-footer" th:fragment="footer(tagline, brand)">
+    <div class="container site-footer__inner">
+        <img alt="Ndopify" height="32" width="32"
+             th:alt="${!brand or #strings.isEmpty(tenant?.name)} ? 'Ndopify' : ${tenant.name}"
+             th:src="${!brand or #strings.isEmpty(tenant?.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
+        <th:block th:if="${brand}">
+            <nav aria-label="Navigation du pied de page">
+                <ul>
+                    <li><a th:href="@{/}">Locataires</a></li>
+                    <li><a th:href="@{/owner}">Propriétaires</a></li>
+                    <li><a th:href="@{/agent}">Agents</a></li>
+                </ul>
+            </nav>
+        </th:block>
+        <small th:text="${tagline}">© 2026 Ndopify. Logements vérifiés. Locations fiables.</small>
+    </div>
+</footer>
+</body>
+</html>
