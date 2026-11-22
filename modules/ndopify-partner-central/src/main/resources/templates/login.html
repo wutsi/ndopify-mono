@@ -3,14 +3,7 @@
 <head th:replace="~{fragments/head :: head(${step == 'code'} ? 'Code de connexion — Ndopify Partner Central' : 'Connexion — Ndopify Partner Central', |Connectez-vous à l'espace partenaires Ndopify avec votre adresse email et un code à usage unique.|, null, ${ {'partner-central'} }, false)}"></head>
 <!--/* One page, two steps: LoginController picks the step (model attribute "step") and only renders that one. */-->
 <body data-page="login">
-<a class="skip-link" href="#main">Aller au contenu</a>
-<header class="site-header">
-    <div class="site-header__inner">
-        <a class="site-header__brand" th:href="@{/login}">
-            <img alt="Ndopify, accueil" height="40" th:src="@{/assets/images/logo.png}" width="84">
-        </a>
-    </div>
-</header>
+<th:block th:replace="~{fragments/site-header :: header(@{/login}, false)}"></th:block>
 <main class="page" id="main">
     <!--/* Step 1: e-mail (POST /login) */-->
     <section aria-labelledby="email-title" class="column" data-step="email" th:if="${step == 'email'}">

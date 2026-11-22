@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/*
+  The page shell's skip link and header, on every page that uses the Ndopify brand: "home" is the brand's link
+  (an @{} expression), "menu" renders the account menu — explicit, not inferred from "signedIn", because /login shows
+  no account menu even to a signed-in visitor. Pages with a tenant-branded header (join, find/offer property) keep
+  their own.
+*/-->
+<th:block th:fragment="header(home, menu)">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" th:href="${home}">
+                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <th:block th:if="${menu}">
+                <nav th:replace="~{fragments/user-menu :: menu}"></nav>
+            </th:block>
+        </div>
+    </header>
+</th:block>
+</body>
+</html>

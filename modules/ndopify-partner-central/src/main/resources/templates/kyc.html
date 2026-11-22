@@ -2,15 +2,7 @@
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/head :: head(|Vérification d'identité — Ndopify Partner Central|, |Vérifiez votre identité d'agent Ndopify : téléversez votre carte nationale d'identité, envoyez votre dossier et suivez son examen.|, null, ${ {'partner-central','direct-upload','kyc'} }, false)}"></head>
 <body data-page="kyc">
-    <a class="skip-link" href="#main">Aller au contenu</a>
-    <header class="site-header">
-        <div class="site-header__inner">
-            <a class="site-header__brand" th:href="@{/}">
-                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
-            </a>
-            <nav th:replace="~{fragments/user-menu :: menu}"></nav>
-        </div>
-    </header>
+    <th:block th:replace="~{fragments/site-header :: header(@{/}, true)}"></th:block>
     <main id="main" class="page">
         <div class="column">
             <div class="page-intro" th:if="${view != 'confirmation'}">
