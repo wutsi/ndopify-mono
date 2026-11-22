@@ -14,6 +14,7 @@ platform: github
 repository:
   default_branch: main
   story_ref: "Refs #<id>"
+  merge_method: merge          # merge | squash | rebase
 
 tracker:
   provider: github-projects
@@ -34,6 +35,10 @@ plans:
 
 prototype:
   dir: "<module>/src/main/html"
+
+deployment:
+  # Workflow paths to wait for after a merge. Empty: every run the merge commit starts.
+  workflows: []
 
 branch:
   pattern: "<type>/<story-id>-<scope>-<topic>"
