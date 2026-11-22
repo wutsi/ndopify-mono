@@ -1,25 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="${section} ? ${section.pageTitle} : 'Annonce — Ndopify Partner Central'">Annonce — Ndopify Partner Central</title>
-    <meta name="description" content="Une section de l'annonce, vérifiée sur place pendant la visite du bien.">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/find-property.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/listing.css}">
-    <script th:src="@{/assets/js/partner-central.js}" defer></script>
-    <script th:src="@{/assets/js/listing.js}" defer></script>
-</head>
+<head th:replace="~{fragments/head :: head(${section} ? ${section.pageTitle} : 'Annonce — Ndopify Partner Central', |Une section de l'annonce, vérifiée sur place pendant la visite du bien.|, ${ {'join','find-property','home','listing'} }, ${ {'partner-central','listing'} }, false)}"></head>
 <!--/*
   One section of a listing's checklist (ListingSectionController), from the prototype's listing/emplacement.html,
   position.html, bien.html, equipements.html, conditions.html and remarques.html: "section" is the SectionView (absent

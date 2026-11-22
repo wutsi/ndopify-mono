@@ -1,28 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Modifier mon profil — Ndopify Partner Central</title>
-    <meta name="description" content="Modifiez votre profil d'agent Ndopify.">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.css">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/profile.css}">
-    <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/js/intlTelInput.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.iife.js" defer></script>
-    <script th:src="@{/assets/js/util.js}" defer></script>
-    <script th:src="@{/assets/js/partner-central.js}" defer></script>
-    <script th:src="@{/assets/js/join.js}" defer></script>
-</head>
+<head th:replace="~{fragments/head :: head('Modifier mon profil — Ndopify Partner Central', |Modifiez votre profil d'agent Ndopify.|, ${ {'join','profile'} }, ${ {'util','partner-central','join'} }, true)}"></head>
 <!--/*
   The agent's profile (ProfileController, POST /profile), pre-filled from "answers", with "errors" per field and
   "error" when the server couldn't save it. join.js enhances it like the join wizard's steps (intl-tel-input, the

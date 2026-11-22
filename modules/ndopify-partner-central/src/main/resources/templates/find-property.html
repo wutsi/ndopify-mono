@@ -1,30 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta content="width=device-width, initial-scale=1" name="viewport">
-    <title th:text="${step == 'confirmation'} ? 'Demande envoyée — Ndopify' : 'Trouver un bien — Ndopify'">
-        Trouver un bien — Ndopify</title>
-    <meta content="Décrivez le bien que vous cherchez : un Agent Vérifié Ndopify de votre secteur vous accompagne. 3 à 5 minutes, aucun document requis."
-          name="description">
-    <meta content="noindex, nofollow" name="robots">
-    <meta content="#ffffff" name="theme-color">
-    <link rel="icon" th:href="@{/assets/images/icon.png}" type="image/png">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link href="https://fonts.googleapis.com" rel="preconnect">
-    <link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
-    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap"
-          rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.css" rel="stylesheet">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/find-property.css}">
-    <script defer src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/js/intlTelInput.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.iife.js"></script>
-    <script defer th:src="@{/assets/js/util.js}"></script>
-    <script defer th:src="@{/assets/js/find-property.js}"></script>
-</head>
+<head th:replace="~{fragments/head :: head(${step == 'confirmation'} ? 'Demande envoyée — Ndopify' : 'Trouver un bien — Ndopify', 'Décrivez le bien que vous cherchez : un Agent Vérifié Ndopify de votre secteur vous accompagne. 3 à 5 minutes, aucun document requis.', ${ {'join','find-property'} }, ${ {'util','find-property'} }, true)}"></head>
 <!--/*
   One page, seven steps then the confirmation: FindPropertyController picks the step (model attribute "step") and
   only renders that one. Each step is its own form, posted to /find-property/{step}; the answers live in the HTTP

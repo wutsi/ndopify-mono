@@ -1,21 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="${missing} ? 'Agent introuvable — Ndopify Partner Central' : ${profile.name} + ' — Ndopify Partner Central'">Profil de l'agent — Ndopify Partner Central</title>
-    <meta name="description" content="Profil d'un agent du réseau Ndopify.">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/agent.css}">
-    <script th:src="@{/assets/js/partner-central.js}" defer></script>
-</head>
+<head th:replace="~{fragments/head :: head(${missing} ? 'Agent introuvable — Ndopify Partner Central' : ${profile.name} + ' — Ndopify Partner Central', |Profil d'un agent du réseau Ndopify.|, ${ {'agent'} }, ${ {'partner-central'} }, false)}"></head>
 <!--/*
   Another agent's profile (AgentProfileController), opened from one of that agent's listings once co-brokerage ships.
   "profile" is the AgentProfileView (absent when "missing": an unknown or missing id, answered with a 404).

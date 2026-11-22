@@ -1,23 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Envoyer le mandat — Ndopify Partner Central</title>
-    <meta name="description" content="Envoyer un mandat au client pour signature : durée et frais de visite.">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/find-property.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
-    <script th:src="@{/assets/js/partner-central.js}" defer></script>
-    <script th:src="@{/assets/js/mandate.js}" defer></script>
-</head>
+<head th:replace="~{fragments/head :: head('Envoyer le mandat — Ndopify Partner Central', 'Envoyer un mandat au client pour signature : durée et frais de visite.', ${ {'find-property','home'} }, ${ {'partner-central','mandate'} }, false)}"></head>
 <!--/*
     Sending a mandate's contract (MandateContractController), on its own page reached from the mandate page's
     "Envoyer au client" (ASSIGNED) or "Renvoyer" (PENDING_APPROVAL). The agent confirms the terms the customer accepts

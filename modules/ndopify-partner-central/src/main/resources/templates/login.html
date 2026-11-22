@@ -1,23 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta content="width=device-width, initial-scale=1" name="viewport">
-    <title th:text="${step == 'code'} ? 'Code de connexion — Ndopify Partner Central' : 'Connexion — Ndopify Partner Central'">
-        Connexion — Ndopify Partner Central</title>
-    <meta content="Connectez-vous à l'espace partenaires Ndopify avec votre adresse email et un code à usage unique."
-          name="description">
-    <meta content="noindex, nofollow" name="robots">
-    <meta content="#ffffff" name="theme-color">
-    <link rel="icon" th:href="@{/assets/images/icon.png}" type="image/png">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link href="https://fonts.googleapis.com" rel="preconnect">
-    <link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
-    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap"
-          rel="stylesheet">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <script defer th:src="@{/assets/js/partner-central.js}"></script>
-</head>
+<head th:replace="~{fragments/head :: head(${step == 'code'} ? 'Code de connexion — Ndopify Partner Central' : 'Connexion — Ndopify Partner Central', |Connectez-vous à l'espace partenaires Ndopify avec votre adresse email et un code à usage unique.|, null, ${ {'partner-central'} }, false)}"></head>
 <!--/* One page, two steps: LoginController picks the step (model attribute "step") and only renders that one. */-->
 <body data-page="login">
 <a class="skip-link" href="#main">Aller au contenu</a>

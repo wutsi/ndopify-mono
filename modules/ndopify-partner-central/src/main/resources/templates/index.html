@@ -1,24 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Espace agent — Ndopify Partner Central</title>
-    <meta name="description" content="Espace agent Ndopify Partner Central.">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/listing.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/visit.css}">
-    <script th:src="@{/assets/js/partner-central.js}" defer></script>
-    <script th:src="@{/assets/js/home.js}" defer></script>
-</head>
+<head th:replace="~{fragments/head :: head('Espace agent — Ndopify Partner Central', 'Espace agent Ndopify Partner Central.', ${ {'home','listing','visit'} }, ${ {'partner-central','home'} }, false)}"></head>
 <!--/*
   The Espace agent (HomeController), where every agent lands. Its profile section only invites the agent to add the
   photo or the biography while one is missing ("photoMissing", "biographyMissing"), or confirms a save: a complete

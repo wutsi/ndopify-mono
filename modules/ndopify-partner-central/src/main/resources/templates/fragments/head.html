@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title, description, styles, scripts, cdn)">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title}">Ndopify Partner Central</title>
+    <meta th:if="${description != null}" name="description" th:content="${description}">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <th:block th:if="${cdn}">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.css">
+    </th:block>
+    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link th:each="name : ${styles}" rel="stylesheet" th:href="@{/assets/css/{name}.css(name=${name})}">
+    <th:block th:if="${cdn}">
+        <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/js/intlTelInput.min.js" defer></script>
+        <script src="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.iife.js" defer></script>
+    </th:block>
+    <script th:each="name : ${scripts}" th:src="@{/assets/js/{name}.js(name=${name})}" defer></script>
+</head>
+</html>

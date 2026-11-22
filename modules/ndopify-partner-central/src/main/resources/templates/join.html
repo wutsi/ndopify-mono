@@ -1,29 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta content="width=device-width, initial-scale=1" name="viewport">
-    <title th:text="${step == 'confirmation'} ? 'Candidature envoyée — Ndopify Partner Central' : 'Rejoindre Ndopify — Ndopify Partner Central'">
-        Rejoindre Ndopify — Ndopify Partner Central</title>
-    <meta content="Créez votre compte agent Ndopify : vos coordonnées, votre expérience, votre zone et votre numéro Mobile Money."
-          name="description">
-    <meta content="noindex, nofollow" name="robots">
-    <meta content="#ffffff" name="theme-color">
-    <link rel="icon" th:href="@{/assets/images/icon.png}" type="image/png">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link href="https://fonts.googleapis.com" rel="preconnect">
-    <link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
-    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap"
-          rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.css" rel="stylesheet">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
-    <script defer src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/js/intlTelInput.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.iife.js"></script>
-    <script defer th:src="@{/assets/js/util.js}"></script>
-    <script defer th:src="@{/assets/js/join.js}"></script>
-</head>
+<head th:replace="~{fragments/head :: head(${step == 'confirmation'} ? 'Candidature envoyée — Ndopify Partner Central' : 'Rejoindre Ndopify — Ndopify Partner Central', 'Créez votre compte agent Ndopify : vos coordonnées, votre expérience, votre zone et votre numéro Mobile Money.', ${ {'join'} }, ${ {'util','join'} }, true)}"></head>
 <!--/*
   One page, five steps then the confirmation: JoinController picks the step (model attribute "step") and only renders
   that one. Each step is its own form, posted to /join/{step}; the answers live in the HTTP session, so a step's

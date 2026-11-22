@@ -1,22 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Vérification d'identité — Ndopify Partner Central</title>
-    <meta name="description" content="Vérifiez votre identité d'agent Ndopify : téléversez votre carte nationale d'identité, envoyez votre dossier et suivez son examen.">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <script th:src="@{/assets/js/partner-central.js}" defer></script>
-    <script th:src="@{/assets/js/direct-upload.js}" defer></script>
-    <script th:src="@{/assets/js/kyc.js}" defer></script>
-</head>
+<head th:replace="~{fragments/head :: head(|Vérification d'identité — Ndopify Partner Central|, |Vérifiez votre identité d'agent Ndopify : téléversez votre carte nationale d'identité, envoyez votre dossier et suivez son examen.|, null, ${ {'partner-central','direct-upload','kyc'} }, false)}"></head>
 <body data-page="kyc">
     <a class="skip-link" href="#main">Aller au contenu</a>
     <header class="site-header">

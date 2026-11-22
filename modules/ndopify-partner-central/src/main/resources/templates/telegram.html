@@ -1,21 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Connecter Telegram — Ndopify Partner Central</title>
-    <meta name="description" content="Connectez votre compte Telegram pour recevoir vos notifications Ndopify.">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/telegram.css}">
-    <script th:src="@{/assets/js/partner-central.js}" defer></script>
-</head>
+<head th:replace="~{fragments/head :: head('Connecter Telegram — Ndopify Partner Central', 'Connectez votre compte Telegram pour recevoir vos notifications Ndopify.', ${ {'telegram'} }, ${ {'partner-central'} }, false)}"></head>
 <!--/*
   The Telegram connection page (TelegramController): the three steps and their two actions, each inside its step —
   the code request in the first, the bot's link in the second, which stays disabled until a code is pending.
