@@ -160,7 +160,7 @@ AI tooling for [Claude Code](https://claude.com/claude-code) lives in [`.claude/
 
 | Skill                                    | Purpose                                                                                                                                                                                |
 |------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`story`](.claude/skills/story/SKILL.md) | Orchestrates the `analyst`, `developer`, `reviewer` and `deployer` agents through a story's lifecycle: `groom <story-id>` (Backlog to Ready, including the designer and the plan), `implement <story-id>` (Ready to In review; `push` is an alias), `review <pr-number>` (the approval loop), `merge <pr-number>` (merge, deployment, Done), `ship <story-id>` (developer, reviewer and deployer in sequence). |
+| [`story`](.claude/skills/story/SKILL.md) | Orchestrates the `analyst`, `developer`, `reviewer` and `deployer` agents through a story's lifecycle: `groom <story-id>` (Backlog to Ready, including the designer and the plan), `implement <story-id>` (Ready to In review; `push` is an alias), `review <pr-number>` (the review loop: the reviewer fixes the trivial findings, the developer the substantive ones, up to three rounds and a final review), `merge <pr-number>` (merge, deployment, Done), `ship <story-id>` (developer, reviewer and deployer in sequence). |
 
 ### Third-party skills
 
