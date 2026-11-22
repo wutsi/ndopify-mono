@@ -1,30 +1,30 @@
 ---
 description: Use when a PR is approved and ready to ship — merge it, wait for its deployment, then close the story and move it off review.
 mode: all
-model: deepseek/deepseek-v4-pro#high
+model: deepseek/deepseek-v4-flash
 steps: 60
 permissions:
-  - action: edit
-    resource: "*"
-    effect: deny
-  - action: shell
-    resource: "*"
-    effect: allow
-  - action: shell
-    resource: "gh pr review*"
-    effect: deny
-  - action: shell
-    resource: "gh pr create*"
-    effect: deny
-  - action: shell
-    resource: "gh pr close*"
-    effect: deny
-  - action: shell
-    resource: "git push*"
-    effect: deny
-  - action: subagent
-    resource: "*"
-    effect: deny
+    -   action: edit
+        resource: "*"
+        effect: deny
+    -   action: shell
+        resource: "*"
+        effect: allow
+    -   action: shell
+        resource: "gh pr review*"
+        effect: deny
+    -   action: shell
+        resource: "gh pr create*"
+        effect: deny
+    -   action: shell
+        resource: "gh pr close*"
+        effect: deny
+    -   action: shell
+        resource: "git push*"
+        effect: deny
+    -   action: subagent
+        resource: "*"
+        effect: deny
 ---
 
 # Story deployer
