@@ -9,7 +9,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter
-import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint
 
 @Configuration
 @EnableWebSecurity
@@ -33,7 +32,7 @@ class SecurityConfiguration(
                     .anyRequest().authenticated()
             }
             .addFilterBefore(authorizationFilter(), AnonymousAuthenticationFilter::class.java)
-            .exceptionHandling { it.authenticationEntryPoint(LoginUrlAuthenticationEntryPoint("/login")) }
+            .exceptionHandling { it.authenticationEntryPoint(SignInTargetEntryPoint("/login")) }
             .csrf { customizer -> customizer.disable() }
             .httpBasic { customizer -> customizer.disable() }
             .logout { customizer -> customizer.disable() } // Disable spring logout, we handle it in our own controller

@@ -157,8 +157,31 @@ class LoginControllerTest {
     }
 
     @Test
+    fun submitStoresTheFragmentOnTheTarget() {
+        session.setAttribute(SignInTarget.SESSION_ATTRIBUTE, SignInTarget("/mandates/42"))
+
+        val result = mvc.perform(
+            post("/login").param("email", "ray@gmail.com").param("fragment", "match-7").session(session),
+        ).andReturn()
+
+        assertEquals(
+            SignInTarget("/mandates/42", fragment = "match-7"),
+            session.getAttribute(SignInTarget.SESSION_ATTRIBUTE),
+        )
+        assertEquals("redirect:/login?step=code", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun submitIgnoresAFragmentWithoutATarget() {
+        mvc.perform(post("/login").param("email", "ray@gmail.com").param("fragment", "match-7").session(session))
+
+        assertNull(session.getAttribute(SignInTarget.SESSION_ATTRIBUTE))
+    }
+
+    @Test
     fun submitRejectedByServer() {
         session.setAttribute(PendingLogin.SESSION_ATTRIBUTE, pending)
+        session.setAttribute(SignInTarget.SESSION_ATTRIBUTE, SignInTarget("/mandates/42", fragment = "match-7"))
         doThrow(HttpClientErrorException(HttpStatus.BAD_REQUEST)).whenever(otpClient).create(any())
 
         val result = mvc.perform(post("/login").param("email", "ray").session(session)).andReturn()
@@ -166,6 +189,7 @@ class LoginControllerTest {
         assertEquals("login", result.modelAndView?.viewName)
         assertEquals("email", model(result)["step"])
         assertEquals("ray", model(result)["email"])
+        assertEquals("match-7", model(result)["fragment"])
         assertTrue(model(result)["error"] is String)
         assertTrue(result.flashMap.isEmpty())
         assertNull(session.getAttribute(PendingLogin.SESSION_ATTRIBUTE))
@@ -191,6 +215,77 @@ class LoginControllerTest {
         assertNotEquals(sessionId, session.id)
 
         verify(accessTokenService).set("token-123")
+    }
+
+    @Test
+    fun verifyReturnsToTheRequestedPage() {
+        session.setAttribute(PendingLogin.SESSION_ATTRIBUTE, pending)
+        session.setAttribute(SignInTarget.SESSION_ATTRIBUTE, SignInTarget("/mandates/42"))
+        doReturn(AuthenticateResponse("token-123")).whenever(authClient).authenticate(any())
+
+        val result = mvc.perform(post("/login/verify").param("code", "123456").session(session)).andReturn()
+
+        assertEquals("redirect:/mandates/42", result.modelAndView?.viewName)
+        assertNull(session.getAttribute(SignInTarget.SESSION_ATTRIBUTE))
+    }
+
+    @Test
+    fun verifyPreservesTheQueryString() {
+        session.setAttribute(PendingLogin.SESSION_ATTRIBUTE, pending)
+        session.setAttribute(SignInTarget.SESSION_ATTRIBUTE, SignInTarget("/listings/42", "match=7"))
+        doReturn(AuthenticateResponse("token-123")).whenever(authClient).authenticate(any())
+
+        val result = mvc.perform(post("/login/verify").param("code", "123456").session(session)).andReturn()
+
+        assertEquals("redirect:/listings/42?match=7", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun verifyReplaysTheFragment() {
+        session.setAttribute(PendingLogin.SESSION_ATTRIBUTE, pending)
+        session.setAttribute(SignInTarget.SESSION_ATTRIBUTE, SignInTarget("/mandates/42", fragment = "match-7"))
+        doReturn(AuthenticateResponse("token-123")).whenever(authClient).authenticate(any())
+
+        val result = mvc.perform(post("/login/verify").param("code", "123456").session(session)).andReturn()
+
+        assertEquals("redirect:/mandates/42#match-7", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun verifyIgnoresAnUnsafeTarget() {
+        session.setAttribute(PendingLogin.SESSION_ATTRIBUTE, pending)
+        session.setAttribute(SignInTarget.SESSION_ATTRIBUTE, SignInTarget("https://evil.example/mandates/42"))
+        doReturn(AuthenticateResponse("token-123")).whenever(authClient).authenticate(any())
+
+        val result = mvc.perform(post("/login/verify").param("code", "123456").session(session)).andReturn()
+
+        assertEquals("redirect:/", result.modelAndView?.viewName)
+        assertNull(session.getAttribute(SignInTarget.SESSION_ATTRIBUTE))
+    }
+
+    @Test
+    fun verifyKeepsTheTargetAfterAWrongCode() {
+        val target = SignInTarget("/mandates/42", fragment = "match-7")
+        session.setAttribute(PendingLogin.SESSION_ATTRIBUTE, pending)
+        session.setAttribute(SignInTarget.SESSION_ATTRIBUTE, target)
+        doThrow(conflict(ErrorCode.AUTH_INVALID_CREDENTIALS)).whenever(authClient).authenticate(any())
+
+        mvc.perform(post("/login/verify").param("code", "123456").session(session)).andReturn()
+
+        assertEquals(target, session.getAttribute(SignInTarget.SESSION_ATTRIBUTE))
+    }
+
+    @Test
+    fun verifyClearsTheTargetForTheNextSignIn() {
+        session.setAttribute(PendingLogin.SESSION_ATTRIBUTE, pending)
+        session.setAttribute(SignInTarget.SESSION_ATTRIBUTE, SignInTarget("/mandates/42"))
+        doReturn(AuthenticateResponse("token-123")).whenever(authClient).authenticate(any())
+        mvc.perform(post("/login/verify").param("code", "123456").session(session)).andReturn()
+
+        session.setAttribute(PendingLogin.SESSION_ATTRIBUTE, pending)
+        val result = mvc.perform(post("/login/verify").param("code", "123456").session(session)).andReturn()
+
+        assertEquals("redirect:/", result.modelAndView?.viewName)
     }
 
     @Test

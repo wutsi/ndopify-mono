@@ -34,6 +34,10 @@ import java.time.Duration
  * The URL is never trusted: the code step is only shown while a [PendingLogin] is in the session, otherwise the
  * e-mail step is. The e-mail lives in the session, never in the URL or a form field, so it doesn't end up in logs or
  * history and can't be swapped at verify time.
+ *
+ * A successful verify returns to the local page the session's [SignInTarget] remembers, and to `/` when there is
+ * none. Its fragment comes from the login page's hidden field, filled from `location.hash` by the page script: the
+ * browser never sends a fragment to the server.
  */
 @Controller
 @RequestMapping("/login")
@@ -66,7 +70,7 @@ class LoginController(
         return if (requestedStep == STEP_CODE && pending != null) {
             codeStep(pending, model)
         } else {
-            emailStep(pending?.email, model)
+            emailStep(pending?.email, session, model)
         }
     }
 
@@ -87,6 +91,13 @@ class LoginController(
         } else {
             form.email.trim().lowercase()
         }
+        // The browser never sends a URL fragment: the login page lifted it into a hidden field. Kept on the target
+        // before the code is requested, so a rejected e-mail doesn't lose it.
+        val fragment = SignInTarget.fragmentOf(form.fragment)
+        if (fragment != null) {
+            val target = session.getAttribute(SignInTarget.SESSION_ATTRIBUTE) as SignInTarget?
+            target?.let { session.setAttribute(SignInTarget.SESSION_ATTRIBUTE, it.copy(fragment = fragment)) }
+        }
         try {
             otpClient.create(CreateOtpRequest(email = email, ttl = OTP_TTL.seconds.toInt()))
         } catch (ex: HttpClientErrorException) {
@@ -103,7 +114,7 @@ class LoginController(
                     "Cette adresse email n'est pas valide!"
                 },
             )
-            return emailStep(email, model)
+            return emailStep(email, session, model)
         }
 
         session.setAttribute(
@@ -143,16 +154,23 @@ class LoginController(
         // A new session id once signed in, so that an id planted before (session fixation) is worth nothing
         request.changeSessionId()
         accessTokenService.set(accessToken)
-        // The Espace agent, which sends an agent who isn't verified yet to the KYC page.
-        return "redirect:/"
+        // The page the agent asked for before being sent to /login, else the Espace agent, which sends an agent who
+        // isn't verified yet to the KYC page. Read and cleared once, so a later sign-in doesn't reuse it.
+        val target = session.getAttribute(SignInTarget.SESSION_ATTRIBUTE) as SignInTarget?
+        session.removeAttribute(SignInTarget.SESSION_ATTRIBUTE)
+        return "redirect:" + (target?.redirectUrl() ?: "/")
     }
 
     private fun pending(session: HttpSession): PendingLogin? =
         session.getAttribute(PendingLogin.SESSION_ATTRIBUTE) as PendingLogin?
 
-    private fun emailStep(email: String?, model: Model): String {
+    private fun signInTarget(session: HttpSession): SignInTarget? =
+        session.getAttribute(SignInTarget.SESSION_ATTRIBUTE) as SignInTarget?
+
+    private fun emailStep(email: String?, session: HttpSession, model: Model): String {
         model.addAttribute("step", STEP_EMAIL)
         model.addAttribute("email", email)
+        model.addAttribute("fragment", signInTarget(session)?.fragment)
         return VIEW
     }
 

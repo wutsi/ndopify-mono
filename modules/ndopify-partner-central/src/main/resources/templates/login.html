@@ -14,6 +14,8 @@
         </div>
 
         <form class="form" data-login-form method="post" novalidate th:action="@{/login}">
+            <!--/* The link's #fragment, lifted from location.hash by the page script: a browser never posts it. */-->
+            <input data-sign-in-fragment name="fragment" th:value="${fragment}" type="hidden">
             <div class="field">
                 <label class="field__label" for="email">Adresse email</label>
                 <input aria-describedby="email-hint email-error" autocapitalize="off" autocomplete="email" class="input" id="email" inputmode="email"

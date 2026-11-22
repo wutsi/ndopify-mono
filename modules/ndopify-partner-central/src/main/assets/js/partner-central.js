@@ -171,6 +171,11 @@
         var error = $("#email-error", root);
         var submit = $("[data-submit]", root);
 
+        // A fragment is never sent to the server: carry the link's #match-7 through the form as a hidden field.
+        // An empty hash leaves the server-rendered value alone, so a re-rendered e-mail step keeps it.
+        var fragment = $("[data-sign-in-fragment]", root);
+        if (fragment && window.location.hash.length > 1) fragment.value = window.location.hash.substring(1);
+
         function validity() {
             var value = input.value.trim();
             if (!value) return "Saisissez votre adresse email.";
