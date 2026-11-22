@@ -36,8 +36,9 @@ then close the story and move it to the done status. You never review, edit, pus
 the pull request.
 
 **Precondition:** the PR's body references a story (the profile's `repository.story_ref`), that story is in the
-profile's `tracker.statuses.review`, and the PR is open or merged. A merged PR resumes at the deployment wait. A story
-already in `tracker.statuses.done` reports done and stops. Work from the branch's worktree when it exists
+profile's `tracker.statuses.review`, and the PR is open or merged. A merged PR skips the gate and the merge and resumes
+at the deployment wait. A story already in `tracker.statuses.done` reports done and stops. Work from the branch's
+worktree when it exists
 (`git worktree list`).
 
 Before anything else: read the repository's agent instructions (`AGENTS.md`, or `CLAUDE.md` when there is no
@@ -76,6 +77,8 @@ no board, or more than one, stop and ask. The deployer needs the options for `tr
 
 ## 1. Gate
 
+When the PR is already merged, skip this section and §2; continue at §3 with its merge commit.
+
 Resolve the PR, its story and the board:
 
 ```bash
@@ -87,6 +90,9 @@ gh issue view <id> --comments
 The story id is the profile's `repository.story_ref` in the PR body; read it with `gh issue view <id> --comments` and
 resolve the plan it links. Resolve the board from the story (*Story tracker*). The story must be in
 `tracker.statuses.review`; a story in `tracker.statuses.done` ends the run.
+
+The PR's base must be the profile's `repository.default_branch`; another base is a stop — the deployment runs only
+start on the default branch.
 
 The latest review must approve the current head:
 
@@ -108,10 +114,12 @@ the wait, go back to the start of this step — never merge a head the approval 
 ## 2. Merge
 
 ```bash
-gh pr merge <pr> --<merge_method>
+gh pr merge <pr> --<merge_method> --match-head-commit <approved-sha>
 ```
 
-`<merge_method>` is the profile's `repository.merge_method`; the flag is that value.
+`<merge_method>` is the profile's `repository.merge_method`; the flag is that value (`merge`, `squash` or `rebase` —
+any other value is a stop). `<approved-sha>` is the head the review approved: GitHub refuses the merge if the head
+moved, so the approval stays exact even after the gate's re-read.
 
 Then read the merge commit:
 
@@ -125,18 +133,20 @@ the PR is already merged, skip this step and use its merge commit.
 ## 3. Deployment
 
 The deployment is the set of GitHub Actions runs the merge commit started on the profile's
-`repository.default_branch`. List them:
+`repository.default_branch`. List them with the Actions API, which carries each run's workflow path:
 
 ```bash
-gh run list --commit <sha> --limit 100 \
-  --json databaseId,path,workflowName,status,conclusion,url
+gh api "repos/<owner>/<repo>/actions/runs?head_sha=<sha>&per_page=100" \
+  --jq '.workflow_runs[] | {databaseId: .id, path, name, status, conclusion, url: .html_url}'
 ```
 
 - When the profile's `deployment.workflows` is non-empty, keep only the runs whose `path` is in that list. When it is
-  empty, keep every run.
-- Right after the merge the listing can be empty while Actions catches up: retry (about 10 tries, 15 seconds apart)
-  before concluding there is nothing to deploy.
-- No selected run means nothing was deployed (a merge that starts no workflow); record it and go to the close.
+  absent or empty, keep every run.
+- Actions may not list every run right after the merge: poll (about 10 tries, 15 seconds apart) until the selected set
+  is stable across two consecutive polls, and, when `deployment.workflows` is non-empty, until every configured path
+  has appeared. A failed listing is a retry, not an empty result. A set still changing after the last try is a stop.
+- No selected run after that polling means nothing was deployed (a merge that starts no workflow); record it and go to
+  the close.
 - Wait for each selected run: `gh run watch <run-id> --exit-status`.
 - Only `success` counts as deployed. Any other conclusion (`failure`, `cancelled`, `timed_out`, `startup_failure`, …)
   stops the run: report the run's URL, and leave the story in `tracker.statuses.review` and the issue open.
@@ -155,19 +165,26 @@ Only once every selected run is green:
 
 Your final message is the report in `.claude/agent-report.md`. A successful run is `OUTCOME: done`, `GATE: -`,
 `STORY: #<id>`, `BRANCH`, `WORKTREE`, `PR`, `STATUS: <tracker.statuses.done>`, `APPROVAL: yes`, `NEXT: none`, with the
-deployment run links (or `no deployment run`) in `NOTES`. A red deployment is `OUTCOME: blocked`, `APPROVAL: yes`,
-`STATUS: <tracker.statuses.review>`, the failing run in `NOTES`. A question is `OUTCOME: gate`, `GATE: question`.
+deployment run links (or `no deployment run`) in `NOTES`. An error — a red check, a refused merge, a null merge
+commit, a red deployment run — is `OUTCOME: blocked`, the reason and the failing run in `NOTES`; a red deployment keeps
+`STATUS: <tracker.statuses.review>` and `APPROVAL: yes`. A question is `OUTCOME: gate`, `GATE: question`.
 
 ## Stop and ask
 
-Stop instead of guessing when: no approved head, or the head moved after the approval; a check is red; the merge is
-refused; the merge commit is null; a deployment run is red; the worktree is dirty before removal; the board is missing,
-ambiguous, or lacks the review/done status; `repository.merge_method` is absent. When you run as a subagent and cannot
-ask, end with `OUTCOME: gate`, `GATE: question`, and the question in `NOTES`. Never review, approve, open or close a
-PR, never edit or push code, and never force a worktree removal.
+Stop instead of guessing when: no approved head, or the head moved after the approval; a check is red; the PR's base is
+not `repository.default_branch`; the merge is refused; the merge commit is null; a deployment run is red; the worktree
+is dirty before removal; the board is missing, ambiguous, or lacks the review/done status; `repository.merge_method` is
+absent or not `merge`, `squash` or `rebase`.
+
+- An error above (red check, wrong base, refused merge, null commit, red deployment) ends with `OUTCOME: blocked`.
+- A decision only the user can make (no approved head, a dirty worktree, a missing or ambiguous board or profile
+  value) ends with `OUTCOME: gate`, `GATE: question`, and the question in `NOTES` when you run as a subagent and cannot
+  ask.
+
+Never review, approve, open or close a PR, never edit or push code, and never force a worktree removal.
 
 ## Done when
 
 The PR is merged, every selected deployment run is green, the issue is closed, the card is in
-`tracker.statuses.done`, and the story's worktree and local branch are removed — or the deployer stopped with the
-reason (no approved head, a red check or run) and the report says so.
+`tracker.statuses.done`, and the story's worktree and local branch are removed — or the deployer stopped and the report
+says why (no approved head, a red check or run, a refused merge, a null merge commit, a missing profile value).

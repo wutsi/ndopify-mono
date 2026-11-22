@@ -58,26 +58,31 @@ approved, and keeps the story open when the deployment fails.
 
 - **Argument and precondition.** `<pr-number>` of the current repository; never guess it. The PR body carries the
   profile's `repository.story_ref`, that story is in `tracker.statuses.review`, and the PR is open or merged. A
-  merged PR resumes at the deployment wait; a story already `tracker.statuses.done` reports done and stops.
+  merged PR skips the gate and the merge and resumes at the deployment wait; a story already
+  `tracker.statuses.done` reports done and stops.
 - **Read first.** The repository instructions (`AGENTS.md` or `CLAUDE.md`), the touched modules' instructions,
   `MEMORY.md` when present, and the profile. A missing `repository.merge_method`, or a board with no status matching
   `tracker.statuses.review` / `done`, is a stop-and-ask. Deployment config is optional: `deployment.workflows: []`
   means every run the merge commit starts.
 - **Gate.**
   - Resolve the PR, its story and the board with `gh`, never with hardcoded ids.
+  - The PR's base is `repository.default_branch`; another base is a stop.
   - The latest review's body starts with `Round <n> — Approved` or `Final — Approved`, and its `commit_id` is the
     current head. Its `state` may be `COMMENTED`: GitHub refuses `APPROVE` on a PR its author opened, so the body is
     the marker.
   - Every check is finished and green (`gh pr checks <pr> --watch`; no check reported counts as green). Red → report
     and stop.
   - Re-read the head and the latest review right before merging; if either moved, restart the gate.
-- **Merge.** `gh pr merge <pr> --<repository.merge_method>` (`merge`, `squash` or `rebase`). Then read the merge
-  commit from `gh pr view <pr> --json mergeCommit`; a null merge commit after a short retry is a stop. A merge the
-  branch protection refuses is reported and stops.
-- **Deployment.** Select the runs for the merge commit: all of them, or only those whose workflow path matches
-  `deployment.workflows`. Retry the listing briefly after the merge while Actions catches up. Watch every selected
-  run (`gh run watch <id> --exit-status`). A red, cancelled or timed-out run → report its URL and stop with the story
-  still `In review`. No selected run means nothing to deploy (a docs-only merge): record it and continue.
+- **Merge.** `gh pr merge <pr> --<repository.merge_method> --match-head-commit <approved-sha>`
+  (`merge`, `squash` or `rebase`). The approved head makes GitHub refuse a merge whose head moved after the approval.
+  Then read the merge commit from `gh pr view <pr> --json mergeCommit`; a null merge commit after a short retry is a
+  stop. A merge the branch protection refuses is reported and stops.
+- **Deployment.** Select the runs for the merge commit through the Actions API, which carries each workflow path: all
+  of them, or only those whose path matches `deployment.workflows`. Poll until the selected set is stable across two
+  consecutive polls, and until every configured path has appeared when that list is non-empty; a failed listing is a
+  retry, not an empty result. A set still changing after the last try is a stop. Watch every selected run
+  (`gh run watch <id> --exit-status`). A red, cancelled or timed-out run → report its URL and stop with the story still
+  `In review`. No selected run means nothing to deploy (a docs-only merge): record it and continue.
 - **Close.** Only after the deployment is green: comment the PR link and the deployment run links on the story,
   close the issue, move the card to `tracker.statuses.done`, then remove the worktree and local branch from the main
   worktree (a dirty worktree is a stop, never a forced removal).
@@ -85,7 +90,9 @@ approved, and keeps the story open when the deployment fails.
   `gh pr close*` and `git push*`; subagents denied. `steps: 60`, model `deepseek/deepseek-v4-pro#high` (a merge plus
   a deployment wait is high-stakes and mostly waiting).
 - **Report.** The shared `.claude/agent-report.md` shape, no new key: `OUTCOME: done`, `APPROVAL: yes`,
-  `STATUS: <done>`, `NEXT: none`; the deployment run links or the failing run go in `NOTES`.
+  `STATUS: <done>`, `NEXT: none`; the deployment run links or the failing run go in `NOTES`. A red check, a refused
+  merge, a null merge commit or a red deployment run is `OUTCOME: blocked`; a decision only the user can make is
+  `OUTCOME: gate`.
 - **Profile additions.**
 
   ```yaml

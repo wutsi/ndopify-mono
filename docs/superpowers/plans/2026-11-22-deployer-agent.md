@@ -22,7 +22,7 @@
 ## Review Focus
 
 - **Stale approval:** a commit lands after the approving review; a reasonable user expects the merge to refuse. Pinned by the gate re-reading the head and latest review immediately before merging (Task 3, Gate/Merge).
-- **Late Actions listing:** `gh run list --commit` is empty for a few seconds after a merge; the deployer must retry, not conclude "nothing to deploy". Pinned by the retry rule (Task 3, Deployment).
+- **Late Actions listing:** `gh run list --commit` is empty for a few seconds after a merge, and runs can appear one by one; the deployer must poll until the set is stable, not conclude "nothing to deploy". Pinned by the polling rule (Task 3, Deployment).
 - **Red deployment:** a run fails, is cancelled or times out after the merge; the story must stay `In review`, the issue open. Pinned by the stop-before-close rule (Task 3, Deployment/Close).
 - **Re-run after merge:** the PR is already merged; the agent must resume at the deployment wait and never merge twice. Pinned by the resume rule (Task 3, opening/Merge).
 - **Missing configuration:** no `repository.merge_method`, or a board without the review/done status; the agent must stop, never fall back to a hardcoded value. Pinned by the stop rule (Task 3, opening/Gate).
@@ -165,7 +165,7 @@ Title `# Story deployer`; one paragraph: it merges one approved PR, waits for th
 Then, mirroring `reviewer.md`:
 
 - **Argument:** `<pr-number>` of the current repository; missing → stop and ask, never guess.
-- **Precondition:** the PR body carries the profile's `repository.story_ref`, the story is in `tracker.statuses.review`, and the PR is open or merged. A merged PR resumes at the deployment wait; a story already in `tracker.statuses.done` reports done and stops. Work from the branch's worktree when it exists (`git worktree list`).
+- **Precondition:** the PR body carries the profile's `repository.story_ref`, the story is in `tracker.statuses.review`, and the PR is open or merged. A merged PR skips the gate and the merge and resumes at the deployment wait; a story already in `tracker.statuses.done` reports done and stops. Work from the branch's worktree when it exists (`git worktree list`).
 - **Read first:** `AGENTS.md` (or `CLAUDE.md`), every touched module's instructions, `MEMORY.md` when present, and `.claude/project-profile.md`. Their rules win. If the profile is missing, its `platform` is not `github`, or `repository.merge_method` is absent, stop and ask. A denied tool is a stop-and-report.
 
 - [ ] **Step 3: Write the story tracker and the gate**
@@ -174,27 +174,27 @@ Tracker: copy the generic block from `reviewer.md` (`gh repo view`, `gh project 
 
 Gate, in this order:
 
-1. Resolve the PR, its story and the board (`gh pr view <pr> --json number,title,body,state,headRefName,baseRefName,mergeCommit,files,reviews`; `gh issue view <id> --comments`).
+1. Resolve the PR, its story and the board (`gh pr view <pr> --json number,title,body,state,headRefName,baseRefName,mergeCommit,files,reviews`; `gh issue view <id> --comments`). The PR's base is `repository.default_branch`; another base is a stop.
 2. Latest review: `gh api repos/<owner>/<repo>/pulls/<pr>/reviews --jq '.[-1] | {state, body, commit_id}'`; head: `gh api repos/<owner>/<repo>/pulls/<pr> --jq .head.sha`. Required: body starts with `Round <n> — Approved` or `Final — Approved`, and `commit_id` equals the head. `state` may be `COMMENTED`. Otherwise stop and ask for `review <pr-number>`.
 3. Every check finished and green: `gh pr checks <pr> --watch`; no check reported counts as green; red → report and stop.
 4. Immediately before merging, re-read the head and the latest review; if either moved, restart the gate.
 
 - [ ] **Step 4: Write the merge step**
 
-`gh pr merge <pr> --<merge_method>` with `<merge_method>` = the profile's `repository.merge_method` (the flag is that value). Then `gh pr view <pr> --json mergeCommit --jq .mergeCommit.oid`; a null merge commit after a short retry is a stop. A branch-protection refusal is reported and stops. If the PR was already merged, skip to the deployment wait with its merge commit.
+`gh pr merge <pr> --<merge_method> --match-head-commit <approved-sha>` with `<merge_method>` = the profile's `repository.merge_method` (the flag is that value) and `<approved-sha>` the head the review approved, so GitHub refuses a merge whose head moved. Then `gh pr view <pr> --json mergeCommit --jq .mergeCommit.oid`; a null merge commit after a short retry is a stop. A branch-protection refusal is reported and stops. If the PR was already merged, skip to the deployment wait with its merge commit.
 
 - [ ] **Step 5: Write the deployment wait**
 
-Resolve the runs for the merge commit:
+Resolve the runs for the merge commit with the Actions API, which carries the workflow path:
 
 ```bash
-gh run list --commit <sha> --limit 100 \
-  --json databaseId,path,workflowName,status,conclusion,url
+gh api "repos/<owner>/<repo>/actions/runs?head_sha=<sha>&per_page=100" \
+  --jq '.workflow_runs[] | {databaseId: .id, path, name, status, conclusion, url: .html_url}'
 ```
 
 - When `deployment.workflows` is non-empty, keep only runs whose `path` matches an entry; otherwise keep every run.
-- Retry the listing right after the merge while Actions catches up (about 10 tries, 15 seconds apart).
-- No selected run: record that nothing was deployed (e.g. a docs-only merge) and continue to the close.
+- Poll (about 10 tries, 15 seconds apart) until the selected set is stable across two consecutive polls, and, when `deployment.workflows` is non-empty, until every configured path has appeared. A failed listing is a retry, not an empty result; a set still changing after the last try is a stop.
+- No selected run after that polling: record that nothing was deployed (e.g. a docs-only merge) and continue to the close.
 - Watch each selected run: `gh run watch <run-id> --exit-status`.
 - A `failure`, `cancelled`, `timed_out` or `startup_failure` conclusion: report the run URL and stop, leaving the story in `tracker.statuses.review` and the issue open. Only `success` counts as deployed.
 
@@ -208,8 +208,8 @@ Only once every selected run is green:
 
 - [ ] **Step 7: Write the report, stop rules and done condition**
 
-- **Report:** `.claude/agent-report.md`; success is `OUTCOME: done`, `GATE: -`, `STORY: #<id>`, `BRANCH`, `WORKTREE`, `PR`, `STATUS: <tracker.statuses.done>`, `APPROVAL: yes`, `NEXT: none`, and the deployment run links (or `no deployment run`) in `NOTES`. A red deployment is `OUTCOME: blocked`, `APPROVAL: yes`, `STATUS: <tracker.statuses.review>`, the failing run in `NOTES`.
-- **Stop and ask:** no approved head or a head that moved; red checks; a refused merge; a null merge commit; a red deployment run; a dirty worktree; an ambiguous board; a missing `repository.merge_method`. When running as a subagent, end with `OUTCOME: gate`, `GATE: question`.
+- **Report:** `.claude/agent-report.md`; success is `OUTCOME: done`, `GATE: -`, `STORY: #<id>`, `BRANCH`, `WORKTREE`, `PR`, `STATUS: <tracker.statuses.done>`, `APPROVAL: yes`, `NEXT: none`, and the deployment run links (or `no deployment run`) in `NOTES`. An error (a red check, a refused merge, a null merge commit, a red deployment run) is `OUTCOME: blocked`, the reason and the failing run in `NOTES`; a red deployment keeps `STATUS: <tracker.statuses.review>` and `APPROVAL: yes`.
+- **Stop and ask:** no approved head or a head that moved; red checks; a wrong base; a refused merge; a null merge commit; a red deployment run; a dirty worktree; an ambiguous board; a missing or invalid `repository.merge_method`. Errors end `OUTCOME: blocked`; a user decision ends `OUTCOME: gate`, `GATE: question`.
 - **Done when:** the PR is merged, every selected deployment run is green, the issue is closed, the card is in `tracker.statuses.done`, and the worktree and local branch are gone — or the agent stopped and the report says why.
 
 - [ ] **Step 8: Verify the file**
