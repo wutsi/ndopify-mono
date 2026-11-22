@@ -1,39 +1,260 @@
-# ndopify-web — Installable PWA with Versioned Assets and an Offline Page — Implementation Plan
+# ndopify-web — Installable PWA with Versioned Assets, Tenant Icon Variants and an Offline Page — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Serve one minified CSS and one minified JS with content-versioned URLs and long-lived caching, make the public site installable with a tenant-branded manifest, and add a service worker that shows a branded "Vous êtes hors ligne" page when a navigation fails.
+**Goal:** Serve one minified CSS and one minified JS with content-versioned URLs and long-lived caching, make the public site installable with each tenant's own PWA icon set, and add a service worker that shows a branded "Vous êtes hors ligne" page when a navigation fails.
 
-**Architecture:** Sources move to `src/main/assets/` and are concatenated and minified by esbuild (via `frontend-maven-plugin`) into `target/classes/public/assets/dist/`. Spring's content-version strategy appends `-<hash>` to the `@{}` URLs at runtime; a filter sets the cache headers. A generated, versioned `sw.js` intercepts navigations only (fallback to a self-contained `/offline.html`) and serves the two precached URLs. `/manifest.json` is a controller that renders the tenant's name and icon. No HTML or API is ever cached.
+**Architecture:** Four nullable icon-variant URLs move from `ndopify-dto`'s `Tenant` into four new `T_TENANT` columns in `ndopify-server`; `ndopify-web` renders them in a tenant-branded `/manifest.json`, falling back to Ndopify's polished icon set. Sources move to `src/main/assets/` and are concatenated and minified by esbuild (via `frontend-maven-plugin`) into `target/classes/public/assets/dist/`. Spring's content-version strategy appends `-<hash>` to the `@{}` URLs at runtime; a filter sets the cache headers. A generated, versioned `sw.js` intercepts navigations only (fallback to a self-contained `/offline.html`) and serves the two precached URLs. No HTML or API is ever cached.
 
-**Tech Stack:** Kotlin, Spring Boot 4.1.2 (MVC, Thymeleaf, Security), Maven, esbuild 0.28.2, Node v26.13.1, `frontend-maven-plugin` 1.15.1, kotlin.test + mockito-kotlin.
+**Tech Stack:** Kotlin, Spring Boot 4.1.2 (MVC, Thymeleaf, Security), JPA/Hibernate, Flyway, Maven, esbuild 0.28.2, Node v26.13.1, `frontend-maven-plugin` 1.15.1, kotlin.test + mockito-kotlin.
 
 **Spec:** https://github.com/wutsi/ndopify-mono/issues/241 (enriched story) and its approved prototype, `modules/ndopify-web/src/main/html/offline.html`.
 
 ## Global Constraints
 
+### Release order (dto → server → web)
+
+- `ndopify-dto` gains four nullable `Tenant` fields next to `iconUrl`: `icon192Url`, `icon512Url`, `maskableIconUrl`, `appleTouchIconUrl`. Its current version is `0.0.101-SNAPSHOT`; it is released as **0.0.101**, and the root `ndopify-dto.version` moves from `0.0.100` to `0.0.101` after the tag exists.
+- `ndopify-server` adds the four columns and maps them; `ndopify-web` consumes them. The web app does not compile against 0.0.100, so the order is mandatory: dto release, then server, then web.
+- `ndopify-web-core` does not change.
+
+### Icons — all or nothing, never a missing URL
+
+- `/manifest.json` declares each variant the tenant sets — `icon192Url` → `192x192`/`any`, `icon512Url` → `512x512`/`any`, `maskableIconUrl` → `512x512`/`maskable` — and nothing else.
+- A tenant with no variant but an `iconUrl` gets `iconUrl` alone, `sizes` omitted (the browser reads the intrinsic size).
+- A tenant with no icon at all gets Ndopify's `icon-192.png` (192x192, any), `icon-512.png` (512x512, any) and `icon-maskable-512.png` (512x512, maskable) — never mixed with a tenant icon.
+- `head.html`'s `apple-touch-icon` is `appleTouchIconUrl`, else `iconUrl`, else the copied `/assets/images/apple-touch-icon.png` (180x180). `apple-mobile-web-app-title` is the tenant's name, else `Ndopify`.
+- Do not generate or resize icons. Copy Partner Central's four files; declare only URLs that exist.
+
+### Bundle, caching, worker
+
 - One CSS (`app.min.css`) and one JS (`app.min.js`), minified. CSS order, exactly: `styles`, `listing`, `proposal`, `visit`. JS order, exactly: `main`, `listing`, `proposal`, `visit`. The order preserves every "loaded after" pair.
 - `head` loses its `styles` list parameter: every page loads the one bundle.
 - No caching of HTML or API responses. Assets only.
 - Cache headers: `/assets/dist/**` → `public, max-age=31536000, immutable`; other `/assets/**` → `public, max-age=86400`; everything else (HTML, `/sw.js`, `/offline.html`, `/manifest.json`) → `no-cache, must-revalidate`.
-- The service worker intercepts `mode === "navigate"` and the precached URLs; nothing else.
-- Interim icon only: the existing `/assets/images/icon.png` (500×500). Do not generate or copy icons.
-- The offline page is Ndopify-branded and tenant-neutral: no tenant name or logo. `/manifest.json` is tenant-branded (name + `iconUrl`, fallback `Ndopify` + `/assets/images/icon.png`).
+- The service worker intercepts `mode === "navigate"` and the precached URLs; nothing else. On activate it deletes only caches prefixed `nweb-offline-`.
+- The offline page is Ndopify-branded and tenant-neutral: no tenant name or logo.
+
+### Tenant origin and copy
+
+- Each tenant's `publicPortalUrl` is a **distinct origin**, so `start_url`/`scope` `/` and the root-scoped `/sw.js` are per-tenant. A path-prefixed tenant is out of scope.
 - UI copy is French, code/comments/docs English; every page works without JavaScript.
 - Pinned tool versions: esbuild `0.28.2`, Node `v26.13.1`, `frontend-maven-plugin` `1.15.1`.
-- Tests are plain unit tests (`kotlin.test`, `mockito-kotlin`); no Spring context, no MySQL, no running ndopify-server.
+- `ndopify-web` tests are plain unit tests (`kotlin.test`, `mockito-kotlin`); no Spring context, no MySQL. `ndopify-server`'s endpoint test needs the local MySQL.
 
 ## Review Focus
 
-- **An unversioned URL behind `immutable`.** If the content strategy does not rewrite `@{…}`, `/assets/dist/app.min.css` would be pinned for a year and a deploy would never reach a client. Verify the rendered page carries `-<hash>` before trusting the header (Task 2, manual curl).
-- **A merged CSS bundle leaking page rules.** `listing.css`, `proposal.css` and `visit.css` are page-scoped today; merged, they become global. Check `/`, `/owner`, `/agent`, a listing page, `/match/{id}`, `/visits/{id}` at 375 px and 1280 px, and fix by scoping the leaking rules (Task 7).
-- **The PWA files behind `denyAll`.** If `/sw.js`, `/offline.html` or `/manifest.json` are not permitted, registration, install and the offline fallback fail for every visitor. Verify signed out with `curl` (Tasks 3, 5).
-- **A tenant-aware manifest that gets cached.** `/manifest.json` is answered per request; a cached one would show one tenant's branding on another. The filter must leave it `no-cache` (Tasks 2, 3).
-- **An offline page that is not self-contained.** A webfont, the CSS bundle or a relative asset in `/offline.html` makes it blank offline, the one moment it exists for. `PwaAssetsTest` pins it (Task 4).
+- **A mixed icon set.** A tenant with one variant and a Ndopify fallback would let Chrome pick Ndopify's 512 and mis-brand the tenant's install. The rule is all-or-nothing; `ManifestControllerTest` pins the three branches and the "never mixed" case (Task 6).
+- **A manifest icon that 404s.** Declaring a guessed size, or a bundled file that was not copied, makes install fail. Tests assert every declared `src` is either a tenant URL or a shipped file (Task 6), and the files are checked on the classpath.
+- **The release order.** Building `ndopify-web` against 0.0.100 fails at compile time; deploying `ndopify-server` before the DTO is released fails too. Verify the tag and resolve 0.0.101 from GitHub Packages before the server task (Tasks 1–3).
+- **An unversioned URL behind `immutable`.** If the content strategy does not rewrite `@{…}`, `/assets/dist/app.min.css` would be pinned for a year. Verify the rendered page carries `-<hash>` (Task 5, manual curl).
+- **A merged CSS bundle leaking page rules.** `listing.css`, `proposal.css` and `visit.css` are page-scoped today; merged, they become global. Check `/`, `/owner`, `/agent`, a listing page, `/match/{id}`, `/visits/{id}` at 375 px and 1280 px (Task 10).
 
 ---
 
-### Task 1: One minified CSS + one JS bundle, loaded by every page
+### Task 1: ndopify-dto — the four tenant icon-variant fields (release 0.0.101)
+
+**Files:**
+- Modify: `modules/ndopify-dto/src/main/kotlin/com/wutsi/ndopify/refdata/dto/Tenant.kt`
+- Test: none — the DTO has no tests; `ndopify-server`'s endpoint test covers it (Task 3).
+
+**Interfaces:**
+- Consumes: nothing.
+- Produces: `Tenant(…, iconUrl: String? = null, icon192Url: String? = null, icon512Url: String? = null, maskableIconUrl: String? = null, appleTouchIconUrl: String? = null, …)`, released as `com.wutsi.ndopify:ndopify-dto:0.0.101`.
+
+- [ ] **Step 1: Add the fields**
+
+In `Tenant.kt`, right after `iconUrl`, add four nullable strings with defaults:
+
+```kotlin
+    val iconUrl: String? = null,
+    val icon192Url: String? = null,
+    val icon512Url: String? = null,
+    val maskableIconUrl: String? = null,
+    val appleTouchIconUrl: String? = null,
+```
+
+No `@JsonProperty` is needed: Jackson's bean naming yields `icon192Url`, `icon512Url`, `maskableIconUrl`,
+`appleTouchIconUrl` from the Kotlin getters. Every caller uses named arguments (`grep -rn "Tenant(" modules` to confirm
+none is positional).
+
+- [ ] **Step 2: Build the module**
+
+Run: `mvn -q -pl modules/ndopify-dto install`
+Expected: BUILD SUCCESS; the local `~/.m2` now has `0.0.101-SNAPSHOT`.
+
+- [ ] **Step 3: Commit and push**
+
+```bash
+git add modules/ndopify-dto/src/main/kotlin/com/wutsi/ndopify/refdata/dto/Tenant.kt
+git commit -m "feat(dto): add the tenant pwa icon variants"
+git push origin main
+```
+
+Pushing runs `ndopify-dto-main.yml`, which releases `0.0.101` and tags it.
+
+- [ ] **Step 4: Wait for the release tag**
+
+```bash
+git fetch --tags
+git tag --list ndopify-dto-0.0.101
+```
+
+Expected: `ndopify-dto-0.0.101`. Do not start Task 3 before it exists.
+
+---
+
+### Task 2: Use ndopify-dto 0.0.101
+
+**Files:**
+- Modify: `pom.xml` (root, `<ndopify-dto.version>`)
+
+**Interfaces:**
+- Consumes: the `0.0.101` tag and artifact (Task 1).
+- Produces: every module resolves `com.wutsi.ndopify:ndopify-dto:0.0.101`.
+
+- [ ] **Step 1: Bump the root property**
+
+In the root `pom.xml`:
+
+```xml
+<ndopify-dto.version>0.0.101</ndopify-dto.version>
+```
+
+- [ ] **Step 2: Verify the released artifact resolves**
+
+Run: `mvn -q -s settings.xml -pl modules/ndopify-web -DskipTests compile`
+Expected: BUILD SUCCESS (GitHub Packages serves 0.0.101). A `Could not find artifact …:0.0.101` means the release
+workflow has not finished or failed.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add pom.xml
+git commit -m "chore: use ndopify-dto 0.0.101"
+```
+
+---
+
+### Task 3: ndopify-server — store and expose the icon variants
+
+**Files:**
+- Create: `modules/ndopify-server/src/main/resources/db/migration/common/V15_0__tenant-pwa-icons.sql`
+- Modify: `src/main/kotlin/com/wutsi/ndopify/refdata/server/domain/TenantEntity.kt`
+- Modify: `src/main/kotlin/com/wutsi/ndopify/refdata/server/mapper/TenantMapper.kt`
+- Modify: `src/test/resources/db/test/refdata/SearchTenantEndpoint.sql`
+- Test: `src/test/kotlin/com/wutsi/ndopify/refdata/server/endpoint/SearchTenantEndpointTest.kt`
+
+**Interfaces:**
+- Consumes: `Tenant.icon192Url` / `icon512Url` / `maskableIconUrl` / `appleTouchIconUrl` (Task 1, resolved by Task 2).
+- Produces: `GET /v1/tenants` returns the four fields; `T_TENANT` has `icon_192_url`, `icon_512_url`, `maskable_icon_url`, `apple_touch_icon_url`.
+
+There is no admin console or settings API: filling a tenant's variants in any environment is an **SQL/ops step**
+(`UPDATE T_TENANT SET icon_192_url = … WHERE id = …`), never a screen or an endpoint in this story.
+
+- [ ] **Step 1: Write the failing test**
+
+In `SearchTenantEndpointTest`, add (and import `kotlin.test.assertNull`):
+
+```kotlin
+@Test
+fun `pwa icon variants`() {
+    val tenants = rest.getForEntity("/v1/tenants", SearchTenantResponse::class.java).body!!.tenants
+
+    val tenant = tenants.first { it.id == 1L }
+    assertEquals("https://cdn.ndopify.cm/icon-192.png", tenant.icon192Url)
+    assertEquals("https://cdn.ndopify.cm/icon-512.png", tenant.icon512Url)
+    assertEquals("https://cdn.ndopify.cm/icon-maskable-512.png", tenant.maskableIconUrl)
+    assertEquals("https://cdn.ndopify.cm/apple-touch-icon.png", tenant.appleTouchIconUrl)
+
+    val plain = tenants.first { it.id == 2L }
+    assertNull(plain.icon192Url)
+    assertNull(plain.icon512Url)
+    assertNull(plain.maskableIconUrl)
+    assertNull(plain.appleTouchIconUrl)
+}
+```
+
+and seed tenant 1 in `SearchTenantEndpoint.sql`, after the `time_zone` UPDATE:
+
+```sql
+-- Tenant 1 also exercises the PWA icon variants
+UPDATE T_TENANT SET
+    icon_192_url = 'https://cdn.ndopify.cm/icon-192.png',
+    icon_512_url = 'https://cdn.ndopify.cm/icon-512.png',
+    maskable_icon_url = 'https://cdn.ndopify.cm/icon-maskable-512.png',
+    apple_touch_icon_url = 'https://cdn.ndopify.cm/apple-touch-icon.png'
+WHERE id = 1;
+```
+
+- [ ] **Step 2: Run it to verify it fails**
+
+Run: `cd modules/ndopify-server && mvn test -Dtest=SearchTenantEndpointTest`
+Expected: FAIL — the fixture's `UPDATE` names columns that do not exist yet, and `Tenant` has no such properties
+until Task 2's version is in use.
+
+- [ ] **Step 3: Add the migration**
+
+`modules/ndopify-server/src/main/resources/db/migration/common/V15_0__tenant-pwa-icons.sql` — the next version after
+`V14_1`, never edit an existing one:
+
+```sql
+ALTER TABLE T_TENANT
+    ADD COLUMN icon_192_url TEXT,
+    ADD COLUMN icon_512_url TEXT,
+    ADD COLUMN maskable_icon_url TEXT,
+    ADD COLUMN apple_touch_icon_url TEXT;
+```
+
+- [ ] **Step 4: Map the entity**
+
+In `TenantEntity`, after `iconUrl`, add the four nullable fields. Use explicit `@Column` names (the camelCase-to-snake
+strategy is not trusted with the digit in `icon192Url`):
+
+```kotlin
+    val iconUrl: String? = null,
+
+    @Column(name = "icon_192_url")
+    val icon192Url: String? = null,
+
+    @Column(name = "icon_512_url")
+    val icon512Url: String? = null,
+
+    @Column(name = "maskable_icon_url")
+    val maskableIconUrl: String? = null,
+
+    @Column(name = "apple_touch_icon_url")
+    val appleTouchIconUrl: String? = null,
+```
+
+Add `import jakarta.persistence.Column`.
+
+- [ ] **Step 5: Map the DTO**
+
+In `TenantMapper.toTenant`, after `iconUrl = entity.iconUrl,`:
+
+```kotlin
+            icon192Url = entity.icon192Url,
+            icon512Url = entity.icon512Url,
+            maskableIconUrl = entity.maskableIconUrl,
+            appleTouchIconUrl = entity.appleTouchIconUrl,
+```
+
+- [ ] **Step 6: Run the test to verify it passes**
+
+Run: `cd modules/ndopify-server && mvn test -Dtest=SearchTenantEndpointTest`
+Expected: PASS (both tests), against the local MySQL with Flyway applying `V15_0`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add modules/ndopify-server
+git commit -m "feat(server): store the tenant pwa icon variants"
+```
+
+---
+
+### Task 4: ndopify-web — one minified CSS + one JS bundle, loaded by every page
 
 **Files:**
 - Create: `modules/ndopify-web/package.json`, `package-lock.json`, `build-assets.mjs`
@@ -165,15 +386,11 @@ already ignores `node_modules/`.
 
 - [ ] **Step 5: Wire the build into Maven**
 
-In `modules/ndopify-web/pom.xml`, add a module `<properties>` block after the existing one:
+In `modules/ndopify-web/pom.xml`, add to the existing module `<properties>` block:
 
 ```xml
-<properties>
-    <jacoco.threshold.line>0.97</jacoco.threshold.line>
-    <jacoco.threshold.class>0.80</jacoco.threshold.class>
     <frontend-maven-plugin.version>1.15.1</frontend-maven-plugin.version>
     <node.version>v26.13.1</node.version>
-</properties>
 ```
 
 and, inside `<build><plugins>`, after the Spring Boot plugin:
@@ -257,7 +474,7 @@ git commit -m "feat(web): serve one minified css and js bundle"
 
 ---
 
-### Task 2: Versioned asset URLs and cache headers
+### Task 5: ndopify-web — versioned asset URLs and cache headers
 
 **Files:**
 - Modify: `modules/ndopify-web/src/main/resources/application.yml`
@@ -266,7 +483,7 @@ git commit -m "feat(web): serve one minified css and js bundle"
 - Test: `src/test/kotlin/com/wutsi/ndopify/web/config/AssetCacheFilterTest.kt`
 
 **Interfaces:**
-- Consumes: the bundles at `/assets/dist/app.min.{css,js}` (Task 1).
+- Consumes: the bundles at `/assets/dist/app.min.{css,js}` (Task 4).
 - Produces: `Cache-Control` headers on every response; `@{…}` asset URLs rendered as `…-<hash>.<ext>`.
 
 - [ ] **Step 1: Write the failing filter test**
@@ -393,7 +610,7 @@ grep -rn "generate-asset-version" --include=pom.xml modules/ndopify-web   # expe
 ls modules/ndopify-web/target/classes/wutsi.properties                    # expected: no such file
 ```
 
-Nothing to change: #240 removed it. This step pins the story's last acceptance criterion.
+Nothing to change: #240 removed it.
 
 - [ ] **Step 8: Commit**
 
@@ -404,18 +621,21 @@ git commit -m "feat(web): version static assets and cache the bundle"
 
 ---
 
-### Task 3: Tenant-branded manifest
+### Task 6: ndopify-web — tenant icon variants in the manifest and the head
 
 **Files:**
+- Copy: `modules/ndopify-partner-central/src/main/resources/public/assets/images/icon-192.png`, `icon-512.png`,
+  `icon-maskable-512.png`, `apple-touch-icon.png` → `modules/ndopify-web/src/main/resources/public/assets/images/`
 - Create: `src/main/kotlin/com/wutsi/ndopify/web/ui/pwa/ManifestController.kt`
 - Test: `src/test/kotlin/com/wutsi/ndopify/web/ui/pwa/ManifestControllerTest.kt`
 - Modify: `templates/fragments/head.html`
 - Modify: `src/main/kotlin/com/wutsi/ndopify/web/config/SecurityConfiguration.kt`
-- Test: `IndexTemplateTest` (manifest link and apple meta)
+- Create: `src/test/kotlin/com/wutsi/ndopify/web/PwaAssetsTest.kt` (with the `resource` and `resourceBytes` helpers)
+- Test: `IndexTemplateTest`, `Error404TemplateTest`, `PwaAssetsTest` (icon files)
 
 **Interfaces:**
-- Consumes: `TenantAdvice`'s `tenant` model attribute; `/assets/images/icon.png`.
-- Produces: `GET /manifest.json` → `application/manifest+json`, body `{"name", "short_name", "lang", "start_url", "scope", "display", "theme_color", "icons": [{"src", "sizes", "type", "purpose"}]}`.
+- Consumes: `Tenant.icon192Url` / `icon512Url` / `maskableIconUrl` / `appleTouchIconUrl` (Task 1), the `tenant` model attribute, the copied icon files.
+- Produces: `GET /manifest.json` → `application/manifest+json`, body `{"name", "short_name", "lang", "start_url", "scope", "display", "theme_color", "background_color", "icons": [{"src", "sizes"?, "type", "purpose"}]}`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -428,7 +648,15 @@ class ManifestControllerTest {
     }
 
     companion object {
-        var tenant = Tenant(name = "Ndopify Cameroun", iconUrl = "https://cdn.ndopify.cm/icon.png")
+        val FULL = Tenant(
+            name = "Ndopify Cameroun",
+            iconUrl = "https://cdn.ndopify.cm/icon.png",
+            icon192Url = "https://cdn.ndopify.cm/icon-192.png",
+            icon512Url = "https://cdn.ndopify.cm/icon-512.png",
+            maskableIconUrl = "https://cdn.ndopify.cm/icon-maskable-512.png",
+            appleTouchIconUrl = "https://cdn.ndopify.cm/apple-touch-icon.png",
+        )
+        var tenant = FULL
     }
 
     private val mvc: MockMvc = MockMvcBuilders
@@ -441,8 +669,13 @@ class ManifestControllerTest {
             mvc.perform(get("/manifest.json")).andExpect(status().isOk).andReturn().response.contentAsString,
         )
 
+    @BeforeEach
+    fun reset() {
+        tenant = FULL
+    }
+
     @Test
-    fun `the manifest carries the tenant branding`() {
+    fun `the branding is the tenant's`() {
         val json = manifest()
 
         assertEquals("Ndopify Cameroun", json["name"].asText())
@@ -452,19 +685,63 @@ class ManifestControllerTest {
         assertEquals("/", json["scope"].asText())
         assertEquals("standalone", json["display"].asText())
         assertEquals("#1d7edf", json["theme_color"].asText())
-        assertEquals("https://cdn.ndopify.cm/icon.png", json["icons"][0]["src"].asText())
-        assertEquals("any", json["icons"][0]["purpose"].asText())
+        assertEquals("#ffffff", json["background_color"].asText())
     }
 
     @Test
-    fun `a tenant without name or icon falls back to Ndopify`() {
-        tenant = Tenant()
-        val json = manifest()
+    fun `the tenant's variants are declared as-is`() {
+        val icons = manifest()["icons"]
 
-        assertEquals("Ndopify", json["name"].asText())
-        assertEquals("Ndopify", json["short_name"].asText())
-        assertEquals("/assets/images/icon.png", json["icons"][0]["src"].asText())
-        assertEquals("500x500", json["icons"][0]["sizes"].asText())
+        assertEquals(3, icons.size())
+        assertEquals("https://cdn.ndopify.cm/icon-192.png", icons[0]["src"].asText())
+        assertEquals("192x192", icons[0]["sizes"].asText())
+        assertEquals("any", icons[0]["purpose"].asText())
+        assertEquals("https://cdn.ndopify.cm/icon-512.png", icons[1]["src"].asText())
+        assertEquals("512x512", icons[1]["sizes"].asText())
+        assertEquals("any", icons[1]["purpose"].asText())
+        assertEquals("https://cdn.ndopify.cm/icon-maskable-512.png", icons[2]["src"].asText())
+        assertEquals("512x512", icons[2]["sizes"].asText())
+        assertEquals("maskable", icons[2]["purpose"].asText())
+    }
+
+    @Test
+    fun `a partial variant set is never mixed with Ndopify's`() {
+        tenant = Tenant(name = "A", iconUrl = "https://cdn/a.png", icon512Url = "https://cdn/512.png")
+        val icons = manifest()["icons"]
+
+        assertEquals(1, icons.size())
+        assertEquals("https://cdn/512.png", icons[0]["src"].asText())
+        assertTrue(icons.all { it["src"].asText().startsWith("https://cdn/") })
+    }
+
+    @Test
+    fun `iconUrl alone keeps its intrinsic size`() {
+        tenant = Tenant(name = "A", iconUrl = "https://cdn/a.png")
+        val icons = manifest()["icons"]
+
+        assertEquals(1, icons.size())
+        assertEquals("https://cdn/a.png", icons[0]["src"].asText())
+        assertNull(icons[0]["sizes"])
+    }
+
+    @Test
+    fun `no icon uses Ndopify's set`() {
+        tenant = Tenant(name = "A")
+        val icons = manifest()["icons"]
+
+        assertEquals(3, icons.size())
+        assertEquals("/assets/images/icon-192.png", icons[0]["src"].asText())
+        assertEquals("192x192", icons[0]["sizes"].asText())
+        assertEquals("/assets/images/icon-512.png", icons[1]["src"].asText())
+        assertEquals("512x512", icons[1]["sizes"].asText())
+        assertEquals("/assets/images/icon-maskable-512.png", icons[2]["src"].asText())
+        assertEquals("maskable", icons[2]["purpose"].asText())
+    }
+
+    @Test
+    fun `a tenant without a name falls back to Ndopify`() {
+        tenant = Tenant()
+        assertEquals("Ndopify", manifest()["name"].asText())
     }
 
     @Test
@@ -475,101 +752,167 @@ class ManifestControllerTest {
 }
 ```
 
-Reset the tenant before each test:
+In `PwaAssetsTest`:
 
 ```kotlin
-@BeforeEach
-fun reset() {
-    tenant = Tenant(name = "Ndopify Cameroun", iconUrl = "https://cdn.ndopify.cm/icon.png")
+@Test
+fun `Ndopify's icon set is shipped`() {
+    listOf("icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png").forEach {
+        assertTrue(resourceBytes("public/assets/images/$it").size > 1_000, it)
+    }
 }
+```
+
+Create `PwaAssetsTest` in `com.wutsi.ndopify.web` with that case and the two helpers:
+
+```kotlin
+private fun resource(path: String): String =
+    javaClass.classLoader.getResourceAsStream(path)?.use { it.readBytes().decodeToString() }
+        ?: fail("missing classpath resource $path")
+
+private fun resourceBytes(path: String): ByteArray =
+    javaClass.classLoader.getResourceAsStream(path)?.use { it.readBytes() }
+        ?: fail("missing classpath resource $path")
 ```
 
 In `IndexTemplateTest`, add:
 
 ```kotlin
-assertEquals("/manifest.json", page.selectFirst("link[rel=manifest]")?.attr("href"))
-assertNotNull(page.selectFirst("meta[name=apple-mobile-web-app-capable]"))
-assertNotNull(page.selectFirst("meta[name=apple-mobile-web-app-title]"))
+@Test
+fun `the apple icon follows the tenant's icons`() {
+    val withTouch = render("tenant" to tenant.copy(appleTouchIconUrl = "https://cdn.ndopify.cm/apple-touch-icon.png"))
+    assertEquals(
+        "https://cdn.ndopify.cm/apple-touch-icon.png",
+        withTouch.selectFirst("link[rel=apple-touch-icon]")?.attr("href"),
+    )
+    assertEquals("Ndopify Cameroun", withTouch.selectFirst("meta[name=apple-mobile-web-app-title]")?.attr("content"))
+    assertEquals("/manifest.json", withTouch.selectFirst("link[rel=manifest]")?.attr("href"))
+
+    val iconOnly = render("tenant" to tenant.copy(appleTouchIconUrl = null))
+    assertEquals("https://cdn.ndopify.cm/icon.png", iconOnly.selectFirst("link[rel=apple-touch-icon]")?.attr("href"))
+
+    val none = render("tenant" to tenant.copy(name = "", iconUrl = null, appleTouchIconUrl = null))
+    assertEquals("/assets/images/apple-touch-icon.png", none.selectFirst("link[rel=apple-touch-icon]")?.attr("href"))
+    assertEquals("Ndopify", none.selectFirst("meta[name=apple-mobile-web-app-title]")?.attr("content"))
+}
+```
+
+In `Error404TemplateTest` (no tenant), replace the apple-icon assertion and add the title:
+
+```kotlin
+assertEquals("/assets/images/apple-touch-icon.png", page.selectFirst("link[rel=apple-touch-icon]")?.attr("href"))
+assertEquals("Ndopify", page.selectFirst("meta[name=apple-mobile-web-app-title]")?.attr("content"))
 ```
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `mvn test -Dtest='ManifestControllerTest,IndexTemplateTest'`
-Expected: FAIL — `ManifestController` does not exist; no `<link rel=manifest>`.
+Run: `cd modules/ndopify-web && mvn test -Dtest='ManifestControllerTest,IndexTemplateTest,Error404TemplateTest,PwaAssetsTest'`
+Expected: FAIL — `ManifestController` does not exist, the icon files are missing, no `<link rel=manifest>`.
 
-- [ ] **Step 3: Add the controller**
+- [ ] **Step 3: Copy Ndopify's polished icon set**
+
+```bash
+cd modules/ndopify-web
+cp ../ndopify-partner-central/src/main/resources/public/assets/images/icon-192.png \
+   ../ndopify-partner-central/src/main/resources/public/assets/images/icon-512.png \
+   ../ndopify-partner-central/src/main/resources/public/assets/images/icon-maskable-512.png \
+   ../ndopify-partner-central/src/main/resources/public/assets/images/apple-touch-icon.png \
+   src/main/resources/public/assets/images/
+```
+
+Do not copy the favicons: `head.html` keeps `/assets/images/icon.png` as the favicon.
+
+- [ ] **Step 4: Add the controller**
 
 `ManifestController` in `com.wutsi.ndopify.web.ui.pwa`, annotated `@RestController`:
 
 - `@GetMapping("/manifest.json", produces = ["application/manifest+json"])`
-- signature: `fun manifest(model: Model): WebManifest` — read the tenant from the model with
-  `model.getAttribute("tenant") as Tenant`, never as a `@ModelAttribute` parameter (module rule: request parameters
-  could bind it).
-- A nested data class `WebManifest` with the fields below, `@get:JsonProperty` for the snake_case ones; a nested
-  `Icon` data class with `src`, `sizes`, `type`, `purpose`.
+- signature: `fun manifest(model: Model): WebManifest` — read the tenant with `model.getAttribute("tenant") as Tenant`,
+  never as a `@ModelAttribute` parameter (module rule: request parameters could bind it).
+- `@JsonInclude(JsonInclude.Include.NON_NULL)` on the `Icon` class so an omitted `sizes` is absent from the JSON.
 - Values: `name` and `shortName` = `tenant.name.ifBlank { "Ndopify" }`; `lang` `fr`; `startUrl` and `scope` `/`;
-  `display` `standalone`; `themeColor` `#1d7edf`; one icon, `src` = `tenant.iconUrl` if not blank else
-  `/assets/images/icon.png`, `sizes` `500x500`, `type` `image/png`, `purpose` `any`.
+  `display` `standalone`; `themeColor` `#1d7edf`; `backgroundColor` `#ffffff`.
+- Icons, exactly one of the three branches:
+  1. any of `icon192Url` / `icon512Url` / `maskableIconUrl` set → one `Icon` per set URL and **no** fallback:
+     `192x192`/`any`, `512x512`/`any`, `512x512`/`maskable`; `type` `image/png`;
+  2. else `iconUrl` set → one `Icon` with `src = iconUrl`, `sizes = null` (omitted), `purpose` `any`, `type`
+     `image/png`;
+  3. else → `/assets/images/icon-192.png` (192x192, any), `/assets/images/icon-512.png` (512x512, any),
+     `/assets/images/icon-maskable-512.png` (512x512, maskable).
+- Declare only URLs from branch 1 or 2, or files copied in Step 3: never a guessed size, never a file that may not
+  exist.
 
 No `public/manifest.json` file: it would install Ndopify's branding on every tenant.
 
-- [ ] **Step 4: Add the head metadata**
+- [ ] **Step 5: Add the head metadata**
 
-In `templates/fragments/head.html`, after the favicon links:
+In `templates/fragments/head.html`, replace the existing `apple-touch-icon` link and add the manifest and title tags
+after the favicon links:
 
 ```html
+<th:block th:with="tenantTouchIcon=${!brand ? null : (tenant?.appleTouchIconUrl ?: tenant?.iconUrl)}">
+    <link rel="apple-touch-icon"
+          th:href="${#strings.isEmpty(tenantTouchIcon)} ? @{/assets/images/apple-touch-icon.png} : ${tenantTouchIcon}">
+</th:block>
 <link rel="manifest" th:href="@{/manifest.json}">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Ndopify">
+<meta name="apple-mobile-web-app-title"
+      th:content="${!brand or #strings.isEmpty(tenant?.name)} ? 'Ndopify' : ${tenant.name}">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 ```
 
-- [ ] **Step 5: Make the three PWA paths public**
+`#strings.isEmpty(null)` is true, so a tenant with no icon at all and the 404 (no tenant) both fall back to the copied
+`apple-touch-icon.png`; `brand` stays the 404's guard.
 
-In `SecurityConfiguration.filterChain`, after the `/error` matcher (the three paths are asserted as 200 in Task 5):
+- [ ] **Step 6: Make the three PWA paths public**
+
+In `SecurityConfiguration.filterChain`, after the `/error` matcher (asserted as 200 in Task 8):
 
 ```kotlin
 .requestMatchers("/sw.js", "/offline.html", "/manifest.json").permitAll()
 ```
 
-- [ ] **Step 6: Run the tests to verify they pass**
+- [ ] **Step 7: Run the tests to verify they pass**
 
-Run: `mvn test -Dtest='ManifestControllerTest,IndexTemplateTest'`
+Run: `mvn test -Dtest='ManifestControllerTest,IndexTemplateTest,Error404TemplateTest,PwaAssetsTest'`
 Expected: PASS.
 
-- [ ] **Step 7: Verify the content type and the headers**
+- [ ] **Step 8: Verify the manifest against a tenant**
 
-With `mvn spring-boot:run`:
+With `mvn spring-boot:run` (local tenant without icon variants first):
 
 ```bash
 curl -s -D - -o /dev/null http://localhost:8082/manifest.json | grep -i "content-type\|cache-control"
+curl -s http://localhost:8082/manifest.json | python3 -m json.tool | head -40
 ```
 
-Expected: HTTP 200, `application/manifest+json` and `no-cache, must-revalidate` (Task 2's filter).
+Expected: HTTP 200, `application/manifest+json`, `no-cache, must-revalidate`, and three Ndopify icons. Then set the
+variants on the local tenant (`UPDATE T_TENANT SET icon_192_url='…', … WHERE id=1;`) and confirm the manifest declares
+only them.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add modules/ndopify-web
-git commit -m "feat(web): add the tenant web app manifest"
+git commit -m "feat(web): brand the manifest with the tenant's pwa icons"
 ```
 
 ---
 
-### Task 4: The offline page
+### Task 7: ndopify-web — the offline page
 
 **Files:**
 - Create: `modules/ndopify-web/src/main/resources/public/offline.html`
-- Test: `src/test/kotlin/com/wutsi/ndopify/web/PwaAssetsTest.kt` (new)
+- Test: `src/test/kotlin/com/wutsi/ndopify/web/PwaAssetsTest.kt` (new case; created in Task 6)
 
 **Interfaces:**
 - Consumes: `/assets/images/logo.png`, `/assets/images/icon.png`; the approved prototype
   `modules/ndopify-web/src/main/html/offline.html`.
-- Produces: `/offline.html`, served by the worker in Task 5.
+- Produces: `/offline.html`, served by the worker in Task 8.
 
 - [ ] **Step 1: Write the failing test**
 
-In `PwaAssetsTest` (same private `resource(path)` helper as `BundledAssetsTest`):
+In `PwaAssetsTest`:
 
 ```kotlin
 @Test
@@ -624,7 +967,7 @@ git commit -m "feat(web): add the offline fallback page"
 
 ---
 
-### Task 5: Service worker and registration
+### Task 8: ndopify-web — service worker, registration and scoped cache purge
 
 **Files:**
 - Create: `modules/ndopify-web/src/main/assets/sw.js`
@@ -633,8 +976,8 @@ git commit -m "feat(web): add the offline fallback page"
 - Test: `PwaAssetsTest`, `BundledAssetsTest` (new cases)
 
 **Interfaces:**
-- Consumes: `/offline.html` (Task 4), `/assets/images/logo.png`, the bundle (Task 1).
-- Produces: `/sw.js` (generated), with `VERSION` = first 12 hex chars of `sha256(offline.html bytes + logo bytes)`; precache `["/offline.html", "/assets/images/logo.png"]`.
+- Consumes: `/offline.html` (Task 7), `/assets/images/logo.png`, the bundle (Task 4).
+- Produces: `/sw.js` (generated), with `VERSION` = first 12 hex chars of `sha256(offline.html bytes + logo bytes)`; precache `["/offline.html", "/assets/images/logo.png"]`; caches prefixed `nweb-offline-`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -653,9 +996,14 @@ fun serviceWorkerVersionMatchesTheOfflinePage() {
     assertTrue(sw.contains("/assets/images/logo.png"))
     assertTrue(sw.contains("request.mode === \"navigate\""))
 }
-```
 
-Add `resourceBytes(path): ByteArray` next to `resource(path)`.
+@Test
+fun serviceWorkerPurgesOnlyItsOwnCaches() {
+    val sw = resource("public/sw.js")
+    assertTrue(sw.contains("const PREFIX = \"nweb-offline-\";"))
+    assertTrue(sw.contains("k.startsWith(PREFIX)"))
+}
+```
 
 In `BundledAssetsTest`:
 
@@ -678,7 +1026,8 @@ Expected: FAIL — no `sw.js`, no `serviceWorker` in the bundle.
 ```js
 "use strict";
 const VERSION = "__VERSION__";
-const CACHE = "nweb-offline-" + VERSION;
+const PREFIX = "nweb-offline-";
+const CACHE = PREFIX + VERSION;
 const PRECACHE = ["/offline.html", "/assets/images/logo.png"];
 
 self.addEventListener("install", (event) => {
@@ -692,7 +1041,10 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
     event.waitUntil(
         caches.keys()
-            .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+            // Only this app's own caches: another app on the same origin keeps its caches.
+            .then((keys) => Promise.all(
+                keys.filter((k) => k.startsWith(PREFIX) && k !== CACHE).map((k) => caches.delete(k))
+            ))
             .then(() => self.clients.claim())
     );
 });
@@ -760,7 +1112,8 @@ curl -s -D - -o /dev/null http://localhost:8082/sw.js | grep -i cache-control
 
 Expected: `200`, `200`, `200`, and `no-cache, must-revalidate`. In DevTools → Application → Service Workers:
 activated and controlling a page; Network → Offline → navigate → the French offline page; back online → it reloads
-itself.
+itself. In Application → Cache Storage, a `nweb-offline-<version>` cache; create a dummy cache and activate a new
+version → the dummy survives, the old `nweb-offline-*` is gone.
 
 - [ ] **Step 8: Commit**
 
@@ -771,7 +1124,7 @@ git commit -m "feat(web): add the offline service worker"
 
 ---
 
-### Task 6: Update the module documentation
+### Task 9: Update the module documentation
 
 **Files:**
 - Modify: `modules/ndopify-web/CLAUDE.md`
@@ -789,9 +1142,11 @@ Update, keeping the file's tone:
   by `frontend-maven-plugin` + `build-assets.mjs` into `public/assets/dist/app.min.{css,js}`; images stay in
   `public/assets/images`.
 - *`SecurityConfiguration`*: add `/sw.js`, `/offline.html` and `/manifest.json` to the permitted list.
-- A new short paragraph on the PWA: `/manifest.json` is a controller rendering the tenant's name and `iconUrl`
-  (fallback `Ndopify` and the interim `/assets/images/icon.png`); `sw.js` handles navigations and the two precached
-  URLs only; `/offline.html` is self-contained; the rule that **HTML and API responses are never cached**.
+- A new short paragraph on the PWA: `/manifest.json` is a controller rendering the tenant's name and its icon variants
+  (`icon192Url`, `icon512Url`, `maskableIconUrl`), or `iconUrl` alone, or Ndopify's `icon-192/512/maskable-512` —
+  never mixed; the tenant's `appleTouchIconUrl` (or `iconUrl`) feeds `apple-touch-icon`; `sw.js` handles navigations
+  and the two precached URLs only and purges only `nweb-offline-*`; `/offline.html` is self-contained; the rule that
+  **HTML and API responses are never cached**.
 - *Build*: `npm`/Node are installed by Maven; a clean run needs network; the bundles and `sw.js` are build output,
   never committed.
 
@@ -812,14 +1167,14 @@ git commit -m "docs(web): document the asset bundle and pwa"
 
 ---
 
-### Task 7: Visual pass and device verification
+### Task 10: Visual pass, install verification and the release order
 
 **Files:**
 - Modify (only if the pass finds a regression): `src/main/assets/css/*.css`
 
 **Interfaces:**
 - Consumes: everything above.
-- Produces: proof that the merge changed no layout, and that a deploy reaches an installed app.
+- Produces: proof that the merge changed no layout, that each tenant installs with its own icons, and that the three modules deploy in order.
 
 - [ ] **Step 1: Run every page locally**
 
@@ -835,25 +1190,51 @@ Expected: each page looks as before. Pay attention to the listing page (its own 
 If a page-scoped rule leaks (a selector from `listing.css` / `proposal.css` / `visit.css` matching another page),
 scope it to the page that owns it (under its `body[data-page]` or page class) instead of adding an undo. Re-run Step 1.
 
-- [ ] **Step 3: Check the offline behaviour**
+- [ ] **Step 3: Check every manifest branch**
+
+```bash
+# a tenant with no icon variants
+curl -s http://localhost:8082/manifest.json | python3 -c 'import json,sys; d=json.load(sys.stdin); print([(i["src"], i.get("sizes"), i["purpose"]) for i in d["icons"]])'
+```
+
+Then set the variants on the local tenant and repeat; then keep only `icon_url` and repeat. Expected: Ndopify's three
+files / the tenant's three variants / `iconUrl` alone with no `sizes`. Every `src` must answer 200:
+
+```bash
+curl -s http://localhost:8082/manifest.json | python3 -c 'import json,sys; [print(i["src"]) for i in json.load(sys.stdin)["icons"]]' \
+  | while read -r src; do case "$src" in http*) u="$src";; *) u="http://localhost:8082$src";; esac; curl -s -o /dev/null -w "%{http_code} $src\n" "$u"; done
+```
+
+- [ ] **Step 4: Check the offline behaviour and the cache purge**
 
 DevTools → Network → Offline: navigate to `/`, `/match/{id}`, `/visits/{id}` → the offline page each time. Turn the
 network back on → the page reloads once by itself. Reload `/offline.html` with JS disabled → the retry link still
-navigates to `/`.
+navigates to `/`. Create a cache that is not `nweb-offline-*` and activate a new worker version → it survives.
 
-- [ ] **Step 4: Verify a deploy reaches an installed app**
+- [ ] **Step 5: Verify a deploy reaches an installed app**
 
-Note the bundle URL in the rendered HTML, deploy a CSS change (or change a rule and rebuild locally), reload → the
-page carries a new `-<hash>` and the new styles are visible; unchanged files keep their hash.
+Note the bundle URL in the rendered HTML, change a CSS rule and rebuild, reload → the page carries a new `-<hash>` and
+the new styles are visible; unchanged files keep their hash.
 
-- [ ] **Step 5: Verify on an iPhone and an Android phone**
+- [ ] **Step 6: Verify the icons on an iPhone and an Android phone**
 
-- iPhone: Safari → Share → *Sur l'écran d'accueil*; it opens standalone with the tenant's name and icon (or Ndopify's),
-  and re-opening after a deploy shows the new styles.
-- Android: browser menu → Install; it opens standalone with the interim icon; the in-browser promotion is not expected
-  yet.
+- Android: browser menu → Install; the install sheet shows the tenant's 512 icon (or Ndopify's), and the app opens
+  standalone from `start_url` `/`. With a tenant that has no variants, it shows Ndopify's icon.
+- iPhone: Safari → Share → *Sur l'écran d'accueil*; the home-screen icon is the tenant's `appleTouchIconUrl` (or its
+  `iconUrl`), and the label is the tenant's name.
 
-- [ ] **Step 6: Commit any fix and report**
+- [ ] **Step 7: Verify the release order**
+
+```bash
+git fetch --tags && git tag --list ndopify-dto-0.0.101     # released
+grep -n "ndopify-dto.version" pom.xml                      # 0.0.101
+cd modules/ndopify-web && mvn -q -s ../../settings.xml -DskipTests package   # resolves the released dto
+```
+
+Expected: the tag, `0.0.101`, and BUILD SUCCESS. If the tag is missing, stop: the server and web changes must not be
+deployed ahead of the DTO.
+
+- [ ] **Step 8: Commit any fix and report**
 
 ```bash
 git add modules/ndopify-web/src/main/assets/css
