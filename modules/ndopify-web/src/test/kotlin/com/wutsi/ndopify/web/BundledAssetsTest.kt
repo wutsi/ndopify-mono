@@ -32,6 +32,11 @@ class BundledAssetsTest {
         assertTrue(js.indexOf("data-visit-request-form") < js.indexOf("#cancel"))
     }
 
+    @Test
+    fun jsBundleRegistersTheServiceWorker() {
+        assertTrue(resource("public/assets/dist/app.min.js").contains("serviceWorker"))
+    }
+
     private fun resource(path: String): String =
         javaClass.classLoader.getResourceAsStream(path)?.use { it.readBytes().decodeToString() }
             ?: fail("missing classpath resource $path")

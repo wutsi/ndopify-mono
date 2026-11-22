@@ -183,4 +183,13 @@
     var wizard = document.querySelector('form.wizard');
     if (wizard) initWizard(wizard);
   });
+
+  // The service worker only adds the offline page: without it the app works as before.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js').then(function (registration) {
+        registration.update();
+      }).catch(function () { /* the app works without a worker */ });
+    });
+  }
 })();

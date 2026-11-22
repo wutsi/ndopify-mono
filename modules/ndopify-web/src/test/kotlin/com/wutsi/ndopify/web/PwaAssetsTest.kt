@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.web
 
+import java.security.MessageDigest
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -27,6 +28,26 @@ class PwaAssetsTest {
         assertFalse(html.contains("<script src="), "scripts must be inline")
         assertFalse(html.contains("rel=\"stylesheet\""), "styles must be inline")
         assertFalse(html.contains("status=online"), "the prototype's review-only branch is dropped")
+    }
+
+    @Test
+    fun serviceWorkerVersionMatchesTheOfflinePage() {
+        val sw = resource("public/sw.js")
+        val digest = MessageDigest.getInstance("SHA-256")
+        digest.update(resourceBytes("public/offline.html"))
+        digest.update(resourceBytes("public/assets/images/logo.png"))
+        val version = digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }.take(12)
+        assertTrue(sw.contains("const VERSION = \"$version\""), sw.take(200))
+        assertTrue(sw.contains("/offline.html"))
+        assertTrue(sw.contains("/assets/images/logo.png"))
+        assertTrue(sw.contains("request.mode === \"navigate\""))
+    }
+
+    @Test
+    fun serviceWorkerPurgesOnlyItsOwnCaches() {
+        val sw = resource("public/sw.js")
+        assertTrue(sw.contains("const PREFIX = \"nweb-offline-\";"))
+        assertTrue(sw.contains("k.startsWith(PREFIX)"))
     }
 
     private fun resource(path: String): String =
