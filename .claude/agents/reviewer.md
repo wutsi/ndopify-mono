@@ -138,7 +138,8 @@ of it.
 
 Every finding carries an anchor, `F1`, `F2`, …, and the review body opens with a numbered checklist of all of them. A
 finding about a line the PR adds or changes goes inline on that line or range (`RIGHT`), its detail and anchor in the
-comment; a missed item, a missing test or a line outside the diff goes in the body with `file:line`.
+comment; a missed item, a missing test or a line outside the diff goes in the body with `file:line`. Each finding
+states what is wrong, where, why it matters, and what would satisfy it.
 
 On a re-review, read the author's answers — the thread replies and the PR comments quoting an anchor. Drop a finding an
 answer satisfies; repeat one that stands, with why; never silently re-raise it.
@@ -152,22 +153,24 @@ report (`OUTCOME: done`, `APPROVAL: yes`, `NEXT: merge <pr-number>`).
 gh pr review <pr> --approve --body "<Round n|Final> — Approved: <what was checked>"
 ```
 
-**Any finding** — post them in one review, then route the pass. The body starts with `Round <n> — Changes requested
-(<fixer>)`, a numbered checklist of every finding (`F1` `file:line` — one line, …), then the detail of the findings
-that are not inline. A finding goes inline when it is about a line the PR adds or changes (a line of the diff, on its
-`RIGHT` side): the comment is on that line, or that range (`start_line` + `line`), and starts `F<n> — `. A finding
-about something the PR misses (an acceptance criterion, a missing test, a file it doesn't touch) or a line outside the
-diff goes in the review body, with its `file:line`. Write the payload to a file and post it:
+**Any finding** — post them in one review, then route the pass. On a round, the body starts with `Round <n> — Changes
+requested (<fixer>)`; on the `Final` review, with `Final — Changes requested`. Then a numbered checklist of every
+finding (`F1` `file:line` — one line, …), then the detail of the findings that are not inline. A finding goes inline
+when it is about a line the PR adds or changes (a line of the diff, on its `RIGHT` side): the comment is on that line,
+or that range (`start_line` + `line`), and starts `F<n> — `. A finding about something the PR misses (an acceptance
+criterion, a missing test, a file it doesn't touch) or a line outside the diff goes in the review body, with its
+`file:line`. Write the payload to a file and post it:
 
 ```bash
 # review.json:
 #   {"event": "REQUEST_CHANGES",
-#    "body": "<Round n — Changes requested (author|reviewer)> <checklist + findings not inline>",
+#    "body": "<Round n — Changes requested (author|reviewer) | Final — Changes requested> <checklist + findings not inline>",
 #    "comments": [{"path": "<file>", "line": <n>, "side": "RIGHT", "body": "F<n> — <finding>"}, …]}
 gh api repos/<owner>/<repo>/pulls/<pr>/reviews --method POST --input review.json
 ```
 
-A 422 means a comment's line is not in the diff: move that finding to the body and post again. Then route:
+A 422 means a comment's line is not in the diff: move that finding to the body and post again. Then route — except on
+the `Final` review, where findings end the run (below) and neither bullet applies:
 
 - **Every finding trivial** — go to step 4; you fix them, and the next review is the next round.
 - **At least one substantive finding** — edit nothing, commit nothing, push nothing. End with `OUTCOME: handoff`,
@@ -207,7 +210,8 @@ kept), keeping the `<Round n|Final> — Approved` / `Changes requested` body.
 
 ## 4. Resolve
 
-Only a pass whose findings are all trivial reaches this step. Address every finding of the round, following
+Only a round (1–3) whose findings are all trivial reaches this step; a `Final` never does. Address every finding of
+the round, following
 `superpowers:receiving-code-review`: check each one against the code before changing it, one at a time.
 
 - **A finding that is right** — fix it on the branch under the implement rules: a test for a behavior change, at most
@@ -220,8 +224,11 @@ If you discover a substantive finding while resolving, stop resolving:
 
 - before your first push — revert the working-tree edits, edit the review body to `(author)` and add the finding, then
   hand off; the author fixes the whole pass;
-- after a push — finish the trivial fixes, add the finding as a PR comment on the same round, anchored, then hand off;
-  the author fixes it in the next round.
+- after a push — finish the trivial fixes, edit the review body to `(author)`, add the finding as a PR comment on the
+  same round, anchored, then hand off; the author fixes it in the next round.
+
+Edit a review's body with
+`gh api repos/<owner>/<repo>/pulls/<pr>/reviews/<review-id> --method PUT --field body="…"`.
 
 Ship the fixes the way the developer agent's release procedure does:
 

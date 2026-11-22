@@ -92,7 +92,7 @@ gh api repos/<owner>/<repo>/pulls/<pr>/reviews --jq '.[-1] | {body, commit_id}'
 Replace the id in `repository.story_ref`. If the issue has no project item or more than one, or the search returns
 several pull requests, stop and ask.
 
-Route on the latest review's body and `commit_id`: `<Round n|Final> — Approved` on the head → merge; `Final —
+Route on the latest review's body and `commit_id`: `<Round n|Final> — Approved` on the head → deployer; `Final —
 Changes requested` → stop, the cap is reached; `Round n — Changes requested (reviewer)` on the head → reviewer;
 `Round n — Changes requested (author)` on the head → developer; any other review whose head has moved since → reviewer.
 The head is `gh pr view <pr> --json headRefOid --jq .headRefOid`.
@@ -109,6 +109,7 @@ Resolve the start point in this order; the first row that matches wins:
 | an open pull request whose latest review is `Final — Changes requested` | stop; the three rounds are spent, the user fixes and reruns `review <pr>` |
 | an open pull request whose latest review is `Round n — Changes requested (author)` on its head | `developer` (address the review) |
 | an open pull request whose latest review is `Round n — Changes requested (reviewer)` on its head | `reviewer` (resume its resolve) |
+| an open pull request whose latest review is `<Round n|Final> — Approved` on its head | `deployer` |
 | an open pull request, with the story in `tracker.statuses.review` | `reviewer` |
 | an open pull request in any other status | stop; the status and the pull request disagree |
 | no pull request, with the story in `tracker.statuses.ready` or `tracker.statuses.in_progress` | `developer` |

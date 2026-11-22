@@ -43,8 +43,9 @@ the story.
 `tracker.statuses.in_progress`/`tracker.statuses.review` and its branch exists (resume: skip the steps already done —
 read the branch's commits, `git cherry -v origin/<repository.default_branch> <branch>`, the release tags and runs, the
 story's comments, the plan and any open PR, which resumes at the checks). When the last review starts with
-`Round n — Changes requested` or `Final — Changes requested`, the resume first addresses the review
-(*Address the review*). Otherwise stop.
+`Round n — Changes requested (author)` or `Final — Changes requested`, the resume first addresses the review
+(*Address the review*). A `Round n — Changes requested (reviewer)` pass is not yours: stop and point at `review <pr>`
+or `ship` — the reviewer owns it. Otherwise stop.
 
 Before anything else: read the repository's agent instructions (`AGENTS.md`, or `CLAUDE.md` when there is no
 `AGENTS.md`), the instructions of every package/module the story touches, `MEMORY.md` when it exists, and the project
@@ -155,8 +156,10 @@ Only once the branch is pushed and every check is green: comment the PR link on 
 
 ## Address the review
 
-Reached on the In-review resume when the last review starts with `Round n — Changes requested` or `Final — Changes
-requested`. The story stays in `tracker.statuses.review`: skip §1's assign-and-move, and do not open a new PR.
+Reached on the In-review resume when the last review starts with `Round n — Changes requested (author)` or `Final —
+Changes requested`. A `Round n — Changes requested (reviewer)` pass belongs to the reviewer: do not touch the branch,
+stop and point at `review <pr>` or `ship`. The story stays in `tracker.statuses.review`: skip §1's assign-and-move, and
+do not open a new PR.
 
 1. Read the last review, its numbered checklist, its inline threads, the PR comments and the existing replies
    (`gh pr view <pr> --json reviews,comments`; `gh api repos/<owner>/<repo>/pulls/<pr>/comments`).
