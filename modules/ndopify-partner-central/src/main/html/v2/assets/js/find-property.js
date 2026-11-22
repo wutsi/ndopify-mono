@@ -8,8 +8,9 @@
  * "PROTOTYPE".
  * v2 — sales: step 1 asks listingType (Louer = RENTAL, Acheter = SALE), preselected from ?type= when nothing is
  * saved. For a SALE: no room ("Chambre") to buy, land ("Terrain") is offered for both uses, furniture isn't asked,
- * the budget is a total price (periodicity NONE, at least MIN_SALE_PRICE) and the moving period reads as the buying
- * horizon (same MovingPeriod values).
+ * the budget is a total price (periodicity NONE, at least MIN_SALE_PRICE), the moving period reads as the buying
+ * horizon (same MovingPeriod values) and a financing answer is required (FinancingType). A rental stays as is and
+ * sends no financing.
  */
 (function () {
     "use strict";
@@ -138,6 +139,22 @@
         WITHIN_3_MONTHS: "Dans 1 à 3 mois",
         AFTER_3_MONTHS: "Dans plus de 3 mois"
     };
+    // How a purchase is financed (FinancingType, ndopify-dto): asked for a sale only, and never sent for a rental.
+    var FINANCING_LABELS = {
+        CASH: "Comptant",
+        BANK_LOAN: "Prêt bancaire",
+        TRANSFER_FROM_ABROAD: "Transfert depuis l'étranger",
+        UNDECIDED: "Pas encore décidé"
+    };
+    // The land documents a buyer may specify (optional): asked only for a land purchase, and a rental or a building
+    // never asks nor sends them. "Titre foncier" is the land title, "Plan de bornage" the survey plan that delimits
+    // the parcel, "Certificat de propriété" the certificate of ownership. The search stays simple — "land title
+    // available" is just ticking "Titre foncier".
+    var TITLE_DOCUMENT_LABELS = {
+        LAND_TITLE: "Titre foncier",
+        SURVEY_PLAN: "Plan de bornage",
+        CERTIFICATE_OF_OWNERSHIP: "Certificat de propriété"
+    };
 
     // The boolean criteria of CreateMandateRequest, in form order.
     var AMENITIES = [
@@ -186,6 +203,22 @@
 
     function asksParkings(a) {
         return ["LAND", "ROOM"].indexOf(a.propertyType) === -1;
+    }
+
+    // A plot of land bought (the only property whose surface and documents matter): sale, type LAND.
+    function isLandSale(a) {
+        return isSale(a) && a.propertyType === "LAND";
+    }
+
+    // A plot of land bought is searched by its size: the surface is required, not optional.
+    function needsLandArea(a) {
+        return isLandSale(a);
+    }
+
+    // Land is the only property whose documents a buyer may specify (titre foncier, plan de bornage…): optional,
+    // sale only, and never for a rental, a building or an unspecified type.
+    function asksTitleDocuments(a) {
+        return isLandSale(a);
     }
 
     /* ---------- Storage (fails soft: private mode, quota) ---------- */
@@ -280,9 +313,23 @@
         return input ? input.value : "";
     }
 
+    // All checked values of a checkbox group, in document order.
+    function checkedValues(name) {
+        return $all('input[name="' + name + '"]:checked').map(function (input) {
+            return input.value;
+        });
+    }
+
     function setChecked(name, value) {
         $all('input[name="' + name + '"]').forEach(function (input) {
             input.checked = value != null && input.value === String(value);
+        });
+    }
+
+    // Re-tick a saved checkbox group (an array of values).
+    function setCheckedAll(name, values) {
+        $all('input[name="' + name + '"]').forEach(function (input) {
+            input.checked = (values || []).indexOf(input.value) !== -1;
         });
     }
 
@@ -493,12 +540,13 @@
                 return typeFits(a) &&
                     (!needsRooms(a) || !!ROOM_LABELS[a.rooms]) &&
                     (!needsFurniture(a) || !!FURNITURE_LABELS[a.furnitureType]) &&
-                    areaValid(a.area);
+                    (needsLandArea(a) ? a.area != null && areaValid(a.area) : areaValid(a.area));
             case "equipements":
                 return true; // every criterion is optional
             case "budget":
                 return a.priceAmount >= (isSale(a) ? MIN_SALE_PRICE : MIN_RENT) &&
-                    !!MOVE_IN_LABELS[a.movingPeriod];
+                    !!MOVE_IN_LABELS[a.movingPeriod] &&
+                    (!isSale(a) || !!FINANCING_LABELS[a.financingType]);
             case "contact":
                 return !!a.firstName && !!a.lastName && EMAIL_PATTERN.test(a.email || "") &&
                     /^\+[1-9]\d{6,14}$/.test(a.whatsappNumber || "") && !!PERIOD_LABELS[a.preferredContactPeriod];
@@ -530,6 +578,8 @@
             rooms: needsRooms(a) ? a.rooms : null,
             parkings: asksParkings(a) && a.parkings && a.parkings !== "ANY" ? a.parkings : null,
             area: a.area || null,
+            // A land sale sends the documents the buyer wants (optional); anything else sends none (null).
+            titleDocuments: asksTitleDocuments(a) ? (a.titleDocuments || []) : null,
             price: {
                 amount: a.priceAmount,
                 currency: CURRENCY,
@@ -537,6 +587,8 @@
             },
             // CreateMandateRequest.movingPeriod (MovingPeriod, ndopify-dto).
             movingPeriod: a.movingPeriod,
+            // A purchase sends how it will be financed; a rental sends none.
+            financingType: isSale(a) ? a.financingType : null,
             firstName: a.firstName,
             lastName: a.lastName,
             email: a.email,
@@ -683,13 +735,15 @@
             rooms: $('[data-group="rooms"]'),
             furnitureType: $('[data-group="furnitureType"]'),
             parkings: $('[data-group="parkings"]'),
-            area: $('[data-group="area"]')
+            area: $('[data-group="area"]'),
+            titleDocuments: $('[data-group="titleDocuments"]')
         };
 
         setChecked("propertyType", answers.propertyType);
         setChecked("rooms", answers.rooms);
         setChecked("furnitureType", answers.furnitureType);
         setChecked("parkings", answers.parkings);
+        setCheckedAll("titleDocuments", answers.titleDocuments);
         area.value = formatNumber(answers.area);
         bindNumber(area, 7);
 
@@ -697,6 +751,7 @@
         function live() {
             var saved = loadAnswers();
             return {
+                listingType: saved.listingType,
                 propertyCategory: saved.propertyCategory,
                 propertyType: checkedValue("propertyType")
             };
@@ -713,7 +768,9 @@
                 rooms: needsRooms(a),
                 furnitureType: needsFurniture(a),
                 parkings: asksParkings(a),
-                area: true
+                area: true,
+                // The documents are asked for a land purchase only (and optional); never for a rental or a building.
+                titleDocuments: asksTitleDocuments(a)
             };
             Object.keys(groups).forEach(function (key) {
                 groups[key].hidden = !shown[key];
@@ -761,8 +818,13 @@
                         return area.value.trim() !== "";
                     },
                     validate: function () {
-                        if (groups.area.hidden || areaValid(areaValue())) return "";
-                        return "Indiquez une surface d'au moins 5 m², ou laissez ce champ vide.";
+                        if (groups.area.hidden) return "";
+                        // A plot of land bought is searched by its size: the surface is required.
+                        if (needsLandArea(live())) {
+                            if (areaValue() == null) return "Indiquez la surface du terrain.";
+                            return areaValid(areaValue()) ? "" : "Indiquez une surface d'au moins 5 m².";
+                        }
+                        return areaValid(areaValue()) ? "" : "Indiquez une surface d'au moins 5 m², ou laissez ce champ vide.";
                     }
                 }
             ],
@@ -773,7 +835,8 @@
                     rooms: needsRooms(a) ? checkedValue("rooms") : null,
                     furnitureType: needsFurniture(a) ? checkedValue("furnitureType") : null,
                     parkings: asksParkings(a) ? checkedValue("parkings") || null : null,
-                    area: areaValue()
+                    area: areaValue(),
+                    titleDocuments: asksTitleDocuments(a) ? checkedValues("titleDocuments") : null
                 };
             }
         };
@@ -799,9 +862,36 @@
     function budgetStep() {
         var answers = loadAnswers();
         var price = $("#priceAmount");
+        var financing = $('[data-group="financingType"]');
+        var perSqm = $("[data-price-per-sqm]");
         price.value = formatNumber(answers.priceAmount);
         setChecked("movingPeriod", answers.movingPeriod);
+        setChecked("financingType", answers.financingType);
         bindNumber(price, 12);
+
+        // The implied price per m², for a land purchase: total budget ÷ surface, rounded to the nearest 100 FCFA.
+        // Display only — never stored, never validated. Hidden until both a budget and a valid surface exist.
+        function updatePerSqm() {
+            var a = loadAnswers();
+            var budget = numberValue(price);
+            var area = a.area != null ? Number(a.area) : 0;
+            var show = isLandSale(a) && areaValid(a.area) && area > 0 && budget > 0;
+            if (!show) {
+                perSqm.hidden = true;
+                perSqm.textContent = "";
+                return;
+            }
+            var rate = Math.round((budget / area) / 100) * 100;
+            if (rate <= 0) {
+                perSqm.hidden = true;
+                perSqm.textContent = "";
+                return;
+            }
+            perSqm.textContent = "Soit ≈ " + formatNumber(rate) + " FCFA/m² pour " + formatNumber(area) + " m²";
+            perSqm.hidden = false;
+        }
+        price.addEventListener("input", updatePerSqm);
+
         // The rental wording, put back when the visitor goes back to step 1 and switches from Acheter to Louer.
         var rentalTexts = ["[data-price-label]", "[data-price-suffix]", "[data-budget-intro]", "[data-price-hint]"]
             .map(function (selector) {
@@ -811,10 +901,15 @@
         return {
             onShow: function () {
                 var a = loadAnswers();
+                var sale = isSale(a);
+                updatePerSqm();
+                // Financing is asked for a purchase only; a rental hides it and never has it in error.
+                financing.hidden = !sale;
+                if (!sale) setFieldError(financing, $("#financingType-error"), "");
                 rentalTexts.forEach(function (text) {
                     $(text[0]).textContent = text[1];
                 });
-                if (isSale(a)) {
+                if (sale) {
                     $("[data-move-in-label]").textContent = "Quand souhaitez-vous acheter\u00a0?";
                     $("[data-price-label]").textContent = "Budget total";
                     $("[data-price-suffix]").textContent = "FCFA";
@@ -837,10 +932,17 @@
                     if (numberValue(price) < MIN_RENT) return "Indiquez un loyer d'au moins " + formatPrice(MIN_RENT) + " FCFA par mois.";
                     return "";
                 }),
-                radioField("movingPeriod", "Indiquez quand vous souhaitez emménager ou acheter.")
+                radioField("movingPeriod", "Indiquez quand vous souhaitez emménager ou acheter."),
+                radioField("financingType", "Indiquez comment vous financerez votre achat.", function () {
+                    return isSale(loadAnswers());
+                })
             ],
             collect: function () {
-                return { priceAmount: numberValue(price), movingPeriod: checkedValue("movingPeriod") };
+                return {
+                    priceAmount: numberValue(price),
+                    movingPeriod: checkedValue("movingPeriod"),
+                    financingType: checkedValue("financingType")
+                };
             }
         };
     }
@@ -911,9 +1013,15 @@
                         : "tous les quartiers")
                     : "",
                 property: describeProperty(a),
+                titleDocuments: asksTitleDocuments(a)
+                    ? ((a.titleDocuments || []).map(function (id) {
+                        return TITLE_DOCUMENT_LABELS[id];
+                    }).filter(Boolean).join(" · ") || "Aucun document exigé")
+                    : "",
                 price: isStepComplete("budget", a)
                     ? formatPrice(a.priceAmount) + (isSale(a) ? " FCFA" : " FCFA par mois") : "",
                 movingPeriod: MOVE_IN_LABELS[a.movingPeriod] || "",
+                financing: FINANCING_LABELS[a.financingType] || "",
                 contact: isStepComplete("contact", a)
                     ? [a.firstName + " " + a.lastName, a.email, formatPhone(a.whatsappNumber),
                         "Contact " + PERIOD_LABELS[a.preferredContactPeriod]].join("\n")
@@ -923,6 +1031,8 @@
             $("[data-review-move-in-term]").textContent = isSale(a) ? "Achat prévu"
                 : a.propertyCategory === "COMMERCIAL" ? "Date d'installation" : "Date d'emménagement";
             $("[data-review-price-term]").textContent = isSale(a) ? "Budget total" : "Budget mensuel";
+            $("[data-review-titleDocuments]").hidden = !asksTitleDocuments(a);
+            $("[data-review-financing]").hidden = !isSale(a);
             Object.keys(values).forEach(function (key) {
                 var valueEl = $('[data-review-value="' + key + '"]');
                 var missing = $('[data-review-missing="' + key + '"]');
@@ -1104,11 +1214,20 @@
             }
         }
 
+        // The confirmation's wording follows the project (RENTAL by default): a sale reads as the buyer's next step.
+        function applyConfirmation(listingType) {
+            var project = listingType === "SALE" ? "SALE" : "RENTAL";
+            $all("[data-confirmation] [data-for]").forEach(function (el) {
+                el.hidden = el.getAttribute("data-for") !== project;
+            });
+        }
+
         function showConfirmation(done) {
             formParts.forEach(function (el) {
                 el.hidden = true;
             });
             confirmation.hidden = false;
+            applyConfirmation(done.listingType);
             $("[data-done-email]").textContent = maskEmail(done.email);
             $("[data-done-whatsapp]").textContent = formatPhone(done.whatsappNumber);
             $("[data-done-period]").textContent = PERIOD_LABELS[done.preferredContactPeriod] || "au moment choisi";
@@ -1127,6 +1246,7 @@
             window.console.info("PROTOTYPE POST /v1/mandates", toRequest(saved));
             window.setTimeout(function () {
                 var done = {
+                    listingType: saved.listingType,
                     email: saved.email,
                     whatsappNumber: saved.whatsappNumber,
                     preferredContactPeriod: saved.preferredContactPeriod

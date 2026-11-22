@@ -279,6 +279,21 @@
                         </svg>
                         <span data-error-text></span></p>
                 </div>
+                <!-- Documents the buyer may require, asked only for a land purchase (optional), never for a rental or a
+                     building. The search stays simple — "I want land whose title is available" is just ticking
+                     "Titre foncier". -->
+                <fieldset class="choices" data-group="titleDocuments" hidden>
+                    <legend class="choices__legend">Quels documents exigez-vous&nbsp;? <span
+                        class="field__optional">(facultatif)</span></legend>
+                    <div class="choices__grid">
+                        <label class="choice"><input name="titleDocuments" type="checkbox"
+                                                     value="LAND_TITLE"> Titre foncier</label>
+                        <label class="choice"><input name="titleDocuments" type="checkbox"
+                                                     value="SURVEY_PLAN"> Plan de bornage</label>
+                        <label class="choice"><input name="titleDocuments" type="checkbox"
+                                                     value="CERTIFICATE_OF_OWNERSHIP"> Certificat de propriété</label>
+                    </div>
+                </fieldset>
 
                 <div class="form__actions">
                     <button class="btn btn--outline" data-prev type="button">Précédent</button>
@@ -358,6 +373,9 @@
                                   stroke-width="1.5"/>
                         </svg>
                         <span data-error-text></span></p>
+                    <!-- Price per m², derived from the total budget and the surface (land purchase only): display
+                         only, never stored. Hidden until both exist; computed by find-property.js. -->
+                    <p class="field__counter" data-price-per-sqm hidden></p>
                 </div>
                 <fieldset aria-describedby="movingPeriod-error" class="choices" data-group="movingPeriod">
                     <legend class="choices__legend" data-move-in-label>Date d'emménagement souhaitée</legend>
@@ -370,6 +388,27 @@
                                                      value="AFTER_3_MONTHS"> Dans plus de 3&nbsp;mois</label>
                     </div>
                     <p class="field__error" hidden id="movingPeriod-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </fieldset>
+                <!-- Financing is asked for a purchase only; a rental never shows nor sends it. -->
+                <fieldset aria-describedby="financingType-error" class="choices" data-group="financingType" hidden>
+                    <legend class="choices__legend">Comment financerez-vous votre achat&nbsp;?</legend>
+                    <div class="choices__grid">
+                        <label class="choice"><input name="financingType" required type="radio"
+                                                     value="CASH"> Comptant</label>
+                        <label class="choice"><input name="financingType" required type="radio"
+                                                     value="BANK_LOAN"> Prêt bancaire</label>
+                        <label class="choice"><input name="financingType" required type="radio"
+                                                     value="TRANSFER_FROM_ABROAD"> Transfert depuis l'étranger</label>
+                        <label class="choice"><input name="financingType" required type="radio"
+                                                     value="UNDECIDED"> Pas encore décidé</label>
+                    </div>
+                    <p class="field__error" hidden id="financingType-error">
                         <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
                             <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
                             <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
@@ -574,6 +613,26 @@
                                 class="visually-hidden"> le bien recherché</span></button>
                         </dd>
                     </div>
+                    <!-- Documents exigés is shown for a land purchase only. -->
+                    <div class="review__item" data-review-titleDocuments hidden>
+                        <dt class="review__term">Documents exigés</dt>
+                        <dd class="review__value">
+                            <p data-review-value="titleDocuments" hidden></p>
+                            <p class="review__missing" data-review-missing="titleDocuments" hidden>
+                                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor"
+                                            stroke-width="1.5"/>
+                                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                          stroke-width="1.5"/>
+                                </svg>
+                                Information manquante
+                            </p>
+                        </dd>
+                        <dd class="review__value">
+                            <button class="link-button review__edit" data-edit="bien" type="button">Modifier<span
+                                class="visually-hidden"> les documents exigés</span></button>
+                        </dd>
+                    </div>
                     <div class="review__item">
                         <dt class="review__term">Indispensable</dt>
                         <dd class="review__value">
@@ -620,6 +679,26 @@
                         <dd class="review__value">
                             <button class="link-button review__edit" data-edit="budget" type="button">Modifier<span
                                 class="visually-hidden"> votre date d'emménagement</span></button>
+                        </dd>
+                    </div>
+                    <!-- Financement is shown for a purchase only. -->
+                    <div class="review__item" data-review-financing hidden>
+                        <dt class="review__term">Financement</dt>
+                        <dd class="review__value">
+                            <p data-review-value="financing" hidden></p>
+                            <p class="review__missing" data-review-missing="financing" hidden>
+                                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor"
+                                            stroke-width="1.5"/>
+                                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                          stroke-width="1.5"/>
+                                </svg>
+                                Information manquante
+                            </p>
+                        </dd>
+                        <dd class="review__value">
+                            <button class="link-button review__edit" data-edit="budget" type="button">Modifier<span
+                                class="visually-hidden"> le financement</span></button>
                         </dd>
                     </div>
                     <div class="review__item">
@@ -695,8 +774,11 @@
             <ol class="next-steps">
                 <li>
                     <div>
-                        <p class="next-steps__title">Un agent vous est attribué</p>
-                        <p>Nous choisissons un Agent Vérifié qui connaît le secteur demandé.</p>
+                        <p class="next-steps__title" data-for="RENTAL">Un agent vous est attribué</p>
+                        <p class="next-steps__title" data-for="SALE" hidden>Un agent vente vous est attribué</p>
+                        <p data-for="RENTAL">Nous choisissons un Agent Vérifié qui connaît le secteur demandé.</p>
+                        <p data-for="SALE" hidden>Nous choisissons un Agent Vérifié qui traite les ventes et connaît
+                            le secteur demandé.</p>
                     </div>
                 </li>
                 <li>
@@ -709,9 +791,12 @@
                 </li>
                 <li>
                     <div>
-                        <p class="next-steps__title">Vous visitez des biens vérifiés</p>
-                        <p>Votre agent vous propose des biens qui correspondent à vos critères et vous accompagne
-                            jusqu'à la signature.</p>
+                        <p class="next-steps__title" data-for="RENTAL">Vous visitez des biens vérifiés</p>
+                        <p class="next-steps__title" data-for="SALE" hidden>Vous visitez des biens à acheter</p>
+                        <p data-for="RENTAL">Votre agent vous propose des biens qui correspondent à vos critères et
+                            vous accompagne jusqu'à la signature.</p>
+                        <p data-for="SALE" hidden>Votre agent vous propose des biens à visiter qui correspondent à vos
+                            critères et vous accompagne jusqu'à la signature de la vente.</p>
                     </div>
                 </li>
             </ol>
