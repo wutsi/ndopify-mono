@@ -14,7 +14,7 @@ class SignInTargetEntryPointTest {
     private val error = InsufficientAuthenticationException("sign in")
 
     @Test
-    fun remembersAGetTarget() {
+    fun remembersAGetTargetAndAnswersTheInterstitial() {
         val request = MockHttpServletRequest("GET", "/mandates/42").apply { queryString = "match=7" }
         val response = MockHttpServletResponse()
 
@@ -24,27 +24,46 @@ class SignInTargetEntryPointTest {
             SignInTarget("/mandates/42", "match=7"),
             request.session.getAttribute(SignInTarget.SESSION_ATTRIBUTE),
         )
-        assertTrue(response.redirectedUrl!!.endsWith("/login"))
+        assertEquals(200, response.status)
+        assertNull(response.redirectedUrl)
+        assertTrue(response.contentAsString.contains("location.replace('/login' + location.hash)"))
+    }
+
+    @Test
+    fun interstitialFallsBackToThePlainRedirectWithoutJavaScript() {
+        val request = MockHttpServletRequest("GET", "/mandates/42")
+        val response = MockHttpServletResponse()
+
+        entryPoint.commence(request, response, error)
+
+        assertTrue(response.contentAsString.contains("http-equiv=\"refresh\""))
+        assertTrue(response.contentAsString.contains("url=/login"))
     }
 
     @Test
     fun remembersAHeadTarget() {
         val request = MockHttpServletRequest("HEAD", "/listings/42")
-        entryPoint.commence(request, MockHttpServletResponse(), error)
+        val response = MockHttpServletResponse()
+        entryPoint.commence(request, response, error)
         assertEquals(SignInTarget("/listings/42"), request.session.getAttribute(SignInTarget.SESSION_ATTRIBUTE))
+        assertTrue(response.redirectedUrl!!.endsWith("/login"))
     }
 
     @Test
     fun ignoresAPost() {
         val request = MockHttpServletRequest("POST", "/mandates/42/close")
-        entryPoint.commence(request, MockHttpServletResponse(), error)
+        val response = MockHttpServletResponse()
+        entryPoint.commence(request, response, error)
         assertNull(request.session.getAttribute(SignInTarget.SESSION_ATTRIBUTE))
+        assertTrue(response.redirectedUrl!!.endsWith("/login"))
     }
 
     @Test
     fun ignoresAnExcludedPath() {
         val request = MockHttpServletRequest("GET", "/login")
-        entryPoint.commence(request, MockHttpServletResponse(), error)
+        val response = MockHttpServletResponse()
+        entryPoint.commence(request, response, error)
         assertNull(request.session.getAttribute(SignInTarget.SESSION_ATTRIBUTE))
+        assertTrue(response.redirectedUrl!!.endsWith("/login"))
     }
 }

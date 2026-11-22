@@ -4,7 +4,7 @@
 
 **Goal:** Send a signed-out agent back to the Partner Central page — and anchor — they asked for once OTP sign-in succeeds, instead of the Espace agent's root page.
 
-**Architecture:** A small serializable `SignInTarget` keeps a validated local path, its query string and an optional fragment in the HTTP session. A `SignInTargetEntryPoint` saves it when Spring Security redirects an unauthenticated GET/HEAD to `/login`; `LoginController.verify` redirects to it on success, then clears it. The login page's existing script lifts `location.hash` into a hidden form field, because the browser never sends a fragment to the server; without JavaScript the agent still reaches the right page, at the top.
+**Architecture:** A small serializable `SignInTarget` keeps a validated local path, its query string and an optional fragment in the HTTP session. A `SignInTargetEntryPoint` saves it when Spring Security redirects an unauthenticated GET/HEAD to `/login`; `LoginController.verify` redirects to it on success, then clears it. Because a plain 302 would drop the deep link's `#fragment` (fragments are never sent to the server), the entry point answers a tiny interstitial page for a remembered GET whose script appends `location.hash` to the login URL before navigating; without JavaScript the interstitial's meta refresh still reaches `/login`, at the top. The login page's existing script then lifts `location.hash` into a hidden form field for the two form posts.
 
 **Tech Stack:** Kotlin 2.3, Spring Boot 4, Spring Security 7, Thymeleaf 3, the esbuild `partner-central` bundle, JUnit 5 + `kotlin.test`, `MockMvc`, mockito-kotlin, jsoup.
 
@@ -25,7 +25,7 @@
 
 - **Open redirect through a tampered session target:** a remembered `https://evil.example/...`, `//evil.example/...` or backslash path must resolve to `/`, never to another host. Task 1's `SignInTarget.of`/`redirectUrl` and Task 3's `verifyIgnoresAnUnsafeTarget` pin it.
 - **Query string lost or mangled:** `/listings/42?match=7` must survive byte-for-byte, with no second `?` and no re-encoding. Task 1's `keepsTheQueryString` and Task 3's `verifyPreservesTheQueryString`.
-- **Fragment lost between the two POSTs:** with JavaScript the browser must land on `#match-7` and the card must be in view; without JavaScript it must still reach `/mandates/42` at the top. Task 4's controller and template tests, plus the manual check at the end; the fragment cannot travel in a request by itself.
+- **Fragment lost between the entry point and the two POSTs:** a 302 redirect drops the deep link's `#match-7`, so the entry point must answer an interstitial whose script appends `location.hash` to `/login`. With JavaScript the browser must land on `#match-7` and the card must be in view; without JavaScript it must still reach `/mandates/42` at the top. Task 2's interstitial tests, Task 4's controller and template tests and `SignInTargetFlowTest`, plus the manual check at the end; the fragment cannot travel in a request by itself.
 - **Target reused on a later sign-in, or dropped after a wrong code:** the target is kept across a failed verify, a resend and a rejected e-mail, and cleared exactly once on success. Task 3's `verifyKeepsTheTargetAfterAWrongCode` and `verifyClearsTheTarget`.
 - **Login and public paths remembered:** `/login`, `/logout`, `/assets/**`, `/error`, `/join`, `/find-property`, `/offer-property`, `/locations` and the static PWA files must never become a target. Task 1's `rejectsLoginAndPublicPaths` and Task 2's `ignoresAnExcludedPath`.
 
@@ -151,7 +151,7 @@ git commit -m "feat(npc): add the sign-in target value" -m "Refs #246"
 
 **Interfaces:**
 - Consumes: `SignInTarget.of(path, query)` and `SignInTarget.SESSION_ATTRIBUTE` from Task 1.
-- Produces: `class SignInTargetEntryPoint(loginFormUrl: String = "/login") : LoginUrlAuthenticationEntryPoint(loginFormUrl)`, overriding `commence` to store a `SignInTarget` in the session for GET/HEAD requests only, then delegating to `super.commence`.
+- Produces: `class SignInTargetEntryPoint(loginFormUrl: String = "/login") : LoginUrlAuthenticationEntryPoint(loginFormUrl)`, overriding `commence` to store a `SignInTarget` in the session for GET/HEAD requests only. A remembered GET answers a tiny interstitial page (script `location.replace('/login' + location.hash)`, with a `<meta http-equiv="refresh">` to `/login` as the no-JavaScript fallback) instead of delegating to `super.commence`, so the deep link's fragment isn't dropped; HEAD and POST still delegate to `super.commence`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -215,7 +215,7 @@ Expected: compilation failure, `Unresolved reference 'SignInTargetEntryPoint'`.
 
 - [ ] **Step 3: Implement the entry point and wire it in `SecurityConfiguration`**
 
-`commence` stores `SignInTarget.of(request.requestURI, request.queryString)` under `SignInTarget.SESSION_ATTRIBUTE` in `request.getSession(true)` when the method is `GET` or `HEAD`, then calls `super.commence(request, response, authException)` so the redirect to `/login` is unchanged. A `null` target stores nothing. Replace the inline `LoginUrlAuthenticationEntryPoint("/login")` with `SignInTargetEntryPoint("/login")`; no other security rule changes.
+`commence` stores `SignInTarget.of(request.requestURI, request.queryString)` under `SignInTarget.SESSION_ATTRIBUTE` in `request.getSession(true)` when the method is `GET` or `HEAD`. A `null` target stores nothing. For a remembered `GET`, write a tiny interstitial page (status 200, `text/html;charset=UTF-8`) whose script is `location.replace('/login' + location.hash)` with a `<meta http-equiv="refresh" content="0; url=/login">` fallback, instead of delegating to `super.commence`; for `HEAD`, `POST` and a `GET` with no remembered target, delegate to `super.commence(request, response, authException)` so the redirect to `/login` is unchanged. Replace the inline `LoginUrlAuthenticationEntryPoint("/login")` with `SignInTargetEntryPoint("/login")`; no other security rule changes.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
@@ -456,7 +456,7 @@ git commit -m "fix(npc): replay the sign-in link's fragment" -m "Refs #246"
 
 After Task 4, with a local stack (`ndopify-server` + MySQL + the local tenant) or the TEST environment:
 
-1. Sign out, then open an authenticated URL with a fragment — for example `/mandates/{id}#match-7` (or `/listings/{id}#visits-title`). Expected: `/login#match-7` in the address bar.
+1. Sign out, then open an authenticated URL with a fragment — for example `/mandates/{id}#match-7` (or `/listings/{id}#visits-title`). Expected: a brief interstitial, then `/login#match-7` in the address bar (the fragment carried over by the interstitial's script).
 2. Request the OTP, enter it. Expected: `/mandates/{id}#match-7`, with the `match-7` card in view; the address bar keeps the query and the hash.
 3. Repeat with JavaScript disabled. Expected: `/mandates/{id}` (no hash), at the top of the page.
 4. Open `/login` directly and sign in. Expected: `/`.
