@@ -25,6 +25,7 @@
 - A tenant with no icon at all gets Ndopify's `icon-192.png` (192x192, any), `icon-512.png` (512x512, any) and `icon-maskable-512.png` (512x512, maskable) — never mixed with a tenant icon.
 - `head.html`'s `apple-touch-icon` is `appleTouchIconUrl`, else `iconUrl`, else the copied `/assets/images/apple-touch-icon.png` (180x180). `apple-mobile-web-app-title` is the tenant's name, else `Ndopify`.
 - Do not generate or resize icons. Copy Partner Central's four files; declare only URLs that exist.
+- Local and test seed tenant 1 with the four variants through Flyway (`db/migration/local` and `db/migration/test`), pointing at Partner Central's four PNGs copied to the test bucket's `www/assets/images/`. Prod keeps the ops `UPDATE`.
 
 ### Bundle, caching, worker
 
@@ -140,6 +141,8 @@ git commit -m "chore: use ndopify-dto 0.0.101"
 
 **Files:**
 - Create: `modules/ndopify-server/src/main/resources/db/migration/common/V15_0__tenant-pwa-icons.sql`
+- Create: `modules/ndopify-server/src/main/resources/db/migration/local/V15_0_1__tenant-pwa-icons.sql`
+- Create: `modules/ndopify-server/src/main/resources/db/migration/test/V15_0_1__tenant-pwa-icons.sql`
 - Modify: `src/main/kotlin/com/wutsi/ndopify/refdata/server/domain/TenantEntity.kt`
 - Modify: `src/main/kotlin/com/wutsi/ndopify/refdata/server/mapper/TenantMapper.kt`
 - Modify: `src/test/resources/db/test/refdata/SearchTenantEndpoint.sql`
@@ -147,10 +150,12 @@ git commit -m "chore: use ndopify-dto 0.0.101"
 
 **Interfaces:**
 - Consumes: `Tenant.icon192Url` / `icon512Url` / `maskableIconUrl` / `appleTouchIconUrl` (Task 1, resolved by Task 2).
-- Produces: `GET /v1/tenants` returns the four fields; `T_TENANT` has `icon_192_url`, `icon_512_url`, `maskable_icon_url`, `apple_touch_icon_url`.
+- Produces: `GET /v1/tenants` returns the four fields; `T_TENANT` has `icon_192_url`, `icon_512_url`, `maskable_icon_url`, `apple_touch_icon_url`; in local and test, tenant 1 carries S3 URLs that resolve to 200.
 
 There is no admin console or settings API: filling a tenant's variants in any environment is an **SQL/ops step**
-(`UPDATE T_TENANT SET icon_192_url = … WHERE id = …`), never a screen or an endpoint in this story.
+(`UPDATE T_TENANT SET icon_192_url = … WHERE id = …`), never a screen or an endpoint in this story. The exception is
+local and test, which get the `UPDATE` as an environment seed migration (Step 7) so every environment exercises the
+tenant-branded manifest without a manual step; prod still needs the ops `UPDATE`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -245,7 +250,31 @@ In `TenantMapper.toTenant`, after `iconUrl = entity.iconUrl,`:
 Run: `cd modules/ndopify-server && mvn test -Dtest=SearchTenantEndpointTest`
 Expected: PASS (both tests), against the local MySQL with Flyway applying `V15_0`.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 7: Seed the local and test tenants**
+
+Add the same `UPDATE` to both environment seed directories, versioned after the common migration so it applies once
+the four columns exist. `V15_0_1` sorts after `V15_0` in both environments (each loads `common` + one of
+`local` / `test`; their existing seed is the older `V1_2_1`). The URLs are already live: Partner Central's four PNGs,
+copied to the public site's folder of the test bucket (`www/assets/images/`), public and answering 200:
+
+`modules/ndopify-server/src/main/resources/db/migration/local/V15_0_1__tenant-pwa-icons.sql` and
+`modules/ndopify-server/src/main/resources/db/migration/test/V15_0_1__tenant-pwa-icons.sql`:
+
+```sql
+-- Tenant 1 installs with the PWA icon set copied from Partner Central to the public site's assets.
+UPDATE T_TENANT SET
+    icon_192_url = 'https://com-wutsi-ndopify-test.s3.us-east-1.amazonaws.com/www/assets/images/icon-192.png',
+    icon_512_url = 'https://com-wutsi-ndopify-test.s3.us-east-1.amazonaws.com/www/assets/images/icon-512.png',
+    maskable_icon_url = 'https://com-wutsi-ndopify-test.s3.us-east-1.amazonaws.com/www/assets/images/icon-maskable-512.png',
+    apple_touch_icon_url = 'https://com-wutsi-ndopify-test.s3.us-east-1.amazonaws.com/www/assets/images/apple-touch-icon.png'
+WHERE id = 1;
+```
+
+Do not edit the tenants' existing `V1_2_1__refdata-tenant.sql`: the test database is deployed and Flyway checks
+applied migrations by checksum. The test environment applies `V15_0_1` on its next deploy; locally, the next
+`mvn spring-boot:run` (or `mvn test`) applies it, and Task 6 Step 8 verifies the manifest it produces.
+
+- [ ] **Step 8: Commit**
 
 ```bash
 git add modules/ndopify-server
@@ -879,16 +908,23 @@ Expected: PASS.
 
 - [ ] **Step 8: Verify the manifest against a tenant**
 
-With `mvn spring-boot:run` (local tenant without icon variants first):
+With `mvn spring-boot:run` — the local tenant already carries the four S3 variants from Task 3's `local` seed:
 
 ```bash
 curl -s -D - -o /dev/null http://localhost:8082/manifest.json | grep -i "content-type\|cache-control"
 curl -s http://localhost:8082/manifest.json | python3 -m json.tool | head -40
 ```
 
-Expected: HTTP 200, `application/manifest+json`, `no-cache, must-revalidate`, and three Ndopify icons. Then set the
-variants on the local tenant (`UPDATE T_TENANT SET icon_192_url='…', … WHERE id=1;`) and confirm the manifest declares
-only them.
+Expected: HTTP 200, `application/manifest+json`, `no-cache, must-revalidate`, and the tenant's three declared icons
+(192, 512, maskable) at the S3 URLs. Then clear the variants to check the fallbacks:
+
+```sql
+UPDATE T_TENANT SET icon_192_url = NULL, icon_512_url = NULL, maskable_icon_url = NULL,
+    apple_touch_icon_url = NULL WHERE id = 1;
+```
+
+Reload: the manifest declares `iconUrl` alone, with no `sizes`. Null `icon_url` too: it declares Ndopify's three
+bundled icons. Put the rows back with the `UPDATE` from Task 3 Step 7.
 
 - [ ] **Step 9: Commit**
 
@@ -1193,12 +1229,14 @@ scope it to the page that owns it (under its `body[data-page]` or page class) in
 - [ ] **Step 3: Check every manifest branch**
 
 ```bash
-# a tenant with no icon variants
 curl -s http://localhost:8082/manifest.json | python3 -c 'import json,sys; d=json.load(sys.stdin); print([(i["src"], i.get("sizes"), i["purpose"]) for i in d["icons"]])'
 ```
 
-Then set the variants on the local tenant and repeat; then keep only `icon_url` and repeat. Expected: Ndopify's three
-files / the tenant's three variants / `iconUrl` alone with no `sizes`. Every `src` must answer 200:
+The local tenant starts with the four S3 variants (Task 3's seed), so the first run is branch 1. Then, to reach the
+other branches, run `UPDATE T_TENANT SET icon_192_url = NULL, icon_512_url = NULL, maskable_icon_url = NULL,
+apple_touch_icon_url = NULL WHERE id = 1;` and repeat (branch 2, `iconUrl` alone with no `sizes`), then also null
+`icon_url` and repeat (branch 3, Ndopify's three files). Expected: the tenant's three variants / `iconUrl` alone /
+Ndopify's three files. Restore the seed's `UPDATE` afterwards. Every `src` must answer 200:
 
 ```bash
 curl -s http://localhost:8082/manifest.json | python3 -c 'import json,sys; [print(i["src"]) for i in json.load(sys.stdin)["icons"]]' \
@@ -1219,7 +1257,7 @@ the new styles are visible; unchanged files keep their hash.
 - [ ] **Step 6: Verify the icons on an iPhone and an Android phone**
 
 - Android: browser menu → Install; the install sheet shows the tenant's 512 icon (or Ndopify's), and the app opens
-  standalone from `start_url` `/`. With a tenant that has no variants, it shows Ndopify's icon.
+  standalone from `start_url` `/`. With the local variants cleared (Step 3), it shows Ndopify's icon.
 - iPhone: Safari → Share → *Sur l'écran d'accueil*; the home-screen icon is the tenant's `appleTouchIconUrl` (or its
   `iconUrl`), and the label is the tenant's name.
 
