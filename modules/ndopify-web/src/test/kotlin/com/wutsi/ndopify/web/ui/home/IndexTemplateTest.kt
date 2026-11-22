@@ -15,6 +15,7 @@ import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /** Renders `templates/index.html` with a real Thymeleaf engine. */
@@ -114,6 +115,36 @@ class IndexTemplateTest {
             assertFalse(text.contains(it), it)
         }
         assertTrue(text.contains("Lancer ma recherche"))
+    }
+
+    @Test
+    fun `the apple icon follows the tenant's icons`() {
+        val withTouch = render("tenant" to tenant.copy(appleTouchIconUrl = "https://cdn.ndopify.cm/apple-touch-icon.png"))
+        assertEquals(
+            "https://cdn.ndopify.cm/apple-touch-icon.png",
+            withTouch.selectFirst("link[rel=apple-touch-icon]")?.attr("href"),
+        )
+        assertEquals("Ndopify Cameroun", withTouch.selectFirst("meta[name=apple-mobile-web-app-title]")?.attr("content"))
+        assertEquals("/manifest.json", withTouch.selectFirst("link[rel=manifest]")?.attr("href"))
+
+        val iconOnly = render("tenant" to tenant.copy(appleTouchIconUrl = null))
+        assertEquals("https://cdn.ndopify.cm/icon.png", iconOnly.selectFirst("link[rel=apple-touch-icon]")?.attr("href"))
+
+        val none = render("tenant" to tenant.copy(name = "", iconUrl = null, appleTouchIconUrl = null))
+        assertEquals("/assets/images/apple-touch-icon.png", none.selectFirst("link[rel=apple-touch-icon]")?.attr("href"))
+        assertEquals("Ndopify", none.selectFirst("meta[name=apple-mobile-web-app-title]")?.attr("content"))
+    }
+
+    @Test
+    fun `the head loads the one bundle`() {
+        val page = render("tenant" to tenant)
+
+        assertEquals("/assets/dist/app.min.css", page.selectFirst("link[rel=stylesheet]")?.attr("href"))
+        assertEquals(1, page.select("link[rel=stylesheet]").size)
+        val script = page.selectFirst("script[src=/assets/dist/app.min.js]")
+        assertNotNull(script)
+        assertTrue(script.hasAttr("defer"))
+        assertEquals(1, page.select("script[src^=/assets/]").size)
     }
 
     @Test

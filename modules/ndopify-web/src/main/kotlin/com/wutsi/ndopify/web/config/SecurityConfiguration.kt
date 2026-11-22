@@ -44,6 +44,8 @@ class SecurityConfiguration(
                     .requestMatchers(HttpMethod.POST, "/visits/*/cancel").permitAll()
                     .requestMatchers(HttpMethod.POST, "/visits/*/feedback").permitAll()
                     .requestMatchers("/assets/**").permitAll()
+                    // The PWA files: the worker, its offline page and the tenant-branded manifest
+                    .requestMatchers("/sw.js", "/offline.html", "/manifest.json").permitAll()
                     .requestMatchers("/error").permitAll()
                     .anyRequest().denyAll() // nothing else is served
             }

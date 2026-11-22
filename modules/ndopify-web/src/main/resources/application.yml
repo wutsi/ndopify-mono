@@ -17,6 +17,17 @@ spring:
             ACCEPT_CASE_INSENSITIVE_ENUMS: true
             ACCEPT_CASE_INSENSITIVE_PROPERTIES: true
 
+    web:
+        resources:
+            # Renders the @{…} asset URLs as …-<hash>.<ext>, so the year-long immutable cache of /assets/dist/
+            # never pins a stale bundle after a deploy.
+            chain:
+                enabled: true
+                strategy:
+                    content:
+                        enabled: true
+                        paths: /assets/**
+
 server:
     port: 8082
     servlet:
