@@ -321,4 +321,13 @@
         var init = pages[document.body.getAttribute("data-page")];
         if (init) init();
     });
+
+    /* The offline page: navigations only, and the app works without a worker. */
+    if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+            navigator.serviceWorker.register("/sw.js").then(function (registration) {
+                registration.update();
+            }).catch(function () { /* the app works without a worker */ });
+        });
+    }
 })();
