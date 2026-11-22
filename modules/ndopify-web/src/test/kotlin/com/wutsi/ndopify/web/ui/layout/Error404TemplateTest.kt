@@ -51,6 +51,8 @@ class Error404TemplateTest {
         assertEquals("Page introuvable — Ndopify", page.title())
         assertEquals("noindex, nofollow", page.selectFirst("meta[name=robots]")?.attr("content"))
         assertEquals("/assets/images/icon.png", page.selectFirst("link[rel=icon]")?.attr("href"))
+        assertEquals("/assets/images/apple-touch-icon.png", page.selectFirst("link[rel=apple-touch-icon]")?.attr("href"))
+        assertEquals("Ndopify", page.selectFirst("meta[name=apple-mobile-web-app-title]")?.attr("content"))
         assertEquals("/assets/dist/app.min.css", page.selectFirst("link[rel=stylesheet]")?.attr("href"))
         assertEquals(1, page.select("link[rel=stylesheet]").size)
         val script = page.selectFirst("script[src=/assets/dist/app.min.js]")

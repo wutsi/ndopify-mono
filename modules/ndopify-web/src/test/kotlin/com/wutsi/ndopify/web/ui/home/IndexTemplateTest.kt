@@ -118,6 +118,24 @@ class IndexTemplateTest {
     }
 
     @Test
+    fun `the apple icon follows the tenant's icons`() {
+        val withTouch = render("tenant" to tenant.copy(appleTouchIconUrl = "https://cdn.ndopify.cm/apple-touch-icon.png"))
+        assertEquals(
+            "https://cdn.ndopify.cm/apple-touch-icon.png",
+            withTouch.selectFirst("link[rel=apple-touch-icon]")?.attr("href"),
+        )
+        assertEquals("Ndopify Cameroun", withTouch.selectFirst("meta[name=apple-mobile-web-app-title]")?.attr("content"))
+        assertEquals("/manifest.json", withTouch.selectFirst("link[rel=manifest]")?.attr("href"))
+
+        val iconOnly = render("tenant" to tenant.copy(appleTouchIconUrl = null))
+        assertEquals("https://cdn.ndopify.cm/icon.png", iconOnly.selectFirst("link[rel=apple-touch-icon]")?.attr("href"))
+
+        val none = render("tenant" to tenant.copy(name = "", iconUrl = null, appleTouchIconUrl = null))
+        assertEquals("/assets/images/apple-touch-icon.png", none.selectFirst("link[rel=apple-touch-icon]")?.attr("href"))
+        assertEquals("Ndopify", none.selectFirst("meta[name=apple-mobile-web-app-title]")?.attr("content"))
+    }
+
+    @Test
     fun `the head loads the one bundle`() {
         val page = render("tenant" to tenant)
 

@@ -23,8 +23,15 @@
     <meta content="#1d7edf" name="theme-color">
     <link rel="icon"
           th:href="${!brand or #strings.isEmpty(tenant?.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
-    <link rel="apple-touch-icon"
-          th:href="${!brand or #strings.isEmpty(tenant?.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
+    <th:block th:with="tenantTouchIcon=${!brand ? null : (tenant?.appleTouchIconUrl ?: tenant?.iconUrl)}">
+        <link rel="apple-touch-icon"
+              th:href="${#strings.isEmpty(tenantTouchIcon)} ? @{/assets/images/apple-touch-icon.png} : ${tenantTouchIcon}">
+    </th:block>
+    <link rel="manifest" th:href="@{/manifest.json}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title"
+          th:content="${!brand or #strings.isEmpty(tenant?.name)} ? 'Ndopify' : ${tenant.name}">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <link th:if="${cdn}" rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css">
     <link rel="stylesheet" th:href="@{/assets/dist/app.min.css}">
