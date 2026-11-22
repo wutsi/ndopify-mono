@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.refdata.server.domain
 
 import com.wutsi.ndopify.util.jpa.StringListConverter
+import jakarta.persistence.Column
 import jakarta.persistence.Convert
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
@@ -29,6 +30,19 @@ data class TenantEntity(
     val timeFormat: String = "",
     val timeZone: String = "Africa/Douala", // IANA id; same default as T_TENANT.time_zone
     val iconUrl: String? = null,
+
+    @Column(name = "icon_192_url")
+    val icon192Url: String? = null,
+
+    @Column(name = "icon_512_url")
+    val icon512Url: String? = null,
+
+    @Column(name = "maskable_icon_url")
+    val maskableIconUrl: String? = null,
+
+    @Column(name = "apple_touch_icon_url")
+    val appleTouchIconUrl: String? = null,
+
     val logoUrl: String? = null,
     val active: Boolean = true,
     val createdAt: Date = Date(),

@@ -9,3 +9,11 @@ INSERT INTO T_TENANT(id, active, name, domain_name, locales, number_format, curr
 
 -- The others keep the default time zone (Africa/Douala)
 UPDATE T_TENANT SET time_zone = 'America/Toronto' WHERE id = 1;
+
+-- Tenant 1 also exercises the PWA icon variants
+UPDATE T_TENANT SET
+    icon_192_url = 'https://cdn.ndopify.cm/icon-192.png',
+    icon_512_url = 'https://cdn.ndopify.cm/icon-512.png',
+    maskable_icon_url = 'https://cdn.ndopify.cm/icon-maskable-512.png',
+    apple_touch_icon_url = 'https://cdn.ndopify.cm/apple-touch-icon.png'
+WHERE id = 1;
