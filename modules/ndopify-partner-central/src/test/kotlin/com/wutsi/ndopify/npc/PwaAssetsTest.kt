@@ -14,7 +14,7 @@ class PwaAssetsTest {
     fun manifestIsValidJsonWithTheInstallableIconSet() {
         val json = ObjectMapper().readTree(resource("public/manifest.json"))
         assertEquals("Ndopify Partner Central", json["name"].asText())
-        assertEquals("Ndopify", json["short_name"].asText())
+        assertEquals("Ndopify Partner", json["short_name"].asText())
         assertEquals("/", json["start_url"].asText())
         assertEquals("/", json["scope"].asText())
         assertEquals("standalone", json["display"].asText())
