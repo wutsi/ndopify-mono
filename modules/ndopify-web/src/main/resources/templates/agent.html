@@ -1,65 +1,24 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta content="width=device-width, initial-scale=1" name="viewport">
-    <title>Ndopify — Recevez des mandats de clients dans votre secteur</title>
-    <meta
-        content="Rejoignez le réseau d'agents vérifiés Ndopify : des mandats de recherche et de location dans vos quartiers, les biens qui correspondent à vos clients, vos visites organisées. Inscription gratuite."
-        name="description">
-    <!--/* The tenant's logo and icon, falling back to Ndopify's when it has none. */-->
-    <th:block th:with="logoUrl=${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl},
-                       iconUrl=${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
-        <link rel="canonical" th:href="${tenant.publicPortalUrl} + '/agent'"
-              th:if="${!#strings.isEmpty(tenant.publicPortalUrl)}">
-        <meta content="website" property="og:type">
-        <meta content="Ndopify — Des mandats de clients dans votre secteur" property="og:title">
-        <meta
-            content="Mandats signés dans vos quartiers, biens correspondants trouvés pour vous, visites organisées. Inscription gratuite."
-            property="og:description">
-        <meta property="og:image" th:content="${logoUrl}">
-        <meta property="og:url" th:content="${tenant.publicPortalUrl} + '/agent'"
-              th:if="${!#strings.isEmpty(tenant.publicPortalUrl)}">
-        <meta content="summary_large_image" name="twitter:card">
-        <meta content="#1d7edf" name="theme-color">
-        <link rel="icon" th:href="${iconUrl}">
-        <link rel="apple-touch-icon" th:href="${iconUrl}">
-        <link rel="stylesheet" th:href="@{/assets/css/styles.css}">
-        <script th:inline="javascript" type="application/ld+json">
-            {
-                "@context": "https://schema.org",
-                "@type": "Organization",
-                "name": /*[[${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}]]*/ "Ndopify",
-                "url": /*[[${tenant.publicPortalUrl}]]*/ null,
-                "logo": /*[[${logoUrl}]]*/ null
-            }
-        </script>
-    </th:block>
-</head>
+<head th:replace="~{fragments/head :: head(
+    'Ndopify — Recevez des mandats de clients dans votre secteur',
+    |Rejoignez le réseau d'agents vérifiés Ndopify : des mandats de recherche et de location dans vos quartiers, les biens qui correspondent à vos clients, vos visites organisées. Inscription gratuite.|,
+    ${#strings.isEmpty(tenant.publicPortalUrl) ? null : tenant.publicPortalUrl + '/agent'},
+    'Ndopify — Des mandats de clients dans votre secteur',
+    'Mandats signés dans vos quartiers, biens correspondants trouvés pour vous, visites organisées. Inscription gratuite.',
+    null,
+    null,
+    null,
+    null,
+    false,
+    true,
+    ~{fragments/structured-data :: organization})}"></head>
 <!--/*
   The page for agents (AgentController). Served from the prototype src/main/html/mvp/agent.html.
   Every call to action opens Partner Central's "Rejoindre Ndopify" wizard (joinUrl), and is left out without it.
 */-->
 <body data-page="agent">
-<a class="skip-link" href="#main">Aller au contenu principal</a>
-<header class="site-header">
-    <a aria-label="Ndopify — accueil" class="site-header__logo" th:href="@{/}">
-        <img alt="Ndopify" height="36" th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
-             th:src="${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}"
-             width="140">
-    </a>
-    <nav aria-label="Navigation principale" class="site-nav">
-        <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle"><span aria-hidden="true"
-                                                                                                class="nav-toggle__icon">☰</span>
-            Agents
-        </button>
-        <ul class="site-nav__list" id="primary-nav-list">
-            <li><a th:href="@{/}">Locataires</a></li>
-            <li><a th:href="@{/owner}">Propriétaires</a></li>
-            <li><a aria-current="page" th:href="@{/agent}">Agents</a></li>
-        </ul>
-    </nav>
-</header>
+<th:block th:replace="~{fragments/site-header :: header('agent', 'Agents', true)}"></th:block>
 
 <main id="main">
     <section class="section section--default">
@@ -214,21 +173,7 @@
     </section>
 </main>
 
-<footer class="site-footer">
-    <div class="container site-footer__inner">
-        <img alt="Ndopify" height="32" th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
-             th:src="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}"
-             width="32">
-        <nav aria-label="Navigation du pied de page">
-            <ul>
-                <li><a th:href="@{/}">Locataires</a></li>
-                <li><a th:href="@{/owner}">Propriétaires</a></li>
-                <li><a th:href="@{/agent}">Agents</a></li>
-            </ul>
-        </nav>
-        <small>© 2026 Ndopify. Des agents vérifiés, à votre service.</small>
-    </div>
-</footer>
+<footer th:replace="~{fragments/site-footer :: footer('© 2026 Ndopify. Des agents vérifiés, à votre service.', true)}"></footer>
 
 <script th:src="@{/assets/js/main.js}"></script>
 </body>

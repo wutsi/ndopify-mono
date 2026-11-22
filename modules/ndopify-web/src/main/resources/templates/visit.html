@@ -1,20 +1,18 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta content="width=device-width, initial-scale=1" name="viewport">
-    <title th:text="'Votre visite | ' + (${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name})">Votre visite | Ndopify</title>
-    <!--/* A personal page (the link of the visit e-mails): never indexed nor shared, nor its address sent as Referer. */-->
-    <meta content="noindex, nofollow" name="robots">
-    <meta content="no-referrer" name="referrer">
-    <meta content="#1d7edf" name="theme-color">
-    <link rel="icon" th:href="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
-    <link rel="apple-touch-icon" th:href="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
-    <link rel="stylesheet" th:href="@{/assets/css/styles.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/listing.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/proposal.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/visit.css}">
-</head>
+<head th:replace="~{fragments/head :: head(
+    ${'Votre visite | ' + (#strings.isEmpty(tenant.name) ? 'Ndopify' : tenant.name)},
+    null,
+    null,
+    null,
+    null,
+    null,
+    'noindex, nofollow',
+    'no-referrer',
+    ${ {'listing','proposal','visit'} },
+    false,
+    true,
+    null)}"></head>
 <!--/*
   The customer's visit, the link of the "visite" e-mail (VisitController): the listing and the agent on top, then one
   block per status, the server renders only the current one. Two types, shown wherever the date is: ON_SITE, at the
@@ -26,43 +24,9 @@
   feedback form, or its thanks once answered; no check-in UI. Never agentRemarks.
 */-->
 <body class="visit-page" data-page="visit">
-<a class="skip-link" href="#main">Aller au contenu principal</a>
-<header class="site-header">
-    <a aria-label="Ndopify — accueil" class="site-header__logo" th:href="@{/}">
-        <img alt="Ndopify" height="36" width="140"
-             th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
-             th:src="${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
-    </a>
-    <nav aria-label="Navigation principale" class="site-nav">
-        <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle"><span aria-hidden="true"
-                                                                                                class="nav-toggle__icon">☰</span>
-            Menu
-        </button>
-        <ul class="site-nav__list" id="primary-nav-list">
-            <li><a aria-current="page" th:href="@{/}">Locataires</a></li>
-            <li><a th:href="@{/owner}">Propriétaires</a></li>
-            <li><a th:href="@{/agent}">Agents</a></li>
-        </ul>
-    </nav>
-</header>
+<th:block th:replace="~{fragments/site-header :: header('home', 'Menu', true)}"></th:block>
 
-<!-- Icon sprite (decorative: every icon sits next to its text) -->
-<svg aria-hidden="true" class="visually-hidden" focusable="false" xmlns="http://www.w3.org/2000/svg">
-    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5 10 17 19 7"/></symbol>
-    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
-    <symbol id="i-info" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5m0-8h.01"/></symbol>
-    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5 2.5 20h19zM12 10v4.5m0 2.5h.01"/></symbol>
-    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></symbol>
-    <symbol id="i-video" viewBox="0 0 24 24"><path d="M3 7h12v10H3zM15 10.5l6-3.5v10l-6-3.5"/></symbol>
-    <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v4m8-4v4"/></symbol>
-    <symbol id="i-clock" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"/></symbol>
-    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4zM8 9.5h8M8 12.5h5"/></symbol>
-    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM11 18h2"/></symbol>
-    <symbol id="i-route" viewBox="0 0 24 24"><path d="M6 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM8 18h7.5a3 3 0 0 0 0-6h-7a3 3 0 0 1 0-6H16"/></symbol>
-    <symbol id="i-key" viewBox="0 0 24 24"><path d="M8.5 15.5a4 4 0 1 1 2.8-1.2L20 23m-4-4 2-2m-4.5-.5 2-2"/></symbol>
-    <symbol id="i-id" viewBox="0 0 24 24"><path d="M3 6h18v12H3zM6.5 10h5M6.5 13.5h7M15.5 9.5h3v4h-3z"/></symbol>
-    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6zM9 12l2 2 4-4"/></symbol>
-</svg>
+<th:block th:replace="~{fragments/icon-sprite :: sprite}"></th:block>
 
 <main id="main">
     <div class="container visit">
@@ -353,21 +317,7 @@
     </div>
 </div>
 
-<footer class="site-footer">
-    <div class="container site-footer__inner">
-        <img alt="Ndopify" height="32" width="32"
-             th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
-             th:src="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
-        <nav aria-label="Navigation du pied de page">
-            <ul>
-                <li><a th:href="@{/}">Locataires</a></li>
-                <li><a th:href="@{/owner}">Propriétaires</a></li>
-                <li><a th:href="@{/agent}">Agents</a></li>
-            </ul>
-        </nav>
-        <small>© 2026 Ndopify. Logements vérifiés. Locations fiables.</small>
-    </div>
-</footer>
+<footer th:replace="~{fragments/site-footer :: footer('© 2026 Ndopify. Logements vérifiés. Locations fiables.', true)}"></footer>
 
 <script th:src="@{/assets/js/main.js}"></script>
 <script th:src="@{/assets/js/listing.js}"></script>
