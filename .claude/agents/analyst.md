@@ -6,66 +6,9 @@ steps: 60
 permissions:
   - action: edit
     resource: "*"
-    effect: deny
-  - action: edit
-    resource: "docs/superpowers/plans/*.md"
-    effect: allow
-  - action: edit
-    resource: "/tmp/analyst-*"
-    effect: allow
-  - action: edit
-    resource: "/private/tmp/analyst-*"
     effect: allow
   - action: shell
     resource: "*"
-    effect: ask
-  - action: shell
-    resource: "gh issue view *"
-    effect: allow
-  - action: shell
-    resource: "gh issue edit *"
-    effect: allow
-  - action: shell
-    resource: "gh issue comment *"
-    effect: allow
-  - action: shell
-    resource: "gh repo view *"
-    effect: allow
-  - action: shell
-    resource: "gh project list *"
-    effect: allow
-  - action: shell
-    resource: "gh project item-list *"
-    effect: allow
-  - action: shell
-    resource: "gh project item-edit *"
-    effect: allow
-  - action: shell
-    resource: "gh project field-list *"
-    effect: allow
-  - action: shell
-    resource: "git status *"
-    effect: allow
-  - action: shell
-    resource: "git fetch *"
-    effect: allow
-  - action: shell
-    resource: "git rebase *"
-    effect: allow
-  - action: shell
-    resource: "git diff *"
-    effect: allow
-  - action: shell
-    resource: "git log *"
-    effect: allow
-  - action: shell
-    resource: "git add *"
-    effect: allow
-  - action: shell
-    resource: "git commit *"
-    effect: allow
-  - action: shell
-    resource: "git push origin *"
     effect: allow
   - action: subagent
     resource: "*"

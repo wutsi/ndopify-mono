@@ -1,7 +1,7 @@
 ---
 description: Use when a story changes UI — build or update the static prototype so the user can review and approve the design before implementation.
 mode: subagent
-model: deepseek/deepseek-v4-pro
+model: deepseek/deepseek-flash#high
 steps: 60
 permissions:
   - action: edit
@@ -12,7 +12,7 @@ permissions:
     effect: allow
   - action: shell
     resource: "*"
-    effect: deny
+    effect: allow
   - action: subagent
     resource: "*"
     effect: deny
