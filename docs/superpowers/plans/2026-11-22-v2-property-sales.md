@@ -1,7 +1,7 @@
 # V2 — Property sales
 
 Roadmap to take Ndopify from the MVP (rentals) to v2, supporting property sales: buyers (SEARCH mandates with
-`listingType = SALE`) and sellers (LISTING mandates with `listingType = SALE`) matched with sale-qualified agents.
+`listingType = SALE`) and sellers (LISTING mandates with `listingType = SALE`) matched with agents who can serve them.
 
 Framing: the product is mandate matching, not a listing marketplace. Every story serves the customer → agent match
 (who the customer is, what the agent does for them, how dispatch picks the agent), not property browsing.
@@ -24,14 +24,18 @@ contracts state a one-month-rent commission, and dispatch doesn't know which age
 3. **Diaspora buyer/seller** — creates and follows a mandate remotely (video visits, remote signing as defaults).
 
 ### Epic 2 — Agents qualified for sales
-4. **Agent opts in to sales** — Partner Central profile: rentals, sales, or both.
+4. ~~**Agent opts in to sales**~~ — **dropped (2026-11-22)**: M1 assumes every verified agent handles rentals and
+   sales, so there is no profile flag and no dispatch filter. Story 5 becomes the first qualification step.
 5. **Sale-specific KYC level** — stronger verification (professional card / license or track record) before
    receiving sale mandates.
 6. **Agent sale track record** — closed sales feed a reputation signal used by dispatch.
 
 ### Epic 3 — Dispatch & matching for sales
-7. **Dispatch picks a sale-qualified agent** — sale mandates only go to opted-in (later: qualified) agents.
+7. **Dispatch picks a sale-qualified agent** — **M1: nothing to build**, dispatch is unchanged and every verified
+   agent of the area is a candidate. Qualification arrives with story 5 (M2).
 8. **Sale match scoring** — price vs budget with a negotiation margin, title status, financing compatibility.
+   **#256** (M2) is its title-document slice: the `Matcher` rules out a SALE · LAND pair whose seller declared none
+   of the buyer's required documents. The price margin and financing compatibility stay in story 8.
 9. **Co-brokerage on sales** — buyer's and seller's agents share the deal, split stated up front.
 
 ### Epic 4 — Sale mandate contracts
@@ -67,15 +71,18 @@ M1 ──▶ M2 ──▶ M3
 M3 can run in parallel with M2 if capacity allows; they don't depend on each other.
 
 ### M1 — First sale closed
-Goal: a buyer and a seller each get matched with a sale agent, sign a mandate and close as SOLD.
+Goal: a buyer and a seller each get matched with an agent, sign a mandate and close as SOLD.
 
-Stories: **1, 2, 4, 7, 10, 16, 18** (only the copy M1 shows), **19** (basic funnel counts).
+Stories: **1, 2, 10, 16, 18** (only the copy M1 shows), **19** (basic funnel counts).
 
-- Why together: without 7, sale mandates reach rental-only agents; without 10, the contract states a
-  one-month-rent commission; without 16, there is no outcome to measure.
+- Why together: without 10, the contract states a one-month-rent commission; without 16, there is no outcome to
+  measure.
 - Exit signal: first SALE mandate closed with a `finalPrice`.
-- Risk: sale agents are self-declared until M2. Mitigate by switching sales on for one tenant only, or by
-  approving sale opt-ins by hand.
+- Assumption: every verified agent handles sales as well as rentals (decided 2026-11-22). No opt-in, no filter:
+  dispatch is unchanged, and an agent who doesn't want a sale offer declines it, which re-dispatches it to the next
+  candidate. Real qualification is story 5 (M2).
+- Left to M2: the buyer's *Documents exigés* and the seller's *Document de propriété* are a brief for the agent only;
+  **#256** (story 8) turns them into a `Matcher` rule.
 - To check first: if mandates expire or send reminders on a rental timeline today, move **11** into M1.
 
 ### M2 — Trust & match quality
@@ -83,7 +90,8 @@ Goal: sellers and buyers meet serious counterparts, and the right agents get the
 
 Stories: **5, 13, 8, 6**.
 
-- Why after M1: 6 and 8 need real closed sales and matches to tune; 5 and 13 replace M1's manual/limited opt-in.
+- Why after M1: 6 and 8 need real closed sales and matches to tune; 5 is where sale qualification is introduced
+  (M1 has none).
 - Exit signal: better visit → sold rate than M1, fewer cancelled sale mandates.
 
 ### M3 — Deal flow (visit to sale)
@@ -128,7 +136,7 @@ milestone may be worth adding after M1 once sales are proven. To decide.
 | budget | "Budget maximum" instead of "Loyer mensuel", with a sale-level minimum; new **financing** (cash / bank loan / transfer from abroad / not decided) and **timeline** (< 3 months / 3–6 / 6–12 / just looking), replacing `movingPeriod`. |
 | contact | Unchanged (country of residence belongs to story 3). |
 | review | Purchase wording: "Achat", "Budget", "Financement". |
-| confirmation | Explains the next step for a buyer: a sale-qualified agent will contact them. |
+| confirmation | Explains the next step for a buyer: a verified agent of the area will contact them. |
 
 ### Acceptance criteria
 1. *Acheter* creates a SEARCH mandate with `listingType = SALE`; *Louer* keeps today's flow with no regression.
@@ -150,15 +158,15 @@ milestone may be worth adding after M1 once sales are proven. To decide.
 
 ### Dependencies
 Story 1 must not go live alone:
-- **Story 7:** otherwise sale searches reach rental-only agents. Minimum fallback: send sale mandates to
-  `MANUAL_ASSIGNMENT`.
 - **Story 10:** the SEARCH contract states a one-month-rent commission. Ship a sale SEARCH template with it, or keep
   *Acheter* behind a tenant flag until it exists.
+
+Dispatch needs no change for a sale search: story 7's filter is dropped in M1, every verified agent of the area is a
+candidate (see *Assumption* under M1).
 
 ### Open questions
 1. Financing: information for the agent only, or also a dispatch input (e.g. "bank loan" buyers to experienced
    agents)?
 2. Minimum purchase budget: one tenant-level amount, or per property type (land vs villa)?
 3. "Just looking" buyers: normal mandate, or a soft gate ("we'll contact you when you're ready")?
-4. Release gate: tenant feature flag for *Acheter* (lets story 1 ship before 7 and 10), or release 1, 7 and 10
-   together?
+4. Release gate: tenant feature flag for *Acheter* (lets story 1 ship before 10), or release 1 and 10 together?

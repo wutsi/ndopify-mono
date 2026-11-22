@@ -727,7 +727,7 @@ git commit -m "feat(npc): offer the sale types and ask the ownership documents" 
   - `fun ownershipDocuments(documents: List<TitleDocumentType>): String` — the labels in order joined by `" · "`, or *Aucun document déclaré* when empty.
   - In `criteria(mandate, locations, formatter)`: skip the *Meublé* row when `mandate.listingType == ListingType.SALE`, and append after the surface `("Document de propriété" to ownershipDocuments(mandate.ownershipDocuments))` when the mandate is a `SALE` · `LAND` with any. Leave *Locataire* / *Propriétaire*, *Loyer*, *Disponibilité* alone — #259 owns them.
 - Produces: `OfferPropertyController`'s review branch: `categoryLabel = MandateLabels.project(answers.propertyCategory, answers.listingType)`, the price line `answers.priceAmount?.let { formatter().money(it) + if (answers.isSale()) "" else " par mois" }`, no advance/deposit lines for a sale, `ownershipDocumentsLabel = answers.ownershipDocuments.takeIf { answers.isSale() && …LAND }?.let { MandateLabels.ownershipDocuments(it) }`.
-- Produces in `offer-property.html`, review step: the project row and the price row use the model attributes, and a *Document de propriété* row `th:if` on the sale · land answer; the confirmation's three next steps get a sale variant (`th:if="${listingType?.name() == 'SALE'}"`): an agent who handles sales audits, photographs and presents the property to the buyers, then *Vous validez l'annonce*, then the sale closing wording of the prototype.
+- Produces in `offer-property.html`, review step: the project row and the price row use the model attributes, and a *Document de propriété* row `th:if` on the sale · land answer; the confirmation's three next steps get a sale variant (`th:if="${listingType?.name() == 'SALE'}"`): a verified agent of the area audits, photographs and presents the property to the buyers, then *Vous validez l'annonce*, then the sale closing wording of the prototype.
 - Produces in `mandate.html`: the criteria list renders `MandateLabels.criteria` as today — no template change beyond what the list already does (confirm the new pair renders, add nothing else).
 
 - [ ] **Step 1: Write the failing tests**
@@ -871,9 +871,11 @@ git add pom.xml modules/ndopify-dto/pom.xml
 git commit -m "chore(deps): release ndopify-dto with the seller's documents" -m "Refs #254"
 ```
 
-- [ ] **Step 4: No production behaviour without #256 and #257**
+- [ ] **Step 4: No production behaviour without #257**
 
-#254 must not deploy before #256 (sale dispatch) and #257 (sale LISTING contract): record that in the pull request's description.
+#254 must not deploy before #257 (sale LISTING contract): record that in the pull request's description. Sale
+dispatch is not a dependency: M1 offers a sale listing to every verified agent of the area (no opt-in, see the epic
+plan).
 
 ---
 
