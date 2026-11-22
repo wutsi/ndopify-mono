@@ -1,0 +1,898 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Espace agent — Ndopify Partner Central</title>
+    <meta name="description" content="Espace agent Ndopify Partner Central.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="assets/images/icon.png">
+    <link rel="apple-touch-icon" href="assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="assets/css/partner-central.css?v=3">
+    <!-- ?v=2 on the prototype assets: bump it when they change, so Safari's file:// cache reloads them. -->
+    <link rel="stylesheet" href="assets/css/home.css?v=5">
+    <link rel="stylesheet" href="assets/css/listing.css?v=3">
+    <link rel="stylesheet" href="assets/css/visit.css?v=3">
+    <script src="assets/js/partner-central.js?v=2" defer></script>
+    <script src="assets/js/visit.js?v=4" defer></script>
+</head>
+<body data-page="agent-home">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="index.html">
+                <img src="assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li>
+                        <a class="user-menu__account" href="agent.html">
+                            <span class="user-menu__account-photo" aria-hidden="true" data-user-initials>SN</span>
+                            <span class="user-menu__account-text">
+                                <span class="user-menu__account-name">Serge Ngono</span>
+                                <span class="user-menu__account-email" data-user-email>serge@gmail.com</span>
+                            </span>
+                        </a>
+                    </li>
+                    <li><a class="user-menu__item" href="profile/edit.html">Modifier mon profil</a></li>
+                    <li><a class="user-menu__item" href="login.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column column--wide">
+            <header class="home-intro">
+                <h1 class="home-intro__title">Espace agent</h1>
+                <p class="home-intro__date" data-home-date></p>
+                <ul class="home-intro__counts" data-home-counts hidden>
+                    <li data-home-count="offers" hidden>
+                        <a href="#assignments-title"><strong data-home-count-value></strong>
+                            <span data-home-count-label></span>
+                            <span class="home-intro__urgent" data-home-urgent hidden></span></a>
+                    </li>
+                    <li data-home-count="requested" hidden>
+                        <a href="#visits-title"><strong data-home-count-value></strong>
+                            <span data-home-count-label></span></a>
+                    </li>
+                    <li data-home-count="today" hidden>
+                        <a href="#visits-title"><strong data-home-count-value></strong>
+                            <span data-home-count-label></span></a>
+                    </li>
+                </ul>
+            </header>
+
+            <div class="alert alert--info" data-telegram-banner>
+                <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                </svg>
+                <div>
+                    <p class="alert__title">Recevez vos notifications sur Telegram</p>
+                    <p>Vos notifications vous arrivent directement dans Telegram.</p>
+                    <p><a class="btn btn--primary" href="telegram.html">Connecter Telegram</a></p>
+                </div>
+            </div>
+
+            <!--
+                Section Assignments (source doc): the active mandates offered to the agent, each to accept or
+                decline before its deadline. Anti-bypass: no client information, and the neighbourhood is the only
+                location given, until the agent accepts: mandate.html?id=… then shows the whole mandate, and the mandate joins
+                "Mes mandats" below. Without any offer, the section isn't shown at all (also once the last one is
+                declined). PROTOTYPE: deadlines are relative to the page load (data-expires-in, in minutes);
+                ?assignments=empty shows an agent without offers.
+                v2: each offer says whether it's a sale or a rental, a "Vente" / "Location" tag after its kind
+                (Locataire, Acheteur, Propriétaire, Vendeur). 104 is a SALE offer: a buyer's search for a plot of land,
+                with a total budget ("15M FCFA", no "/ mois") and "Achat prévu" instead of "Emménagement".
+            -->
+            <p class="visually-hidden" role="status" data-assignments-status></p>
+            <section class="home-section" aria-labelledby="assignments-title" data-assignments-section>
+                <h2 id="assignments-title">Mandats proposés</h2>
+                <p>Mandat exclusif : acceptez ou refusez avant la fin du délai.</p>
+
+                <ul class="assignments" data-assignments>
+                    <li class="assignment" data-assignment data-mandate-id="101" data-expires-in="52">
+                        <article aria-labelledby="assignment-101-title">
+                            <div class="assignment__head">
+                                <h3 id="assignment-101-title" class="assignment__type mandate-title"><span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><span>Locataire</span><span class="deal-tag deal-tag--rental">Location</span></h3>
+                                <p class="assignment__timer" data-timer>
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                    <span>Il reste <strong data-timer-value>52 min</strong></span>
+                                </p>
+                            </div>
+                            <dl class="assignment__facts">
+                                <div>
+                                    <dt>Secteur</dt>
+                                    <dd>Bonapriso, Akwa</dd>
+                                </div>
+                                <div>
+                                    <dt>Budget</dt>
+                                    <dd>150K FCFA / mois</dd>
+                                </div>
+                                <div>
+                                    <dt>Emménagement</dt>
+                                    <dd>Dans moins de 1 mois</dd>
+                                </div>
+                            </dl>
+
+                            <details class="assignment__details">
+                                <summary>Voir les détails</summary>
+                                <div class="assignment__details-body">
+                                    <p class="assignment__countdown" data-timer>
+                                        Temps restant pour décider : <strong data-timer-value>52 min</strong>
+                                    </p>
+                                    <dl class="review">
+                                        <div class="review__item"><dt class="review__term">Catégorie</dt><dd class="review__value">Résidentiel</dd></div>
+                                        <div class="review__item"><dt class="review__term">Type de propriété</dt><dd class="review__value">Appartement</dd></div>
+                                        <div class="review__item"><dt class="review__term">Meublé</dt><dd class="review__value">Non</dd></div>
+                                        <div class="review__item"><dt class="review__term">Chambres</dt><dd class="review__value">2</dd></div>
+                                        <div class="review__item"><dt class="review__term">Parking</dt><dd class="review__value">1</dd></div>
+                                        <div class="review__item"><dt class="review__term">Surface souhaitée</dt><dd class="review__value">80 m²</dd></div>
+                                        <div class="review__item"><dt class="review__term">Accès à l'eau</dt><dd class="review__value">Compteur dédié, Forage</dd></div>
+                                        <div class="review__item"><dt class="review__term">Accès à l'électricité</dt><dd class="review__value">Compteur dédié, Groupe électrogène</dd></div>
+                                        <div class="review__item"><dt class="review__term">Accès routier</dt><dd class="review__value">Route bitumée</dd></div>
+                                        <div class="review__item"><dt class="review__term">Sécurité</dt><dd class="review__value">Gardien 24h/24h</dd></div>
+                                    </dl>
+                                    <div class="hint">
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                             stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                                        <p>Seuls les quartiers sont indiqués. Une fois le mandat accepté, le client
+                                            est prévenu et ses coordonnées vous sont dévoilées ici.</p>
+                                    </div>
+                                </div>
+                            </details>
+
+                            <div class="assignment__actions" data-actions>
+                                <button type="button" class="btn btn--primary" data-accept>Accepter</button>
+                                <button type="button" class="btn btn--outline" data-decline>Refuser</button>
+                            </div>
+                            <div class="alert alert--warning assignment__confirm" hidden data-decline-confirm>
+                                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                                <div>
+                                    <p class="alert__title">Refuser ce mandat ?</p>
+                                    <p>Il sera proposé à un autre agent et ne vous sera plus proposé.</p>
+                                    <div class="assignment__actions">
+                                        <button type="button" class="btn btn--primary" data-decline-confirmed>Confirmer le refus</button>
+                                        <button type="button" class="btn btn--outline" data-decline-cancel>Annuler</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+                    </li>
+
+                    <li class="assignment" data-assignment data-mandate-id="104" data-expires-in="45">
+                        <article aria-labelledby="assignment-104-title">
+                            <div class="assignment__head">
+                                <h3 id="assignment-104-title" class="assignment__type mandate-title"><span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><span>Acheteur</span><span class="deal-tag deal-tag--sale">Vente</span></h3>
+                                <p class="assignment__timer" data-timer>
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                    <span>Il reste <strong data-timer-value>45 min</strong></span>
+                                </p>
+                            </div>
+                            <dl class="assignment__facts">
+                                <div>
+                                    <dt>Secteurs</dt>
+                                    <dd>Logbessou, Japoma</dd>
+                                </div>
+                                <div>
+                                    <dt>Budget total</dt>
+                                    <dd>15M FCFA</dd>
+                                </div>
+                                <div>
+                                    <dt>Achat prévu</dt>
+                                    <dd>Dans 1 à 3 mois</dd>
+                                </div>
+                            </dl>
+
+                            <details class="assignment__details">
+                                <summary>Voir les détails</summary>
+                                <div class="assignment__details-body">
+                                    <p class="assignment__countdown" data-timer>
+                                        Temps restant pour décider : <strong data-timer-value>45 min</strong>
+                                    </p>
+                                    <dl class="review">
+                                        <div class="review__item"><dt class="review__term">Catégorie</dt><dd class="review__value">Résidentiel</dd></div>
+                                        <div class="review__item"><dt class="review__term">Type de propriété</dt><dd class="review__value">Terrain</dd></div>
+                                        <div class="review__item"><dt class="review__term">Surface souhaitée</dt><dd class="review__value">500 m²</dd></div>
+                                        <div class="review__item"><dt class="review__term">Accès à l'électricité</dt><dd class="review__value">Compteur électrique</dd></div>
+                                        <div class="review__item"><dt class="review__term">Accès routier</dt><dd class="review__value">Piste accessible en voiture</dd></div>
+                                    </dl>
+                                    <div class="hint">
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                             stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                                        <p>Seuls les quartiers sont indiqués. Une fois le mandat accepté, l'acheteur
+                                            est prévenu et ses coordonnées vous sont dévoilées ici.</p>
+                                    </div>
+                                </div>
+                            </details>
+
+                            <div class="assignment__actions" data-actions>
+                                <button type="button" class="btn btn--primary" data-accept>Accepter</button>
+                                <button type="button" class="btn btn--outline" data-decline>Refuser</button>
+                            </div>
+                            <div class="alert alert--warning assignment__confirm" hidden data-decline-confirm>
+                                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                                <div>
+                                    <p class="alert__title">Refuser ce mandat ?</p>
+                                    <p>Il sera proposé à un autre agent et ne vous sera plus proposé.</p>
+                                    <div class="assignment__actions">
+                                        <button type="button" class="btn btn--primary" data-decline-confirmed>Confirmer le refus</button>
+                                        <button type="button" class="btn btn--outline" data-decline-cancel>Annuler</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+                    </li>
+
+                    <li class="assignment" data-assignment data-mandate-id="102" data-expires-in="9">
+                        <article aria-labelledby="assignment-102-title">
+                            <div class="assignment__head">
+                                <h3 id="assignment-102-title" class="assignment__type mandate-title"><span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M17 6l3 3M14.5 8.5l2 2"/></svg></span><span>Propriétaire</span><span class="deal-tag deal-tag--rental">Location</span></h3>
+                                <p class="assignment__timer" data-timer>
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                    <span>Il reste <strong data-timer-value>9 min</strong></span>
+                                </p>
+                            </div>
+                            <dl class="assignment__facts">
+                                <div>
+                                    <dt>Secteur</dt>
+                                    <dd>Bonanjo</dd>
+                                </div>
+                                <div>
+                                    <dt>Loyer</dt>
+                                    <dd>75K FCFA / mois</dd>
+                                </div>
+                                <div>
+                                    <dt>Disponibilité</dt>
+                                    <dd>Dans 1 à 3 mois</dd>
+                                </div>
+                            </dl>
+
+                            <details class="assignment__details">
+                                <summary>Voir les détails</summary>
+                                <div class="assignment__details-body">
+                                    <p class="assignment__countdown" data-timer>
+                                        Temps restant pour décider : <strong data-timer-value>9 min</strong>
+                                    </p>
+                                    <dl class="review">
+                                        <div class="review__item"><dt class="review__term">Catégorie</dt><dd class="review__value">Résidentiel</dd></div>
+                                        <div class="review__item"><dt class="review__term">Type de propriété</dt><dd class="review__value">Studio</dd></div>
+                                        <div class="review__item"><dt class="review__term">Meublé</dt><dd class="review__value">Oui</dd></div>
+                                        <div class="review__item"><dt class="review__term">Chambres</dt><dd class="review__value">1</dd></div>
+                                        <div class="review__item"><dt class="review__term">Parking</dt><dd class="review__value">Aucune</dd></div>
+                                        <div class="review__item"><dt class="review__term">Surface</dt><dd class="review__value">30 m²</dd></div>
+                                        <div class="review__item"><dt class="review__term">Accès à l'eau</dt><dd class="review__value">Compteur d'eau</dd></div>
+                                        <div class="review__item"><dt class="review__term">Accès à l'électricité</dt><dd class="review__value">Compteur électrique</dd></div>
+                                        <div class="review__item"><dt class="review__term">Accès routier</dt><dd class="review__value">Piste accessible en voiture</dd></div>
+                                        <div class="review__item"><dt class="review__term">Sécurité</dt><dd class="review__value">Barrière sécurisée</dd></div>
+                                    </dl>
+                                    <div class="hint">
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                             stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                                        <p>Seul le quartier est indiqué. Une fois le mandat accepté, le bailleur
+                                            est prévenu et ses coordonnées vous sont dévoilées ici.</p>
+                                    </div>
+                                </div>
+                            </details>
+
+                            <div class="assignment__actions" data-actions>
+                                <button type="button" class="btn btn--primary" data-accept>Accepter</button>
+                                <button type="button" class="btn btn--outline" data-decline>Refuser</button>
+                            </div>
+                            <div class="alert alert--warning assignment__confirm" hidden data-decline-confirm>
+                                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                                <div>
+                                    <p class="alert__title">Refuser ce mandat ?</p>
+                                    <p>Il sera proposé à un autre agent et ne vous sera plus proposé.</p>
+                                    <div class="assignment__actions">
+                                        <button type="button" class="btn btn--primary" data-decline-confirmed>Confirmer le refus</button>
+                                        <button type="button" class="btn btn--outline" data-decline-cancel>Annuler</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+                    </li>
+
+                    <li class="assignment" data-assignment data-mandate-id="103" data-expires-in="38">
+                        <article aria-labelledby="assignment-103-title">
+                            <div class="assignment__head">
+                                <h3 id="assignment-103-title" class="assignment__type mandate-title"><span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><span>Locataire</span><span class="deal-tag deal-tag--rental">Location</span></h3>
+                                <p class="assignment__timer" data-timer>
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                    <span>Il reste <strong data-timer-value>38 min</strong></span>
+                                </p>
+                            </div>
+                            <dl class="assignment__facts">
+                                <div>
+                                    <dt>Secteurs</dt>
+                                    <dd>Akwa, Bonanjo, Deïdo</dd>
+                                </div>
+                                <div>
+                                    <dt>Budget</dt>
+                                    <dd>400K FCFA / mois</dd>
+                                </div>
+                                <div>
+                                    <dt>Emménagement</dt>
+                                    <dd>Dans plus de 3 mois</dd>
+                                </div>
+                            </dl>
+
+                            <details class="assignment__details">
+                                <summary>Voir les détails</summary>
+                                <div class="assignment__details-body">
+                                    <p class="assignment__countdown" data-timer>
+                                        Temps restant pour décider : <strong data-timer-value>38 min</strong>
+                                    </p>
+                                    <dl class="review">
+                                        <div class="review__item"><dt class="review__term">Catégorie</dt><dd class="review__value">Commercial</dd></div>
+                                        <div class="review__item"><dt class="review__term">Type de propriété</dt><dd class="review__value">Bureau</dd></div>
+                                        <div class="review__item"><dt class="review__term">Meublé</dt><dd class="review__value">Indifférent</dd></div>
+                                        <div class="review__item"><dt class="review__term">Parking</dt><dd class="review__value">3+</dd></div>
+                                        <div class="review__item"><dt class="review__term">Surface souhaitée</dt><dd class="review__value">150 m²</dd></div>
+                                        <div class="review__item"><dt class="review__term">Accès à l'eau</dt><dd class="review__value">Compteur dédié</dd></div>
+                                        <div class="review__item"><dt class="review__term">Accès à l'électricité</dt><dd class="review__value">Compteur dédié, Panneau solaire</dd></div>
+                                        <div class="review__item"><dt class="review__term">Accès routier</dt><dd class="review__value">Route bitumée</dd></div>
+                                        <div class="review__item"><dt class="review__term">Sécurité</dt><dd class="review__value">Vidéo surveillance, Gardien 24h/24h</dd></div>
+                                    </dl>
+                                    <div class="hint">
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                             stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                                        <p>Seuls les quartiers sont indiqués. Une fois le mandat accepté, le client
+                                            est prévenu et ses coordonnées vous sont dévoilées ici.</p>
+                                    </div>
+                                </div>
+                            </details>
+
+                            <div class="assignment__actions" data-actions>
+                                <button type="button" class="btn btn--primary" data-accept>Accepter</button>
+                                <button type="button" class="btn btn--outline" data-decline>Refuser</button>
+                            </div>
+                            <div class="alert alert--warning assignment__confirm" hidden data-decline-confirm>
+                                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                                <div>
+                                    <p class="alert__title">Refuser ce mandat ?</p>
+                                    <p>Il sera proposé à un autre agent et ne vous sera plus proposé.</p>
+                                    <div class="assignment__actions">
+                                        <button type="button" class="btn btn--primary" data-decline-confirmed>Confirmer le refus</button>
+                                        <button type="button" class="btn btn--outline" data-decline-cancel>Annuler</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+                    </li>
+                </ul>
+            </section>
+
+            <!--
+                Section Visits (source doc): the visits of the agent's clients (GET /v1/visits?agent-id=&status=REQUESTED&
+                status=CONFIRMED&status=CHECKED_IN, soonest first), each card opening
+                visit.html?id=…. First "À confirmer": the requests to schedule (REQUESTED), the soonest to expire first,
+                each with its inline confirmation (the client's slot when it is offered, a day/time chooser otherwise)
+                and the time left (a request not confirmed before its requested slot, and at least 48 h old, expires;
+                under 12 h left, the timer is in the warning colour). Then "En cours", then the visits to come grouped by day (Aujourd'hui, Demain, then the
+                whole date), the next four and the rest folded behind "Voir les N autres visites". Each compact card
+                says the type before the listing ("Sur place", "Visite vidéo": a WhatsApp video call from the
+                property); the visit's page carries what to do next. A group without visits isn't shown; without any,
+                the section says so. Done, cancelled, expired and missed visits leave the list (their page stays, from
+                the mandate). PROTOTYPE: visit.js's VISITS (dates relative to the page load), as changed on visit.html;
+                ?visits=empty shows the empty state.
+            -->
+            <section class="home-section" aria-labelledby="visits-title" data-visits-section>
+                <h2 id="visits-title">Visites</h2>
+
+                <div class="alert alert--success" role="status" hidden data-visit-outcome>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <div>
+                        <p class="alert__title" data-visit-outcome-title></p>
+                        <p data-visit-outcome-text></p>
+                    </div>
+                </div>
+
+                <div class="visit-group" data-visit-group="requested">
+                    <h3 class="visit-group__title">À confirmer</h3>
+                    <ul class="assignments visit-cards" data-visit-list>
+                    <li class="mandate-card visit-card" data-urgent data-visit-card data-visit-id="7002">
+                        <article aria-labelledby="visit-7002-title">
+                            <div class="assignment__head">
+                                <h4 id="visit-7002-title" class="assignment__type">
+                                    <a class="mandate-card__link" href="visit.html?id=7002" data-visit-link>Carine Ndongo</a>
+                                </h4>
+                                <p class="status-tag" hidden data-visit-tag></p>
+                            </div>
+                            <p class="visit-card__when">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                                <span data-visit-when>mer. 4 novembre 2026 à 16h00</span>
+                            </p>
+                            <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 3 chambres · Bonanjo</p>
+                            <p class="assignment__timer visit-card__timer" data-visit-timer>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                <span>Il reste <strong data-visit-left>8 h</strong> pour confirmer</span>
+                            </p>
+                        </article>
+                    </li>
+                    <li class="mandate-card visit-card" data-visit-card data-visit-id="7001">
+                        <article aria-labelledby="visit-7001-title">
+                            <div class="assignment__head">
+                                <h4 id="visit-7001-title" class="assignment__type">
+                                    <a class="mandate-card__link" href="visit.html?id=7001" data-visit-link>Sandrine Eboa</a>
+                                </h4>
+                                <p class="status-tag" hidden data-visit-tag></p>
+                            </div>
+                            <p class="visit-card__when">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                                <span data-visit-when>sam. 7 novembre 2026 à 10h30</span>
+                            </p>
+                            <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 3 chambres · Bonapriso</p>
+                            <p class="assignment__timer visit-card__timer" data-visit-timer>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                <span>Il reste <strong data-visit-left>42 h</strong> pour confirmer</span>
+                            </p>
+                        </article>
+                    </li>
+                    </ul>
+                </div>
+
+                <div class="visit-group" data-visit-group="ongoing" hidden>
+                    <h3 class="visit-group__title">En cours</h3>
+                    <ul class="assignments visit-cards" data-visit-list></ul>
+                </div>
+
+                <div data-visit-groups></div>
+
+                <details class="visit-more" data-visit-more hidden>
+                    <summary data-visit-more-label></summary>
+                    <div data-visit-more-groups></div>
+                </details>
+
+                <p class="assignments__empty" hidden data-visits-empty>
+                    Aucune visite prévue. Quand un client demande à visiter un bien que vous lui avez envoyé, sa
+                    demande apparaît ici et vous êtes prévenu par e-mail.
+                </p>
+
+                <!-- A visit's card, filled by visit.js (initHomeVisits). -->
+                <template data-visit-card-template>
+                    <li class="mandate-card visit-card" data-visit-card>
+                        <article>
+                            <div class="assignment__head">
+                                <h4 class="assignment__type"><a class="mandate-card__link" data-visit-link></a></h4>
+                                <p class="status-tag" data-visit-tag></p>
+                            </div>
+                            <p class="visit-card__when">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                                <span data-visit-when></span>
+                            </p>
+                            <p class="visit-card__listing" data-visit-listing></p>
+                            <p class="assignment__timer visit-card__timer" data-visit-timer>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                <span>Il reste <strong data-visit-left></strong> pour confirmer</span>
+                            </p>
+                            <div class="visit-card__actions" data-visit-actions hidden>
+                                <form class="visit-card__confirm" data-home-confirm>
+                                    <button type="submit" class="btn btn--primary btn--block" data-confirm-visit>Confirmer le créneau demandé</button>
+                                    <p class="visit-card__confirm-hint">Le client reçoit la date, l'adresse et son code.</p>
+                                </form>
+                                <details class="visit-card__change" data-visit-change>
+                                    <summary data-visit-change-label>Changer le créneau</summary>
+                                    <form class="visit-card__change-form" data-home-change>
+                                        <div class="visit-slot">
+                                            <select class="input select" name="date" aria-label="Jour"></select>
+                                            <select class="input select" name="time" aria-label="Heure"></select>
+                                        </div>
+                                        <button type="submit" class="btn btn--secondary">Confirmer ce créneau</button>
+                                    </form>
+                                </details>
+                            </div>
+                            <!-- Another agent's listing: the standard agent footer, last in the card. -->
+                            <div class="agent-card" data-agent-card hidden>
+                                <span class="agent-card__avatar" aria-hidden="true">
+                                    <img data-agent-photo hidden alt="">
+                                    <span data-agent-initials></span>
+                                    <svg class="icon" data-agent-generic viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" focusable="false" hidden><circle cx="10" cy="6.5" r="3.25"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" stroke-linecap="round"/></svg>
+                                </span>
+                                <a class="agent-card__name" data-agent-link hidden>
+                                    <span data-agent-name></span>
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+                                </a>
+                                <span class="agent-card__name" data-agent-fallback hidden>un autre agent</span>
+                                <a class="agent-card__whatsapp" data-agent-whatsapp target="_blank" rel="noopener" hidden>
+                                    <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+                                    WhatsApp
+                                </a>
+                            </div>
+                        </article>
+                    </li>
+                </template>
+            </section>
+
+            <!--
+                Visites d'autres agents (source doc): the visits another agent organizes on the agent's published
+                listings (GET /v1/visits/co-brokerage), soonest first. The organizer is named and contactable; their
+                customer never is. PROTOTYPE: visit.js's CO_BROKERAGE_VISITS.
+            -->
+            <section class="home-section listing-visits" aria-labelledby="co-brokerage-visits-title"
+                     hidden data-co-brokerage-visits>
+                <h2 id="co-brokerage-visits-title">Visites d'autres agents</h2>
+                <p>Un autre agent organise ces visites de votre bien : vous accueillez l'agent et son client sur place.</p>
+                <ul data-co-brokerage-visit-list></ul>
+                <template data-co-brokerage-visit-template>
+                    <li class="co-visit-card">
+                        <article>
+                            <div class="co-visit-card__head">
+                                <p class="co-visit-card__when">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                                    <span data-co-brokerage-at></span>
+                                </p>
+                                <p class="status-tag status-tag--info" data-co-brokerage-progress hidden>En cours</p>
+                            </div>
+                            <p class="co-visit-card__listing">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false" data-co-brokerage-type-icon="ON_SITE"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false" hidden data-co-brokerage-type-icon="VIDEO"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 10 6-3v10l-6-3z"/></svg>
+                                <span data-co-brokerage-type></span>
+                                <span aria-hidden="true">·</span>
+                                <a data-co-brokerage-listing></a>
+                            </p>
+                            <!-- The organizer: the standard agent footer, never A's customer. -->
+                            <div class="agent-card" data-agent-card hidden>
+                                <span class="agent-card__avatar" aria-hidden="true">
+                                    <img data-agent-photo hidden alt="">
+                                    <span data-agent-initials></span>
+                                    <svg class="icon" data-agent-generic viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" focusable="false" hidden><circle cx="10" cy="6.5" r="3.25"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" stroke-linecap="round"/></svg>
+                                </span>
+                                <a class="agent-card__name" data-agent-link hidden>
+                                    <span data-agent-name></span>
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+                                </a>
+                                <span class="agent-card__name" data-agent-fallback hidden>un autre agent</span>
+                                <a class="agent-card__whatsapp" data-agent-whatsapp target="_blank" rel="noopener" hidden>
+                                    <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+                                    WhatsApp
+                                </a>
+                            </div>
+                        </article>
+                    </li>
+                </template>
+            </section>
+
+            <!--
+                Section Mandates (source doc): the agent's active mandates (Assigné, En approbation, Actif), each
+                opening its page, mandate.html?id=…. Closed mandates (Fermé) leave the list. PROTOTYPE: 201, 202 and
+                203 (and 204) are already the agent's; an offer accepted above joins them at the top, and the statuses follow
+                what is done on mandate.html (see KEYS.mandates). An active search (Locataire, Actif) shows its
+                one-line activity (data-search-stats): its matching pool, the clients it interested and its visits,
+                from the same numbers as GET /v1/mandates/stats; 204 has some, and the line links to its
+                Biens correspondants. There is no next step on the card any more.
+                A landlord's signed mandate (203) has its listing's line, "Annonce" and its status (no number, for the
+                same reason), and once the listing is published, its activity (data-listing-stats): the page views of
+                its public page, the clients it interested (the matches whose client answered "intéressé", with or
+                without a visit; see LISTING_ACTIVITY), and the visits of the property. ?listing=published shows 203
+                with a published listing. ?mandates=empty shows the empty state.
+                v2: every card has its "Vente" / "Location" tag (setDealTag). 301 is a seller's villa (Vendeur, Vente),
+                signed, its listing still "À créer"; its facts read "Prix de vente" (250M FCFA, no "/ mois").
+            -->
+            <section class="home-section" aria-labelledby="mandates-title">
+                <h2 id="mandates-title">Mes mandats</h2>
+                <p>Les mandats que vous suivez, de leur approbation par le client jusqu'à leur fermeture.</p>
+
+                <ul class="assignments" data-mandates>
+                    <li class="mandate-card" data-mandate-card data-mandate-id="201">
+                        <article aria-labelledby="mandate-201-title">
+                            <div class="assignment__head">
+                                <h3 id="mandate-201-title" class="assignment__type mandate-title">
+                                    <span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+                                    <span class="mandate-title__text">
+                                        <a class="mandate-card__link" href="mandate.html?id=201" data-mandate-link>Jean-Pierre Fotso</a>
+                                        <span class="mandate-card__kind" data-mandate-kind-label>Locataire · Maison</span>
+                                    </span>
+                                </h3>
+                                <p class="status-tag status-tag--info" data-status-tag>Assigné</p>
+                            </div>
+                            <dl class="assignment__facts">
+                                <div>
+                                    <dt>Secteurs</dt>
+                                    <dd>Kotto, Logpom</dd>
+                                </div>
+                                <div>
+                                    <dt>Budget</dt>
+                                    <dd>250K FCFA / mois</dd>
+                                </div>
+                                <div>
+                                    <dt>Emménagement</dt>
+                                    <dd>Dans 1 à 3 mois</dd>
+                                </div>
+                            </dl>
+                            <p class="search-stats mandate-card__search-stats" hidden data-search-stats>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                                <span class="visually-hidden">Activité de la recherche : </span>
+                                <a href="mandate.html?id=201#matches-title" data-search-stats-link></a>
+                            </p>
+                        </article>
+                    </li>
+
+                    <li class="mandate-card" data-mandate-card data-mandate-id="202">
+                        <article aria-labelledby="mandate-202-title">
+                            <div class="assignment__head">
+                                <h3 id="mandate-202-title" class="assignment__type mandate-title">
+                                    <span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+                                    <span class="mandate-title__text">
+                                        <a class="mandate-card__link" href="mandate.html?id=202" data-mandate-link>Grâce Nkoulou</a>
+                                        <span class="mandate-card__kind" data-mandate-kind-label>Locataire · Appartement</span>
+                                    </span>
+                                </h3>
+                                <p class="status-tag status-tag--warning" data-status-tag>En approbation</p>
+                            </div>
+                            <dl class="assignment__facts">
+                                <div>
+                                    <dt>Secteurs</dt>
+                                    <dd>Bonamoussadi, Makepe</dd>
+                                </div>
+                                <div>
+                                    <dt>Budget</dt>
+                                    <dd>120K FCFA / mois</dd>
+                                </div>
+                                <div>
+                                    <dt>Emménagement</dt>
+                                    <dd>Dans moins de 1 mois</dd>
+                                </div>
+                            </dl>
+                            <p class="search-stats mandate-card__search-stats" hidden data-search-stats>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                                <span class="visually-hidden">Activité de la recherche : </span>
+                                <a href="mandate.html?id=202#matches-title" data-search-stats-link></a>
+                            </p>
+                        </article>
+                    </li>
+
+                    <li class="mandate-card" data-mandate-card data-mandate-id="203">
+                        <article aria-labelledby="mandate-203-title">
+                            <div class="assignment__head">
+                                <h3 id="mandate-203-title" class="assignment__type mandate-title">
+                                    <span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M17 6l3 3M14.5 8.5l2 2"/></svg></span>
+                                    <span class="mandate-title__text">
+                                        <a class="mandate-card__link" href="mandate.html?id=203" data-mandate-link>Emmanuel Tchoua</a>
+                                        <span class="mandate-card__kind" data-mandate-kind-label>Propriétaire · Appartement</span>
+                                    </span>
+                                </h3>
+                                <p class="status-tag status-tag--success" data-status-tag>Actif</p>
+                            </div>
+                            <dl class="assignment__facts">
+                                <div>
+                                    <dt>Secteur</dt>
+                                    <dd>Bonapriso</dd>
+                                </div>
+                                <div>
+                                    <dt>Loyer</dt>
+                                    <dd>300K FCFA / mois</dd>
+                                </div>
+                                <div>
+                                    <dt>Disponibilité</dt>
+                                    <dd>Dans moins de 1 mois</dd>
+                                </div>
+                            </dl>
+                            <p class="mandate-card__listing" data-listing-line>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M6 3h9l3 3v15H6z"/><path d="M9 12h6M9 16h6"/></svg>
+                                <a href="mandate.html?id=203" data-listing-number>Annonce</a>
+                                <span class="status-tag status-tag--neutral" data-listing-status-tag>À créer</span>
+                            </p>
+                            <!-- A published listing only: its activity — page views, interested clients, visits. -->
+                            <p class="listing-stats" hidden data-listing-stats>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                                <span><span class="visually-hidden">Activité de l'annonce : </span><span data-listing-stats-text></span></span>
+                            </p>
+                        </article>
+                    </li>
+
+                    <li class="mandate-card" data-mandate-card data-mandate-id="204">
+                        <article aria-labelledby="mandate-204-title">
+                            <div class="assignment__head">
+                                <h3 id="mandate-204-title" class="assignment__type mandate-title">
+                                    <span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+                                    <span class="mandate-title__text">
+                                        <a class="mandate-card__link" href="mandate.html?id=204" data-mandate-link>Sandrine Eboa</a>
+                                        <span class="mandate-card__kind" data-mandate-kind-label>Locataire · Appartement</span>
+                                    </span>
+                                </h3>
+                                <p class="status-tag status-tag--success" data-status-tag>Actif</p>
+                            </div>
+                            <dl class="assignment__facts">
+                                <div>
+                                    <dt>Secteur</dt>
+                                    <dd>Bonapriso</dd>
+                                </div>
+                                <div>
+                                    <dt>Budget</dt>
+                                    <dd>250K FCFA / mois</dd>
+                                </div>
+                                <div>
+                                    <dt>Emménagement</dt>
+                                    <dd>Dans 1 à 3 mois</dd>
+                                </div>
+                            </dl>
+                            <p class="search-stats mandate-card__search-stats" data-search-stats>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                                <span class="visually-hidden">Activité de la recherche : </span>
+                                <a href="mandate.html?id=204#matches-title" data-search-stats-link>6 biens · 3 intéressés · 3 visites</a>
+                            </p>
+                        </article>
+                    </li>
+
+                    <li class="mandate-card" data-mandate-card data-mandate-id="205">
+                        <article aria-labelledby="mandate-205-title">
+                            <div class="assignment__head">
+                                <h3 id="mandate-205-title" class="assignment__type mandate-title">
+                                    <span class="mandate-title__icon" data-mandate-kind></span>
+                                    <span class="mandate-title__text">
+                                        <a class="mandate-card__link" href="mandate.html?id=205" data-mandate-link>Yannick Mballa</a>
+                                        <span class="mandate-card__kind" data-mandate-kind-label>Locataire · Appartement</span>
+                                    </span>
+                                </h3>
+                                <p class="status-tag" data-status-tag>Assigné</p>
+                            </div>
+                            <dl class="assignment__facts"></dl>
+                            <p class="search-stats mandate-card__search-stats" hidden data-search-stats>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                                <span class="visually-hidden">Activité de la recherche : </span>
+                                <a data-search-stats-link></a>
+                            </p>
+                        </article>
+                    </li>
+
+                    <li class="mandate-card" data-mandate-card data-mandate-id="206">
+                        <article aria-labelledby="mandate-206-title">
+                            <div class="assignment__head">
+                                <h3 id="mandate-206-title" class="assignment__type mandate-title">
+                                    <span class="mandate-title__icon" data-mandate-kind></span>
+                                    <span class="mandate-title__text">
+                                        <a class="mandate-card__link" href="mandate.html?id=206" data-mandate-link>Nadège Atangana</a>
+                                        <span class="mandate-card__kind" data-mandate-kind-label>Locataire · Studio</span>
+                                    </span>
+                                </h3>
+                                <p class="status-tag" data-status-tag>Actif</p>
+                            </div>
+                            <dl class="assignment__facts"></dl>
+                            <p class="search-stats mandate-card__search-stats" hidden data-search-stats>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                                <span class="visually-hidden">Activité de la recherche : </span>
+                                <a data-search-stats-link></a>
+                            </p>
+                        </article>
+                    </li>
+
+                    <li class="mandate-card" data-mandate-card data-mandate-id="301">
+                        <article aria-labelledby="mandate-301-title">
+                            <div class="assignment__head">
+                                <h3 id="mandate-301-title" class="assignment__type mandate-title">
+                                    <span class="mandate-title__icon" data-mandate-kind></span>
+                                    <span class="mandate-title__text">
+                                        <a class="mandate-card__link" href="mandate.html?id=301" data-mandate-link>Rodrigue Essomba</a>
+                                        <span class="mandate-card__kind" data-mandate-kind-label>Vendeur · Villa</span>
+                                        <span class="deal-tag deal-tag--sale">Vente</span>
+                                    </span>
+                                </h3>
+                                <p class="status-tag" data-status-tag>Actif</p>
+                            </div>
+                            <dl class="assignment__facts"></dl>
+                            <p class="mandate-card__listing" hidden data-listing-line>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M6 3h9l3 3v15H6z"/><path d="M9 12h6M9 16h6"/></svg>
+                                <a data-listing-number></a>
+                                <span class="status-tag" data-listing-status-tag></span>
+                            </p>
+                            <p class="listing-stats" hidden data-listing-stats>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                                <span><span class="visually-hidden">Activité de l'annonce : </span><span data-listing-stats-text></span></span>
+                            </p>
+                        </article>
+                    </li>
+
+                    <li class="mandate-card" data-mandate-card data-mandate-id="207">
+                        <article aria-labelledby="mandate-207-title">
+                            <div class="assignment__head">
+                                <h3 id="mandate-207-title" class="assignment__type mandate-title">
+                                    <span class="mandate-title__icon" data-mandate-kind></span>
+                                    <span class="mandate-title__text">
+                                        <a class="mandate-card__link" href="mandate.html?id=207" data-mandate-link>Serge Kamga</a>
+                                        <span class="mandate-card__kind" data-mandate-kind-label>Propriétaire · Duplex</span>
+                                    </span>
+                                </h3>
+                                <p class="status-tag" data-status-tag>En approbation</p>
+                            </div>
+                            <dl class="assignment__facts"></dl>
+                            <p class="mandate-card__listing" hidden data-listing-line>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M6 3h9l3 3v15H6z"/><path d="M9 12h6M9 16h6"/></svg>
+                                <a data-listing-number></a>
+                                <span class="status-tag" data-listing-status-tag></span>
+                            </p>
+                            <p class="listing-stats" hidden data-listing-stats>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                                <span><span class="visually-hidden">Activité de l'annonce : </span><span data-listing-stats-text></span></span>
+                            </p>
+                        </article>
+                    </li>
+                </ul>
+
+                <details class="mandate-more" data-mandate-more hidden>
+                    <summary data-mandate-more-label>Voir les autres mandats</summary>
+                    <ul class="assignments" data-mandate-more-list></ul>
+                </details>
+
+                <p class="assignments__empty" hidden data-mandates-empty>
+                    Vous n'avez aucun mandat en cours. Acceptez un mandat proposé pour le retrouver ici.
+                </p>
+
+                <!-- An accepted offer's card, filled by initMandates from MANDATES. -->
+                <template data-mandate-template>
+                    <li class="mandate-card" data-mandate-card>
+                        <article>
+                            <div class="assignment__head">
+                                <h3 class="assignment__type mandate-title"><span class="mandate-title__icon" data-mandate-kind></span><span class="mandate-title__text"><a class="mandate-card__link" data-mandate-link></a><span class="mandate-card__kind" data-mandate-kind-label></span></span></h3>
+                                <p class="status-tag" data-status-tag></p>
+                            </div>
+                            <dl class="assignment__facts" data-mandate-facts></dl>
+                            <p class="search-stats mandate-card__search-stats" hidden data-search-stats>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                                <span class="visually-hidden">Activité de la recherche : </span>
+                                <a data-search-stats-link></a>
+                            </p>
+                            <!-- A landlord's signed mandate only: its listing's status (no number on the card: it fits one line). -->
+                            <p class="mandate-card__listing" hidden data-listing-line>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M6 3h9l3 3v15H6z"/><path d="M9 12h6M9 16h6"/></svg>
+                                <a data-listing-number></a>
+                                <span class="status-tag" data-listing-status-tag></span>
+                            </p>
+                            <!-- A published listing only: its activity — page views, interested clients, visits. -->
+                            <p class="listing-stats" hidden data-listing-stats>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                                <span><span class="visually-hidden">Activité de l'annonce : </span><span data-listing-stats-text></span></span>
+                            </p>
+                        </article>
+                    </li>
+                </template>
+            </section>
+
+            <!--
+                Section Profile (source doc): the agent doesn't need to see its own profile on each visit, so the
+                section only invites it to complete the profile while the photo or the biography is missing (and
+                confirms a save, back from a profile page); a complete profile shows nothing. PROTOTYPE: follows the
+                profile saved by profile/edit.html and profile/photo.html; until then, ?profile=complete or
+                ?profile=empty shows the other states (the default is a profile without photo). Below the queue: the
+                agent first sees what to do, then what is missing on its profile.
+            -->
+            <section class="home-section" aria-labelledby="profile-title" data-profile>
+                <h2 id="profile-title" class="visually-hidden">Mon profil</h2>
+                <div class="alert alert--success" role="status" hidden data-profile-saved>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <p data-profile-saved-text></p>
+                </div>
+
+                <div class="hint" data-profile-incomplete>
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                    <div>
+                        <p><strong>Complétez votre profil.</strong> Les clients voient votre photo et votre biographie
+                            lorsque vous acceptez leur mandat : un profil complet inspire confiance.</p>
+                        <ul class="profile__todo">
+                            <li data-profile-todo="photo">
+                                <a href="profile/photo.html">Ajouter une photo professionnelle</a>
+                            </li>
+                            <li data-profile-todo="bio" hidden>
+                                <a href="profile/edit.html">Rédiger votre biographie</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Envoyer le mandat — Ndopify Partner Central</title>
+    <meta name="description" content="Envoyer un mandat au client pour signature : durée et frais de visite.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="../assets/images/icon.png">
+    <link rel="apple-touch-icon" href="../assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="../assets/css/partner-central.css">
+    <link rel="stylesheet" href="../assets/css/find-property.css">
+    <link rel="stylesheet" href="../assets/css/home.css">
+    <script src="../assets/js/partner-central.js" defer></script>
+</head>
+<!--
+    PROTOTYPE: the contract send page (story #201), reached from the mandate page's "Envoyer au client".
+    Static copy of templates/mandate/contract.html; the fee formats as typed.
+    v2: ?id= picks the mandate's wording (?id=104 once accepted, a buyer's sale search; ?id=301's contract is already
+    signed but shows the seller's form). A SALE mandate adds the "Commission" field, in % of the sale price.
+    PROPOSAL, not built: the sale commission is an open product question (who pays it, how much); the field and its
+    5 % default are a proposal for RequestMandateApprovalRequest (a commissionRate next to durationMonths and
+    visitFee). A rental's commission stays the contract's 1 month of rent, with no field.
+
+    Sending a mandate's contract (MandateContractController), on its own page reached from the mandate page's
+    "Envoyer au client" (ASSIGNED) or "Renvoyer" (PENDING_APPROVAL). The agent confirms the terms the customer accepts
+    by signing: the duration, and the visit fee the visitors pay the agent for each visit, offline, Ndopify
+    collecting nothing. The form posts without any script: the rules are re-checked server-side.
+
+    "mandate" is the mandate, "form" (MandateContractForm) the two answers, "errors" its errors per field, "resend"
+    true for PENDING_APPROVAL (the button reads "Renvoyer"), "email" the address the contract goes to (may be null),
+    "signatureTtlDays" the days given to sign (null before the first send), "months" 1..12 and "currency" the
+    tenant's currency.
+-->
+<body data-page="mandate-contract">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="../index.html">
+                <img src="../assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li>
+                        <a class="user-menu__account" href="../agent.html">
+                            <span class="user-menu__account-photo" aria-hidden="true" data-user-initials>SN</span>
+                            <span class="user-menu__account-text">
+                                <span class="user-menu__account-name">Serge Ngono</span>
+                                <span class="user-menu__account-email" data-user-email>serge@gmail.com</span>
+                            </span>
+                        </a>
+                    </li>
+                    <li><a class="user-menu__item" href="../profile/edit.html">Modifier mon profil</a></li>
+                    <li><a class="user-menu__item" href="../login.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link">
+                <a href="../mandate.html?id=201" data-back-link>← Retour au mandat</a>
+            </p>
+
+            <div class="page-intro">
+                <h1 data-contract-title>Envoyer le mandat au client</h1>
+                <p data-contract-intro>Confirmez les conditions que le client acceptera en signant.</p>
+            </div>
+
+            <form class="form" method="post" novalidate data-contract-form>
+                <!-- The two terms: one per line on phones, on one line from 640px. -->
+                <div class="mandate-terms__fields">
+                    <div class="field">
+                        <label class="field__label" for="contractDuration">Durée</label>
+                        <select class="input select" id="contractDuration" name="durationMonths"
+                                aria-describedby="contractDuration-hint">
+                            <option value="1">1 mois</option>
+                            <option value="2">2 mois</option>
+                            <option value="3">3 mois</option>
+                            <option value="4">4 mois</option>
+                            <option value="5">5 mois</option>
+                            <option value="6" selected>6 mois</option>
+                            <option value="7">7 mois</option>
+                            <option value="8">8 mois</option>
+                            <option value="9">9 mois</option>
+                            <option value="10">10 mois</option>
+                            <option value="11">11 mois</option>
+                            <option value="12">12 mois</option>
+                        </select>
+                        <p class="field__hint" id="contractDuration-hint">À compter de la signature du contrat.</p>
+                        <p class="field__error" id="contractDuration-error" data-duration-error hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </div>
+
+                    <div class="field">
+                        <label class="field__label" for="visitFee">Frais de visite</label>
+                        <div class="input-unit">
+                            <input class="input" id="visitFee" name="visitFee" type="text" inputmode="numeric"
+                                   autocomplete="off" aria-describedby="visitFee-hint" value="0">
+                            <span aria-hidden="true" class="input-unit__suffix">FCFA</span>
+                        </div>
+                        <p class="field__hint" id="visitFee-hint">0 = aucun frais. Réglés directement à vous, à chaque
+                            visite.</p>
+                        <p class="field__error" id="visitFee-error" data-visit-fee-error hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </div>
+
+                    <!-- v2, PROPOSAL: a sale's commission, in % of the final sale price (SALE mandates only). -->
+                    <div class="field" hidden data-sale-only>
+                        <label class="field__label" for="commissionRate">Commission</label>
+                        <div class="input-unit">
+                            <input class="input" id="commissionRate" name="commissionRate" type="text"
+                                   inputmode="decimal" autocomplete="off" aria-describedby="commissionRate-hint"
+                                   value="5" disabled>
+                            <span aria-hidden="true" class="input-unit__suffix">% du prix</span>
+                        </div>
+                        <p class="field__hint" id="commissionRate-hint">Du prix de vente final, due seulement si la
+                            vente se conclut grâce à vous. Réglée directement à vous.</p>
+                    </div>
+                </div>
+
+                <div class="hint">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <p>
+                        Le contrat est envoyé par e-mail à <strong>ray@gmail.com</strong>, qui le signe
+                        en ligne.
+                        <span>Passé le délai de <span>7</span>&nbsp;jours, renvoyez-le&nbsp;: le client a de
+                            nouveau ce délai pour le signer.</span>
+                        Ndopify ne perçoit aucun paiement.
+                    </p>
+                </div>
+
+                <div class="form__actions form__actions--end">
+                    <button type="submit" class="btn btn--primary" data-contract-submit>Envoyer au client</button>
+                </div>
+            </form>
+        </div>
+    </main>
+</body>
+</html>

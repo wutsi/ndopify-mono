@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Annonce — Ndopify Partner Central</title>
+    <meta name="description" content="L'annonce d'un bien sous mandat : la visite du bien, section par section, puis l'envoi pour vérification.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="assets/images/icon.png">
+    <link rel="apple-touch-icon" href="assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="assets/css/partner-central.css">
+    <link rel="stylesheet" href="assets/css/rejoindre.css">
+    <link rel="stylesheet" href="assets/css/find-property.css">
+    <link rel="stylesheet" href="assets/css/home.css">
+    <link rel="stylesheet" href="assets/css/listing.css">
+    <script src="assets/js/partner-central.js" defer></script>
+</head>
+<!--
+    v2: the listing of a SALE mandate (create it from mandate.html?id=301, a seller's villa) has the checklist row
+    "Prix et conditions" (its sale price, "250M FCFA · prix de vente"), not "Loyer et conditions", and no furniture
+    question in "Le bien"; see listingIsSale in partner-central.js.
+    Listing page: the listing of an approved LISTING mandate, created by mandate.html's "Créer l'annonce" (POST
+    /v1/listings, a DRAFT pre-filled from the landlord's answers). The agent completes it during the visit of the
+    property, as a checklist: each row opens its section (listing/*.html), in any order and over several visits, and
+    a section counts once the agent has saved it on site (the landlord's answers alone don't make it "Vérifié").
+    The photos count once there are 5. "Envoyer pour vérification" stays inactive until every section but the
+    remarks is done, and says what's left. Sent, the listing is read-only while it's checked; then it's published
+    (its date in the tag, a link to its public page under the title), or sent back "À corriger" with
+    the reason and the sections to fix. Published, it also shows its activity (page views, interested clients,
+    visits of the property) and, on its mandate's page, its Propositions: the clients it was sent to and what they
+    answered.
+    PROTOTYPE: ?id= of a listing created from mandate.html?id=203 (or 102 once accepted and signed); any other shows
+    the locked view. The listing is kept in the session (KEYS.listings). "Simuler la publication" / "Simuler un refus"
+    stand for the check, which ndopify-server doesn't have yet.
+    Co-brokerage: ?id=5001 opens another agent's published listing, matched to search 204. It is read-only, hides the
+    other agent's mandate and customer, and shows that agent's card (photo, name, WhatsApp, link to agent.html).
+    Any agent: ?id=5001&back=… opens that same read-only sheet from the page named by back (an agent profile's
+    card), with "← Retour"; ?id=5001 alone keeps the co-brokerage demo, with "← Retour aux biens correspondants"
+    to the search. Own listings keep their mandate's back link.
+-->
+<body data-page="listing">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="index.html">
+                <img src="assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li>
+                        <a class="user-menu__account" href="agent.html">
+                            <span class="user-menu__account-photo" aria-hidden="true" data-user-initials>SN</span>
+                            <span class="user-menu__account-text">
+                                <span class="user-menu__account-name">Serge Ngono</span>
+                                <span class="user-menu__account-email" data-user-email>serge@gmail.com</span>
+                            </span>
+                        </a>
+                    </li>
+                    <li><a class="user-menu__item" href="profile/edit.html">Modifier mon profil</a></li>
+                    <li><a class="user-menu__item" href="login.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column column--wide">
+            <p class="back-link"><a href="index.html#mandates-title" data-mandate-link>← Retour au mandat</a></p>
+
+            <!-- Locked: no such listing, or not one of the agent's mandates. -->
+            <div class="alert alert--warning" hidden data-listing-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title">Cette annonce n'est pas disponible</h1>
+                    <p>Une annonce se crée depuis le mandat approuvé d'un propriétaire (location ou vente), dans votre espace agent.</p>
+                </div>
+            </div>
+
+            <div class="stack" hidden data-listing>
+                <div class="page-intro mandate-intro">
+                    <div class="mandate-intro__head">
+                        <h1 data-listing-title>Annonce</h1>
+                        <p class="status-tag" data-listing-tag></p>
+                    </div>
+                    <p class="mandate__meta" data-listing-meta>Mandat n° <span data-listing-mandate></span> · créée le
+                        <span data-listing-created></span></p>
+                    <!-- Another agent's listing (co-brokerage): its mandate and customer stay hidden. -->
+                    <p class="listing-origin" hidden data-listing-origin>
+                        <span class="status-tag status-tag--info">Bien d'un autre agent</span>
+                        <span>Ce bien est publié par un autre agent. Ses coordonnées sont ci-dessous.</span>
+                    </p>
+                    <p class="listing-public" hidden data-listing-public>
+                        <a href="#" target="_blank" rel="noopener" data-listing-public-url>Voir l'annonce en ligne</a>
+                        <button type="button" class="btn btn--secondary btn--compact listing-share" data-listing-share hidden
+                                data-share-url="" data-share-title="">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 15V4m0 0L8 8m4-4 4 4M5 13v6h14v-6"/></svg>
+                            <span data-share-label>Partager</span>
+                        </button>
+                        <span class="visually-hidden" role="status" data-share-status></span>
+                    </p>
+                    <!-- Published only: its activity — page views, interested clients, visits. -->
+                    <p class="listing-stats" hidden data-listing-stats>
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                        <span><span class="visually-hidden">Activité de l'annonce : </span><span data-listing-stats-text></span></span>
+                    </p>
+                </div>
+
+                <!--
+                    Co-brokerage only: the agent who publishes this listing. The customer's card never appears here,
+                    unlike on the listing's own mandate page. The identity opens that agent's profile.
+                -->
+                <section class="home-section" aria-labelledby="listing-agent-title" hidden data-listing-agent>
+                    <h2 id="listing-agent-title" class="visually-hidden">L'agent qui publie ce bien</h2>
+                    <div class="agent-card agent-card--standalone" data-agent-card hidden>
+                        <span class="agent-card__avatar" aria-hidden="true">
+                            <img data-agent-photo hidden alt="">
+                            <span data-agent-initials></span>
+                            <svg class="icon" data-agent-generic viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" focusable="false" hidden><circle cx="10" cy="6.5" r="3.25"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" stroke-linecap="round"/></svg>
+                        </span>
+                        <a class="agent-card__name" data-agent-link hidden>
+                            <span data-agent-name></span>
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+                        </a>
+                        <span class="agent-card__name" data-agent-fallback hidden>un autre agent</span>
+                        <a class="agent-card__whatsapp" data-agent-whatsapp target="_blank" rel="noopener" hidden>
+                            <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+                            WhatsApp
+                        </a>
+                    </div>
+                </section>
+
+                <!-- Outcome of the last action (section saved, sent, published, sent back). -->
+                <div class="alert alert--success" role="status" tabindex="-1" hidden data-listing-flash>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <p data-listing-flash-text></p>
+                </div>
+
+                <!-- One panel per status but PUBLISHED (its date is in the tag), above the checklist. -->
+                <div class="hint" hidden data-listing-panel="DRAFT">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <p>Sur place, vérifiez chaque section et prenez les photos. Les réponses du propriétaire sont
+                        déjà remplies&nbsp;: corrigez ce qui ne correspond pas.</p>
+                </div>
+
+                <div class="alert alert--warning" hidden data-listing-panel="REJECTED">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <p class="alert__title">Annonce à corriger</p>
+                        <p data-rejection-reason></p>
+                        <p>Corrigez les sections signalées, puis renvoyez-la.</p>
+                    </div>
+                </div>
+
+                <div class="alert alert--info" hidden data-listing-panel="PENDING">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <p class="alert__title">En vérification</p>
+                        <p>Envoyée le <span data-submitted-at></span>. Nous vérifions l'annonce et les photos,
+                            puis rédigeons son titre et sa description à partir de votre visite.</p>
+                        <p class="mandate-panel__prototype">
+                            <button type="button" class="link-button" data-simulate-publish>Simuler la publication (prototype)</button>
+                            ·
+                            <button type="button" class="link-button" data-simulate-rejection>Simuler un refus (prototype)</button>
+                        </p>
+                    </div>
+                </div>
+
+                <section class="home-section" aria-labelledby="checklist-title">
+                    <h2 id="checklist-title">Détails de la propriété</h2>
+                    <p class="checklist__progress" data-checklist-progress></p>
+                    <ol class="checklist" data-checklist></ol>
+                    <!-- One row per section: a link while it's a draft, the values only once sent. -->
+                    <template data-checklist-template>
+                        <li>
+                            <span class="checklist__title" data-section-title></span>
+                            <span class="status-tag" data-section-state></span>
+                            <span class="checklist__summary" data-section-summary></span>
+                        </li>
+                    </template>
+                </section>
+
+                <section class="home-section listing-send" aria-label="Envoi de l'annonce" data-listing-send>
+                    <button type="button" class="btn btn--primary btn--block" aria-describedby="listing-missing"
+                            data-listing-submit>Envoyer pour vérification</button>
+                    <p class="listing-send__missing" id="listing-missing" tabindex="-1" data-listing-missing></p>
+                </section>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

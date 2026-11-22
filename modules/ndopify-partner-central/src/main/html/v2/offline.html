@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hors ligne — Ndopify Partner Central</title>
+    <meta name="description" content="Ndopify Partner Central n'a pas pu joindre le serveur.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="../../resources/public/assets/images/icon.png">
+    <link rel="apple-touch-icon" href="../../resources/public/assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <!--
+      Prototype for public/offline.html, the static page the service worker serves when a navigation fails.
+      It deliberately links the app's PRODUCTION stylesheet (../../resources/public/…) rather than the prototype's
+      copy, so what you see here is exactly the look the real page will have.
+    -->
+    <link rel="stylesheet" href="../../resources/public/assets/css/partner-central.css">
+    <style>
+        /* ---- offline.html only: a quiet, centred empty state on the app's own tokens ---- */
+        .offline {
+            display: grid;
+            justify-items: center;
+            align-content: center;
+            gap: var(--space-3);
+            min-height: calc(100vh - var(--header-height) - var(--space-6));
+            padding-block: var(--space-5);
+            text-align: center;
+        }
+
+        .offline__icon {
+            display: grid;
+            place-items: center;
+            width: 6rem;
+            height: 6rem;
+            margin: 0;
+            border-radius: 50%;
+            background: var(--color-bg-subtle);
+            color: var(--color-accent);
+        }
+
+        .offline__title {
+            margin: 0;
+            font-family: var(--font-heading);
+            font-size: var(--step-h1);
+            line-height: 1.2;
+        }
+
+        .offline__text {
+            margin: 0;
+            max-width: 28rem;
+            color: var(--color-fg);
+        }
+
+        /* Reserves its line so the button doesn't jump when the status appears */
+        .offline__status {
+            margin: 0;
+            min-height: 1.5em;
+            font-size: var(--step-hint);
+            color: var(--color-success-fg);
+        }
+
+        .offline__note {
+            margin: 0;
+            max-width: 28rem;
+            font-size: var(--step-hint);
+            color: var(--color-fg-disabled);
+        }
+    </style>
+</head>
+<!--/*
+  Shown when the app can't reach its server: the service worker serves this page for a failed navigation.
+  No account menu (nobody is known here) and no link that would fail while offline.
+
+  The button is a link to "/" so it still retries without JavaScript; the script turns it into a reload and,
+  once the connection is back, says so and reloads by itself.
+*/-->
+<body data-page="offline">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <span class="site-header__brand">
+                <img src="../../resources/public/assets/images/logo.png" alt="Ndopify" width="84" height="40">
+            </span>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <section class="offline" aria-labelledby="offline-title">
+                <p class="offline__icon" aria-hidden="true">
+                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+                        <path d="M12 20h.01"/>
+                        <path d="M8.5 16.4a5 5 0 0 1 7 0"/>
+                        <path d="M5 12.9a10 10 0 0 1 5.2-2.7"/>
+                        <path d="M19 12.9a10 10 0 0 0-2-1.5"/>
+                        <path d="M2 8.8a15 15 0 0 1 4.2-2.6"/>
+                        <path d="M22 8.8a15 15 0 0 0-11.3-3.8"/>
+                        <path d="m2 2 20 20"/>
+                    </svg>
+                </p>
+                <h1 id="offline-title" class="offline__title" tabindex="-1">Vous êtes hors ligne</h1>
+                <p class="offline__text">
+                    Ndopify a besoin d'une connexion Internet pour afficher votre espace agent.
+                    Vérifiez votre connexion, puis réessayez.
+                </p>
+                <p class="offline__status" role="status" aria-live="polite" data-offline-status></p>
+                <a class="btn btn--primary" href="/" data-retry>Réessayer</a>
+                <p class="offline__note">
+                    Si vous venez d'envoyer un formulaire, vérifiez son résultat une fois reconnecté.
+                </p>
+            </section>
+        </div>
+    </main>
+    <script>
+        (function () {
+            "use strict";
+
+            var status = document.querySelector("[data-offline-status]");
+            var retry = document.querySelector("[data-retry]");
+            var reloaded = false;
+
+            function reload() {
+                if (reloaded) return;
+                reloaded = true;
+                window.location.reload();
+            }
+
+            // Back online: say so, then reload once by itself.
+            window.addEventListener("online", function () {
+                if (!status) return;
+                status.textContent = "Connexion rétablie. Rechargement…";
+                window.setTimeout(reload, 900);
+            });
+
+            // Without JavaScript the link still retries by navigating to the app.
+            if (retry) {
+                retry.addEventListener("click", function (event) {
+                    event.preventDefault();
+                    reload();
+                });
+            }
+        })();
+    </script>
+</body>
+</html>

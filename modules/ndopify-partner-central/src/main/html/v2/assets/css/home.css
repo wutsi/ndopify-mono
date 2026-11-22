@@ -1,0 +1,1309 @@
+/*
+ * Ndopify Partner Central — Espace agent (index.html): profile, assignments and mandates sections; and the
+ * mandate page (mandate.html).
+ * Loaded after partner-central.css; uses its tier-2 semantic tokens only, no new colours.
+ */
+
+/* A dashboard reads wider than a one-column form. */
+.column--wide {
+    max-width: 44rem;
+}
+
+.home-section + .home-section,
+.mandate-progress + .home-section,
+.mandate-contact + .mandate-progress {
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+}
+
+/* Espace agent: the profile and the offers may be hidden (complete profile, no offer), so its separators follow the
+   sections shown, not the markup: none above the first one shown. */
+[data-page="agent-home"] .home-section {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+[data-page="agent-home"] .home-section:not([hidden]) ~ .home-section {
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+}
+
+.home-section > * + * {
+    margin-top: var(--space-3);
+}
+
+/* ---------- Triage header (agent home) ---------- */
+.home-intro {
+    margin-bottom: var(--space-4);
+}
+
+/* The Telegram invitation sits between the queue header and the assignments. */
+.home-intro + .alert {
+    margin-bottom: var(--space-4);
+}
+
+/* The Telegram mark is a filled logo: at the shared 1.25rem it reads smaller than the line icons. */
+[data-telegram-banner] .icon {
+    width: 1.75rem;
+    height: 1.75rem;
+}
+
+.home-intro__title {
+    font-size: var(--step-h1);
+}
+
+.home-intro__date {
+    margin-top: var(--space-1);
+    font-size: var(--step-hint);
+    font-weight: 600;
+}
+
+/* The day's work, one tap from its section: counts first, then the sections. */
+.home-intro__counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: var(--space-3) 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.home-intro__counts a {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1);
+    min-height: var(--target);
+    padding: 0 var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    background: var(--color-bg-subtle);
+    color: inherit;
+    font-size: var(--step-hint);
+    text-decoration: none;
+}
+
+.home-intro__counts a:hover {
+    border-color: var(--color-fg);
+}
+
+.home-intro__counts strong {
+    font-size: var(--step-body);
+}
+
+.home-intro__urgent {
+    color: var(--color-warning-fg);
+    font-weight: 600;
+}
+
+/* The sections are labels, not the page's title: one clear scale below the queue header. */
+[data-page="agent-home"] .home-section > h2 {
+    font-size: var(--step-h3);
+}
+
+/* The deadline is the loudest datum in an actionable card. */
+[data-page="agent-home"] .assignment__timer {
+    font-weight: 600;
+}
+
+[data-page="agent-home"] .assignment[data-urgent] .assignment__timer {
+    font-weight: 700;
+}
+
+/* ---------- Profile ---------- */
+.profile {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-4);
+}
+
+.profile__photo {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 5rem;
+    height: 5rem;
+    overflow: hidden;
+    border-radius: 50%;
+    background: var(--color-bg-subtle);
+}
+
+.profile__photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile__initials {
+    font: 700 var(--step-h4) / 1 var(--font-heading);
+}
+
+.profile__body {
+    min-width: 0;
+}
+
+.profile__body > * + * {
+    margin-top: var(--space-1);
+}
+
+.profile__name {
+    font-weight: 600;
+    font-size: var(--step-h4);
+}
+
+/* The agent's neighbourhoods and city. */
+.profile__area {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-1);
+    font-weight: 600;
+}
+
+/* "Sommaire de sa bio": the first three lines. */
+.profile__bio {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
+}
+
+.profile__bio--missing {
+    font-style: italic;
+}
+
+/* display:-webkit-box would otherwise beat the hidden attribute. */
+.profile__bio[hidden] {
+    display: none;
+}
+
+.profile__todo a {
+    color: inherit;
+    font-weight: 600;
+}
+
+/* ---------- Assignments ---------- */
+.assignments {
+    margin: var(--space-4) 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.assignments > * + * {
+    margin-top: var(--space-4);
+}
+
+/* The list's visible sort: a label before each group, tight to its cards and away from the previous group. */
+.assignments__group {
+    margin-top: var(--space-4);
+}
+
+.assignments > .assignments__group:first-child {
+    margin-top: 0;
+}
+
+.assignments__group + .assignment,
+[data-match-list] > .assignments__group + .assignment {
+    margin-top: var(--space-2);
+}
+
+[data-match-list] > .assignments__group {
+    margin-top: var(--space-4);
+}
+
+[data-match-list] > .assignments__group:first-child {
+    margin-top: 0;
+}
+
+.assignments__group-title {
+    font-size: var(--step-hint);
+    font-weight: 600;
+}
+
+.assignment {
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+.assignment article > * + * {
+    margin-top: var(--space-3);
+}
+
+.assignment__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-3);
+}
+
+.assignment__type {
+    font: 600 var(--step-h4) / 1.3 var(--font-body);
+}
+
+.assignment__timer {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Under 15 minutes left. Text colour only: the warning fill is too light to carry the meaning on its own. */
+.assignment[data-urgent] .assignment__timer,
+.assignment[data-urgent] .assignment__countdown {
+    color: var(--color-warning-fg);
+}
+
+.assignment__facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+    margin: 0;
+}
+
+/* Two facts beside each other on a phone: the first (the sector) keeps its own line. */
+.assignment__facts > div:first-child {
+    grid-column: 1 / -1;
+}
+
+.assignment__facts dt {
+    font-size: var(--step-hint);
+}
+
+.assignment__facts dd {
+    margin: 0;
+    font-weight: 600;
+}
+
+@media (min-width: 640px) {
+    .assignment__facts {
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        column-gap: var(--space-4);
+    }
+
+    .assignment__facts > div:first-child {
+        grid-column: auto;
+    }
+}
+
+.assignment__details summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    cursor: pointer;
+}
+
+.assignment__details-body > * + * {
+    margin-top: var(--space-3);
+}
+
+.assignment__countdown {
+    font-variant-numeric: tabular-nums;
+}
+
+/* The details are a reference table, tighter than a form review. */
+.assignment__details .review__item {
+    padding-block: var(--space-2);
+}
+
+@media (min-width: 640px) {
+    .assignment__details .review__item {
+        grid-template-columns: 12rem minmax(0, 1fr);
+    }
+}
+
+/* Accepter then Refuser, both on the right. */
+.assignment__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-3);
+}
+
+.assignment__actions .btn {
+    flex: 1 1 0;
+}
+
+@media (min-width: 640px) {
+    .assignment__actions .btn {
+        flex: 0 0 auto;
+        min-width: 10rem;
+    }
+}
+
+/* Decline confirmation: a warning box, the buttons right-aligned like the card's. */
+.assignment__confirm > div {
+    flex: 1;
+    min-width: 0;
+}
+
+.alert > div > .assignment__actions {
+    margin-top: var(--space-3);
+}
+
+.assignments__empty {
+    padding: var(--space-4);
+    background: var(--color-surface-alt);
+    text-align: center;
+}
+
+/* Link under the "Mandat accepté" message, to the unlocked mandate. */
+.alert__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    color: inherit;
+    font-weight: 600;
+}
+
+/* ---------- Mandates (index.html › Mes mandats) ---------- */
+
+/* Status of a mandate: the label carries the meaning, the colours only echo it. */
+.status-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem var(--space-3);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-control);
+    background: var(--color-bg);
+    font-size: var(--step-hint);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.status-tag--info {
+    border-color: var(--color-info-border);
+    background: var(--color-info-bg);
+    color: var(--color-info-fg);
+}
+
+.status-tag--warning {
+    border-color: var(--color-warning-border);
+    background: var(--color-warning-bg);
+    color: var(--color-warning-fg);
+}
+
+.status-tag--success {
+    border-color: var(--color-success-border);
+    background: var(--color-success-bg);
+    color: var(--color-success-fg);
+}
+
+/* The whole card opens the mandate: the title's link covers it. */
+.mandate-card {
+    position: relative;
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    transition: border-color var(--duration) var(--ease-out);
+}
+
+.mandate-card:hover {
+    border-color: var(--color-fg);
+}
+
+.mandate-card:has(.mandate-card__link:focus-visible) {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+.mandate-card article > * + * {
+    margin-top: var(--space-3);
+}
+
+.mandate-card__link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.mandate-card__link:focus-visible {
+    outline: none;
+}
+
+.mandate-card__link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+}
+
+.mandate-card:hover .mandate-card__link {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+/* The mandates past the fifth, folded: the home page stays a triage page. */
+.mandate-more {
+    margin-top: var(--space-4);
+}
+
+.mandate-more > summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    cursor: pointer;
+}
+
+.mandate-more > .assignments {
+    margin-top: var(--space-4);
+}
+
+/* A landlord's signed mandate: its listing's number and status (the card, and mandate.html's Actif panel). */
+.mandate-card__listing,
+.mandate-listing__status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+/* Above the title's link, which covers the card: the number opens the listing itself. "Annonce" and its tag, no
+   number: one line on a phone (a "Publiée le …" tag may wrap on the narrowest ones). */
+.mandate-card__listing {
+    position: relative;
+    z-index: 1;
+    column-gap: var(--space-1);
+}
+
+/* A published listing: its activity — page views, interested clients, visits (the card, mandate.html's Actif panel
+   and listing.html). The three don't fit one line on a phone: it wraps, the icon staying with the first line. */
+.listing-stats {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-1) var(--space-2);
+    font-size: var(--step-hint);
+}
+
+.listing-stats .icon {
+    flex: none;
+}
+
+/* A signed search: its pool, the client's interest and its visits — one line, even on a phone. */
+.search-stats {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+    font-size: var(--step-hint);
+    white-space: nowrap;
+}
+
+.search-stats .icon {
+    flex: none;
+}
+
+.search-stats > a > span,
+.search-stats > span:not(.visually-hidden) {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.search-stats > a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    color: inherit;
+}
+
+.mandate-card__search-stats {
+    position: relative;
+    z-index: 1;
+}
+
+@media (max-width: 360px) {
+    .search-stats {
+        font-size: 0.8125rem;
+    }
+}
+
+.mandate-card__listing a,
+.mandate-listing__status a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    font-weight: 600;
+}
+
+.mandate-card__listing .icon {
+    flex: none;
+}
+
+/* On its own mandate's page, before the listing exists: not a link */
+.mandate-listing__status a:not([href]) {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* Not created yet: no colour, nothing is under way. */
+.mandate-card__listing .status-tag--neutral,
+.mandate-listing__status .status-tag--neutral {
+    color: var(--color-fg);
+}
+
+/* ---------- Mandate (mandate.html) ---------- */
+.back-link {
+    margin-bottom: var(--space-3);
+}
+
+.back-link a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    font-weight: 600;
+}
+
+.mandate__meta {
+    font-size: var(--step-hint);
+}
+
+[data-mandate-flash] {
+    margin-bottom: var(--space-4);
+}
+
+/* Focused by script so it's read out after an action: not a control, so no focus ring. */
+[data-mandate-flash]:focus {
+    outline: none;
+}
+
+
+/* rejoindre.css (loaded for the close form's choices) lays the review out for its edit links: undone here. */
+[data-mandate] .review__item {
+    grid-template-columns: minmax(0, 1fr);
+    padding-block: var(--space-2);
+}
+
+[data-mandate] .review__term {
+    grid-column: auto;
+}
+
+@media (min-width: 640px) {
+    [data-mandate] .review__item {
+        grid-template-columns: 14rem minmax(0, 1fr);
+    }
+}
+
+/* Comments keep the line breaks the client typed. */
+.review__multiline {
+    white-space: pre-line;
+}
+
+/* The locked view's page title sits in a warning box: sized like an alert title, not a page heading. */
+h1.alert__title {
+    font: 600 var(--step-h4) / 1.3 var(--font-body);
+}
+
+/* Title and status tag on one line; the title a size down on phones, where it would wrap. */
+.mandate-intro {
+    margin-bottom: var(--space-4);
+}
+
+.mandate-intro__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+}
+
+.mandate-intro h1 {
+    font-size: var(--step-h2);
+}
+
+@media (min-width: 640px) {
+    .mandate-intro h1 {
+        font-size: var(--step-h1);
+    }
+}
+
+.mandate-progress > * + * {
+    margin-top: var(--space-3);
+}
+
+/*
+ * The status wizard. Phones: the four marks joined by a line (done in green), the steps' text kept for screen
+ * readers only, and the current step spelled out under them (.mandate-steps__summary). From 640px: four columns.
+ */
+.mandate-steps {
+    display: flex;
+}
+
+.mandate-steps li {
+    flex: 1;
+    gap: var(--space-1);
+    min-height: 0;
+}
+
+.mandate-steps li:last-child {
+    flex: none;
+}
+
+.mandate-steps li:not(:last-child)::after {
+    content: "";
+    flex: 1;
+    height: 2px;
+    margin-right: var(--space-1);
+    background: var(--color-border-strong);
+}
+
+/* Green up to the current step only: a step skipped by a cancellation stays gray, and so does the line to it. */
+.mandate-steps li[data-state="done"]:has(+ li:not([data-state="todo"]))::after {
+    background: var(--color-success-fg);
+}
+
+.mandate-steps__text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.mandate-steps__summary {
+    font-weight: 600;
+}
+
+.mandate-steps__label,
+.mandate-steps__date {
+    display: block;
+}
+
+.mandate-steps__date {
+    font-size: var(--step-hint);
+    font-weight: 400;
+}
+
+@media (min-width: 640px) {
+    .mandate-steps {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: var(--space-3);
+    }
+
+    .mandate-steps li {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-2);
+    }
+
+    .mandate-steps li::after {
+        display: none;
+    }
+
+    .mandate-steps__text {
+        position: static;
+        width: auto;
+        height: auto;
+        margin: 0;
+        overflow: visible;
+        clip: auto;
+        white-space: normal;
+    }
+
+    .mandate-steps__summary {
+        display: none;
+    }
+}
+
+.mandate-panel {
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface-alt);
+}
+
+.mandate-panel > * + * {
+    margin-top: var(--space-3);
+}
+
+/* The one urgent visit, at the top of the panel: a link down to its card. */
+.mandate-pending {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-warning-border);
+    background: var(--color-warning-bg);
+    color: var(--color-warning-fg);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.mandate-pending:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+.mandate-pending .icon {
+    flex: none;
+}
+
+.mandate-pending__arrow {
+    margin-left: auto;
+}
+
+.mandate-panel__title {
+    font: 600 var(--step-h4) / 1.3 var(--font-body);
+}
+
+/* Phones: one full-width button per row, the step's main action first. From 640px: a row, left-aligned. */
+.mandate-panel__actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+@media (min-width: 640px) {
+    .mandate-panel__actions {
+        flex-direction: row;
+    }
+
+    .mandate-panel__actions .btn {
+        min-width: 10rem;
+    }
+}
+
+.mandate-panel__prototype {
+    font-size: var(--step-hint);
+}
+
+/* The contract's terms: one field per line at every width (duration, visit fee, then a sale's commission), so the
+   page reads the same on a phone as on a desktop. */
+.mandate-terms__fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+}
+
+/* The label already says "Frais de visite": the suffix is the currency alone, leaving the amount its room. */
+.mandate-terms__fields .input-unit .input {
+    padding-right: 4.5rem;
+}
+
+/* The end section follows Sa recherche without the sections' separator: its box and a gap set it apart. */
+.home-section + .mandate-close {
+    margin-top: var(--space-4);
+    padding-top: 0;
+    border-top: 0;
+}
+
+/* Fermer / Annuler: grouped in a light blue box (the info tokens of .hint), centred (full width on phones). */
+.mandate-close__buttons {
+    justify-content: center;
+    padding: var(--space-4);
+    border: 1px solid var(--color-info-border);
+    background: var(--color-info-bg);
+}
+
+.mandate-close__form {
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+/* ---------- Fermer le mandat: the wizard (client, rent, confirmation) ---------- */
+
+/* "1 Client › 2 Loyer › 3 Confirmation": the step reached, the ones done checked. */
+.close-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-4);
+    padding: 0;
+    list-style: none;
+    font-size: var(--step-hint);
+    color: var(--color-fg-disabled);
+}
+
+.close-steps__item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.close-steps__item + .close-steps__item::before {
+    content: "›";
+}
+
+.close-steps__mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.close-steps__item[aria-current="step"] {
+    color: var(--color-fg);
+    font-weight: 600;
+}
+
+.close-steps__item[aria-current="step"] .close-steps__mark {
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+}
+
+.close-steps__item[data-done="true"] .close-steps__mark {
+    border-color: var(--color-success-fg);
+    background: var(--color-success-fg);
+    color: var(--color-bg);
+}
+
+.close-hint {
+    margin: 0 0 var(--space-3);
+    font-size: var(--step-hint);
+    color: var(--color-fg-disabled);
+}
+
+/* A client's answer, under its name: "Intéressé le 29 oct. · visite le 5 nov." */
+.close-client__meta {
+    display: block;
+    font-weight: 400;
+    font-size: var(--step-hint);
+    color: var(--color-fg-disabled);
+}
+
+.close-client-none {
+    margin-top: var(--space-2);
+}
+
+.close-recap {
+    margin-bottom: var(--space-3);
+}
+
+.close-recap .review__value {
+    font-weight: 600;
+}
+
+/* Edited while waiting for the client's signature: the client has the old version. */
+.mandate-panel__edited {
+    color: var(--color-warning-fg);
+    font-weight: 600;
+}
+
+/* ---------- Edit a mandate (mandate/edit.html) ---------- */
+
+/* Five folded groups: a quick fix stays short on a phone. Each summary shows the group's current value. */
+.mandate-edit > .edit-group + .edit-group {
+    margin-top: 0;
+    border-top: 0;
+}
+
+.edit-group {
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+.edit-group summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: var(--space-3);
+    min-height: var(--target);
+    padding: var(--space-3) var(--space-4);
+    list-style: none;
+    cursor: pointer;
+}
+
+.edit-group summary::-webkit-details-marker {
+    display: none;
+}
+
+/* Chevron: down when folded, up when open. */
+.edit-group summary::after {
+    content: "";
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    width: 0.6rem;
+    height: 0.6rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    transition: transform var(--duration) var(--ease-out);
+}
+
+.edit-group[open] summary::after {
+    transform: rotate(-135deg);
+}
+
+.edit-group summary:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: -2px;
+}
+
+.edit-group__title {
+    font-weight: 600;
+}
+
+.edit-group__value {
+    grid-column: 1;
+    overflow: hidden;
+    font-size: var(--step-hint);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Open, the value is in the fields below: the summary keeps only the title. */
+.edit-group[open] .edit-group__value {
+    display: none;
+}
+
+.edit-group__body {
+    padding: 0 var(--space-4) var(--space-4);
+}
+
+.edit-group__body > * + * {
+    margin-top: var(--space-4);
+}
+
+/* The city: shown, not editable. */
+.edit-readonly {
+    font-weight: 600;
+}
+
+/* "Renvoyez-le" hint, above the groups. */
+[data-edit-resend] {
+    margin-bottom: var(--space-4);
+}
+
+/* ---------- Mandate (mandate.html): contact and search ---------- */
+
+/* The client's contact, unboxed: the role and the name with the best time to call, then the number and the e-mail. */
+.contact-card > * + * {
+    margin-top: var(--space-2);
+}
+
+/* Role, name and call window wrap as units: the period never breaks after "appeler". */
+.contact-card__headline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 var(--space-2);
+}
+
+.contact-card__headline strong {
+    font-weight: 600;
+}
+
+/* "Client" / "Bailleur", before the name: a small, quiet word. */
+.contact-card__role {
+    font-size: var(--step-hint);
+    color: var(--color-info-fg);
+}
+
+.contact-card__period {
+    font-size: var(--step-hint);
+    white-space: nowrap;
+}
+
+/* "Modifier", apart from the contact lines: the card's only action. */
+.contact-card__actions {
+    margin-top: var(--space-3);
+}
+
+.contact-card__line {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    overflow-wrap: break-word;
+}
+
+/* "Voir tous les critères": folded under the key facts. */
+.mandate-more > .review {
+    margin-top: var(--space-2);
+}
+
+/* The number, then its WhatsApp button beside it (on its own line only if the screen is too narrow). */
+.contact-card__phone {
+    flex-wrap: wrap;
+    column-gap: var(--space-3);
+    row-gap: var(--space-1);
+}
+
+/* The number is the agent's main mobile action: the same 44px, 600 link as visit.html's contact. */
+.contact-card__phone a:not(.btn) {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    color: inherit;
+    font-weight: 600;
+}
+
+/* A real box around the address, without turning the link into a flex item that overflows on long addresses. */
+.contact-card__email a {
+    display: inline-block;
+    padding-block: var(--space-3);
+}
+
+/* A smaller button for a row of text: same 44px tap target, less padding and a smaller font. */
+.btn--compact {
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--step-hint);
+    box-shadow: none;
+}
+
+/* ---------- Matches (index.html › Mes mandats, mandate.html › Biens correspondants) ---------- */
+
+.matches__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+/* A match: tighter than an offer, so that a phone shows three or four of them at once. */
+.match {
+    padding: var(--space-2) var(--space-3);
+}
+
+.match article > * + * {
+    margin-top: var(--space-1);
+}
+
+/* The matches read as one list, not as separate cards: a short gap between them. */
+[data-match-list] > * + * {
+    margin-top: var(--space-2);
+}
+
+/* The tag stays on the title's first line; the title uses the room left, wrapping on the narrowest phones. */
+.match .assignment__head {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.match__title {
+    min-width: 0;
+    font: 600 var(--step-body) / 1.3 var(--font-body);
+}
+
+/* The card title is the one link on the row: a 44px hit area without changing its line rhythm. */
+.match__title a,
+.proposal-card .assignment__type a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    margin-block: calc((1.3em - var(--target)) / 2);
+    color: inherit;
+    text-underline-offset: 0.2em;
+}
+
+/* The fit stays one tap away, on a compact line: the card carries the facts and the actions. */
+.match .assignment__details summary {
+    min-height: var(--target);
+    font-size: var(--step-hint);
+}
+
+/* Score · neighbourhood · rent · availability, on one line where it fits; the terms are visually hidden. */
+.match__facts {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0;
+    font-size: var(--step-hint);
+}
+
+.match__facts dd {
+    display: inline;
+    margin: 0;
+}
+
+/* After each fact, so that a wrapped line never starts with the dot. */
+.match__facts > div:not(:last-child)::after {
+    content: "\00a0·";
+    margin-inline-end: 0.3em;
+}
+
+.match__facts > div:first-child dd {
+    font-weight: 600;
+    color: var(--color-success-fg);
+}
+
+/* The rent: what the agent looks at first. */
+.match__facts .match__rent {
+    font-weight: 600;
+}
+
+.match__fit {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.match__fit-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding-block: var(--space-1);
+}
+
+.match__fit-item .icon {
+    flex: none;
+    margin-top: 0.15em;
+}
+
+.match__fit-item--full .icon {
+    color: var(--color-success-fg);
+}
+
+/* Envoyer, Retenir, Écarter on one row, even on a phone: short labels, tighter padding. */
+.match .match__actions {
+    margin-top: var(--space-2);
+}
+
+.match__actions .btn {
+    padding-inline: var(--space-3);
+}
+
+@media (min-width: 640px) {
+    .match__actions .btn {
+        min-width: 8rem;
+    }
+}
+
+.matches__dismissed,
+.match__outcomes {
+    font-size: var(--step-hint);
+}
+
+/* The sent line: the date, then the client's link again when it can be resent. Both share one text line, so the
+   action costs the card no height. */
+.match__status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: var(--space-2);
+    font-size: var(--step-hint);
+}
+
+.match__answer {
+    font-size: inherit;
+}
+
+.match__resend {
+    display: inline-flex;
+    align-items: baseline;
+}
+
+/* ---------- Visits: inline confirmation and folded list ---------- */
+
+/* Above the card's title link, which covers the whole card. */
+.visit-card__actions {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.visit-card__confirm,
+.visit-card__change-form {
+    margin: 0;
+}
+
+/* A small breath between the day/time selects and the form's CTA. */
+.visit-card__change-form > * + * {
+    margin-top: var(--space-2);
+}
+
+.visit-card__confirm .btn,
+.visit-card__change-form .btn {
+    width: 100%;
+}
+
+.visit-card__confirm-hint {
+    margin-top: var(--space-1);
+    font-size: var(--step-hint);
+}
+
+.visit-card__change summary,
+.visit-more > summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    cursor: pointer;
+}
+
+.visit-card__change[open] summary {
+    margin-bottom: var(--space-2);
+}
+
+.visit-card__change .visit-slot {
+    margin-top: var(--space-2);
+}
+
+.visit-more {
+    margin-top: var(--space-4);
+}
+
+.visit-more > summary {
+    color: inherit;
+}
+
+.visit-more > .visit-group {
+    margin-top: var(--space-4);
+}
+
+[data-page="agent-home"] .visit-group__title {
+    font-size: var(--step-h4);
+    font-weight: 600;
+}
+
+[data-visit-outcome] {
+    margin-bottom: var(--space-3);
+}
+
+/* The standard agent footer keeps its own spacing at the bottom of a match or proposal card. */
+.assignment .agent-card {
+    margin-top: var(--space-3);
+}
+
+/* v2 — "Vente" / "Location" after a mandate's title (offers, Mes mandats, mandate page): a small pill, quieter than
+   the status tag. A sale is in the info blue, a rental neutral. */
+.deal-tag {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    flex: none;
+    padding: 0 var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    background: var(--color-surface-alt);
+    color: var(--color-fg);
+    font-family: var(--font-body, inherit);
+    font-size: var(--step-hint);
+    font-weight: 600;
+    line-height: 1.6;
+    white-space: nowrap;
+}
+.deal-tag--sale {
+    border-color: var(--color-info-border);
+    background: var(--color-info-bg);
+    color: var(--color-info-fg);
+}
+/* In a row title (offers, the mandate page's h1), it sits on the text's line. */
+.mandate-title > .deal-tag {
+    align-self: center;
+}
+.mandate-title__text > .deal-tag {
+    margin-top: var(--space-1, 0.25rem);
+}
+h1.mandate-title > .deal-tag {
+    font-size: var(--step-hint);
+}

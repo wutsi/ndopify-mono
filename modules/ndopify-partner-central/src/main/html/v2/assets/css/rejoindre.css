@@ -1,0 +1,366 @@
+/*
+ * Ndopify Partner Central — "Rejoindre Ndopify" wizard (rejoindre.html).
+ * Loaded after partner-central.css; uses its tier-2 semantic tokens only, no new colours.
+ */
+
+/* Radio / checkbox choices rendered as full-width, thumb-sized rows. */
+.choices {
+    /* Only inline/bottom: the top margin comes from the .step rhythm in partner-central.css. */
+    margin-inline: 0;
+    margin-bottom: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+}
+
+.choices > * + * {
+    margin-top: var(--space-2);
+}
+
+.choices__legend {
+    padding: 0;
+    margin-bottom: var(--space-2);
+    font-weight: 600;
+}
+
+.choices__grid {
+    display: grid;
+    gap: var(--space-2);
+}
+
+@media (min-width: 480px) {
+    .choices__grid--2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.choice {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: var(--target);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-control);
+    background: var(--color-bg);
+    cursor: pointer;
+    transition: border-color var(--duration) var(--ease-out), background-color var(--duration) var(--ease-out);
+}
+
+.choice:hover {
+    border-color: var(--color-fg);
+}
+
+.choice:has(input:checked) {
+    border-color: var(--color-accent);
+    background: var(--color-bg-subtle);
+    font-weight: 600;
+}
+
+.choice:has(input:focus-visible) {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+.choice:has(input:disabled) {
+    color: var(--color-fg-disabled);
+    cursor: not-allowed;
+}
+
+.choice:has(input:disabled):hover {
+    border-color: var(--color-border-strong);
+}
+
+.choice input {
+    flex: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    accent-color: var(--color-accent);
+}
+
+.choices[aria-invalid="true"] .choice {
+    border-color: var(--color-error-fg);
+}
+
+/*
+ * Phone number: intl-tel-input (DESIGN.md › Form fields). The library wraps the .input in .iti and puts the
+ * country button inside its left edge; these rules only make it full width and pill-shaped like other fields.
+ */
+.iti {
+    --iti-border-color: var(--color-border);
+    --iti-dialcode-color: var(--color-fg);
+    --iti-arrow-color: var(--color-fg);
+    --iti-hover-color: var(--color-bg-subtle);
+    --iti-dropdown-bg: var(--color-surface);
+}
+
+/* The field wrapper only — the fullscreen country popup reuses the .iti class. */
+.iti:not(.iti--container) {
+    display: block;
+    width: 100%;
+}
+
+.iti .input {
+    font-variant-numeric: tabular-nums;
+}
+
+/* The country button sits inside the pill: round its hover background so it doesn't poke out. */
+.iti__selected-country,
+.iti__selected-country-primary {
+    border-radius: var(--radius-control) 0 0 var(--radius-control);
+}
+
+.iti__selected-country-primary {
+    padding-left: var(--space-4);
+}
+
+.iti__selected-dial-code {
+    font-weight: 600;
+}
+
+.iti__search-input {
+    min-height: var(--target);
+    font: inherit;
+}
+
+.iti__country {
+    min-height: var(--target);
+}
+
+/* "Même numéro que WhatsApp" shortcut. */
+.check {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: var(--target);
+    cursor: pointer;
+}
+
+.check input {
+    flex: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    accent-color: var(--color-accent);
+}
+
+/* Select keeps the pill shape of .input. */
+.select {
+    appearance: none;
+    padding-right: calc(var(--space-4) * 2);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='m5 7.5 5 5 5-5' fill='none' stroke='%23040404' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--space-4) center;
+    background-size: 1.25rem;
+    cursor: pointer;
+}
+
+/*
+ * City and neighbourhoods: slim-select (rejoindre.js › slimSelect). The library replaces the <select> with its
+ * own combobox (.ss-main) and dropdown (.ss-content); these rules give them the look of .input / .select.
+ */
+.ss-main,
+.ss-content {
+    --ss-primary-color: var(--color-accent);
+    --ss-bg-color: var(--color-bg);
+    --ss-font-color: var(--color-fg);
+    --ss-placeholder-color: var(--color-fg-disabled);
+    --ss-disabled-color: var(--color-surface-alt);
+    --ss-border-color: var(--color-border-strong);
+    --ss-highlight-color: var(--color-info-bg);
+    --ss-focus-color: var(--color-focus);
+    --ss-error-color: var(--color-error-fg);
+    --ss-main-height: var(--target);
+    --ss-content-height: 18rem;
+    --ss-spacing-s: var(--space-1);
+    --ss-spacing-m: var(--space-2);
+    --ss-spacing-l: var(--space-3);
+    --ss-border-radius: var(--radius-control);
+    font: 400 var(--step-body) / 1.25 var(--font-body);
+}
+
+/* slim-select copies the <select>'s "input select" classes onto .ss-main, so the pill and chevron come from
+ * .input / .select; only the layout needs adjusting for the chips. */
+.ss-main.input {
+    display: flex;
+    padding-block: var(--space-1);
+}
+
+.ss-main .ss-arrow {
+    display: none;
+}
+
+/* Focus and open state get the accent edge of .input:focus-visible (plus the global ring), not the library's glow;
+ * the pill keeps its shape while open (the library squares the corner next to the dropdown). */
+.ss-main:focus,
+.ss-main.ss-dir-above,
+.ss-main.ss-dir-below {
+    border-color: var(--color-focus);
+    border-radius: var(--radius-control);
+    box-shadow: none;
+}
+
+/* …but an error still wins, as on the other fields. */
+.ss-main[aria-invalid="true"] {
+    border-color: var(--color-error-fg);
+}
+
+.ss-main.ss-disabled {
+    cursor: progress;
+}
+
+.ss-main .ss-values .ss-placeholder {
+    padding: 0;
+}
+
+.ss-main .ss-values .ss-single {
+    margin: 0;
+    padding: 0;
+}
+
+/* Selected neighbourhoods: chips in the selected-choice style (.choice:has(input:checked)). */
+.ss-main .ss-values .ss-value {
+    margin: var(--space-1);
+    border: 1px solid var(--color-accent);
+    border-radius: var(--radius-control);
+    background: var(--color-bg-subtle);
+    color: var(--color-fg);
+    font-weight: 600;
+}
+
+.ss-main .ss-values .ss-value .ss-value-text {
+    color: var(--color-fg);
+    padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+    font-size: var(--step-hint);
+}
+
+.ss-main .ss-values .ss-value .ss-value-delete {
+    padding: var(--space-2) var(--space-3) var(--space-2) var(--space-1);
+    border-left: 0;
+}
+
+.ss-main .ss-values .ss-value .ss-value-delete svg path {
+    stroke: var(--color-fg);
+}
+
+/* Dropdown: a rounded panel under the pill, rows at tap-target height. It gets the copied classes too, so
+ * .input / .select are undone here. */
+.ss-content,
+.ss-content.input {
+    display: flex;
+    min-height: 0;
+    padding: 0;
+    background-image: none;
+    margin-top: var(--space-1);
+    border: 1px solid var(--color-border-strong);
+    border-radius: calc(var(--radius-control) / 2);
+    box-shadow: 0 4px 12px rgba(4, 4, 4, 0.08);
+    overflow: hidden;
+}
+
+.ss-content .ss-search {
+    padding: var(--space-2);
+    border-bottom-color: var(--color-border);
+}
+
+.ss-content .ss-search input {
+    min-height: var(--target);
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-control);
+    font: inherit;
+}
+
+.ss-content .ss-search input:focus {
+    border-color: var(--color-focus);
+    box-shadow: none;
+}
+
+.ss-content .ss-list .ss-option {
+    min-height: var(--target);
+    display: flex;
+    align-items: center;
+    padding: var(--space-2) var(--space-4);
+}
+
+.ss-content .ss-list .ss-option:hover,
+.ss-content .ss-list .ss-option.ss-highlighted {
+    background: var(--color-bg-subtle);
+    color: var(--color-fg);
+}
+
+.ss-content .ss-list .ss-option.ss-selected,
+.ss-content .ss-list .ss-option:not(.ss-disabled).ss-selected {
+    background: var(--color-bg-subtle);
+    color: var(--color-fg);
+    font-weight: 600;
+}
+
+.ss-content .ss-list .ss-option.ss-disabled {
+    color: var(--color-fg-disabled);
+    background: transparent;
+}
+
+/* Review: "Modifier" sits on the value's line, at the right, to keep the list short. */
+.review__item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--space-3);
+    align-items: center;
+}
+
+.review__term {
+    grid-column: 1 / -1;
+}
+
+.review__value:has(.review__edit) {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+.review__value {
+    overflow-wrap: anywhere;
+}
+
+/* Keeps its 44px tap target, but lets it overlap the row padding instead of making the row taller. */
+.review__edit {
+    margin-block: calc((1.25em - var(--target)) / 2);
+}
+
+/* Next steps on the confirmation page. */
+.next-steps {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: next-step;
+    text-align: left;
+}
+
+.next-steps li {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    counter-increment: next-step;
+}
+
+.next-steps li + li {
+    margin-top: var(--space-4);
+}
+
+.next-steps li::before {
+    content: counter(next-step);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 2px solid var(--color-accent);
+    border-radius: var(--radius-control);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.next-steps__title {
+    font-weight: 600;
+}

@@ -1,0 +1,5519 @@
+/*
+ * Ndopify Partner Central — shared behaviour (static prototype).
+ * Each page sets <body data-page="..."> and gets its own initialiser below.
+ * Server calls are simulated; every simulation is marked "PROTOTYPE".
+ */
+(function () {
+    "use strict";
+
+    var OTP_TTL_MS = 5 * 60 * 1000;
+    var OTP_MAX_ATTEMPTS = 5;
+    var OTP_LOCK_MS = 60 * 60 * 1000;
+    var MAX_FILE_BYTES = 5 * 1024 * 1024;
+    var ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+    var EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+    // PROTOTYPE: accounts the simulated API "knows". Any other address takes the "Rejoindre" branch.
+    var KNOWN_EMAILS = ["agent@ndopify.com", "serge@ndopify.com"];
+    // PROTOTYPE: this code simulates a wrong code; any other 6-digit code is accepted.
+    var WRONG_CODE = "000000";
+
+    var KEYS = {
+        email: "npc.email",
+        otpExpiry: "npc.otpExpiry",
+        otpAttempts: "npc.otpAttempts",
+        // While the account is locked, the instant (ms) the lock ends (see initLoginCode).
+        otpLockedUntil: "npc.otpLockedUntil",
+        front: "npc.kyc.front",
+        back: "npc.kyc.back",
+        // Status of the submitted dossier: attente, verifie or rejete.
+        selfie: "npc.kyc.selfie",
+        submitted: "npc.kyc.submitted",
+        // Set while a rejected dossier's documents are being sent again.
+        resubmit: "npc.kyc.resubmit",
+        // The agent's profile, as saved by profile/edit.html and profile/photo.html (see profile.js).
+        profile: "npc.profile",
+        // Ids of the mandates the agent accepted: their details (mandate.html) are unlocked.
+        accepted: "npc.mandates.accepted",
+        // Status and dates of each of the agent's mandates, as changed on mandate.html (see stateOf).
+        mandates: "npc.mandates.state",
+        // The listings of the agent's approved LISTING mandates, by id (see createListing).
+        listings: "npc.listings",
+        // The agent's decisions on the matches of its search mandates, by mandate then match (see matchStatesOf).
+        matches: "npc.matches",
+        // The visits' changes made on visit.html, by id (see visit.js)
+        visits: "npc.visits",
+        // The draft of each mandate being closed on mandate/close.html, by mandate id (see initMandateClose).
+        close: "npc.mandate.close"
+    };
+
+    /* ---------- Storage (fails soft: private mode, quota) ---------- */
+    var store = {
+        get: function (key) {
+            try {
+                return window.sessionStorage.getItem(key);
+            } catch (e) {
+                return null;
+            }
+        },
+        set: function (key, value) {
+            try {
+                window.sessionStorage.setItem(key, value);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        },
+        remove: function (key) {
+            try {
+                window.sessionStorage.removeItem(key);
+            } catch (e) {
+                /* ignore */
+            }
+        }
+    };
+
+    /* ---------- Helpers ---------- */
+    function $(selector, root) {
+        return (root || document).querySelector(selector);
+    }
+
+    function $all(selector, root) {
+        return Array.prototype.slice.call((root || document).querySelectorAll(selector));
+    }
+
+    function announce(region, message) {
+        if (!region) return;
+        region.textContent = "";
+        window.setTimeout(function () {
+            region.textContent = message;
+        }, 50);
+    }
+
+    function setFieldError(input, errorEl, message) {
+        if (message) {
+            errorEl.querySelector("[data-error-text]").textContent = message;
+            errorEl.hidden = false;
+            input.setAttribute("aria-invalid", "true");
+        } else {
+            errorEl.hidden = true;
+            input.removeAttribute("aria-invalid");
+        }
+    }
+
+    // Source doc: submit buttons stay inactive until the form is valid. aria-disabled (not the disabled
+    // attribute) keeps them in the tab order so their aria-describedby explanation can still be reached.
+    function setActive(button, active) {
+        if (active) button.removeAttribute("aria-disabled");
+        else button.setAttribute("aria-disabled", "true");
+    }
+
+    function isActive(button) {
+        return button.getAttribute("aria-disabled") !== "true";
+    }
+
+    // Images are created only once there is a photo, so the markup never carries an empty <img>.
+    function placeImage(container, src, className) {
+        var img = $("img", container);
+        if (!img) {
+            img = document.createElement("img");
+            img.width = 856;
+            img.height = 540;
+            img.alt = container.getAttribute("data-alt") || "";
+            if (className) img.className = className;
+            container.appendChild(img);
+        }
+        img.src = src;
+        return img;
+    }
+
+    function maskEmail(email) {
+        var parts = email.split("@");
+        if (parts.length !== 2) return email;
+        var name = parts[0];
+        var visible = name.length <= 2 ? name.charAt(0) : name.slice(0, 2);
+        return visible + "•••@" + parts[1];
+    }
+
+    function formatTime(ms) {
+        var d = new Date(ms);
+        var h = d.getHours();
+        var m = String(d.getMinutes()).padStart(2, "0");
+        return h + " h " + m;
+    }
+
+    // PROTOTYPE: the account lock, told the way the served page tells it from the error's data.
+    function otpLockedUntil() {
+        return Number(store.get(KEYS.otpLockedUntil)) || 0;
+    }
+
+    function isOtpLocked() {
+        return Date.now() < otpLockedUntil();
+    }
+
+    function otpLockMessage() {
+        var minutes = Math.max(1, Math.ceil((otpLockedUntil() - Date.now()) / 60000));
+        return "Trop de tentatives. Réessayez dans " + minutes + (minutes > 1 ? " minutes." : " minute.");
+    }
+
+    function otpRemainingMessage(left) {
+        return "Code incorrect. Encore " + left + (left > 1 ? " tentatives" : " tentative") + " avant le blocage de votre compte.";
+    }
+
+    function initialsFromEmail(email) {
+        if (!email) return "NP";
+        var name = email.split("@")[0].replace(/[^a-zA-Z.\-_]/g, "");
+        var parts = name.split(/[.\-_]+/).filter(Boolean);
+        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+        return (name.slice(0, 2) || "NP").toUpperCase();
+    }
+
+    /* ---------- Header user menu ---------- */
+    function initUserMenu() {
+        var toggle = $("[data-user-menu-toggle]");
+        var list = $("[data-user-menu-list]");
+        if (!toggle || !list) return;
+
+        var email = store.get(KEYS.email);
+        var initials = initialsFromEmail(email);
+        $all("[data-user-initials]").forEach(function (el) {
+            el.textContent = initials;
+        });
+        $all("[data-user-email]").forEach(function (el) {
+            if (email) {
+                el.textContent = email;
+            } else {
+                el.hidden = true;
+            }
+        });
+
+        function close(returnFocus) {
+            list.hidden = true;
+            toggle.setAttribute("aria-expanded", "false");
+            if (returnFocus) toggle.focus();
+        }
+
+        toggle.addEventListener("click", function () {
+            var open = toggle.getAttribute("aria-expanded") === "true";
+            if (open) {
+                close(false);
+            } else {
+                list.hidden = false;
+                toggle.setAttribute("aria-expanded", "true");
+            }
+        });
+
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape" && toggle.getAttribute("aria-expanded") === "true") close(true);
+        });
+
+        document.addEventListener("click", function (event) {
+            if (!list.hidden && !list.contains(event.target) && !toggle.contains(event.target)) close(false);
+        });
+
+        list.addEventListener("focusout", function (event) {
+            if (event.relatedTarget && !list.contains(event.relatedTarget) && event.relatedTarget !== toggle) {
+                close(false);
+            }
+        });
+
+        $all("[data-logout]").forEach(function (link) {
+            link.addEventListener("click", function () {
+                Object.keys(KEYS).forEach(function (k) {
+                    store.remove(KEYS[k]);
+                });
+            });
+        });
+    }
+
+    /* ---------- login.html — step 1: e-mail ---------- */
+    function initLoginEmail(root, onCodeSent) {
+        var form = $("[data-login-form]", root);
+        var input = $("#email", root);
+        var error = $("#email-error", root);
+        var submit = $("[data-submit]", root);
+        var unknown = $("[data-unknown-email]", root);
+        var joinHeading = $("#join-title", root);
+        var joinLink = $("[data-join-link]", root);
+
+        function validity() {
+            var value = input.value.trim();
+            if (!value) return "Saisissez votre adresse email.";
+            if (!EMAIL_PATTERN.test(value)) return "Cette adresse email semble incomplète. Exemple : nom@exemple.com";
+            return "";
+        }
+
+        function sync() {
+            setActive(submit, validity() === "");
+        }
+
+        input.addEventListener("input", function () {
+            unknown.hidden = true;
+            if (input.getAttribute("aria-invalid") === "true") setFieldError(input, error, validity());
+            sync();
+        });
+
+        input.addEventListener("blur", function () {
+            if (input.value.trim()) setFieldError(input, error, validity());
+        });
+
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            var message = validity();
+            setFieldError(input, error, message);
+            if (message) {
+                input.focus();
+                return;
+            }
+            var email = input.value.trim().toLowerCase();
+
+            if (KNOWN_EMAILS.indexOf(email) === -1) {
+                // rejoindre.html pre-fills the address, so the visitor doesn't type it twice.
+                joinLink.setAttribute("href", "rejoindre.html?email=" + encodeURIComponent(email));
+                unknown.hidden = false;
+                joinHeading.focus();
+                return;
+            }
+
+            // The count is per account: another address starts with attempts of its own.
+            if (store.get(KEYS.email) !== email) {
+                store.remove(KEYS.otpAttempts);
+                store.remove(KEYS.otpLockedUntil);
+            }
+
+            // PROTOTYPE: a locked account gets no code — POST /v1/otp answers AUTH_ACCOUNT_LOCKED.
+            if (isOtpLocked()) {
+                setFieldError(input, error, otpLockMessage());
+                input.focus();
+                return;
+            }
+
+            store.set(KEYS.email, email);
+            store.set(KEYS.otpExpiry, String(Date.now() + OTP_TTL_MS));
+            onCodeSent();
+        });
+
+        var remembered = store.get(KEYS.email);
+        if (remembered && !input.value) input.value = remembered;
+        sync();
+    }
+
+    /* ---------- login.html — step 2: code ---------- */
+    // Listeners are bound once; enter()/leave() run each time the step is shown or hidden.
+    function initLoginCode(root) {
+        var form = $("[data-code-form]", root);
+        var input = $("#code", root);
+        var error = $("#code-error", root);
+        var submit = $("[data-submit]", root);
+        var status = $("[data-status]", root);
+        var expiryEl = $("[data-expiry]", root);
+        var resend = $("[data-resend]", root);
+        var expiryTimer = null;
+
+        function email() {
+            return store.get(KEYS.email) || "";
+        }
+
+        function expiry() {
+            return Number(store.get(KEYS.otpExpiry)) || 0;
+        }
+
+        function attempts() {
+            return Number(store.get(KEYS.otpAttempts)) || 0;
+        }
+
+        function isExpired() {
+            return Date.now() >= expiry();
+        }
+
+        function codeError() {
+            if (isOtpLocked()) return otpLockMessage();
+            if (isExpired()) return "Ce code a expiré. Demandez un nouveau code ci-dessous.";
+            return "";
+        }
+
+        function scheduleExpiry() {
+            window.clearTimeout(expiryTimer);
+            expiryEl.textContent = formatTime(expiry());
+            var remaining = expiry() - Date.now();
+            if (remaining <= 0) return;
+            expiryTimer = window.setTimeout(function () {
+                setFieldError(input, error, codeError());
+                if (!isOtpLocked()) announce(status, "Votre code a expiré. Vous pouvez demander un nouveau code.");
+                sync();
+            }, remaining);
+        }
+
+        function validity() {
+            var value = input.value.trim();
+            if (!value) return "Saisissez le code à 6 chiffres reçu par email.";
+            if (!/^\d{6}$/.test(value)) return "Le code contient exactement 6 chiffres.";
+            return "";
+        }
+
+        function sync() {
+            setActive(submit, validity() === "" && !isExpired() && !isOtpLocked());
+        }
+
+        input.addEventListener("input", function () {
+            var digits = input.value.replace(/\D/g, "").slice(0, 6);
+            if (digits !== input.value) input.value = digits;
+            if (input.getAttribute("aria-invalid") === "true" && !isExpired() && !isOtpLocked()) {
+                setFieldError(input, error, "");
+            }
+            sync();
+        });
+
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            if (isOtpLocked()) {
+                setFieldError(input, error, otpLockMessage());
+                input.focus();
+                return;
+            }
+            if (otpLockedUntil() && !isOtpLocked()) {
+                // An expired lock starts the count over.
+                store.remove(KEYS.otpAttempts);
+                store.remove(KEYS.otpLockedUntil);
+            }
+            if (isExpired()) {
+                setFieldError(input, error, "Ce code a expiré. Demandez un nouveau code ci-dessous.");
+                input.focus();
+                return;
+            }
+            var message = validity();
+            setFieldError(input, error, message);
+            if (message) {
+                input.focus();
+                return;
+            }
+
+            if (input.value === WRONG_CODE) {
+                var used = attempts() + 1;
+                store.set(KEYS.otpAttempts, String(used));
+                if (used >= OTP_MAX_ATTEMPTS) {
+                    // PROTOTYPE: the 5th wrong code locks the account, whatever the code asked next (POST /v1/auth).
+                    store.set(KEYS.otpLockedUntil, String(Date.now() + OTP_LOCK_MS));
+                    setFieldError(input, error, otpLockMessage());
+                } else {
+                    setFieldError(input, error, otpRemainingMessage(OTP_MAX_ATTEMPTS - used));
+                }
+                input.select();
+                input.focus();
+                sync();
+                return;
+            }
+
+            store.remove(KEYS.otpExpiry);
+            store.remove(KEYS.otpAttempts);
+            store.remove(KEYS.otpLockedUntil);
+            window.location.href = "kyc.html";
+        });
+
+        resend.addEventListener("click", function () {
+            // PROTOTYPE: a locked account gets no code — POST /v1/otp answers AUTH_ACCOUNT_LOCKED.
+            if (isOtpLocked()) {
+                announce(status, otpLockMessage());
+                return;
+            }
+            // PROTOTYPE: a real resend calls the API, which applies its own rate limit. A new code buys no
+            // attempts, so the count and the lock are kept.
+            store.set(KEYS.otpExpiry, String(Date.now() + OTP_TTL_MS));
+            input.value = "";
+            setFieldError(input, error, "");
+            scheduleExpiry();
+            sync();
+            announce(status, "Nouveau code envoyé à " + maskEmail(email()) + ". Il est valable jusqu'à " + formatTime(expiry()) + ".");
+            input.focus();
+        });
+
+        return {
+            enter: function () {
+                $("[data-masked-email]", root).textContent = maskEmail(email());
+                input.value = "";
+                status.textContent = "";
+                setFieldError(input, error, codeError());
+                scheduleExpiry();
+                sync();
+            },
+            leave: function () {
+                window.clearTimeout(expiryTimer);
+            }
+        };
+    }
+
+    /*
+     * login.html — both steps on one page, as slides. Each step is a history entry (?etape=code) so the
+     * Back button works, but the URL is never trusted: the code step only opens while a code requested in
+     * this session is pending; otherwise (direct link, new tab, after logout) the e-mail step is shown.
+     */
+    function initLogin() {
+        var slides = { email: $('[data-step="email"]'), code: $('[data-step="code"]') };
+        var code = initLoginCode(slides.code);
+
+        function state() {
+            return window.history.state || {};
+        }
+
+        function requestedStep() {
+            if (state().step) return state().step;
+            return new URLSearchParams(window.location.search).get("etape") === "code" ? "code" : "email";
+        }
+
+        function allowed(step) {
+            return step === "code" && store.get(KEYS.email) && store.get(KEYS.otpExpiry) ? "code" : "email";
+        }
+
+        function urlFor(step) {
+            return window.location.pathname + (step === "code" ? "?etape=code" : "");
+        }
+
+        function show(step, moveFocus) {
+            Object.keys(slides).forEach(function (key) {
+                slides[key].hidden = key !== step;
+            });
+            if (step === "code") code.enter();
+            else code.leave();
+            if (moveFocus) $("h1", slides[step]).focus();
+        }
+
+        function settle(moveFocus) {
+            var step = allowed(requestedStep());
+            window.history.replaceState({ step: step, depth: state().depth || 0 }, "", urlFor(step));
+            show(step, moveFocus);
+        }
+
+        initLoginEmail(slides.email, function () {
+            window.history.pushState({ step: "code", depth: (state().depth || 0) + 1 }, "", urlFor("code"));
+            show("code", true);
+        });
+
+        $("[data-change-email]", slides.code).addEventListener("click", function () {
+            if (state().depth > 0) {
+                window.history.back();
+            } else {
+                window.history.replaceState({ step: "email", depth: 0 }, "", urlFor("email"));
+                show("email", true);
+            }
+        });
+
+        window.addEventListener("popstate", function () {
+            settle(true);
+        });
+        settle(false);
+    }
+
+    /* ---------- Wizard progress ---------- */
+    function focusStep(step) {
+        step.focus({ preventScroll: true });
+        var progress = $(".progress");
+        if (progress) progress.scrollIntoView({ block: "start" });
+    }
+
+    function setProgress(step, total) {
+        var bar = $("[data-progress]");
+        if (!bar) return;
+        var text = "Étape " + step + " sur " + total;
+        bar.setAttribute("aria-valuenow", String(step));
+        bar.setAttribute("aria-valuetext", text);
+        $("[data-progress-label]").textContent = text;
+        $("[data-progress-bar]").style.transform = "scaleX(" + step / total + ")";
+    }
+
+    /* ---------- Image downscale for the review slide ---------- */
+    // max: the longest side, in pixels (1000 by default).
+    function toThumbnail(file, callback, max) {
+        var reader = new FileReader();
+        reader.onload = function () {
+            var img = new Image();
+            img.onload = function () {
+                max = max || 1000;
+                var scale = Math.min(1, max / Math.max(img.width, img.height));
+                var canvas = document.createElement("canvas");
+                canvas.width = Math.round(img.width * scale);
+                canvas.height = Math.round(img.height * scale);
+                canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+                callback(canvas.toDataURL("image/jpeg", 0.8));
+            };
+            img.onerror = function () {
+                callback(null);
+            };
+            img.src = reader.result;
+        };
+        reader.onerror = function () {
+            callback(null);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    /*
+     * kyc.html — the whole identity verification on one page, in three views:
+     *   - wizard: recto → verso → selfie → revue as slides. Each slide is a history entry (?etape=verso, ?etape=revue)
+     *     so the Back button works, but the URL is never trusted: a slide only opens once every earlier photo
+     *     is in this session;
+     *   - confirmation: right after the dossier is sent; it has no URL of its own, and a reload shows it again;
+     *   - status: once a dossier has been submitted, the page shows only its status (en attente, vérifié, rejeté),
+     *     whatever the URL says. A rejected dossier lands on its status, whose button reopens the wizard to send
+     *     new documents; reloading keeps that wizard, but coming back to the page later shows the status again.
+     */
+    var KYC_STEPS = ["recto", "verso", "selfie", "revue"];
+    var KYC_SELFIE = 2;
+    var KYC_REVIEW = 3;
+    // Photos of the dossier, in the order of their slides.
+    var KYC_PHOTOS = ["front", "back", "selfie"];
+    var KYC_STATUSES = ["attente", "verifie", "rejete"];
+
+    // Photo uploader of one slide (front / back / selfie). onChange runs once a photo is stored.
+    function kycUpload(step, onChange) {
+        var side = step.getAttribute("data-side");
+        var input = $(".upload__input", step);
+        var error = $(".field__error", step);
+        var preview = $("[data-preview]", step);
+        var placeholder = $("[data-placeholder]", step);
+        var status = $("[data-upload-status]", step);
+        var buttonLabel = $("[data-upload-label]", step);
+        var dataKey = KEYS[side];
+
+        // The preview shows the photo; no file name is displayed.
+        function showPreview(src) {
+            placeImage(preview, src);
+            placeholder.hidden = true;
+            buttonLabel.textContent = "Changer la photo";
+        }
+
+        var saved = store.get(dataKey);
+        if (saved) showPreview(saved);
+
+        input.addEventListener("change", function () {
+            var file = input.files && input.files[0];
+            if (!file) return;
+
+            if (ACCEPTED_TYPES.indexOf(file.type) === -1) {
+                setFieldError(input, error, "Format non accepté. Utilisez une photo JPG, PNG ou WEBP.");
+                input.value = "";
+                return;
+            }
+            if (file.size > MAX_FILE_BYTES) {
+                var size = (file.size / (1024 * 1024)).toFixed(1).replace(".", ",");
+                setFieldError(input, error, "Cette photo pèse " + size + " Mo. La taille maximale est de 5 Mo.");
+                input.value = "";
+                return;
+            }
+
+            setFieldError(input, error, "");
+            toThumbnail(file, function (thumb) {
+                if (!thumb) {
+                    setFieldError(input, error, "Impossible de lire cette photo. Essayez avec une autre image.");
+                    return;
+                }
+                use(thumb);
+            });
+        });
+
+        // Keeps a photo (data URL), whether it comes from a file or from the camera.
+        function use(src) {
+            setFieldError(input, error, "");
+            // If storage is unavailable the preview still shows; the review slide then reports the gap.
+            store.set(dataKey, src);
+            showPreview(src);
+            // Screen readers don't see the preview: say the photo is in.
+            announce(status, preview.getAttribute("data-alt").replace("Aperçu", "Photo") + " ajoutée.");
+            onChange();
+        }
+
+        return {
+            input: input,
+            use: use,
+            done: function () {
+                return !!store.get(dataKey);
+            }
+        };
+    }
+
+    /*
+     * Selfie: live front camera in the page (getUserMedia), mirrored under an oval guide, captured to a canvas.
+     * When the camera can't be used — no support, not HTTPS/localhost, permission refused, no camera — the
+     * slide falls back to <input type="file" capture="user">, which opens the phone's own camera app.
+     */
+    var SELFIE_MAX_HEIGHT = 1000;
+
+    function kycCamera(step, upload) {
+        var preview = $("[data-preview]", step);
+        var placeholder = $("[data-placeholder]", step);
+        var video = $("[data-camera-video]", step);
+        var guide = $("[data-camera-guide]", step);
+        var start = $("[data-camera-start]", step);
+        var shoot = $("[data-camera-shoot]", step);
+        var fallback = $("[data-camera-fallback]", step);
+        var problem = $("[data-camera-problem]", step);
+        var stream = null;
+        // Bumped on every stop: a camera that opens after the agent has left the slide is closed at once.
+        var session = 0;
+
+        function supported() {
+            return !!(window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+        }
+
+        function setLive(on) {
+            var photo = $("img", preview);
+            video.hidden = !on;
+            guide.hidden = !on;
+            shoot.hidden = !on;
+            start.hidden = on || !fallback.hidden;
+            if (photo) photo.hidden = on;
+            placeholder.hidden = on || !!photo;
+        }
+
+        function stop() {
+            session++;
+            if (stream) {
+                stream.getTracks().forEach(function (track) {
+                    track.stop();
+                });
+            }
+            stream = null;
+            video.srcObject = null;
+            setLive(false);
+        }
+
+        function useFallback(message) {
+            stop();
+            fallback.hidden = false;
+            start.hidden = true;
+            if (message) {
+                $("[data-camera-problem-text]", problem).textContent = message;
+                problem.hidden = false;
+            }
+        }
+
+        function failure(error) {
+            var name = error && error.name;
+            if (name === "NotAllowedError" || name === "SecurityError") {
+                return "Vous n'avez pas autorisé l'accès à la caméra. Autorisez-le dans les réglages de votre " +
+                    "navigateur, ou prenez votre selfie avec l'appareil photo de votre téléphone.";
+            }
+            if (name === "NotFoundError" || name === "OverconstrainedError") {
+                return "Aucune caméra n'a été trouvée. Prenez votre selfie avec l'appareil photo de votre téléphone.";
+            }
+            if (name === "NotReadableError") {
+                return "La caméra est utilisée par une autre application. Fermez-la et réessayez, ou prenez votre " +
+                    "selfie avec l'appareil photo de votre téléphone.";
+            }
+            return "La caméra n'a pas pu démarrer. Prenez votre selfie avec l'appareil photo de votre téléphone.";
+        }
+
+        start.addEventListener("click", function () {
+            if (!isActive(start)) return; // already asking for the camera
+            var mine = ++session;
+            problem.hidden = true;
+            setActive(start, false);
+            navigator.mediaDevices
+                .getUserMedia({ video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 960 } }, audio: false })
+                .then(function (opened) {
+                    setActive(start, true);
+                    if (mine !== session) {
+                        opened.getTracks().forEach(function (track) {
+                            track.stop();
+                        });
+                        return;
+                    }
+                    stream = opened;
+                    video.srcObject = opened;
+                    setLive(true);
+                    video.play().catch(function () {
+                        /* autoplay attribute covers it */
+                    });
+                    shoot.focus();
+                })
+                .catch(function (error) {
+                    setActive(start, true);
+                    if (mine === session) useFallback(failure(error));
+                });
+        });
+
+        shoot.addEventListener("click", function () {
+            var vw = video.videoWidth;
+            var vh = video.videoHeight;
+            if (!vw || !vh) return;
+            // Crop the centre of the frame to the 3:4 portrait shown in the preview (object-fit: cover).
+            var sw = Math.min(vw, vh * 3 / 4);
+            var sh = sw * 4 / 3;
+            var scale = Math.min(1, SELFIE_MAX_HEIGHT / sh);
+            var canvas = document.createElement("canvas");
+            canvas.width = Math.round(sw * scale);
+            canvas.height = Math.round(sh * scale);
+            // Drawn as the camera sees it, not mirrored: only the live preview is flipped.
+            canvas.getContext("2d").drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, canvas.width, canvas.height);
+            stop();
+            upload.use(canvas.toDataURL("image/jpeg", 0.8));
+            start.textContent = "Reprendre la photo";
+            $("[data-next]", step).focus();
+        });
+
+        if (!supported()) useFallback("");
+        else if (upload.done()) start.textContent = "Reprendre la photo";
+
+        // Never leave the camera on when the agent leaves the page.
+        window.addEventListener("pagehide", stop);
+
+        return {
+            leave: stop,
+            // Where to send the agent who presses Suivant without a selfie.
+            focus: function () {
+                (fallback.hidden ? start : upload.input).focus();
+            }
+        };
+    }
+
+    function initKycWizard() {
+        var form = $("[data-kyc-form]");
+        var slides = KYC_STEPS.map(function (key) {
+            return $('[data-step="' + key + '"]', form);
+        });
+        var views = $all("[data-view]");
+        var confirmation = $('[data-view="confirmation"]');
+        var heading = $("h1");
+        var submit = $("[data-submit]", form);
+        var current = 0;
+
+        var uploads = slides.slice(0, KYC_REVIEW).map(function (slide) {
+            return kycUpload(slide, function () {
+                sync();
+            });
+        });
+        var camera = kycCamera(slides[KYC_SELFIE], uploads[KYC_SELFIE]);
+
+        // Shows the elements of one view; data-view lists every view an element belongs to.
+        function setView(name) {
+            if (name !== "wizard") camera.leave();
+            views.forEach(function (el) {
+                el.hidden = el.getAttribute("data-view").split(" ").indexOf(name) === -1;
+            });
+        }
+
+        // PROTOTYPE: the real status comes from the API. ?statut= sets the status of this session, so each
+        // state can be reviewed (?statut=soumission starts over with no dossier).
+        function submittedStatus() {
+            var requested = new URLSearchParams(window.location.search).get("statut");
+            if (requested === "soumission") {
+                store.remove(KEYS.submitted);
+                store.remove(KEYS.resubmit);
+            } else if (KYC_STATUSES.indexOf(requested) !== -1) {
+                store.set(KEYS.submitted, requested);
+                store.remove(KEYS.resubmit);
+            }
+            var saved = store.get(KEYS.submitted);
+            return KYC_STATUSES.indexOf(saved) !== -1 ? saved : null;
+        }
+
+        function showStatus(key, moveFocus) {
+            setView("status");
+            $all("[data-status]").forEach(function (panel) {
+                panel.hidden = panel.getAttribute("data-status") !== key;
+            });
+            if (moveFocus) heading.focus();
+        }
+
+        function firstIncomplete() {
+            for (var i = 0; i < uploads.length; i++) {
+                if (!uploads[i].done()) return i;
+            }
+            return KYC_REVIEW;
+        }
+
+        function sync() {
+            if (current === KYC_REVIEW) setActive(submit, firstIncomplete() === KYC_REVIEW);
+            else setActive($("[data-next]", slides[current]), uploads[current].done());
+        }
+
+        /* History: each slide is an entry; state = { step, returning, depth } or { done, depth }. */
+        function state() {
+            return window.history.state || {};
+        }
+
+        function urlFor(index) {
+            return window.location.pathname + (index > 0 ? "?etape=" + KYC_STEPS[index] : "");
+        }
+
+        function requestedStep() {
+            if (typeof state().step === "number") return state().step;
+            var index = KYC_STEPS.indexOf(new URLSearchParams(window.location.search).get("etape"));
+            return index === -1 ? 0 : index;
+        }
+
+        // Never open a slide whose predecessors aren't complete, whatever the URL or history entry says.
+        function allowed(index) {
+            return Math.min(index, firstIncomplete());
+        }
+
+        function renderReview() {
+            KYC_PHOTOS.forEach(function (side) {
+                var src = store.get(KEYS[side]);
+                var slot = $('[data-review-image="' + side + '"]', form);
+                if (src) placeImage(slot, src, side === "selfie" ? "review__thumb review__thumb--portrait" : "review__thumb");
+                $('[data-review-missing="' + side + '"]', form).hidden = !!src;
+            });
+            $("[data-incomplete]", form).hidden = firstIncomplete() === KYC_REVIEW;
+        }
+
+        function show(index, moveFocus) {
+            setView("wizard");
+            slides.forEach(function (slide, i) {
+                slide.hidden = i !== index;
+            });
+            current = index;
+            if (index !== KYC_SELFIE) camera.leave();
+            setProgress(index + 1, KYC_STEPS.length);
+
+            var next = $("[data-next]", slides[index]);
+            if (next) next.textContent = state().returning ? "Revenir à la revue" : "Suivant";
+            if (index === KYC_REVIEW) renderReview();
+            sync();
+
+            if (moveFocus) focusStep(slides[index]);
+        }
+
+        function go(index, returning) {
+            window.history.pushState(
+                { step: index, returning: !!returning, depth: (state().depth || 0) + 1 },
+                "",
+                urlFor(index)
+            );
+            show(index, true);
+        }
+
+        // Step back one history entry when there is one from this wizard, otherwise replace in place.
+        function back(index) {
+            if (state().depth > 0) {
+                window.history.back();
+            } else {
+                window.history.replaceState({ step: index, returning: false, depth: 0 }, "", urlFor(index));
+                show(index, true);
+            }
+        }
+
+        function next(index) {
+            if (!uploads[index].done()) {
+                if (index === KYC_SELFIE) camera.focus();
+                else uploads[index].input.focus();
+                return;
+            }
+            if (state().returning) back(KYC_REVIEW);
+            else go(index + 1);
+        }
+
+        function showConfirmation() {
+            setView("confirmation");
+            confirmation.focus({ preventScroll: true });
+            window.scrollTo(0, 0);
+        }
+
+        function submitFile() {
+            if (!isActive(submit) || firstIncomplete() !== KYC_REVIEW) return;
+            setActive(submit, false);
+            submit.textContent = "Envoi en cours…";
+            announce($("[data-sending]", form), "Envoi de votre dossier en cours.");
+            // PROTOTYPE: the real page uploads the three photos, then shows the confirmation on success.
+            window.setTimeout(function () {
+                store.set(KEYS.submitted, "attente");
+                store.remove(KEYS.resubmit);
+                KYC_PHOTOS.forEach(function (k) {
+                    store.remove(KEYS[k]);
+                });
+                submit.textContent = "Envoyer mon dossier";
+                // The confirmation replaces the review entry: it has no URL, and a reload shows it again.
+                window.history.replaceState({ done: true, depth: state().depth || 0 }, "", window.location.pathname);
+                showConfirmation();
+            }, 600);
+        }
+
+        slides.forEach(function (slide, index) {
+            var nextButton = $("[data-next]", slide);
+            if (nextButton) {
+                nextButton.addEventListener("click", function () {
+                    next(index);
+                });
+            }
+            // Step 1 has no "Précédent": the wizard is the start of the page. From the review, Next returns to it.
+            var prevButton = $("[data-prev]", slide);
+            if (prevButton) {
+                prevButton.addEventListener("click", function () {
+                    if (state().returning) back(KYC_REVIEW);
+                    else back(index - 1);
+                });
+            }
+        });
+
+        $all("[data-edit]", form).forEach(function (button) {
+            button.addEventListener("click", function () {
+                go(KYC_STEPS.indexOf(button.getAttribute("data-edit")), true);
+            });
+        });
+
+        // The confirmation's entry becomes the status: Back from the status doesn't bring the confirmation back.
+        $("[data-show-status]").addEventListener("click", function () {
+            window.history.replaceState({ depth: state().depth || 0 }, "", window.location.pathname);
+            showStatus(submittedStatus(), true);
+        });
+
+        // A rejected dossier: the status invites the agent to send new documents, which reopens the wizard.
+        $("[data-restart]").addEventListener("click", function () {
+            store.set(KEYS.resubmit, "1");
+            window.history.pushState({ step: 0, returning: false, depth: (state().depth || 0) + 1 }, "", urlFor(0));
+            show(0, true);
+        });
+
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            if (current === KYC_REVIEW) submitFile();
+            else next(current);
+        });
+
+        function settle(moveFocus) {
+            if (state().done && store.get(KEYS.submitted)) {
+                showConfirmation();
+                return;
+            }
+            var status = submittedStatus();
+            // Only a wizard entry opened from the rejected status (or its reload) shows the wizard again.
+            var resubmitting = status === "rejete" && store.get(KEYS.resubmit) && typeof state().step === "number";
+            if (status && !resubmitting) {
+                // The status is the page itself: drop ?etape= / ?statut= from the URL.
+                window.history.replaceState({ status: true, depth: state().depth || 0 }, "", window.location.pathname);
+                showStatus(status, moveFocus);
+                return;
+            }
+            var requested = requestedStep();
+            var index = allowed(requested);
+            var returning = index === requested && !!state().returning;
+            window.history.replaceState({ step: index, returning: returning, depth: state().depth || 0 }, "", urlFor(index));
+            show(index, moveFocus);
+        }
+
+        window.addEventListener("popstate", function () {
+            settle(true);
+        });
+        settle(false);
+    }
+
+    /* ---------- index.html — Espace agent ---------- */
+    var URGENT_MS = 15 * 60 * 1000;
+
+    var PROFILE_SAVED = {
+        profile: "Votre profil a été mis à jour.",
+        photo: "Votre photo de profil a été enregistrée."
+    };
+
+    function savedProfile() {
+        try {
+            return JSON.parse(store.get(KEYS.profile));
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // The section only shows while the photo or the biography is missing, or to confirm a save. PROTOTYPE: follows
+    // the profile saved by the profile pages; until then, ?profile=complete or ?profile=empty shows the other states.
+    function initProfile() {
+        var section = $("[data-profile]");
+        if (!section) return;
+        var params = new URLSearchParams(window.location.search);
+        var saved = savedProfile();
+        var state = params.get("profile");
+        var hasPhoto = saved ? !!saved.photo : state === "complete";
+        var hasBio = saved ? !!saved.biography : state !== "empty";
+
+        $("[data-profile-todo=photo]", section).hidden = hasPhoto;
+        $("[data-profile-todo=bio]", section).hidden = hasBio;
+        $("[data-profile-incomplete]", section).hidden = hasPhoto && hasBio;
+        section.hidden = hasPhoto && hasBio;
+
+        // Back from a profile page: confirm the save once, then drop the parameter so a reload doesn't repeat it.
+        var message = PROFILE_SAVED[params.get("saved")];
+        if (message) {
+            $("[data-profile-saved-text]", section).textContent = message;
+            $("[data-profile-saved]", section).hidden = false;
+            section.hidden = false;
+            params.delete("saved");
+            var query = params.toString();
+            window.history.replaceState(null, "", window.location.pathname + (query ? "?" + query : ""));
+        }
+    }
+
+    function formatRemaining(ms) {
+        var total = Math.max(0, Math.floor(ms / 1000));
+        var h = Math.floor(total / 3600);
+        var m = Math.floor((total % 3600) / 60);
+        var s = total % 60;
+        if (h > 0) return h + " h " + String(m).padStart(2, "0") + " min";
+        if (m > 0) return m + " min " + String(s).padStart(2, "0") + " s";
+        return s + " s";
+    }
+
+    function acceptedMandates() {
+        try {
+            return JSON.parse(store.get(KEYS.accepted)) || [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    // mandates: the "Mes mandats" section (initMandates), where an accepted offer is added.
+    function initAssignments(mandates) {
+        var list = $("[data-assignments]");
+        if (!list) return;
+        var status = $("[data-assignments-status]");
+        var section = $("[data-assignments-section]");
+        // Where the focus goes once the last offer is declined: the section is gone.
+        var after = $("#mandates-title");
+        after.setAttribute("tabindex", "-1");
+
+        // PROTOTYPE: ?assignments=empty shows an agent without offers.
+        if (new URLSearchParams(window.location.search).get("assignments") === "empty") {
+            $all("[data-assignment]", list).forEach(function (item) {
+                item.remove();
+            });
+        }
+
+        function pending() {
+            return $all("[data-assignment]:not([data-closed])", list);
+        }
+
+        // No offer: no section at all.
+        function syncEmpty() {
+            section.hidden = $all("[data-assignment]", list).length === 0;
+            syncPrimary();
+            updateHomeIntro();
+        }
+
+        // Only the first open offer is a primary accept: the rest are secondary.
+        function syncPrimary() {
+            pending().forEach(function (item, index) {
+                var accept = $("[data-accept]", item);
+                if (accept) accept.className = "btn " + (index === 0 ? "btn--primary" : "btn--secondary");
+            });
+        }
+
+        // Replaces the card's actions (and the details' timer) by an outcome message, with an optional link.
+        function close(item, kind, title, text, link) {
+            item.setAttribute("data-closed", kind);
+            item.removeAttribute("data-urgent");
+            $("[data-actions]", item).hidden = true;
+            $("[data-decline-confirm]", item).hidden = true;
+            $all("[data-timer]", item).forEach(function (el) {
+                el.hidden = true;
+            });
+            var alert = document.createElement("div");
+            alert.className = "alert alert--" + kind;
+            var body = document.createElement("div");
+            var strong = document.createElement("p");
+            strong.className = "alert__title";
+            strong.textContent = title;
+            var p = document.createElement("p");
+            p.textContent = text;
+            body.appendChild(strong);
+            body.appendChild(p);
+            if (link) {
+                var a = document.createElement("a");
+                a.href = link.href;
+                a.textContent = link.text;
+                a.className = "alert__link";
+                var row = document.createElement("p");
+                row.appendChild(a);
+                body.appendChild(row);
+            }
+            alert.appendChild(body);
+            $("article", item).appendChild(alert);
+        }
+
+        function remove(item) {
+            var items = $all("[data-assignment]", list);
+            var next = items[items.indexOf(item) + 1] || items[items.indexOf(item) - 1];
+            item.remove();
+            syncEmpty();
+            var target = next ? $("h3", next) : after;
+            if (next) target.setAttribute("tabindex", "-1");
+            target.focus();
+        }
+
+        function closeAccepted(item) {
+            var id = item.getAttribute("data-mandate-id");
+            close(item, "success", "Mandat accepté",
+                "Le client est prévenu. Ses coordonnées et le détail du mandat sont maintenant débloqués : " +
+                "contactez-le rapidement.",
+                { href: "mandate.html?id=" + id, text: "Voir le mandat et contacter le client" });
+        }
+
+        // The offer that expires first leads; the others follow. Moving the nodes keeps the fixtures' markup readable.
+        $all("[data-assignment]", list).slice().sort(function (a, b) {
+            return (parseFloat(a.getAttribute("data-expires-in")) || 0) -
+                (parseFloat(b.getAttribute("data-expires-in")) || 0);
+        }).forEach(function (item) {
+            list.appendChild(item);
+        });
+
+        $all("[data-assignment]", list).forEach(function (item) {
+            var minutes = parseFloat(item.getAttribute("data-expires-in")) || 0;
+            item.expiresAt = Date.now() + minutes * 60 * 1000;
+            // PROTOTYPE: an offer accepted earlier in this session stays accepted after a reload.
+            if (acceptedMandates().indexOf(item.getAttribute("data-mandate-id")) !== -1) closeAccepted(item);
+
+            var actions = $("[data-actions]", item);
+            var confirm = $("[data-decline-confirm]", item);
+            var accept = $("[data-accept]", item);
+
+            accept.addEventListener("click", function () {
+                if (!isActive(accept)) return;
+                setActive(accept, false);
+                accept.textContent = "Acceptation…";
+                // PROTOTYPE: simulates POST /v1/assignments/{id}/accept.
+                window.setTimeout(function () {
+                    var id = item.getAttribute("data-mandate-id");
+                    var ids = acceptedMandates();
+                    ids.push(id);
+                    store.set(KEYS.accepted, JSON.stringify(ids));
+                    saveState(id, { status: "ASSIGNED", acceptedAt: Date.now() });
+                    if (mandates) mandates.add(id);
+                    closeAccepted(item);
+                    syncPrimary();
+                    announce(status, "Mandat accepté. Les coordonnées du client sont débloquées.");
+                    $("h3", item).setAttribute("tabindex", "-1");
+                    $("h3", item).focus();
+                }, 600);
+            });
+
+            $("[data-decline]", item).addEventListener("click", function () {
+                actions.hidden = true;
+                confirm.hidden = false;
+                $("[data-decline-cancel]", item).focus();
+            });
+
+            $("[data-decline-cancel]", item).addEventListener("click", function () {
+                confirm.hidden = true;
+                actions.hidden = false;
+                $("[data-decline]", item).focus();
+            });
+
+            $("[data-decline-confirmed]", item).addEventListener("click", function () {
+                // PROTOTYPE: simulates POST /v1/assignments/{id}/decline.
+                announce(status, "Mandat refusé. Il sera proposé à un autre agent.");
+                remove(item);
+            });
+        });
+
+        function tick() {
+            var now = Date.now();
+            pending().forEach(function (item) {
+                var left = item.expiresAt - now;
+                if (left <= 0) {
+                    close(item, "warning", "Délai expiré", "Ce mandat a été proposé à un autre agent.");
+                    announce(status, "Un mandat a expiré.");
+                    return;
+                }
+                $all("[data-timer-value]", item).forEach(function (el) {
+                    el.textContent = formatRemaining(left);
+                });
+                if (left < URGENT_MS) item.setAttribute("data-urgent", "");
+            });
+            syncPrimary();
+            updateHomeIntro();
+        }
+
+        syncEmpty();
+        tick();
+        window.setInterval(tick, 1000);
+    }
+
+    // The triage header: the day, and what is waiting, so the first screen answers "what now?".
+    function updateHomeIntro() {
+        var date = $("[data-home-date]");
+        if (!date) return;
+        date.textContent = new Intl.DateTimeFormat("fr-FR", {
+            weekday: "long", day: "numeric", month: "long"
+        }).format(new Date());
+        var list = $("[data-assignments]");
+        var offers = list ? $all("[data-assignment]:not([data-closed])", list) : [];
+        var urgent = offers.filter(function (item) {
+            return item.hasAttribute("data-urgent");
+        }).length;
+        var visits = window.NpcVisits && window.NpcVisits.homeCounts
+            ? window.NpcVisits.homeCounts() : { requested: 0, today: 0, todayOwn: 0 };
+        setHomeCount("offers", offers.length, "mandat à traiter", "mandats à traiter", urgent);
+        setHomeCount("requested", visits.requested, "visite à confirmer", "visites à confirmer", 0);
+        setHomeCount("today", visits.today, "visite aujourd'hui", "visites aujourd'hui", 0);
+        // An agent whose only visit today is hosted lands on the hosted block, not on an empty Visites one.
+        var todayItem = $('[data-home-count="today"]');
+        var todayLink = todayItem ? $("a", todayItem) : null;
+        if (todayLink) {
+            todayLink.setAttribute("href",
+                visits.todayOwn > 0 ? "#visits-title" : "#co-brokerage-visits-title");
+        }
+        $("[data-home-counts]").hidden = offers.length + visits.requested + visits.today === 0;
+    }
+
+    function setHomeCount(name, count, one, many, urgent) {
+        var item = $('[data-home-count="' + name + '"]');
+        if (!item) return;
+        item.hidden = count === 0;
+        $("[data-home-count-value]", item).textContent = count;
+        $("[data-home-count-label]", item).textContent = count > 1 ? many : one;
+        var tag = $("[data-home-urgent]", item);
+        if (tag) {
+            tag.hidden = urgent === 0;
+            tag.textContent = urgent > 0 ? "· " + urgent + " expire bientôt" : "";
+        }
+    }
+
+    window.NpcHome = { updateIntro: updateHomeIntro };
+
+    function initAgentHome() {
+        initProfile();
+        initAssignments(initMandates());
+        updateHomeIntro();
+    }
+
+    /* ---------- The agent's mandates (index.html › Mes mandats, mandate.html) ---------- */
+
+    // PROTOTYPE: the agent's mandates, as GET /v1/mandates/{id} (+ its customer) would return them. 101 to 103 are
+    // the offers of index.html, the agent's once accepted; 201 to 203 are already its own, at the status of their
+    // initial state (dates in days from now). "fields" is the search, as UpdateMandateRequest names it: once edited
+    // (mandate/edit.html), the session's copy replaces it (see fieldsOf). Title and criteria are derived from it.
+    // v2: listingType is RENTAL unless set (Mandate.listingType, ndopify-dto); 104 (a buyer's search for a plot of
+    // land, offered) and 301 (a seller's villa, signed, its listing to create) are SALE mandates (see isSale).
+    var MANDATES = {
+        101: {
+            party: "client",
+            createdAt: -4,
+            contact: {
+                firstName: "Aïcha",
+                lastName: "Mbarga",
+                whatsapp: "+237699123456",
+                email: "aicha.mbarga@example.com",
+                period: "Matin"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonapriso", "Akwa"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "APARTMENT",
+                furnitureType: "UNFURNISHED",
+                rooms: "2",
+                parkings: "1",
+                area: 80,
+                amenities: ["dedicatedWaterMeter", "waterWell", "dedicatedElectricityMeter", "generatorSet",
+                    "roadPaved", "securityGuard"],
+                price: 150000,
+                movingPeriod: "WITHIN_1_MONTH",
+                comments: "Proche d'une école pour mes deux enfants.\nRez-de-chaussée ou premier étage."
+            }
+        },
+        102: {
+            party: "bailleur",
+            createdAt: -6,
+            contact: {
+                firstName: "Paul",
+                lastName: "Ekwalla",
+                whatsapp: "+237677987654",
+                email: "paul.ekwalla@example.com",
+                period: "Après-midi"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonanjo"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "STUDIO",
+                furnitureType: "FULLY_FURNISHED",
+                rooms: "1",
+                parkings: "0",
+                area: 30,
+                amenities: ["waterMeter", "electricityMeter", "trackAccessibleByCar", "securedFenced"],
+                price: 75000,
+                movingPeriod: "WITHIN_3_MONTHS",
+                securityDeposit: 2
+            }
+        },
+        103: {
+            party: "client",
+            createdAt: -2,
+            contact: {
+                firstName: "Marie-Claire",
+                lastName: "Ndjock",
+                whatsapp: "+237655443322",
+                email: "mc.ndjock@example.com",
+                period: "Soirée"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Akwa", "Bonanjo", "Deïdo"],
+                propertyCategory: "COMMERCIAL",
+                propertyType: "OFFICE",
+                furnitureType: "ANY",
+                parkings: "3+",
+                area: 150,
+                amenities: ["dedicatedWaterMeter", "dedicatedElectricityMeter", "solarPanel", "roadPaved",
+                    "securityGuard", "videoSurveillance"],
+                price: 400000,
+                movingPeriod: "AFTER_3_MONTHS"
+            }
+        },
+        // v2: a buyer's search (SEARCH · SALE), offered: a total budget, no "/ mois", no furniture.
+        104: {
+            party: "client",
+            listingType: "SALE",
+            createdAt: -1,
+            contact: {
+                firstName: "Hervé",
+                lastName: "Ngando",
+                whatsapp: "+33612345678",
+                email: "herve.ngando@example.com",
+                period: "Soirée"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Logbessou", "Japoma"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "LAND",
+                area: 500,
+                amenities: ["trackAccessibleByCar", "electricityMeter"],
+                price: 15000000,
+                movingPeriod: "WITHIN_3_MONTHS",
+                comments: "J'habite en France : visites en vidéo WhatsApp de préférence.\nTerrain titré pour construire."
+            }
+        },
+        201: {
+            party: "client",
+            createdAt: -30,
+            initial: { status: "ASSIGNED", acceptedAt: -1 },
+            contact: {
+                firstName: "Jean-Pierre",
+                lastName: "Fotso",
+                whatsapp: "+237670112233",
+                email: "jp.fotso@example.com",
+                period: "Soirée"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Kotto", "Logpom"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "HOUSE",
+                furnitureType: "UNFURNISHED",
+                rooms: "3",
+                parkings: "2",
+                area: 150,
+                amenities: ["dedicatedWaterMeter", "waterTank", "dedicatedElectricityMeter", "roadPaved",
+                    "securedFenced"],
+                price: 250000,
+                movingPeriod: "WITHIN_3_MONTHS",
+                comments: "Une cour pour garer deux voitures."
+            }
+        },
+        202: {
+            party: "client",
+            createdAt: -12,
+            initial: { status: "PENDING_APPROVAL", acceptedAt: -5, requestedAt: -2 },
+            contact: {
+                firstName: "Grâce",
+                lastName: "Nkoulou",
+                whatsapp: "+237691554433",
+                email: "grace.nkoulou@example.com",
+                period: "Après-midi"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonamoussadi", "Makepe"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "APARTMENT",
+                furnitureType: "FULLY_FURNISHED",
+                rooms: "1",
+                parkings: "0",
+                amenities: ["waterMeter", "electricityMeter", "trackAccessibleByCar", "securityGuard"],
+                price: 120000,
+                movingPeriod: "WITHIN_1_MONTH"
+            }
+        },
+        203: {
+            party: "bailleur",
+            createdAt: -24,
+            initial: { status: "APPROVED", acceptedAt: -24, requestedAt: -21, approvedAt: -19 },
+            contact: {
+                firstName: "Emmanuel",
+                lastName: "Tchoua",
+                whatsapp: "+237677001122",
+                email: "e.tchoua@example.com",
+                period: "Matin"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonapriso"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "APARTMENT",
+                furnitureType: "UNFURNISHED",
+                rooms: "3",
+                parkings: "1",
+                area: 120,
+                amenities: ["dedicatedWaterMeter", "waterWell", "dedicatedElectricityMeter", "generatorSet",
+                    "roadPaved", "securityGuard", "videoSurveillance"],
+                price: 300000,
+                movingPeriod: "WITHIN_1_MONTH",
+                // The landlord's terms (offer-property.html), copied into the listing (see createListing)
+                securityDeposit: 3,
+                advanceRent: 6
+            }
+        },
+        // A signed search: the matcher found listings of the agent's inventory for it (see MATCHES).
+        204: {
+            party: "client",
+            createdAt: -8,
+            initial: { status: "APPROVED", acceptedAt: -12, requestedAt: -10, approvedAt: -8 },
+            contact: {
+                firstName: "Sandrine",
+                lastName: "Eboa",
+                whatsapp: "+237699887766",
+                email: "sandrine.eboa@example.com",
+                period: "Soirée"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonapriso"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "APARTMENT",
+                furnitureType: "UNFURNISHED",
+                rooms: "3",
+                parkings: "1",
+                amenities: ["waterTank", "generatorSet", "securedFenced"],
+                price: 250000,
+                movingPeriod: "WITHIN_3_MONTHS"
+            }
+        },
+        // A few more active mandates, so the card list has more than one page's worth (see MANDATE_PAGE_SIZE).
+        205: {
+            party: "client",
+            createdAt: -3,
+            initial: { status: "ASSIGNED", acceptedAt: -2 },
+            contact: {
+                firstName: "Yannick",
+                lastName: "Mballa",
+                whatsapp: "+237655778899",
+                email: "y.mballa@example.com",
+                period: "Matin"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonamoussadi"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "APARTMENT",
+                furnitureType: "UNFURNISHED",
+                rooms: "2",
+                parkings: "1",
+                area: 70,
+                amenities: ["waterMeter", "electricityMeter", "trackAccessibleByCar"],
+                price: 180000,
+                movingPeriod: "WITHIN_1_MONTH"
+            }
+        },
+        206: {
+            party: "client",
+            createdAt: -1,
+            initial: { status: "APPROVED", acceptedAt: -10, requestedAt: -9, approvedAt: -7 },
+            contact: {
+                firstName: "Nadège",
+                lastName: "Atangana",
+                whatsapp: "+237690112244",
+                email: "n.atangana@example.com",
+                period: "Après-midi"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonapriso"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "STUDIO",
+                furnitureType: "FULLY_FURNISHED",
+                rooms: "1",
+                parkings: "0",
+                area: 35,
+                amenities: ["waterMeter", "electricityMeter", "securedFenced"],
+                price: 95000,
+                movingPeriod: "WITHIN_1_MONTH"
+            }
+        },
+        207: {
+            party: "bailleur",
+            createdAt: -20,
+            initial: { status: "PENDING_APPROVAL", acceptedAt: -7, requestedAt: -5 },
+            contact: {
+                firstName: "Serge",
+                lastName: "Kamga",
+                whatsapp: "+237677334455",
+                email: "s.kamga@example.com",
+                period: "Soirée"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonanjo"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "DUPLEX",
+                furnitureType: "UNFURNISHED",
+                rooms: "4",
+                parkings: "2",
+                area: 200,
+                amenities: ["dedicatedWaterMeter", "waterTank", "dedicatedElectricityMeter", "generatorSet",
+                    "roadPaved", "securityGuard"],
+                price: 450000,
+                movingPeriod: "AFTER_3_MONTHS",
+                securityDeposit: 3,
+                advanceRent: 6
+            }
+        },
+        // v2: a seller's villa (LISTING · SALE), signed: its listing is still to create. A sale price, no rental terms.
+        301: {
+            party: "bailleur",
+            listingType: "SALE",
+            createdAt: -15,
+            initial: { status: "APPROVED", acceptedAt: -15, requestedAt: -12, approvedAt: -10 },
+            contact: {
+                firstName: "Rodrigue",
+                lastName: "Essomba",
+                whatsapp: "+237699445566",
+                email: "r.essomba@example.com",
+                period: "Matin"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonapriso"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "VILLA",
+                rooms: "5",
+                parkings: "3+",
+                area: 450,
+                amenities: ["dedicatedWaterMeter", "waterWell", "dedicatedElectricityMeter", "generatorSet",
+                    "roadPaved", "securedFenced", "securityGuard"],
+                price: 250000000,
+                movingPeriod: "WITHIN_1_MONTH",
+                comments: "Titre foncier disponible."
+            }
+        }
+    };
+
+    /* ---------- v2: sale or rental (Mandate.listingType) ---------- */
+
+    // A SALE mandate: a buyer's search or a seller's property. Everything else is a RENTAL, as before.
+    function isSale(id) {
+        return !!MANDATES[id] && MANDATES[id].listingType === "SALE";
+    }
+
+    // A sale price in millions on a card, so it fits one line: "15M FCFA", "12,5M FCFA", "850K FCFA". No "/ mois".
+    function formatSalePrice(amount) {
+        var value = amount >= 1000000
+            ? (amount / 1000000).toLocaleString("fr-FR", { maximumFractionDigits: 1 }) + "M"
+            : amount >= 1000 ? (amount / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 }) + "K"
+                : String(amount);
+        return value + " FCFA";
+    }
+
+    // The mandate's price as a card shows it: compact, "/ mois" for a rental only.
+    function formatPriceOf(id, amount) {
+        return isSale(id) ? formatSalePrice(amount) : formatRent(amount);
+    }
+
+    // In full ("250 000 000 FCFA", "300 000 FCFA / mois"): the closed panel, the close wizard.
+    function formatFullPriceOf(id, amount) {
+        return amount.toLocaleString("fr-FR") + (isSale(id) ? " FCFA" : " FCFA / mois");
+    }
+
+    // The short "Vente" / "Location" tag after a mandate's title (offers, Mes mandats, mandate page). Static offers
+    // have it in their markup; this adds or updates it where the title is rendered.
+    function setDealTag(titleEl, id) {
+        if (!titleEl || !MANDATES[id]) return;
+        var tag = $(".deal-tag", titleEl);
+        if (!tag) {
+            tag = document.createElement("span");
+            titleEl.appendChild(tag);
+        }
+        tag.className = "deal-tag deal-tag--" + (isSale(id) ? "sale" : "rental");
+        tag.textContent = isSale(id) ? "Vente" : "Location";
+    }
+
+    /*
+     * The page's sale wording: on a SALE mandate, an element with data-sale-text takes that text (its rental text is
+     * the markup's), [data-rental-only] is hidden — its fields disabled and no longer required, so they aren't
+     * validated — and [data-sale-only] shown (its fields enabled). A RENTAL page is left as written.
+     */
+    function applyDealWording(sale, root) {
+        root = root || document;
+        $all("[data-sale-text]", root).forEach(function (el) {
+            if (!el.hasAttribute("data-rental-text")) el.setAttribute("data-rental-text", el.textContent);
+            el.textContent = sale ? el.getAttribute("data-sale-text") : el.getAttribute("data-rental-text");
+        });
+        function toggle(selector, show) {
+            $all(selector, root).forEach(function (el) {
+                el.hidden = !show;
+                $all("input, select, textarea", el).forEach(function (control) {
+                    control.disabled = !show;
+                    if (!show) control.required = false;
+                });
+            });
+        }
+        toggle("[data-rental-only]", !sale);
+        toggle("[data-sale-only]", sale);
+    }
+
+    /* The search's labels, as the find-property wizard words them. "ANY" is the UI's "Indifférent". */
+    var CATEGORY_LABELS = { RESIDENTIAL: "Résidentiel", COMMERCIAL: "Commercial" };
+    var PROPERTY_TYPE_LABELS = {
+        ROOM: "Chambre",
+        STUDIO: "Studio",
+        APARTMENT: "Appartement",
+        HOUSE: "Maison",
+        VILLA: "Villa",
+        DUPLEX: "Duplex",
+        RETAIL: "Boutique, local commercial",
+        OFFICE: "Bureau",
+        INDUSTRIAL: "Entrepôt, local industriel",
+        BUILDING: "Immeuble",
+        LAND: "Terrain",
+        ANY: "Indifférent"
+    };
+    // In the title ("Locataire · Boutique"): one word.
+    var PROPERTY_TYPE_SHORT = { RETAIL: "Boutique", INDUSTRIAL: "Entrepôt", ANY: "Tout type" };
+    var FURNITURE_LABELS = { FULLY_FURNISHED: "Oui", UNFURNISHED: "Non", ANY: "Indifférent" };
+    var PARKING_LABELS = { "0": "Aucune", "3+": "3+", ANY: "Indifférent" };
+    var MOVING_LABELS = {
+        WITHIN_1_MONTH: "Dans moins de 1 mois",
+        WITHIN_3_MONTHS: "Dans 1 à 3 mois",
+        AFTER_3_MONTHS: "Dans plus de 3 mois"
+    };
+    var AMENITY_GROUPS = [
+        ["Accès à l'eau", [["waterMeter", "Compteur d'eau"], ["dedicatedWaterMeter", "Compteur d'eau individuel"],
+            ["waterTank", "Citerne"], ["waterWell", "Forage"]]],
+        ["Accès à l'électricité", [["electricityMeter", "Compteur électrique"],
+            ["dedicatedElectricityMeter", "Compteur électrique individuel"], ["generatorSet", "Groupe électrogène"],
+            ["solarPanel", "Panneaux solaires"]]],
+        ["Accès routier", [["roadPaved", "Route bitumée"], ["trackAccessibleByCar", "Piste accessible en voiture"],
+            ["trackInaccessibleByCar", "Piste accessible à pied seulement"]]],
+        ["Sécurité", [["securedFenced", "Clôturé et sécurisé"], ["securityGuard", "Gardien"],
+            ["videoSurveillance", "Vidéosurveillance"]]]
+    ];
+
+    // 150000 → "150K FCFA / mois".
+    // A match card's rent, in thousands so the facts fit one line on a phone: "245K FCFA / mois", "152,5K FCFA / mois"
+    // (the BFF's TenantFormatter.compactMoney).
+    function formatCompactRent(amount) {
+        var value = amount < 1000 ? String(amount)
+            : (amount / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 }) + "K";
+        return value + " FCFA / mois";
+    }
+
+    // The visit's kind, as an icon: a camera for a video call, a house on site. Its words for screen readers.
+    var VISIT_ICONS = {
+        VIDEO: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 10 6-3v10l-6-3z"/></svg>',
+        IN_PERSON: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>'
+    };
+
+    function formatRent(amount) {
+        var value = amount % 1000 === 0 ? amount / 1000 + "K" : amount.toLocaleString("fr-FR");
+        return value + " FCFA / mois";
+    }
+
+    function fieldsOf(id) {
+        var saved = mandateStates()[id];
+        return saved && saved.fields ? saved.fields : MANDATES[id].fields;
+    }
+
+    // The customer's details, as mandate/customer-edit.html saves them (the mandate copy's "contact").
+    function contactOf(id) {
+        var saved = mandateStates()[id];
+        return saved && saved.contact ? saved.contact : MANDATES[id].contact;
+    }
+
+    // "Aïcha Mbarga"
+    function contactName(contact) {
+        return [contact.firstName, contact.lastName].filter(Boolean).join(" ");
+    }
+
+    // The kind of mandate, before its title (cards, mandate page): a magnifying glass for a search (the agent looks
+    // for a property), a key for a listing (the owner's property, to let). Not a house: the visit cards use one for
+    // "Sur place". Decorative: the title says "Locataire" / "Propriétaire".
+    var KIND_ICONS = {
+        search: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+        listing: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M17 6l3 3M14.5 8.5l2 2"/></svg>'
+    };
+
+    function setKindIcon(el, id) {
+        if (el) el.innerHTML = KIND_ICONS[MANDATES[id].party === "bailleur" ? "listing" : "search"];
+    }
+
+    function titleOf(id) {
+        var f = fieldsOf(id);
+        var type = PROPERTY_TYPE_SHORT[f.propertyType] || PROPERTY_TYPE_LABELS[f.propertyType] || "Tout type";
+        // "Propriétaire", as the public site's menu says it (not "Bailleur"); v2: "Vendeur" / "Acheteur" for a sale
+        var owner = MANDATES[id].party === "bailleur";
+        var role = isSale(id) ? (owner ? "Vendeur" : "Acheteur") : (owner ? "Propriétaire" : "Locataire");
+        return role + " · " + type;
+    }
+
+    // Who the mandate is for: the card's title. Null when the customer couldn't be loaded: the card then keeps the
+    // role and type as its title (see render in initMandates).
+    function clientNameOf(id) {
+        var contact = contactOf(id);
+        return contact ? contactName(contact) : null;
+    }
+
+    // The search as [term, value] rows: sector, amount and date first (a card's three facts), then the rest.
+    function criteriaOf(id) {
+        var f = fieldsOf(id);
+        var owner = MANDATES[id].party === "bailleur";
+        var sale = isSale(id);
+        var n = f.neighbourhoods.length;
+        // v2: a sale reads "Prix de vente" / "Budget total" (no "/ mois") and "Achat prévu"; it has no furniture.
+        var priceTerm = sale ? (owner ? "Prix de vente" : "Budget total") : (owner ? "Loyer" : "Budget");
+        var dateTerm = owner ? "Disponibilité" : (sale ? "Achat prévu" : "Emménagement");
+        var rows = [
+            [n > 1 ? "Secteurs" : "Secteur", (n ? f.neighbourhoods.join(", ") : "Toute la ville") + " — " + f.city],
+            [priceTerm, formatPriceOf(id, f.price)],
+            [dateTerm, MOVING_LABELS[f.movingPeriod]],
+            ["Catégorie", CATEGORY_LABELS[f.propertyCategory]],
+            ["Type de propriété", PROPERTY_TYPE_LABELS[f.propertyType] || "Indifférent"]
+        ];
+        if (f.furnitureType && !sale) rows.push(["Meublé", FURNITURE_LABELS[f.furnitureType]]);
+        if (f.rooms) rows.push(["Chambres", f.rooms]);
+        if (f.parkings) rows.push(["Parking", PARKING_LABELS[f.parkings] || f.parkings]);
+        if (f.area) rows.push([owner ? "Surface" : "Surface souhaitée", f.area + " m²"]);
+        AMENITY_GROUPS.forEach(function (group) {
+            var labels = group[1].filter(function (a) {
+                return f.amenities.indexOf(a[0]) !== -1;
+            }).map(function (a) {
+                return a[1];
+            });
+            if (labels.length) rows.push([group[0], labels.join(", ")]);
+        });
+        if (f.comments) rows.push(["Autres précisions", f.comments]);
+        return rows;
+    }
+
+    var DAY_MS = 24 * 60 * 60 * 1000;
+    // Assigné, En approbation, Actif: listed in "Mes mandats". CLOSED is "Fermé" (lease signed), CANCELLED "Annulé".
+    var ACTIVE_STATUSES = ["ASSIGNED", "PENDING_APPROVAL", "APPROVED"];
+    // A triage page: five mandates on the home page, the rest folded ("Voir les N autres mandats").
+    var MANDATE_PAGE_SIZE = 5;
+    // ndopify.contract.signature.ttl-days and ndopify.mandate.contract.duration-months.
+    var SIGNATURE_TTL_DAYS = 7;
+    var CONTRACT_MONTHS = 6;
+
+    var STATUS_TAGS = {
+        ASSIGNED: ["Assigné", "info"],
+        PENDING_APPROVAL: ["En approbation", "warning"],
+        APPROVED: ["Actif", "success"],
+        CLOSED: ["Fermé", "neutral"],
+        CANCELLED: ["Annulé", "neutral"]
+    };
+
+    // MandateCancellationCode, as the cancel form words them.
+    var CANCELLATION_LABELS = {
+        FOUND_INDEPENDENTLY: "trouvé sans votre aide",
+        FOUND_VIA_OTHER_AGENT: "trouvé par un autre agent",
+        CHANGE_OF_PLANS: "changement de projet",
+        UNREALISTIC_CRITERIA: "critères irréalistes",
+        UNSATISFACTORY_SERVICE: "insatisfait du service",
+        OTHER: "autre raison"
+    };
+
+    var DATE_FORMAT = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+    // Where room is short (a status tag): "26 oct. 2026", as the tenant's dateFormat in the served pages.
+    // The cards' dates (Mes mandats, Biens correspondants), as the BFF's tenant dateFormat: "1 nov. 2026".
+    var SHORT_DATE_FORMAT = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+    var CHECK_MARK = '<svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    // A done tracker step: filled by CSS, the state is carried for screen readers only.
+    var DONE_MARK = '<span class="visually-hidden">Terminé</span>';
+
+    function formatDate(ms) {
+        return DATE_FORMAT.format(new Date(ms));
+    }
+
+    function formatShortDate(ms) {
+        return SHORT_DATE_FORMAT.format(new Date(ms));
+    }
+
+    // "2 décembre 2026 à 10h30", for the co-brokerage visits block
+    function formatVisitAt(ms) {
+        var d = new Date(ms);
+        return formatDate(ms) + " à " + (d.getHours() < 10 ? "0" : "") + d.getHours() + "h" +
+            (d.getMinutes() < 10 ? "0" : "") + d.getMinutes();
+    }
+
+    function addMonths(ms, months) {
+        var d = new Date(ms);
+        d.setMonth(d.getMonth() + months);
+        return d.getTime();
+    }
+
+    function signatureDeadline(state) {
+        return state.requestedAt + SIGNATURE_TTL_DAYS * DAY_MS;
+    }
+
+    // Anti-bypass: an agent only sees its own mandates, the offers it accepted included.
+    function ownsMandate(id) {
+        var mandate = MANDATES[id];
+        return !!mandate && (!!mandate.initial || acceptedMandates().indexOf(id) !== -1);
+    }
+
+    function mandateStates() {
+        try {
+            return JSON.parse(store.get(KEYS.mandates)) || {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    // { status, acceptedAt, requestedAt?, approvedAt?, closedAt?, finalPrice?, cancellationCode?, cancellationReason? }
+    function stateOf(id) {
+        var saved = mandateStates()[id];
+        if (saved) return saved;
+        var initial = MANDATES[id].initial || { status: "ASSIGNED", acceptedAt: 0 };
+        var state = {};
+        Object.keys(initial).forEach(function (key) {
+            var value = initial[key];
+            state[key] = typeof value === "number" ? Date.now() + value * DAY_MS : value;
+        });
+        return state;
+    }
+
+    function saveState(id, state) {
+        var states = mandateStates();
+        states[id] = state;
+        store.set(KEYS.mandates, JSON.stringify(states));
+    }
+
+    function partyWords(mandate) {
+        var owner = mandate.party === "bailleur";
+        // v2: a sale's parties are the seller and the buyer
+        if (mandate.listingType === "SALE") {
+            return {
+                the: owner ? "le vendeur" : "l'acheteur",
+                The: owner ? "Le vendeur" : "L'acheteur",
+                of: owner ? "du vendeur" : "de l'acheteur",
+                search: owner ? "son bien" : "sa recherche",
+                Search: owner ? "Son bien" : "Sa recherche"
+            };
+        }
+        return {
+            the: owner ? "le bailleur" : "le client",
+            The: owner ? "Le bailleur" : "Le client",
+            of: owner ? "du bailleur" : "du client",
+            search: owner ? "son bien" : "sa recherche",
+            Search: owner ? "Son bien" : "Sa recherche"
+        };
+    }
+
+    function setStatusTag(el, status) {
+        var tag = STATUS_TAGS[status];
+        el.textContent = tag[0];
+        el.className = "status-tag status-tag--" + tag[1];
+    }
+
+    /* ---------- Matches: listings of the agent's inventory that fit one of its signed searches ---------- */
+
+    // PROTOTYPE: GET /v1/matches?mandate-id= (best score first), with the listing of each. Only an APPROVED SEARCH
+    // mandate has matches (the matcher runs when it's signed): 204 has them now, 201 once its signature is simulated.
+    // availableIn: days from now (0: available now). fit: the partial scores of Matcher, as words, true when full.
+    var MATCHES = {
+        204: [
+            // Sent 3 days ago; the client asked for a visit on ndopify-web's proposition.html (visit 7001 of visit.js,
+            // to confirm on visit.html: "visit" is only the fallback of a page without visit.js).
+            {
+                id: "9001", listingId: "3012", propertyType: "APARTMENT", rooms: 3, neighbourhood: "Bonapriso",
+                price: 240000, availableIn: 31, score: 0.95,
+                initial: { status: "PROPOSED", sentAt: -3, answer: "ACCEPTED", answeredAt: -2,
+                    visit: { in: 5, time: "10h30", type: "IN_PERSON" } },
+                fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"], [true, "3 chambres, comme demandé"],
+                    [false, "2 équipements sur 3 : Clôturé et sécurisé, Citerne. Manque : Groupe électrogène"],
+                    [true, "Disponible avant la date d'emménagement"], [true, "Non meublé, comme demandé"]]
+            },
+            {
+                id: "9002", listingId: "3027", propertyType: "APARTMENT", rooms: 2, neighbourhood: "Bonapriso",
+                price: 200000, availableIn: 106, score: 0.745,
+                fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"],
+                    [false, "2 chambres, une de moins que demandé"],
+                    [false, "1 équipement sur 3 : Clôturé et sécurisé. Manque : Groupe électrogène, Citerne"],
+                    [false, "Disponible moins d'un mois après la date d'emménagement"],
+                    [true, "Non meublé, comme demandé"]]
+            },
+            {
+                id: "9003", listingId: "3041", propertyType: "APARTMENT", rooms: 4, neighbourhood: "Bonanjo",
+                distanceKm: 1.5, price: 265000, availableIn: 0, score: 0.58,
+                fit: [[false, "À 1,5 km du secteur recherché"], [false, "6 % au-dessus du budget"],
+                    [false, "4 chambres, une de plus que demandé"], [true, "Les 3 équipements demandés"],
+                    [true, "Disponible dès maintenant"], [true, "Non meublé, comme demandé"]]
+            },
+            // Sent to the client 3 days ago, answered on the public portal (ndopify-web's proposition.html): its visit
+            // is confirmed (visit 7004 of visit.js).
+            {
+                id: "9004", listingId: "2987", propertyType: "APARTMENT", rooms: 3, neighbourhood: "Bonapriso",
+                price: 245000, availableIn: 15, score: 0.9,
+                initial: { status: "PROPOSED", sentAt: -3, answer: "ACCEPTED", answeredAt: -2,
+                    visit: { in: 2, time: "10h00", type: "IN_PERSON" } },
+                fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"], [true, "3 chambres, comme demandé"],
+                    [false, "2 équipements sur 3. Manque : Groupe électrogène"],
+                    [true, "Disponible avant la date d'emménagement"], [true, "Non meublé, comme demandé"]]
+            },
+            {
+                id: "9005", listingId: "2990", propertyType: "APARTMENT", rooms: 3, neighbourhood: "Bonapriso",
+                price: 270000, availableIn: 40, score: 0.62,
+                initial: { status: "PROPOSED", sentAt: -3, answer: "REJECTED", answeredAt: -3, reason: "PRICE" },
+                fit: [[true, "Dans le secteur recherché"], [false, "8 % au-dessus du budget"],
+                    [true, "3 chambres, comme demandé"], [true, "Les 3 équipements demandés"],
+                    [true, "Disponible avant la date d'emménagement"], [true, "Non meublé, comme demandé"]]
+            },
+            {
+                id: "9006", listingId: "3002", propertyType: "APARTMENT", rooms: 3, neighbourhood: "Bonanjo",
+                distanceKm: 0.8, price: 235000, availableIn: 25, score: 0.79,
+                // Liked the next day, with a video visit asked (visit 7019 of visit.js)
+                initial: { status: "PROPOSED", sentAt: -1, answer: "ACCEPTED", answeredAt: -0.5,
+                    visit: { in: 3, time: "18h00", type: "VIDEO" } },
+                fit: [[false, "À 0,8 km du secteur recherché"], [true, "Dans le budget"],
+                    [true, "3 chambres, comme demandé"], [false, "1 équipement sur 3 : Citerne"],
+                    [true, "Disponible avant la date d'emménagement"], [true, "Non meublé, comme demandé"]]
+            },
+            // The landlord's listing of mandate 203 (see cardListingOf): liked despite its price, so that closing
+            // this search on it also closes the landlord's mandate, the deal's other side.
+            {
+                id: "9008", listingId: "501", propertyType: "APARTMENT", rooms: 3, neighbourhood: "Bonapriso",
+                price: 300000, availableIn: 0, score: 0.72,
+                initial: { status: "PROPOSED", sentAt: -2, answer: "ACCEPTED", answeredAt: -1 },
+                fit: [[true, "Dans le secteur recherché"], [false, "20 % au-dessus du budget"],
+                    [true, "3 chambres, comme demandé"], [true, "Les 3 équipements demandés"],
+                    [true, "Disponible dès maintenant"], [true, "Non meublé, comme demandé"]]
+            },
+            // Sent 2 days ago, no answer yet: the agent can e-mail the link again, the status left as is.
+            {
+                id: "9010", listingId: "3019", propertyType: "APARTMENT", rooms: 3, neighbourhood: "Bonapriso",
+                price: 260000, availableIn: 18, score: 0.76,
+                initial: { status: "PROPOSED", sentAt: -2 },
+                fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"], [true, "3 chambres, comme demandé"],
+                    [false, "2 équipements sur 3 : Clôturé et sécurisé. Manque : Groupe électrogène"],
+                    [true, "Disponible avant la date d'emménagement"], [true, "Non meublé, comme demandé"]]
+            },
+            // Co-brokerage: another agent's published listing (Clarisse Mbarga's, see agent.js). Its card opens the
+            // read-only listing page, with that agent's contact instead of a customer.
+            {
+                id: "9009", listingId: "5001", propertyType: "APARTMENT", rooms: 2, neighbourhood: "Bonapriso",
+                price: 250000, availableIn: 0, score: 0.72, coBrokerage: true,
+                agent: { id: "1001", name: "Clarisse Mbarga", whatsappNumber: "+237699123456" },
+                // The client accepted and asked for a visit: the card names its organizer (Clarisse), never her customer.
+                initial: { status: "PROPOSED", sentAt: -2, answer: "ACCEPTED", answeredAt: -1,
+                    visit: { in: 2, time: "14h00", type: "IN_PERSON",
+                        agent: { id: "1001", firstName: "Clarisse", lastName: "Mbarga",
+                            whatsappNumber: "+237699123456", whatsappDisplay: "+237 6 99 12 34 56" } } },
+                fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"],
+                    [false, "2 chambres, une de moins que demandé"], [true, "Les 3 équipements demandés"],
+                    [true, "Disponible dès maintenant"], [false, "Meublé : le client le veut vide"]]
+            },
+            // Sent 9 days ago, never answered: expired by the server after 7 days (MatchJobs.expire), to send again.
+            {
+                id: "9007", listingId: "3010", propertyType: "APARTMENT", rooms: 3, neighbourhood: "Bonapriso",
+                price: 250000, availableIn: 10, score: 0.74,
+                initial: { status: "EXPIRED", sentAt: -9 },
+                fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"],
+                    [true, "3 chambres, comme demandé"], [false, "2 équipements sur 3. Manque : Citerne"],
+                    [true, "Disponible avant la date d'emménagement"], [true, "Non meublé, comme demandé"]]
+            }
+        ],
+        201: [
+            {
+                id: "9101", listingId: "3055", propertyType: "HOUSE", rooms: 3, neighbourhood: "Kotto",
+                price: 230000, availableIn: 20, score: 0.88,
+                fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"], [true, "3 chambres, comme demandé"],
+                    [false, "4 équipements sur 5. Manque : Citerne"],
+                    [true, "Disponible avant la date d'emménagement"], [true, "Non meublée, comme demandé"]]
+            },
+            {
+                id: "9102", listingId: "3060", propertyType: "HOUSE", rooms: 4, neighbourhood: "Logpom",
+                price: 260000, availableIn: 45, score: 0.67,
+                fit: [[true, "Dans le secteur recherché"], [false, "4 % au-dessus du budget"],
+                    [false, "4 chambres, une de plus que demandé"], [false, "3 équipements sur 5. Manque : Citerne, Route bitumée"],
+                    [true, "Disponible avant la date d'emménagement"], [false, "Meublée : le client la veut vide"]]
+            }
+        ]
+    };
+
+    // ACTIVE: new, to look at. SHORTLISTED: kept by the agent, to send. PROPOSED: sent to the client.
+    // DISMISSED: set aside, never proposed again for this mandate (the server's DISMISSED).
+    // EXPIRED: sent, but the client didn't answer within 7 days: can be sent again, or set aside.
+    // NOTE: the server has ACTIVE and DISMISSED only; SHORTLISTED and PROPOSED are the next plans' statuses.
+    var MATCH_TAGS = {
+        ACTIVE: ["Nouveau", "info"],
+        SHORTLISTED: ["Retenu", "success"],
+        PROPOSED: ["Envoyé", "neutral"],
+        EXPIRED: ["Expirée", "warning"]
+    };
+    // The client's answer to a PROPOSED match, on the public portal: interested (then maybe a visit) or not.
+    // NOTE: not on the server yet either (the plan's ACCEPTED / REJECTED, and the visit request).
+    var ANSWER_TAGS = {
+        ACCEPTED: ["Intéressé", "success"],
+        VISIT: ["Visite demandée", "warning"],
+        REJECTED: ["Refusé", "neutral"]
+    };
+    // The visit inside a mandate card (Biens correspondants, Propositions et visites): the same block in both, so a
+    // card carries the visit it led to instead of the page showing a separate Visites section. The block carries the
+    // state itself now, since the card's header tag is hidden when a visit exists; a requested visit keeps the timer
+    // and "Confirmer la visite", a confirmed one says when and opens the visit.
+    function visitKind(status, video) {
+        if (status === "REQUESTED") return video ? "Visite vidéo demandée" : "Visite demandée";
+        if (status === "CONFIRMED") return video ? "Visite vidéo confirmée" : "Visite confirmée";
+        if (status === "CHECKED_IN") return video ? "Visite vidéo en cours" : "Visite en cours";
+        return video ? "Visité en vidéo" : "Visité";
+    }
+
+    function fillVisit(box, visit, label, cardAgent, cardHasAgent) {
+        if (!box) return;
+        if (!visit) {
+            box.hidden = true;
+            return;
+        }
+        box.hidden = false;
+        var status = visit.status || "REQUESTED";
+        box.setAttribute("data-state", status.toLowerCase());
+        if (status === "REQUESTED" && visit.expiresAt) box.setAttribute("data-expires-at", visit.expiresAt);
+        else box.removeAttribute("data-expires-at");
+        var video = visit.type === "VIDEO";
+        var icon = $("[data-visit-icon]", box);
+        if (icon) icon.innerHTML = VISIT_ICONS[video ? "VIDEO" : "IN_PERSON"];
+        $("[data-visit-kind]", box).textContent = visitKind(status, video);
+        var when = $("[data-visit-when]", box);
+        var at = visit.at;
+        if (status === "REQUESTED") {
+            when.textContent = "pour le " + window.NpcVisits.formatAt(at);
+        } else if (status === "CHECKED_IN") {
+            when.textContent = visit.checkedInAt ? "depuis le " + window.NpcVisits.formatAt(visit.checkedInAt) : "en cours";
+        } else if (status === "COMPLETED") {
+            when.textContent = "le " + window.NpcVisits.formatAt(visit.checkedOutAt || at);
+        } else {
+            when.textContent = "le " + window.NpcVisits.formatAt(at);
+        }
+        var timer = $("[data-visit-timer]", box);
+        if (status === "REQUESTED" && visit.expiresAt) {
+            var left = Math.max(0, visit.expiresAt - Date.now());
+            timer.hidden = false;
+            $("[data-visit-left]", box).textContent = window.NpcVisits.formatLeft(left);
+            if (left < 12 * 60 * 60 * 1000) box.setAttribute("data-urgent", "");
+            else box.removeAttribute("data-urgent");
+        } else {
+            timer.hidden = true;
+            box.removeAttribute("data-urgent");
+        }
+        // Another agent's listing: the standard agent footer, unless the card above already names that same agent.
+        var agentCard = $("[data-visit-agent-card]", box);
+        if (agentCard) {
+            var currentMandate = new URLSearchParams(window.location.search).get("id") || "";
+            var anchor = box.closest("[data-listing-proposals]") ? "#proposals-title" : "#matches-title";
+            var showAgent = visit.agent && !cardHasAgent &&
+                (!cardAgent || String(cardAgent.id) !== String(visit.agent.id));
+            agentCard.hidden = !showAgent;
+            if (showAgent) {
+                fillAgentCard(agentCard, visit.agent,
+                    "mandate.html?id=" + encodeURIComponent(currentMandate) + anchor);
+            }
+        }
+        var link = $("[data-visit-link]", box);
+        if (visit.id) {
+            link.hidden = false;
+            link.href = "visit.html?id=" + encodeURIComponent(visit.id);
+            var text = status === "REQUESTED" ? "Confirmer la visite" : "Voir la visite";
+            link.textContent = text;
+            link.className = "btn " + (status === "REQUESTED" ? "btn--primary" : "btn--outline") +
+                " btn--compact visit-detail__cta";
+            var parts = [text];
+            if (label) parts.push(label);
+            if (status !== "CHECKED_IN") parts.push(window.NpcVisits.formatAt(at));
+            link.setAttribute("aria-label", parts.join(" — "));
+        } else {
+            link.hidden = true;
+        }
+    }
+
+    // proposition.html's "Pas pour moi" reasons.
+    var REJECTION_LABELS = {
+        PRICE: "trop cher",
+        LOCATION: "le quartier ne convient pas",
+        SIZE: "trop petit ou trop grand",
+        AMENITIES: "il manque des équipements",
+        AVAILABILITY: "disponible trop tard",
+        OTHER: "autre raison"
+    };
+
+    function allMatchStates() {
+        try {
+            return JSON.parse(store.get(KEYS.matches)) || {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function matchStatesOf(mandateId) {
+        return allMatchStates()[mandateId] || {};
+    }
+
+    function saveMatchState(mandateId, matchId, state) {
+        var all = allMatchStates();
+        all[mandateId] = all[mandateId] || {};
+        all[mandateId][matchId] = state;
+        store.set(KEYS.matches, JSON.stringify(all));
+    }
+
+    // Only a client's signed search is matched (SEARCH, APPROVED).
+    function hasMatches(mandateId) {
+        return MANDATES[mandateId].party !== "bailleur" && stateOf(mandateId).status === "APPROVED";
+    }
+
+    // The mandate's matches with their status, best score first.
+    function matchesOf(mandateId) {
+        if (!hasMatches(mandateId)) return [];
+        var states = matchStatesOf(mandateId);
+        return (MATCHES[mandateId] || []).map(function (match) {
+            var state = states[match.id] || initialMatchState(match);
+            var copy = {};
+            Object.keys(match).forEach(function (key) {
+                copy[key] = match[key];
+            });
+            ["status", "sentAt", "answer", "answeredAt", "reason", "visit"].forEach(function (key) {
+                copy[key] = state[key];
+            });
+            // The match's visit as visit.html left it (visit.js): null once cancelled, expired or missed
+            var visit = window.NpcVisits && window.NpcVisits.forMatch(match.id);
+            if (visit !== undefined && copy.status === "PROPOSED") copy.visit = visit;
+            return copy;
+        });
+    }
+
+    // PROTOTYPE: a match's initial state, its dates in days from now (the visit's day too).
+    function initialMatchState(match) {
+        var initial = match.initial;
+        if (!initial) return { status: "ACTIVE" };
+        var state = {};
+        Object.keys(initial).forEach(function (key) {
+            var value = initial[key];
+            state[key] = typeof value === "number" ? Date.now() + value * DAY_MS : value;
+        });
+        if (initial.visit) {
+            state.visit = { at: atTime(Date.now() + initial.visit.in * DAY_MS, initial.visit.time),
+                time: initial.visit.time, type: initial.visit.type };
+            if (initial.visit.agent) state.visit.agent = initial.visit.agent;
+        }
+        return state;
+    }
+
+    // A fixture's day plus its "10h30" / "10:30": the timestamp the cards read, in the tenant's time.
+    function atTime(dayMs, time) {
+        var d = new Date(dayMs);
+        var p = time.split(/[h:]/);
+        d.setHours(Number(p[0]), Number(p[1]), 0, 0);
+        return d.getTime();
+    }
+
+    // ACCEPTED, VISIT (accepted, with a visit asked) or REJECTED; null while the client hasn't answered.
+    function answerOf(match) {
+        if (match.status !== "PROPOSED" || !match.answer) return null;
+        return match.answer === "ACCEPTED" && match.visit ? "VISIT" : match.answer;
+    }
+
+    // The visit the client asked for: "mardi 3 novembre à 10h00, sur place".
+    function visitLabel(visit) {
+        var day = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" })
+            .format(new Date(visit.at));
+        return day + " à " + visit.time + (visit.type === "VIDEO" ? ", en vidéo" : ", sur place");
+    }
+
+    function countMatches(matches, status) {
+        return matches.filter(function (m) {
+            return m.status === status;
+        }).length;
+    }
+
+    // Append the cards under a visible group label, in the order the caller sorted them.
+    function appendGrouped(list, items, groupOf, labels, itemOf) {
+        var counts = {};
+        items.forEach(function (item) {
+            var key = groupOf(item);
+            counts[key] = (counts[key] || 0) + 1;
+        });
+        var last = null;
+        items.forEach(function (item, index) {
+            var key = groupOf(item);
+            if (key !== last) {
+                var group = document.createElement("li");
+                group.className = "assignments__group";
+                group.setAttribute("role", "presentation");
+                group.setAttribute("data-card-group", key);
+                var title = document.createElement("p");
+                title.className = "assignments__group-title";
+                title.textContent = labels[key] + " (" + counts[key] + ")";
+                group.appendChild(title);
+                list.appendChild(group);
+                last = key;
+            }
+            list.appendChild(itemOf(item, index));
+        });
+    }
+
+    // PROTOTYPE: GET /v1/mandates/stats?mandate-id= for an approved search: its pool, interested clients and visits.
+    // The pool is the matches in play (ACTIVE, PROPOSED, ACCEPTED, EXPIRED; a refused proposal is left out), the
+    // interested are the client's ACCEPTED answers (including a visit asked), and the visits are visit.js's open
+    // and completed ones for the mandate.
+    function searchStatsOf(mandateId) {
+        var matches = matchesOf(mandateId);
+        var properties = matches.filter(function (m) {
+            return ["ACTIVE", "PROPOSED", "ACCEPTED", "EXPIRED"].indexOf(m.status) !== -1 &&
+                answerOf(m) !== "REJECTED";
+        }).length;
+        var interested = matches.filter(function (m) {
+            return m.status === "ACCEPTED" || answerOf(m) === "ACCEPTED" || answerOf(m) === "VISIT";
+        }).length;
+        var visits = window.NpcVisits ? window.NpcVisits.countForMandate(mandateId) : 0;
+        var parts = [];
+        if (properties) parts.push(properties + (properties > 1 ? " biens" : " bien"));
+        if (interested) parts.push(interested + (interested > 1 ? " intéressés" : " intéressé"));
+        if (visits) parts.push(visits + (visits > 1 ? " visites" : " visite"));
+        return {
+            properties: properties,
+            visits: visits,
+            label: parts.length ? parts.join(" · ") : "Aucun bien correspondant pour l'instant"
+        };
+    }
+
+    function matchTitle(match) {
+        var type = PROPERTY_TYPE_LABELS[match.propertyType];
+        return type + " · " + match.rooms + (match.rooms > 1 ? " chambres" : " chambre");
+    }
+
+    function matchAvailability(match) {
+        return match.availableIn <= 0 ? "Libre maintenant" : "Dès le " + formatShortDate(Date.now() + match.availableIn * DAY_MS);
+    }
+
+    // PROTOTYPE: a published listing's matches sent to a client (GET /v1/matches?listing-id=&status=PROPOSED&
+    // status=ACCEPTED&status=REJECTED), by the listing's mandate, in the shape of matchesOf's. Dates in days from now
+    // (the visit's day too). 102's listing has none: the empty view.
+    // A search of the signed-in agent has its client's name and mandate (204 is the only one of this prototype, the
+    // others' mandate pages show the locked view). Another agent's search (otherAgent) protects that agent's mandate:
+    // neither its client nor its mandate is on the page, only what the client answered about this listing.
+    var LISTING_PROPOSALS = {
+        203: [
+            { mandateId: "204", client: "Sandrine Eboa", sentAt: -3, answer: "ACCEPTED", answeredAt: -2,
+                visit: { id: "7301", in: 2, time: "10h00", type: "IN_PERSON", status: "REQUESTED" } },
+            { mandateId: "207", client: "Hervé Mbarga", sentAt: -4, answer: "ACCEPTED", answeredAt: -4,
+                visit: { id: "7302", in: 1, time: "09h30", type: "IN_PERSON", status: "CONFIRMED" } },
+            { otherAgent: true, agent: { id: "1001", name: "Clarisse Mbarga", whatsappNumber: "+237699123456" },
+                sentAt: -2, answer: "ACCEPTED", answeredAt: -1 },
+            { mandateId: "208", client: "Carine Ndongo", sentAt: -1 },
+            { otherAgent: true, agent: { id: "1002", name: "Paul Etame", whatsappNumber: "+237699654321" },
+                sentAt: -5 },
+            { mandateId: "209", client: "Rodrigue Essomba", sentAt: -6, answer: "REJECTED", answeredAt: -5,
+                reason: "PRICE" }
+        ]
+    };
+
+    // PROTOTYPE: the visits another agent organizes on the landlord's published listing (listing 501 of mandate 203),
+    // from GET /v1/visits/co-brokerage?listing-id=. A is named and contactable; A's customer never is.
+    var CO_BROKERAGE_LISTING_VISITS = [
+        { at: Date.now() + 25 * 60 * 60 * 1000, type: "IN_PERSON", status: "CONFIRMED",
+            agent: { id: "1001", firstName: "Clarisse", lastName: "Mbarga", whatsappNumber: "+237699123456",
+                whatsappDisplay: "+237 6 99 12 34 56" } },
+        { at: Date.now() - 30 * 60 * 1000, type: "VIDEO", status: "CHECKED_IN",
+            agent: { id: "1001", firstName: "Clarisse", lastName: "Mbarga", whatsappNumber: "+237699123456",
+                whatsappDisplay: "+237 6 99 12 34 56" } }
+    ];
+
+    // The listing's proposals, as PROPOSED matches with their dates (see initialMatchState).
+    function listingProposalsOf(mandateId) {
+        return (LISTING_PROPOSALS[mandateId] || []).map(function (p) {
+            var match = initialMatchState({ initial: p });
+            match.status = "PROPOSED";
+            match.otherAgent = !!p.otherAgent;
+            match.agent = p.agent || null;
+            match.mandateId = p.mandateId;
+            match.client = p.client;
+            // The visit asked on the public portal, with the status it reached on visit.html. Its deadline follows
+            // the requested slot in this prototype.
+            if (match.visit) {
+                match.visit.status = p.visit.status || "REQUESTED";
+                match.visit.id = p.visit.id;
+                match.visit.expiresAt = match.visit.status === "REQUESTED"
+                    ? Math.max(Date.now() + 48 * 60 * 60 * 1000, match.visit.at)
+                    : null;
+            }
+            return match;
+        });
+    }
+
+    // A landlord's mandate page, its listing published: who the listing was sent to (its Propositions). A visit asked
+    // first, then interested, then waiting; the latest first within each. A refused one is only counted, in the line.
+    var PROPOSAL_TAGS = {
+        VISIT: ANSWER_TAGS.VISIT,
+        ACCEPTED: ANSWER_TAGS.ACCEPTED,
+        NONE: ["En attente", "neutral"]
+    };
+
+    function renderListingProposals(box, mandateId, published) {
+        if (!box) return;
+        box.hidden = !published;
+        if (box.hidden) return;
+        var matches = listingProposalsOf(mandateId);
+        $("[data-proposals-empty]", box).hidden = matches.length > 0;
+
+        // The requests to confirm first (soonest expiry first), then the visits to come (soonest first), then
+        // interested, then waiting; the latest answer first within each.
+        function rank(m) {
+            var answer = answerOf(m);
+            if (answer === "VISIT") return (m.visit.status || "REQUESTED") === "REQUESTED" ? 0 : 1;
+            return answer === "ACCEPTED" ? 2 : 3;
+        }
+
+        function sortKey(m) {
+            var answer = answerOf(m);
+            if (answer === "VISIT") {
+                return (m.visit.status || "REQUESTED") === "REQUESTED"
+                    ? (m.visit.expiresAt || m.visit.at)
+                    : m.visit.at;
+            }
+            return -(m.answeredAt || m.sentAt);
+        }
+
+        function groupOf(m) {
+            var answer = answerOf(m);
+            if (answer === "VISIT") return (m.visit.status || "REQUESTED") === "REQUESTED" ? "requested" : "upcoming";
+            return answer === "ACCEPTED" ? "interested" : "waiting";
+        }
+
+        var GROUP_LABELS = {
+            requested: "À confirmer",
+            upcoming: "Visites à venir",
+            interested: "Intéressés",
+            waiting: "En attente"
+        };
+        var shown = matches.filter(function (m) {
+            return answerOf(m) !== "REJECTED";
+        }).sort(function (a, b) {
+            return rank(a) - rank(b) || sortKey(a) - sortKey(b);
+        });
+        var list = $("[data-proposals-list]", box);
+        var template = $("[data-proposals-template]", box);
+        list.textContent = "";
+        list.hidden = shown.length === 0;
+        appendGrouped(list, shown, groupOf, GROUP_LABELS, function (m, index) {
+            var item = template.content.firstElementChild.cloneNode(true);
+            var answer = answerOf(m) || "NONE";
+            var visit = answer === "VISIT" ? m.visit : null;
+            var key = visit && visit.id ? visit.id : (m.mandateId || "other-" + index);
+            item.id = "proposal-" + key;
+            var title = $(".assignment__type", item);
+            var titleId = item.id + "-title";
+            title.id = titleId;
+            $("article", item).setAttribute("aria-labelledby", titleId);
+            var row = $("[data-proposal-link]", item);
+            if (m.otherAgent) {
+                // Another agent's client: no name, no link to a mandate the agent can't open.
+                var plain = document.createElement("span");
+                plain.textContent = "Client d'un autre agent";
+                row.replaceWith(plain);
+            } else {
+                row.href = "mandate.html?id=" + encodeURIComponent(m.mandateId) + "#matches-title";
+                $("[data-proposal-client]", item).textContent = m.client;
+            }
+            var tag = $("[data-proposal-tag]", item);
+            if (visit) {
+                // The visit block carries the state: no second tag on the header.
+                tag.hidden = true;
+            } else {
+                tag.hidden = false;
+                var t = PROPOSAL_TAGS[answer] || PROPOSAL_TAGS.NONE;
+                tag.textContent = t[0];
+                tag.className = "status-tag status-tag--" + t[1];
+            }
+            var summary = "Envoyé le " + formatShortDate(m.sentAt);
+            if (m.answeredAt && answer !== "VISIT") {
+                summary += " · intéressé le " + formatShortDate(m.answeredAt);
+            }
+            $("[data-proposal-summary]", item).textContent = summary;
+            fillVisit($("[data-proposal-visit]", item), visit, m.otherAgent ? "Client d'un autre agent" : m.client, m.agent);
+            // Another agent's client: their agent sits in the standard footer, at the bottom of the card.
+            var agentCard = $("[data-agent-card]", item);
+            agentCard.hidden = !(m.otherAgent && m.agent);
+            if (m.otherAgent && m.agent) {
+                fillAgentCard(agentCard, m.agent,
+                    "mandate.html?id=" + encodeURIComponent(mandateId) + "#proposals-title");
+            }
+            return item;
+        });
+
+        // The outcomes line keeps only what the cards hide: refused and expired.
+        var refused = matches.filter(function (m) {
+            return answerOf(m) === "REJECTED";
+        }).length;
+        var expired = countMatches(matches, "EXPIRED");
+        var outcomes = [];
+        if (refused) outcomes.push(refused + (refused > 1 ? " refusés" : " refusé"));
+        if (expired) outcomes.push(expired + " sans réponse");
+        var line = $("[data-proposal-outcomes]", box);
+        line.hidden = outcomes.length === 0;
+        line.textContent = outcomes.join(" · ");
+    }
+
+    // The listing agent's *Visites d'autres agents*: A's name, profile and WhatsApp, never A's customer.
+    function renderListingCoBrokerageVisits(mandateId, listing) {
+        var section = $("[data-co-brokerage-visits]");
+        if (!section) return;
+        var published = !!listing && listing.status === "PUBLISHED";
+        section.hidden = !published;
+        if (!published) return;
+        var list = $("[data-co-brokerage-visit-list]", section);
+        var template = $("[data-co-brokerage-visit-template]", section);
+        list.textContent = "";
+        CO_BROKERAGE_LISTING_VISITS.forEach(function (visit) {
+            var item = template.content.firstElementChild.cloneNode(true);
+            $("[data-co-brokerage-at]", item).textContent = formatVisitAt(visit.at);
+            $("[data-co-brokerage-type]", item).textContent = visit.type === "VIDEO" ? "Visite vidéo" : "Sur place";
+            $all("[data-co-brokerage-type-icon]", item).forEach(function (el) {
+                if (el.getAttribute("data-co-brokerage-type-icon") === visit.type) el.removeAttribute("hidden");
+                else el.setAttribute("hidden", "");
+            });
+            $("[data-co-brokerage-progress]", item).hidden = visit.status !== "CHECKED_IN";
+            var listingLink = $("[data-co-brokerage-listing]", item);
+            listingLink.textContent = listing.fields ? listingTitle(listing) : "Appartement 3 chambres · Bonapriso";
+            listingLink.href = "listing.html?id=" + encodeURIComponent(listing.id);
+            fillAgentCard($("[data-agent-card]", item), visit.agent,
+                "mandate.html?id=" + encodeURIComponent(mandateId) + "#co-brokerage-visits-title");
+            list.appendChild(item);
+        });
+    }
+
+    // PROTOTYPE: a published listing's audience, by mandate id — the page views of its public page
+    // (GET /v1/listings/views?listing-ids=) and the visits of the property (GET /v1/visits?listing-id=). 203 is the
+    // prototype's published listing (?listing=published); any other starts empty, like a listing just published.
+    var LISTING_ACTIVITY = {
+        203: { views: 128, visits: 3 }
+    };
+
+    // A published listing's line: "128 vues · 3 personnes intéressées · 3 visites". The interested are its ACCEPTED
+    // matches (the clients it interested, with or without a visit); the visits are all those of the property.
+    function statsSummary(mandateId) {
+        var activity = LISTING_ACTIVITY[String(mandateId)] || { views: 0, visits: 0 };
+        var interested = listingProposalsOf(mandateId).filter(function (m) {
+            return m.answer === "ACCEPTED";
+        }).length;
+        return [
+            activity.views ? activity.views.toLocaleString("fr-FR") + (activity.views > 1 ? " vues" : " vue")
+                : "Aucune vue",
+            interested ? plural(interested, "personne intéressée", "personnes intéressées")
+                : "Aucune personne intéressée",
+            activity.visits ? plural(activity.visits, "visite", "visites") : "Aucune visite"
+        ].join(" · ");
+    }
+
+    // PROTOTYPE: ?listing=published shows 203 with a published listing, without going through listing.html.
+    function cardListingOf(mandateId) {
+        var listing = listingOf(mandateId);
+        if (listing || String(mandateId) !== "203" ||
+            new URLSearchParams(window.location.search).get("listing") !== "published") return listing;
+        return { id: "501", mandateId: "203", status: "PUBLISHED", publishedAt: Date.now() - 5 * DAY_MS };
+    }
+
+    function initMandates() {
+        var list = $("[data-mandates]");
+        if (!list) return null;
+        var empty = $("[data-mandates-empty]");
+        var template = $("[data-mandate-template]");
+        var more = $("[data-mandate-more]");
+        var moreList = $("[data-mandate-more-list]");
+        var moreLabel = $("[data-mandate-more-label]");
+
+        function cards() {
+            return $all("[data-mandate-card]", list).concat($all("[data-mandate-card]", moreList));
+        }
+
+        function syncEmpty() {
+            var none = cards().length === 0;
+            list.hidden = none;
+            empty.hidden = !none;
+        }
+
+        // The triage order: what the agent must act on first (Assigné), then what waits for the client's signature,
+        // then the active mandates; newest first within each group.
+        var RANK = { ASSIGNED: 0, PENDING_APPROVAL: 1, APPROVED: 2 };
+
+        function rankOf(id) {
+            var rank = RANK[stateOf(id).status];
+            return rank === undefined ? 99 : rank;
+        }
+
+        // Five cards, the rest folded behind "Voir les N autres mandats".
+        function layout() {
+            var items = cards();
+            items.sort(function (a, b) {
+                var ida = a.getAttribute("data-mandate-id");
+                var idb = b.getAttribute("data-mandate-id");
+                var rank = rankOf(ida) - rankOf(idb);
+                if (rank) return rank;
+                return (MANDATES[idb].createdAt || 0) - (MANDATES[ida].createdAt || 0);
+            });
+            items.forEach(function (item, i) {
+                (i < MANDATE_PAGE_SIZE ? list : moreList).appendChild(item);
+            });
+            var folded = Math.max(0, items.length - MANDATE_PAGE_SIZE);
+            more.hidden = folded === 0;
+            moreLabel.textContent = folded === 1
+                ? "Voir l'autre mandat" : "Voir les " + folded + " autres mandats";
+            syncEmpty();
+        }
+
+        // Title and facts too: the search may have been edited since the page was written.
+        function render(item, id) {
+            var state = stateOf(id);
+            var name = clientNameOf(id);
+            $("[data-mandate-link]", item).textContent = name || titleOf(id);
+            var kind = $("[data-mandate-kind-label]", item);
+            if (kind) {
+                kind.textContent = name ? titleOf(id) : "";
+                kind.hidden = !name;
+            }
+            setKindIcon($("[data-mandate-kind]", item), id);
+            setDealTag($(".mandate-title__text", item), id);
+            var facts = $(".assignment__facts", item);
+            facts.textContent = "";
+            criteriaOf(id).slice(0, 3).forEach(function (row, i) {
+                var div = document.createElement("div");
+                var dt = document.createElement("dt");
+                var dd = document.createElement("dd");
+                dt.textContent = row[0];
+                // The card names the neighbourhoods only; the city is the agent's.
+                dd.textContent = i === 0 ? row[1].split(" — ")[0] : row[1];
+                div.appendChild(dt);
+                div.appendChild(dd);
+                facts.appendChild(div);
+            });
+            setStatusTag($("[data-status-tag]", item), state.status);
+            // A client's static card has no listing line: only 203 (here) and 102 (the template) are landlords'
+            var listingLine = $("[data-listing-line]", item);
+            if (listingLine) {
+                var listing = cardListingOf(id);
+                listingLine.hidden = !canList(id);
+                if (canList(id)) fillListingLine(listingLine, id, listing, false);
+                // Published: its activity (views, interested clients, visits)
+                var stats = $("[data-listing-stats]", item);
+                stats.hidden = !canList(id) || !listing || listing.status !== "PUBLISHED";
+                $("[data-listing-stats-text]", stats).textContent = statsSummary(id);
+            }
+            // A signed search: its pool, the client's interest and its visits, linking to Biens correspondants.
+            var searchStatsBox = $("[data-search-stats]", item);
+            if (searchStatsBox) {
+                var search = hasMatches(id);
+                searchStatsBox.hidden = !search;
+                if (search) {
+                    var summary = searchStatsOf(id);
+                    $("[data-search-stats-link]", searchStatsBox).textContent = summary.label;
+                    $("[data-search-stats-link]", searchStatsBox).href =
+                        "mandate.html?id=" + encodeURIComponent(id) + "#matches-title";
+                }
+            }
+        }
+
+        function card(id) {
+            var item = template.content.firstElementChild.cloneNode(true);
+            var titleId = "mandate-" + id + "-title";
+            item.setAttribute("data-mandate-id", id);
+            $("article", item).setAttribute("aria-labelledby", titleId);
+            $("h3", item).id = titleId;
+            $("[data-mandate-link]", item).href = "mandate.html?id=" + id;
+            return item;
+        }
+
+        // An accepted offer: placed by the same status-then-date order as the existing cards.
+        function add(id) {
+            if ($all('[data-mandate-id="' + id + '"]', list).length ||
+                $all('[data-mandate-id="' + id + '"]', moreList).length) return;
+            var item = card(id);
+            render(item, id);
+            list.appendChild(item);
+            layout();
+        }
+
+        // PROTOTYPE: ?mandates=empty shows an agent without mandates.
+        if (new URLSearchParams(window.location.search).get("mandates") === "empty") {
+            $all("[data-mandate-card]", list).forEach(function (item) {
+                item.remove();
+            });
+        } else {
+            acceptedMandates().forEach(add);
+        }
+
+        $all("[data-mandate-card]", list).concat($all("[data-mandate-card]", moreList)).forEach(function (item) {
+            var id = item.getAttribute("data-mandate-id");
+            if (ACTIVE_STATUSES.indexOf(stateOf(id).status) === -1) item.remove();
+            else render(item, id);
+        });
+        layout();
+        return { add: add };
+    }
+
+    // ContactPeriodType, as "à appeler …" ends.
+    var CONTACT_PERIOD_PHRASES = { Matin: "le matin", "Après-midi": "l'après-midi", "Soirée": "le soir" };
+
+    // "+237699123456" → "+237 6 99 12 34 56" (Cameroon numbers; others are shown as they are).
+    function displayPhone(e164) {
+        var m = /^\+237(\d)(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(e164);
+        return m ? "+237 " + m.slice(1).join(" ") : e164;
+    }
+
+    // The standard co-broker footer (the prototype of fragments/agent-card.html): photo or initials on the left, the
+    // hyperlinked name, WhatsApp on the right. Without a readable agent, the generic person icon and "un autre agent",
+    // unlinked and without WhatsApp. [back] is where the profile link returns; [agent] may carry only a name.
+    function fillAgentCard(box, agent, back) {
+        if (!box) return;
+        box.hidden = false;
+        var photo = $("[data-agent-photo]", box);
+        var initials = $("[data-agent-initials]", box);
+        var generic = $("[data-agent-generic]", box);
+        var nameLink = $("[data-agent-link]", box);
+        var fallback = $("[data-agent-fallback]", box);
+        var whatsapp = $("[data-agent-whatsapp]", box);
+        var fullName = agent
+            ? ([agent.firstName, agent.lastName].filter(Boolean).join(" ") || agent.name || "").trim()
+            : "";
+        var initialsText = fullName.split(/\s+/).filter(Boolean).map(function (part) {
+            return part.charAt(0);
+        }).join("").slice(0, 2).toUpperCase();
+
+        nameLink.hidden = !fullName;
+        fallback.hidden = !!fullName;
+        if (fullName) {
+            $("[data-agent-name]", box).textContent = fullName;
+            nameLink.href = "agent.html?id=" + encodeURIComponent(agent.id) + "&back=" + encodeURIComponent(back);
+        }
+        photo.hidden = !(agent && agent.photoUrl);
+        if (agent && agent.photoUrl) photo.src = agent.photoUrl;
+        initials.hidden = !fullName || !!(agent && agent.photoUrl);
+        initials.textContent = initialsText;
+        generic.hidden = !!fullName || !!(agent && agent.photoUrl);
+
+        var number = agent && agent.whatsappNumber;
+        whatsapp.hidden = !number;
+        if (number) whatsapp.href = "https://wa.me/" + number.replace(/\D/g, "");
+    }
+
+    // The status wizard: Assigné > En approbation > Actif > Fermé.
+    var MANDATE_STEPS = ["ASSIGNED", "PENDING_APPROVAL", "APPROVED", "CLOSED"];
+
+    function initMandate() {
+        var id = new URLSearchParams(window.location.search).get("id");
+        if (!ownsMandate(id)) {
+            $("[data-mandate-locked]").hidden = false;
+            return;
+        }
+        var mandate = MANDATES[id];
+        var p = partyWords(mandate);
+        var c = contactOf(id);
+        document.title = titleOf(id) + " — Ndopify Partner Central";
+        $("[data-mandate-title]").textContent = titleOf(id);
+        setKindIcon($("[data-mandate-kind]"), id);
+        setDealTag($("[data-mandate-title]").parentNode, id);
+        applyDealWording(isSale(id));
+        $all("[data-edit-link]").forEach(function (a) {
+            a.href = "mandate/edit.html?id=" + encodeURIComponent(id);
+        });
+        $("[data-mandate-number]").textContent = id;
+        $("[data-contact-title]").textContent = p.The;
+        $("[data-search-title]").textContent = p.Search;
+        $all("[data-party-label]").forEach(function (el) {
+            el.textContent = p.the;
+        });
+        $all("[data-party-label-cap]").forEach(function (el) {
+            el.textContent = p.The;
+        });
+        $all("[data-party-of]").forEach(function (el) {
+            el.textContent = p.of;
+        });
+        $all("[data-search-label]").forEach(function (el) {
+            el.textContent = p.search;
+        });
+        $all("[data-party-email]").forEach(function (el) {
+            el.textContent = c.email;
+        });
+        $all("[data-signature-ttl]").forEach(function (el) {
+            el.textContent = SIGNATURE_TTL_DAYS;
+        });
+        $("[data-approved-next]").textContent = mandate.party === "bailleur"
+            ? "Créez l'annonce et visitez le bien pour la compléter ; une fois publiée, organisez les visites."
+            : "Proposez des biens " + (isSale(id) ? "à l'acheteur" : "au client") + " et organisez les visites.";
+
+        // The unboxed contact: role, name and best time to call, then the number (tel:) with its WhatsApp button, then
+        // the e-mail. "Modifier" corrects it until the mandate is closed.
+        var name = contactName(c);
+        $("[data-contact-role]").textContent = isSale(id)
+            ? (mandate.party === "bailleur" ? "Vendeur" : "Acheteur")
+            : (mandate.party === "bailleur" ? "Bailleur" : "Client");
+        $('[data-contact="name"]').textContent = name;
+        // Hide the whole "· à appeler" phrase, not just its value.
+        $("[data-contact-period]").hidden = !c.period;
+        $('[data-contact="period"]').textContent = CONTACT_PERIOD_PHRASES[c.period] || c.period || "";
+        $(".contact-card__phone").hidden = !c.whatsapp;
+        if (c.whatsapp) {
+            var tel = $('[data-contact="phone"]');
+            tel.href = "tel:" + c.whatsapp;
+            tel.setAttribute("aria-label", "Appeler " + name + " au " + displayPhone(c.whatsapp));
+            $("[data-contact-number]", tel).textContent = displayPhone(c.whatsapp);
+            $('[data-contact="whatsapp"]').href = "https://wa.me/" + c.whatsapp.replace(/\D/g, "");
+            $('[data-contact="whatsapp"]').setAttribute("aria-label", "Écrire à " + name + " sur WhatsApp");
+        }
+        // The e-mail is optional: hide its row rather than leaving an empty mailto: link and an orphan icon.
+        $("[data-contact-email-line]").hidden = !c.email;
+        var mail = $('[data-contact="email"]');
+        mail.href = c.email ? "mailto:" + c.email : "";
+        mail.textContent = c.email || "";
+        mail.setAttribute("aria-label", c.email ? "Adresse e-mail : " + c.email : "");
+        // Modifier and its row disappear together when the mandate is terminal.
+        var edit = $("[data-contact-edit]");
+        var editable = CUSTOMER_EDITABLE_STATUSES.indexOf(stateOf(id).status) !== -1;
+        edit.href = "mandate/customer-edit.html?id=" + encodeURIComponent(id);
+        edit.setAttribute("aria-label", "Modifier les coordonnées " + p.of);
+        edit.hidden = !editable;
+        $("[data-contact-actions]").hidden = !editable;
+
+        // The visit the agent books for the client: its own page (mandate/visit.html), reached from the contact block.
+        // It opens only while the client has an accepted property without an open visit.
+        var scheduleButton = $("[data-contact-schedule]");
+        if (scheduleButton) {
+            scheduleButton.href = "mandate/visit.html?id=" + encodeURIComponent(id);
+            var scheduleCandidates = hasMatches(id) ? matchesOf(id).filter(function (m) {
+                return answerOf(m) === "ACCEPTED";
+            }) : [];
+            scheduleButton.hidden = scheduleCandidates.length === 0;
+        }
+
+        function criterion(list, row) {
+            var item = document.createElement("div");
+            item.className = "review__item";
+            var dt = document.createElement("dt");
+            dt.className = "review__term";
+            dt.textContent = row[0];
+            var dd = document.createElement("dd");
+            dd.className = "review__value review__multiline";
+            dd.textContent = row[1];
+            item.appendChild(dt);
+            item.appendChild(dd);
+            list.appendChild(item);
+        }
+
+        // Visible: sector, amount, date, the type with its rooms ("Maison, 3 chambres"), then the client's comments.
+        // Folded: everything else.
+        var rows = criteriaOf(id);
+        var byTerm = {};
+        rows.forEach(function (row) {
+            byTerm[row[0]] = row[1];
+        });
+        var rooms = byTerm["Chambres"];
+        var key = rows.slice(0, 3).concat([["Type de bien", byTerm["Type de propriété"] +
+            (rooms ? ", " + rooms + (rooms === "1" ? " chambre" : " chambres") : "")]]);
+        if (byTerm["Autres précisions"]) key.push(["Autres précisions", byTerm["Autres précisions"]]);
+        var rest = rows.slice(3).filter(function (row) {
+            return ["Type de propriété", "Chambres", "Autres précisions"].indexOf(row[0]) === -1;
+        });
+        key.forEach(function (row) {
+            criterion($("[data-mandate-key-criteria]"), row);
+        });
+        rest.forEach(function (row) {
+            criterion($("[data-mandate-criteria]"), row);
+        });
+        var more = $("[data-mandate-more]");
+        var moreLabel = $("[data-mandate-more-label]");
+        more.hidden = rest.length === 0;
+        function syncMore() {
+            moreLabel.textContent = more.open ? "Masquer les critères" : "Voir tous les critères (" + rest.length + ")";
+        }
+        more.addEventListener("toggle", syncMore);
+        syncMore();
+
+        var flash = $("[data-mandate-flash]");
+
+        function showFlash(text) {
+            $("[data-mandate-flash-text]").textContent = text;
+            flash.hidden = false;
+            flash.focus();
+        }
+
+        function fill(selector, text) {
+            $all(selector).forEach(function (el) {
+                el.textContent = text;
+            });
+        }
+
+        // The approved panel's activity line: the signed search's pool, interest and visits.
+        function renderMandateStats() {
+            var stats = searchStatsOf(id);
+            var line = $("[data-mandate-search-stats]");
+            line.hidden = !hasMatches(id) || stats.properties === 0;
+            $("[data-mandate-search-stats-text]", line).textContent = stats.label;
+        }
+
+        // The one urgent visit, above the mandate's activity: a link down to its card.
+        function renderPendingVisit() {
+            var line = $("[data-mandate-pending-visit]");
+            var blocks = $all(".visit-detail[data-state=requested]");
+            if (!blocks.length) {
+                line.hidden = true;
+                return;
+            }
+            blocks.sort(function (a, b) {
+                return Number(a.getAttribute("data-expires-at") || 0) - Number(b.getAttribute("data-expires-at") || 0);
+            });
+            var first = blocks[0];
+            var card = first.closest("[data-proposal], [data-match]");
+            if (!card || !card.id) {
+                line.hidden = true;
+                return;
+            }
+            var name = "";
+            var client = $("[data-proposal-client]", card);
+            var title = $("[data-match-title]", card);
+            if (client) {
+                name = client.textContent;
+            } else if (title) {
+                name = title.textContent;
+                var ref = $("[data-match-ref]", card);
+                if (ref) name += " · annonce n° " + ref.textContent;
+            }
+            var left = $("[data-visit-left]", first);
+            var leftText = left ? left.textContent : "";
+            var count = blocks.length;
+            var text = count === 1 ? "1 visite à confirmer" : count + " visites à confirmer · la plus urgente";
+            if (leftText) text += count === 1 ? " · " + leftText : " dans " + leftText;
+            if (count === 1 && name) text += " — " + name;
+            $("[data-mandate-pending-visit-text]", line).textContent = text;
+            line.setAttribute("href", "#" + card.id);
+            line.hidden = false;
+        }
+
+        function render() {
+            var state = stateOf(id);
+            var closed = state.status === "CLOSED" || state.status === "CANCELLED";
+            var current = closed ? MANDATE_STEPS.length - 1 : MANDATE_STEPS.indexOf(state.status);
+            var dates = [state.acceptedAt, state.requestedAt, state.approvedAt, state.closedAt];
+
+            $("[data-mandate-accepted]").textContent = formatDate(state.acceptedAt);
+            setStatusTag($("[data-status-tag]"), state.status);
+            $all("[data-step]").forEach(function (li, i) {
+                // A mandate closed without a lease may skip steps (ex: cancelled before its approval): never done.
+                var done = closed ? i === current || !!dates[i] : i < current;
+                li.setAttribute("data-state", done ? "done" : i === current ? "current" : "todo");
+                $(".tracker__mark", li).innerHTML = done ? DONE_MARK : "";
+                if (i === current) li.setAttribute("aria-current", "step");
+                else li.removeAttribute("aria-current");
+                $("[data-step-date]", li).textContent = i <= current && dates[i] ? formatDate(dates[i]) : "";
+            });
+            // The wizard's last step is the mandate's end: Fermé (lease signed) or Annulé.
+            var label = STATUS_TAGS[state.status][0];
+            $('[data-step="CLOSED"] .mandate-steps__label').textContent = state.status === "CANCELLED" ? "Annulé" : "Fermé";
+            var date = dates[current];
+            $("[data-step-summary]").textContent = "Étape " + (current + 1) + " sur " + MANDATE_STEPS.length + " · " +
+                label + (date ? ", le " + formatDate(date) : "");
+
+            $all("[data-panel]").forEach(function (panel) {
+                panel.hidden = panel.getAttribute("data-panel") !== state.status;
+            });
+            if (state.requestedAt) {
+                var deadline = signatureDeadline(state);
+                fill("[data-requested-at]", formatDate(state.requestedAt));
+                fill("[data-signature-deadline]", formatDate(deadline) + (deadline < Date.now() ? " (dépassé)" : ""));
+            }
+            // Edited since sent: sending it again becomes the step's main action.
+            var edited = state.editedAt > state.requestedAt;
+            $("[data-edited-since]").hidden = !edited;
+            var resend = $('[data-panel="PENDING_APPROVAL"] [data-request-approval]');
+            resend.classList.toggle("btn--primary", edited);
+            resend.classList.toggle("btn--outline", !edited);
+            if (state.approvedAt) {
+                fill("[data-approved-at]", formatDate(state.approvedAt));
+                fill("[data-valid-until]", formatDate(addMonths(state.approvedAt, CONTRACT_MONTHS)));
+            }
+            if (closed) {
+                fill("[data-closed-at]", formatDate(state.closedAt));
+            }
+            if (state.status === "CLOSED") {
+                var days = Math.max(0, Math.floor((state.closedAt - state.approvedAt) / DAY_MS));
+                fill("[data-final-price]", formatFullPriceOf(id, state.finalPrice));
+                fill("[data-age]", days + (days > 1 ? " jours" : " jour"));
+                // What the closing recorded: the client (a landlord's listing) and the withdrawn listing.
+                var deal = $("[data-closed-deal]");
+                var parts = [];
+                if (state.closedClientName) {
+                    parts.push("Client : " + state.closedClientName +
+                        (state.closedClientMandate ? " (sa recherche est fermée)" : ""));
+                }
+                if (state.closedListingId) {
+                    // The landlord's page says it was taken off the market; the client's, which property it was
+                    parts.push(mandate.party === "bailleur"
+                        ? "Annonce n° " + state.closedListingId + " retirée du marché"
+                        : "Bien : annonce n° " + state.closedListingId);
+                }
+                if (state.closedByMandate) {
+                    parts.push("Fermé avec le mandat n° " + state.closedByMandate);
+                }
+                deal.textContent = parts.join(" · ");
+                deal.hidden = parts.length === 0;
+            }
+            if (state.status === "CANCELLED") {
+                fill("[data-cancellation-label]", CANCELLATION_LABELS[state.cancellationCode]);
+                var reason = $("[data-cancellation-reason]");
+                reason.textContent = state.cancellationReason || "";
+                reason.hidden = !state.cancellationReason;
+            }
+
+            renderListing();
+            renderMatches();
+            renderMandateStats();
+            renderPendingVisit();
+
+            $("[data-close]").hidden = closed;
+            // Before its approval a mandate can't be closed with a lease (409 MANDATE_NOT_APPROVED): only cancelled.
+            $("[data-close-link]").hidden = state.status !== "APPROVED";
+        }
+
+        // The listing of an approved LISTING mandate: "Créer l'annonce", then its status and a link to it.
+        var listingBox = $("[data-listing-actions]");
+        var listingCreate = $("[data-listing-create]", listingBox);
+        var listingLink = $("[data-listing-link]", listingBox);
+
+        function renderListing() {
+            var show = canList(id);
+            listingBox.hidden = !show;
+            if (!show) {
+                // Closed or cancelled: its Propositions go with the listing
+                $("[data-listing-proposals]").hidden = true;
+                $("[data-co-brokerage-visits]").hidden = true;
+                return;
+            }
+            var listing = cardListingOf(id);
+            var line = $("[data-listing-line]", listingBox);
+            fillListingLine(line, id, listing, true);
+            // Published: its activity (views, interested clients, visits), like the Espace agent's card
+            var stats = $("[data-listing-stats]", listingBox);
+            stats.hidden = !listing || listing.status !== "PUBLISHED";
+            $("[data-listing-stats-text]", stats).textContent = statsSummary(id);
+            renderListingProposals($("[data-listing-proposals]"), id, !!listing && listing.status === "PUBLISHED");
+            renderListingCoBrokerageVisits(id, listing);
+            listingCreate.hidden = !!listing;
+            listingLink.hidden = !listing;
+            var text = $("[data-listing-text]", listingBox);
+            text.hidden = false;
+            if (!listing) {
+                // On its own mandate's page, not a link
+                $("[data-listing-number]", line).removeAttribute("href");
+                text.textContent = "Visitez le bien pour vérifier ses caractéristiques et prendre les photos : " +
+                    "l'annonce est publiée une fois vérifiée.";
+                return;
+            }
+            var tag = listingTag(listing);
+            // Published: the line says it all, its number is the link
+            if (tag === "PUBLISHED") {
+                text.hidden = true;
+                listingLink.hidden = true;
+                return;
+            }
+            listingLink.href = "listing.html?id=" + encodeURIComponent(listing.id);
+            listingLink.textContent = listing.status === "DRAFT"
+                ? (listing.rejection ? "Corriger l'annonce" : "Continuer l'annonce") : "Voir l'annonce";
+            listingLink.className = "btn " + (listing.status === "DRAFT" ? "btn--primary" : "btn--outline");
+            text.textContent = tag === "PUBLISHED" ? "Annonce publiée le " + formatDate(listing.publishedAt) + "."
+                : tag === "PENDING" ? "Annonce envoyée le " + formatDate(listing.submittedAt) + ", en vérification."
+                    : tag === "REJECTED" ? "Annonce à corriger : " + listing.rejection.reason
+                        : "Annonce en brouillon : " + (missingSections(listing).length
+                            ? "encore à faire, " + missingSections(listing).join(", ") + "."
+                            : "prête à être envoyée.");
+        }
+
+        // PROTOTYPE: simulates POST /v1/listings { mandateId }, then opens the listing.
+        listingCreate.addEventListener("click", function () {
+            if (!isActive(listingCreate)) return;
+            setActive(listingCreate, false);
+            listingCreate.textContent = "Création…";
+            window.setTimeout(function () {
+                var listing = listingOf(id) || createListing(id);
+                window.location.href = "listing.html?id=" + encodeURIComponent(listing.id);
+            }, 500);
+        });
+
+        /* Biens correspondants: each match is sent to the client, kept for later (Retenir) or set aside (Écarter). */
+        var matchBox = $("[data-matches-section]");
+        var matchList = $("[data-match-list]", matchBox);
+        var matchTemplate = $("[data-match-template]");
+        var matchFlash = $("[data-match-flash]", matchBox);
+        var sendKept = $("[data-match-send-kept]", matchBox);
+        // One pending visit is the page's primary: the routine sends step back while it waits.
+        var pendingVisitCount = 0;
+
+        function showMatchFlash(text) {
+            $("[data-match-flash-text]", matchFlash).textContent = text;
+            matchFlash.hidden = false;
+        }
+
+        function setMatch(matchId, state) {
+            saveMatchState(id, matchId, state);
+            renderMatches();
+        }
+
+        function fact(list, term, value, className) {
+            var div = document.createElement("div");
+            var dt = document.createElement("dt");
+            var dd = document.createElement("dd");
+            if (className) dd.className = className;
+            dt.className = "visually-hidden";
+            dt.textContent = term;
+            dd.textContent = value;
+            div.appendChild(dt);
+            div.appendChild(dd);
+            list.appendChild(div);
+        }
+
+        function matchItem(match) {
+            var item = matchTemplate.content.firstElementChild.cloneNode(true);
+            var titleId = "match-" + match.id + "-title";
+            item.id = "match-" + match.id;
+            item.setAttribute("data-match-id", match.id);
+            $("article", item).setAttribute("aria-labelledby", titleId);
+            var title = $("[data-match-title]", item);
+            title.id = titleId;
+            title.textContent = matchTitle(match);
+            var tag = $("[data-match-tag]", item);
+            var answer = answerOf(match);
+            if (answer === "VISIT") {
+                // The visit block carries the state: no second tag on the header.
+                tag.hidden = true;
+            } else {
+                tag.hidden = false;
+                var t = MATCH_TAGS[match.status];
+                if (answer) t = ANSWER_TAGS[answer];
+                tag.textContent = match.status === "PROPOSED" && !answer ? "En attente" : t[0];
+                tag.className = "status-tag status-tag--" + t[1];
+            }
+            // Sent: one line of provenance; a visit the client asked for fills its own block below, since that's
+            // what the agent acts on. The card stays in place while the visit is open.
+            var statusLine = $("[data-match-status]", item);
+            var answerLine = $("[data-match-answer]", item);
+            var answerShown = match.status === "PROPOSED" || match.status === "EXPIRED";
+            answerLine.hidden = !answerShown;
+            if (match.status === "EXPIRED") {
+                answerLine.textContent = "Envoyé le " + formatShortDate(match.sentAt) + ", sans réponse";
+            }
+            if (match.status === "PROPOSED") {
+                var sentText = "Envoyé le " + formatShortDate(match.sentAt);
+                // The server's line keeps only the latest step: "Intéressé le ..." (MatchRules.answer).
+                answerLine.textContent = answer === "ACCEPTED" && match.answeredAt
+                    ? "Intéressé le " + formatShortDate(match.answeredAt)
+                    : sentText;
+            }
+            fillVisit(
+                $("[data-match-visit]", item),
+                answer === "VISIT" ? match.visit : null,
+                matchTitle(match) + " · annonce n° " + match.listingId,
+                match.agent,
+                match.coBrokerage,
+            );
+            $("[data-match-ref]", item).textContent = match.listingId;
+            $("[data-match-link]", item).href = "listing.html?id=" + encodeURIComponent(match.listingId);
+            // One line: the terms are for screen readers only, the values say it all.
+            var facts = $("[data-match-facts]", item);
+            fact(facts, "Correspondance", Math.round(match.score * 100) + " %");
+            fact(facts, "Quartier", match.neighbourhood + (match.distanceKm
+                ? " (à " + String(match.distanceKm).replace(".", ",") + " km)" : ""));
+            // Co-brokerage: the listing agent sits in the standard footer, at the bottom of the card, named once
+            // even when the client's visit is on that same listing.
+            var agentCard = $("[data-agent-card]", item);
+            agentCard.hidden = !match.coBrokerage;
+            if (match.coBrokerage) {
+                fillAgentCard(agentCard, match.agent,
+                    "mandate.html?id=" + encodeURIComponent(id) + "#matches-title");
+            }
+            // In bold: what the agent looks at first
+            fact(facts, "Loyer", formatCompactRent(match.price), "match__rent");
+            fact(facts, "Disponibilité", matchAvailability(match));
+            var fit = $("[data-match-fit]", item);
+            match.fit.forEach(function (row) {
+                var li = document.createElement("li");
+                li.className = "match__fit-item" + (row[0] ? " match__fit-item--full" : "");
+                li.innerHTML = row[0] ? CHECK_MARK : '<svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6.5 10h7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+                var span = document.createElement("span");
+                span.innerHTML = '<span class="visually-hidden">' + (row[0] ? "Oui : " : "En partie : ") + "</span>";
+                span.appendChild(document.createTextNode(row[1]));
+                li.appendChild(span);
+                fit.appendChild(li);
+            });
+
+            var actions = $("[data-match-actions]", item);
+            var keep = $("[data-match-keep]", item);
+            var confirm = $("[data-match-confirm]", item);
+            // Sent: nothing left to do here; the client answers on the public portal. Expired: send it again or set it
+            // aside, like a new one.
+            actions.hidden = match.status === "PROPOSED";
+            keep.hidden = match.status !== "ACTIVE";
+
+            var send = $("[data-match-send]", item);
+            send.className = "btn " + (pendingVisitCount > 0 ? "btn--secondary" : "btn--primary");
+            send.addEventListener("click", function () {
+                if (!isActive(send)) return;
+                // PROTOTYPE: simulates POST /v1/matches/{id}/propose: the client gets the listing's link by e-mail.
+                setActive(send, false);
+                send.textContent = "Envoi…";
+                window.setTimeout(function () {
+                    setMatch(match.id, { status: "PROPOSED", sentAt: Date.now() });
+                    showMatchFlash("Annonce n° " + match.listingId + " envoyée à " + c.email + ".");
+                }, 600);
+            });
+            keep.addEventListener("click", function () {
+                // PROTOTYPE: simulates POST /v1/matches/{id}/shortlist.
+                setMatch(match.id, { status: "SHORTLISTED" });
+                showMatchFlash("Annonce n° " + match.listingId + " retenue : envoyez-la quand vous voulez.");
+            });
+            $("[data-match-dismiss]", item).addEventListener("click", function () {
+                actions.hidden = true;
+                confirm.hidden = false;
+                $("[data-match-dismiss-confirmed]", confirm).focus();
+            });
+            $("[data-match-dismiss-cancel]", confirm).addEventListener("click", function () {
+                confirm.hidden = true;
+                actions.hidden = false;
+                $("[data-match-dismiss]", item).focus();
+            });
+            $("[data-match-dismiss-confirmed]", confirm).addEventListener("click", function () {
+                // PROTOTYPE: simulates POST /v1/matches/{id}/dismiss.
+                setMatch(match.id, { status: "DISMISSED" });
+                showMatchFlash("Annonce n° " + match.listingId + " écartée : elle ne vous sera plus proposée pour ce mandat.");
+            });
+            // Sent and unanswered, or answered with interest: the client may have lost the link, or needs a fresh one
+            // to book a visit. A match whose visit is open has nothing left to resend.
+            var resendActions = $("[data-match-resend-actions]", item);
+            var resend = match.status === "PROPOSED" && !match.visit;
+            resendActions.hidden = !resend;
+            statusLine.hidden = !answerShown && !resend;
+            if (resend) {
+                $("[data-match-resend]", item).addEventListener("click", function () {
+                    // PROTOTYPE: simulates POST /v1/matches/{id}/resend: a fresh link, the status is unchanged.
+                    showMatchFlash("Lien renvoyé à " + c.email + ".");
+                });
+            }
+            return item;
+        }
+
+        function renderMatches() {
+            var show = hasMatches(id);
+            matchBox.hidden = !show;
+            if (!show) return;
+            var matches = matchesOf(id);
+            // Neither set aside nor refused by the client.
+            var shown = matches.filter(function (m) {
+                return m.status !== "DISMISSED" && answerOf(m) !== "REJECTED";
+            });
+            // Requests to confirm first (soonest expiry), then visits to come (soonest first), then interested,
+            // new, kept, waiting and expired; best score first within each.
+            function rank(m) {
+                var answer = answerOf(m);
+                if (answer === "VISIT") return (m.visit.status || "REQUESTED") === "REQUESTED" ? 0 : 1;
+                if (answer === "ACCEPTED") return 2;
+                return { ACTIVE: 3, SHORTLISTED: 4, PROPOSED: 5, EXPIRED: 6 }[m.status];
+            }
+
+            function sortKey(m) {
+                var answer = answerOf(m);
+                if (answer !== "VISIT") return -m.score;
+                var visit = m.visit || {};
+                return (visit.status || "REQUESTED") === "REQUESTED"
+                    ? (visit.expiresAt || 0)
+                    : (visit.at || 0);
+            }
+
+            function groupOf(m) {
+                var answer = answerOf(m);
+                if (answer === "VISIT") return (m.visit.status || "REQUESTED") === "REQUESTED" ? "requested" : "upcoming";
+                if (answer === "ACCEPTED") return "interested";
+                return { ACTIVE: "new", SHORTLISTED: "kept", PROPOSED: "waiting", EXPIRED: "expired" }[m.status] || "new";
+            }
+
+            var GROUP_LABELS = {
+                requested: "À confirmer",
+                upcoming: "Visites à venir",
+                interested: "Intéressés",
+                new: "Nouveaux",
+                kept: "Retenus",
+                waiting: "Envoyés, en attente",
+                expired: "Sans réponse"
+            };
+            shown.sort(function (a, b) {
+                return rank(a) - rank(b) || sortKey(a) - sortKey(b);
+            });
+            pendingVisitCount = shown.filter(function (m) {
+                return answerOf(m) === "VISIT" && (m.visit.status || "REQUESTED") === "REQUESTED";
+            }).length;
+            matchList.textContent = "";
+            appendGrouped(matchList, shown, groupOf, GROUP_LABELS, matchItem);
+            matchList.hidden = shown.length === 0;
+            // None at all: those refused are still a match.
+            $("[data-match-empty]", matchBox).hidden = shown.length > 0 || countMatches(matches, "PROPOSED") > 0;
+
+            // What the cards hide or only tag individually, in one small line: refused and unanswered.
+            var refused = matches.filter(function (m) {
+                return answerOf(m) === "REJECTED";
+            }).length;
+            var expired = countMatches(matches, "EXPIRED");
+            var outcomes = [];
+            if (refused) outcomes.push(refused + (refused > 1 ? " refusés" : " refusé"));
+            if (expired) outcomes.push(expired + " sans réponse");
+            var outcomeLine = $("[data-match-outcomes]", matchBox);
+            outcomeLine.hidden = outcomes.length === 0;
+            outcomeLine.textContent = outcomes.join(" · ");
+
+            var kept = countMatches(matches, "SHORTLISTED");
+            sendKept.hidden = kept < 2;
+            sendKept.className = "btn " + (pendingVisitCount > 0 ? "btn--secondary" : "btn--primary");
+            sendKept.textContent = "Envoyer les " + kept + " biens retenus";
+
+            var dismissed = countMatches(matches, "DISMISSED");
+            var dismissedNote = $("[data-match-dismissed]", matchBox);
+            dismissedNote.hidden = dismissed === 0;
+            dismissedNote.textContent = dismissed + (dismissed > 1 ? " biens écartés" : " bien écarté") +
+                " : ils ne vous seront plus proposés pour ce mandat.";
+        }
+
+        // PROTOTYPE: the kept matches in one e-mail, one POST /v1/matches/{id}/propose each.
+        sendKept.addEventListener("click", function () {
+            if (!isActive(sendKept)) return;
+            setActive(sendKept, false);
+            sendKept.textContent = "Envoi…";
+            window.setTimeout(function () {
+                var kept = matchesOf(id).filter(function (m) {
+                    return m.status === "SHORTLISTED";
+                });
+                kept.forEach(function (m) {
+                    saveMatchState(id, m.id, { status: "PROPOSED", sentAt: Date.now() });
+                });
+                setActive(sendKept, true);
+                renderMatches();
+                showMatchFlash(kept.length + " annonces envoyées à " + c.email + ".");
+            }, 600);
+        });
+
+        function update(changes) {
+            var state = stateOf(id);
+            Object.keys(changes).forEach(function (key) {
+                state[key] = changes[key];
+            });
+            saveState(id, state);
+            render();
+        }
+
+        // Approuver / Renvoyer: PROTOTYPE, simulates POST /v1/mandates/{id}/request-approval.
+        $all("[data-request-approval]").forEach(function (button) {
+            var label = button.textContent;
+            button.addEventListener("click", function () {
+                if (!isActive(button)) return;
+                var again = stateOf(id).status === "PENDING_APPROVAL";
+                setActive(button, false);
+                button.textContent = "Envoi…";
+                window.setTimeout(function () {
+                    update({ status: "PENDING_APPROVAL", requestedAt: Date.now() });
+                    setActive(button, true);
+                    button.textContent = label;
+                    showFlash((again ? "Mandat renvoyé à " : "Mandat envoyé à ") + c.email + " pour signature.");
+                }, 600);
+            });
+        });
+
+        // PROTOTYPE: the client signs the contract (ContractService.sign → MandateService.onContractSigned).
+        $("[data-simulate-signature]").addEventListener("click", function () {
+            update({ status: "APPROVED", approvedAt: Date.now() });
+            showFlash(p.The + " a signé le mandat : il est maintenant actif.");
+        });
+
+        /* Fermer has its own page (mandate/close.html): a link, not a form here. Annuler stays, one form. */
+        var closeBox = $("[data-close]");
+        var buttons = $("[data-close-buttons]", closeBox);
+        var cancelForm = $('[data-close-form="cancel"]', closeBox);
+        var cancelSubmit = $("[data-cancel-submit]", cancelForm);
+        var cancelBack = $("[data-cancel-back]", cancelForm);
+        var codes = $all('[name="cancellationCode"]', cancelForm);
+        var codeError = $("#cancellationCode-error", cancelForm);
+        var opener = null;
+
+        // The prototype's ?listing=published (a published listing without going through listing.html) goes along.
+        (function () {
+            var params = new URLSearchParams(window.location.search);
+            params.set("id", id);
+            $("[data-close-link]").href = "mandate/close.html?" + params.toString();
+        })();
+
+        function closeEnd(returnFocus) {
+            cancelForm.hidden = true;
+            cancelForm.reset();
+            buttons.hidden = false;
+            if (opener) opener.setAttribute("aria-expanded", "false");
+            if (returnFocus && opener) opener.focus();
+        }
+
+        $all("[data-close-open]", buttons).forEach(function (button) {
+            button.addEventListener("click", function () {
+                opener = button;
+                buttons.hidden = true;
+                button.setAttribute("aria-expanded", "true");
+                setFieldError(codes[0], codeError, null);
+                cancelForm.hidden = false;
+                codes[0].focus();
+            });
+        });
+
+        cancelBack.addEventListener("click", function () {
+            closeEnd(true);
+        });
+
+        codes.forEach(function (radio) {
+            radio.addEventListener("change", function () {
+                setFieldError(codes[0], codeError, null);
+            });
+        });
+
+        cancelForm.addEventListener("submit", function (event) {
+            event.preventDefault();
+            if (!isActive(cancelSubmit)) return;
+            var code = $('[name="cancellationCode"]:checked', cancelForm);
+            if (!code) {
+                setFieldError(codes[0], codeError, "Choisissez la raison de l'annulation.");
+                codes[0].focus();
+                return;
+            }
+
+            // PROTOTYPE: simulates POST /v1/mandates/{id}/cancel (cancellationCode, reason).
+            setActive(cancelSubmit, false);
+            cancelSubmit.textContent = "Annulation…";
+            window.setTimeout(function () {
+                setActive(cancelSubmit, true);
+                cancelSubmit.textContent = "Confirmer l'annulation";
+                closeEnd(false);
+                update({
+                    status: "CANCELLED",
+                    closedAt: Date.now(),
+                    cancellationCode: code.value,
+                    cancellationReason: $("#cancellationReason", cancelForm).value.trim()
+                });
+                showFlash("Mandat annulé. Il ne figure plus dans vos mandats en cours.");
+            }, 600);
+        });
+
+        render();
+        $("[data-mandate]").hidden = false;
+
+        var params = new URLSearchParams(window.location.search);
+        if (params.get("saved")) {
+            showFlash(stateOf(id).status === "PENDING_APPROVAL"
+                ? "Mandat modifié. Renvoyez-le pour que " + p.the + " signe la nouvelle version."
+                : "Mandat modifié.");
+            params.delete("saved");
+            window.history.replaceState(null, "", window.location.pathname + "?" + params.toString());
+        }
+
+        // Back from mandate/customer-edit.html: the customer's details were corrected.
+        var customer = params.get("customer");
+        if (customer) {
+            showFlash("Coordonnées " + p.of + " enregistrées." + (customer === "unsent"
+                ? " Le mandat est revenu à « Assigné » : envoyez-le à nouveau pour signature."
+                : ""));
+            params.delete("customer");
+            window.history.replaceState(null, "", window.location.pathname + "?" + params.toString());
+        }
+
+        // Back from mandate/visit.html: the visit was planned for the client.
+        var planned = params.get("visit");
+        if (planned) {
+            var plannedMatch = matchesOf(id).filter(function (m) {
+                return m.id === planned;
+            })[0];
+            if (plannedMatch && plannedMatch.visit) {
+                showFlash("Visite planifiée le " + window.NpcVisits.formatAt(plannedMatch.visit.at) + " : " + name +
+                    " a reçu la date, l'adresse et son code par e-mail.");
+            }
+            params.delete("visit");
+            window.history.replaceState(null, "", window.location.pathname + "?" + params.toString());
+        }
+
+        // Back from mandate/close.html: its wizard closed this mandate (and the deal's other mandate).
+        if (params.get("closed")) {
+            var closedState = stateOf(id);
+            var closedText = "Mandat fermé : félicitations pour " + (isSale(id) ? "cette vente !" : "ce bail !");
+            if (closedState.closedClientName && closedState.closedClientMandate) {
+                closedText += " La recherche de " + closedState.closedClientName + " est fermée aussi.";
+            } else if (closedState.closedByMandate) {
+                closedText += " Le mandat " + (isSale(id) ? "du vendeur" : "du bailleur") + " n° " +
+                    closedState.closedByMandate + " est fermé aussi.";
+            }
+            showFlash(closedText);
+            params.delete("closed");
+            window.history.replaceState(null, "", window.location.pathname + "?" + params.toString());
+        }
+    }
+
+    /* ---------- mandate/customer-edit.html — correct the customer's details ---------- */
+
+    // CustomerEditRules.CUSTOMER_EDITABLE: the mandate isn't CLOSED or CANCELLED.
+    var CUSTOMER_EDITABLE_STATUSES = ["ASSIGNED", "PENDING_APPROVAL", "APPROVED"];
+    var NAME_RE = /^\p{L}[\p{L}' .-]*$/u;
+    var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+    // intl-tel-input's validation errors (util.js): the same wording as the join wizard.
+    var PHONE_ERRORS = {
+        1: "Cet indicatif de pays n'existe pas. Choisissez votre pays dans la liste.",
+        2: "Ce numéro est trop court. Vérifiez qu'il ne manque pas de chiffre.",
+        3: "Ce numéro est trop long. Vérifiez qu'il n'y a pas de chiffre en trop."
+    };
+    var PHONE_LOADING = "Vérification du numéro en cours de chargement. Réessayez dans un instant.";
+    var PHONE_UNAVAILABLE = "Nous ne pouvons pas vérifier ce numéro pour l'instant. Rechargez la page.";
+
+    /*
+     * A phone field whose intl-tel-input controller arrives later (util.js loads utils.js asynchronously).
+     * Until then — or for good, if it can't load — the number counts as invalid, so the form can't be saved.
+     */
+    function lazyPhone(input, options) {
+        var phone = null;
+        var failed = false;
+        return {
+            bind: function (i18n) {
+                options.i18n = i18n;
+                phone = window.NdUtil.bindPhone(input, options);
+            },
+            fail: function () {
+                failed = true;
+            },
+            e164: function () {
+                return phone ? phone.e164() : "";
+            },
+            validity: function (emptyMessage) {
+                if (!phone) return failed ? PHONE_UNAVAILABLE : PHONE_LOADING;
+                if (input.value.trim() === "") return emptyMessage;
+                if (phone.e164()) return "";
+                return PHONE_ERRORS[phone.validationError()] ||
+                    "Ce numéro n'est pas un numéro mobile valide. Exemple : 6 77 12 34 56";
+            }
+        };
+    }
+
+    function initCustomerEdit() {
+        var id = new URLSearchParams(window.location.search).get("id");
+        var back = "../mandate.html?id=" + encodeURIComponent(id || "");
+        $all("[data-back-link]").forEach(function (a) {
+            a.href = back;
+        });
+        var lockedBox = $("[data-customer-locked]");
+        if (!ownsMandate(id)) {
+            lockedBox.hidden = false;
+            return;
+        }
+        var mandate = MANDATES[id];
+        var state = stateOf(id);
+        if (CUSTOMER_EDITABLE_STATUSES.indexOf(state.status) === -1) {
+            $("[data-customer-locked-title]").textContent = "Ce mandat ne peut plus être modifié";
+            $("[data-customer-locked-text]").textContent = "Un mandat fermé ou annulé ne change plus : les " +
+                "coordonnées du client restent celles du dernier échange.";
+            lockedBox.hidden = false;
+            return;
+        }
+
+        var c = contactOf(id);
+        var p = partyWords(mandate);
+        var form = $("[data-customer-form]");
+        var submit = $("[data-customer-submit]", form);
+        var phoneInput = $("#whatsappNumber", form);
+        var whatsapp = lazyPhone(phoneInput, { name: "whatsappNumber", value: c.whatsapp || "" });
+        var FIELDS = ["firstName", "lastName", "email", "whatsappNumber"];
+
+        document.title = "Modifier les coordonnées " + p.of + " — Mandat n° " + id +
+            " — Ndopify Partner Central";
+        $("[data-customer-title]").textContent = "Coordonnées " + p.of;
+        $("[data-customer-meta]").textContent = "Mandat n° " + id + " · " + titleOf(id);
+        $("[data-customer-resend]").hidden = state.status !== "PENDING_APPROVAL";
+
+        function field(name) {
+            return form.elements[name];
+        }
+
+        // The phone's visible input carries no name; intl-tel-input's hidden one does.
+        function target(name) {
+            return name === "whatsappNumber" ? phoneInput : field(name);
+        }
+
+        form.elements.firstName.value = c.firstName || "";
+        form.elements.lastName.value = c.lastName || "";
+        form.elements.email.value = c.email || "";
+
+        function errors() {
+            var found = {};
+            var firstName = field("firstName").value.trim();
+            var lastName = field("lastName").value.trim();
+            var email = field("email").value.trim();
+            if (!firstName) found.firstName = "Saisissez le prénom.";
+            else if (!NAME_RE.test(firstName)) found.firstName = "Le prénom ne peut contenir que des lettres.";
+            if (!lastName) found.lastName = "Saisissez le nom.";
+            else if (!NAME_RE.test(lastName)) found.lastName = "Le nom ne peut contenir que des lettres.";
+            if (!email) found.email = "Saisissez l'adresse email.";
+            else if (!EMAIL_RE.test(email)) {
+                found.email = "Cette adresse email semble incomplète. Exemple : nom@exemple.com";
+            }
+            var phone = whatsapp.validity("Saisissez le numéro WhatsApp.");
+            if (phone) found.whatsappNumber = phone;
+            return found;
+        }
+
+        function render(found) {
+            FIELDS.forEach(function (name) {
+                setFieldError(target(name), $("#" + name + "-error", form), found[name]);
+            });
+            setActive(submit, Object.keys(found).length === 0);
+        }
+
+        render(errors());
+        form.addEventListener("input", function () {
+            render(errors());
+        });
+
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            var found = errors();
+            render(found);
+            var first = FIELDS.filter(function (name) {
+                return !!found[name];
+            })[0];
+            if (first) {
+                target(first).focus();
+                return;
+            }
+
+            // PROTOTYPE: simulates POST /v1/mandates/{id}/customer (UpdateCustomerRequest). A changed e-mail on a
+            // mandate out for signature cancels its contract and puts it back to ASSIGNED
+            // (MandateService.updateCustomer); a name or phone change leaves the contract.
+            var email = field("email").value.trim().toLowerCase();
+            var wasPending = state.status === "PENDING_APPROVAL";
+            var emailChanged = email !== (c.email || "").trim().toLowerCase();
+            var saved = stateOf(id);
+            if (emailChanged && wasPending) saved.status = "ASSIGNED";
+            saved.contact = {
+                firstName: field("firstName").value.trim(),
+                lastName: field("lastName").value.trim(),
+                email: email,
+                whatsapp: whatsapp.e164(),
+                period: c.period
+            };
+            saveState(id, saved);
+            setActive(submit, false);
+            submit.textContent = "Enregistrement…";
+            window.location.href = back + "&customer=" + (emailChanged && wasPending ? "unsent" : "saved");
+        });
+
+        $("[data-customer]").hidden = false;
+
+        // intl-tel-input arrives with util.js's utils.js: until then the save button stays inactive.
+        if (!window.NdUtil) {
+            whatsapp.fail();
+            render(errors());
+        } else {
+            window.NdUtil.phoneReady().then(
+                function (i18n) {
+                    whatsapp.bind(i18n);
+                    phoneInput.addEventListener("countrychange", function () {
+                        render(errors());
+                    });
+                    render(errors());
+                },
+                function () {
+                    whatsapp.fail();
+                    render(errors());
+                }
+            );
+        }
+    }
+
+    /* ---------- mandate/visit.html — the agent books a visit for the client ---------- */
+
+    function initMandateVisit() {
+        var id = new URLSearchParams(window.location.search).get("id");
+        var back = "../mandate.html?id=" + encodeURIComponent(id || "");
+        $all("[data-back-link]").forEach(function (a) {
+            a.href = back;
+        });
+        var lockedBox = $("[data-visit-locked]");
+        if (!ownsMandate(id)) {
+            lockedBox.hidden = false;
+            return;
+        }
+        var state = stateOf(id);
+        var candidates = hasMatches(id) ? matchesOf(id).filter(function (m) {
+            return answerOf(m) === "ACCEPTED";
+        }) : [];
+        if (state.status !== "APPROVED" || !candidates.length) {
+            $("[data-visit-locked-title]").textContent = "Aucune visite à planifier";
+            $("[data-visit-locked-text]").textContent = state.status !== "APPROVED"
+                ? "Le mandat n'est plus actif : une visite ne s'y planifie plus."
+                : "Le client n'a aucun bien accepté sans visite : il n'y a rien à planifier pour l'instant.";
+            lockedBox.hidden = false;
+            return;
+        }
+
+        var c = contactOf(id);
+        document.title = "Planifier la visite — Mandat n° " + id + " — Ndopify Partner Central";
+        $("[data-visit-meta]").textContent = "Mandat n° " + id + " · " + contactName(c);
+        var form = $("[data-visit-form]");
+        var property = $("[data-visit-property]");
+        candidates.forEach(function (m) {
+            property.appendChild(new Option(matchTitle(m) + " — annonce n° " + m.listingId, m.id));
+        });
+        var day = $("[data-visit-day]");
+        var time = $("[data-visit-time]");
+        window.NpcVisits.days().forEach(function (d) {
+            day.appendChild(new Option(d.label, d.value));
+        });
+        window.NpcVisits.times().forEach(function (t) {
+            time.appendChild(new Option(t.value.replace(":", "h"), t.value));
+        });
+
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            var matchId = property.value;
+            var match = candidates.filter(function (m) {
+                return m.id === matchId;
+            })[0];
+            if (!match) return;
+            var at = new Date(day.value + "T" + time.value + ":00").getTime();
+            // PROTOTYPE: simulates POST /v1/matches/{id}/visits: the client is e-mailed the date, address, code.
+            saveMatchState(id, match.id, {
+                status: match.status,
+                sentAt: match.sentAt,
+                answer: match.answer,
+                answeredAt: match.answeredAt,
+                reason: match.reason,
+                visit: {
+                    status: "CONFIRMED",
+                    at: at,
+                    time: time.value.replace(":", "h"),
+                    type: $("[data-visit-type]").value
+                }
+            });
+            window.location.href = back + "&visit=" + encodeURIComponent(match.id);
+        });
+
+        $("[data-visit]").hidden = false;
+    }
+
+    /* ---------- mandate/edit.html — edit a mandate before its approval ---------- */
+
+    var EDITABLE_STATUSES = ["ASSIGNED", "PENDING_APPROVAL"];
+    var MAX_NEIGHBOURHOODS = 3;
+    var AMENITY_KEYS = [];
+    AMENITY_GROUPS.forEach(function (group) {
+        group[1].forEach(function (a) {
+            AMENITY_KEYS.push(a[0]);
+        });
+    });
+
+    // "150 000" → 150000; null when empty, NaN when not a positive whole number.
+    function parseAmount(value) {
+        var digits = value.replace(/[\s.]/g, "");
+        if (!digits) return null;
+        return /^\d+$/.test(digits) && parseInt(digits, 10) > 0 ? parseInt(digits, 10) : NaN;
+    }
+
+    var MAX_AMOUNT_DIGITS = 12;
+
+    function digitsOf(value) {
+        return String(value || "").replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+    }
+
+    // "5000" → "5 000": the digits grouped by thousands, capped like the server's amount.
+    function formatAmount(value) {
+        var digits = digitsOf(value).slice(0, MAX_AMOUNT_DIGITS);
+        return digits ? Number(digits).toLocaleString("fr-FR") : "";
+    }
+
+    // Regroups an amount's digits by thousands while typing, keeping the caret after the same digit.
+    // A value made of anything else ("abc", "5.5") is left for the server to refuse, as typed.
+    function bindAmount(input) {
+        if (!input) return;
+        if (/^[\d\s\u00a0\u202f]*$/.test(input.value)) input.value = formatAmount(input.value);
+        input.addEventListener("input", function () {
+            var caretDigits = digitsOf(input.value.slice(0, input.selectionStart)).length;
+            var formatted = formatAmount(input.value);
+            var pos = 0;
+            for (var seen = 0; pos < formatted.length && seen < caretDigits; pos++) {
+                if (/\d/.test(formatted.charAt(pos))) seen++;
+            }
+            input.value = formatted;
+            input.setSelectionRange(pos, pos);
+        });
+    }
+
+    function initMandateEdit() {
+        var id = new URLSearchParams(window.location.search).get("id");
+        $all("[data-back-link]").forEach(function (a) {
+            a.href = "../mandate.html?id=" + encodeURIComponent(id || "");
+        });
+        if (!ownsMandate(id)) {
+            $("[data-edit-locked]").hidden = false;
+            return;
+        }
+        var state = stateOf(id);
+        // Source doc: no edit once approved.
+        if (EDITABLE_STATUSES.indexOf(state.status) === -1) {
+            $("[data-edit-locked-title]").textContent = "Ce mandat ne peut plus être modifié";
+            $("[data-edit-locked-text]").textContent = "Un mandat approuvé par le client ne se modifie plus.";
+            $("[data-edit-locked]").hidden = false;
+            return;
+        }
+
+        var mandate = MANDATES[id];
+        var owner = mandate.party === "bailleur";
+        var f = fieldsOf(id);
+        var form = $("[data-edit-form]");
+        var submit = $("[data-edit-submit]", form);
+
+        document.title = "Modifier le mandat " + id + " — Ndopify Partner Central";
+        $("[data-edit-title]").textContent = titleOf(id);
+        $("[data-edit-number]").textContent = id;
+        $("[data-city]").textContent = f.city;
+        $("[data-party-of]").textContent = partyWords(mandate).of;
+        $("[data-edit-resend]").hidden = state.status !== "PENDING_APPROVAL";
+
+        // A client's search or a landlord's property: wording, and no "Indifférent" for a property that exists.
+        // v2: a sale's own label when it has one (data-label-sale-tenant / -owner), else the rental one.
+        var sale = isSale(id);
+        $all("[data-label-tenant]").forEach(function (el) {
+            var rental = el.getAttribute(owner ? "data-label-owner" : "data-label-tenant");
+            var saleLabel = el.getAttribute(owner ? "data-label-sale-owner" : "data-label-sale-tenant");
+            el.textContent = sale && saleLabel ? saleLabel : rental;
+        });
+        applyDealWording(sale, form);
+        if (owner) {
+            $all("[data-tenant-only]", form).forEach(function (el) {
+                el.remove();
+            });
+        }
+
+        function field(name) {
+            return form.elements[name];
+        }
+
+        function checked(name) {
+            var input = $('[name="' + name + '"]:checked', form);
+            return input ? input.value : null;
+        }
+
+        function check(name, value) {
+            var input = value == null ? null : $('[name="' + name + '"][value="' + value + '"]', form);
+            if (input) input.checked = true;
+        }
+
+        /* Pre-fill */
+        f.neighbourhoods.forEach(function (n) {
+            check("neighbourhoods", n);
+        });
+        check("propertyCategory", f.propertyCategory);
+        check("propertyType", f.propertyType);
+        check("rooms", f.rooms);
+        check("furnitureType", f.furnitureType);
+        check("parkings", f.parkings);
+        field("area").value = f.area || "";
+        f.amenities.forEach(function (key) {
+            field(key).checked = true;
+        });
+        field("price").value = f.price.toLocaleString("fr-FR");
+        check("movingPeriod", f.movingPeriod);
+        field("comments").value = f.comments || "";
+
+        /* Dependent fields */
+        var counter = $("[data-neighbourhoods-counter]", form);
+
+        // At most 3 neighbourhoods: once 3 are chosen, the others wait for one to be removed.
+        function syncNeighbourhoods() {
+            var boxes = $all('[name="neighbourhoods"]', form);
+            var count = boxes.filter(function (b) {
+                return b.checked;
+            }).length;
+            boxes.forEach(function (b) {
+                b.disabled = !b.checked && count >= MAX_NEIGHBOURHOODS;
+            });
+            counter.textContent = count + " sur " + MAX_NEIGHBOURHOODS + (count > 1 ? " sélectionnés" : " sélectionné");
+        }
+
+        // The types of the category; rooms for a home, furniture and parking for anything but a plot of land.
+        function syncProperty() {
+            var category = checked("propertyCategory");
+            $all('[name="propertyType"]', form).forEach(function (input) {
+                var label = input.closest("label");
+                var fits = label.getAttribute("data-categories").split(" ").indexOf(category) !== -1;
+                label.hidden = !fits;
+                if (!fits) input.checked = false;
+            });
+            var type = checked("propertyType");
+            var land = type === "LAND";
+            $('[data-group="rooms"]', form).hidden = category !== "RESIDENTIAL" || land;
+            // v2: furniture is a rental question only
+            $('[data-group="furnitureType"]', form).hidden = land || sale;
+            $('[data-group="parkings"]', form).hidden = land;
+        }
+
+        function visible(name) {
+            return !$('[data-group="' + name + '"]', form).hidden;
+        }
+
+        /* Each folded group shows its current value. */
+        var SUMMARIES = {
+            sector: function () {
+                var names = $all('[name="neighbourhoods"]:checked', form).map(function (b) {
+                    return b.value;
+                });
+                return names.length ? names.join(", ") : "Toute la ville";
+            },
+            property: function () {
+                var parts = [PROPERTY_TYPE_LABELS[checked("propertyType")] || CATEGORY_LABELS[checked("propertyCategory")]];
+                var rooms = visible("rooms") && checked("rooms");
+                if (rooms) parts.push(rooms + (rooms === "1" ? " chambre" : " chambres"));
+                var area = parseAmount(field("area").value);
+                if (area > 0) parts.push(area + " m²");
+                return parts.join(" · ");
+            },
+            amenities: function () {
+                var count = AMENITY_KEYS.filter(function (key) {
+                    return field(key).checked;
+                }).length;
+                return count ? count + (count > 1 ? " critères" : " critère") : "Aucun critère";
+            },
+            budget: function () {
+                var price = parseAmount(field("price").value);
+                var parts = [price > 0 ? formatPriceOf(id, price) : "Montant à indiquer"];
+                if (checked("movingPeriod")) parts.push(MOVING_LABELS[checked("movingPeriod")]);
+                return parts.join(" · ");
+            },
+            comments: function () {
+                var text = field("comments").value.trim();
+                return text ? (text.length > 40 ? text.slice(0, 40) + "…" : text) : "Aucune";
+            }
+        };
+
+        function syncSummaries() {
+            $all("[data-edit-group]", form).forEach(function (group) {
+                $("[data-group-value]", group).textContent = SUMMARIES[group.getAttribute("data-edit-group")]();
+            });
+        }
+
+        /* Errors */
+        var ERRORS = {
+            price: sale
+                ? "Indiquez " + (owner ? "le prix de vente" : "le budget total") + ", en FCFA."
+                : "Indiquez " + (owner ? "le loyer" : "le budget") + ", en FCFA par mois.",
+            movingPeriod: owner ? "Indiquez quand le bien est disponible."
+                : sale ? "Indiquez quand l'achat est prévu." : "Indiquez la date d'emménagement.",
+            rooms: "Indiquez le nombre de chambres.",
+            furnitureType: "Indiquez si le bien est meublé.",
+            area: "Indiquez la surface en m², ou laissez le champ vide."
+        };
+
+        function errorTarget(name) {
+            return $('[name="' + name + '"]', form);
+        }
+
+        function clearError(name) {
+            setFieldError(errorTarget(name), $("#" + name + "-error", form), null);
+        }
+
+        function validate() {
+            var invalid = [];
+            if (!(parseAmount(field("price").value) > 0)) invalid.push("price");
+            if (!checked("movingPeriod")) invalid.push("movingPeriod");
+            if (visible("rooms") && !checked("rooms")) invalid.push("rooms");
+            if (visible("furnitureType") && !checked("furnitureType")) invalid.push("furnitureType");
+            if (isNaN(parseAmount(field("area").value))) invalid.push("area");
+            Object.keys(ERRORS).forEach(function (name) {
+                setFieldError(errorTarget(name), $("#" + name + "-error", form),
+                    invalid.indexOf(name) !== -1 ? ERRORS[name] : null);
+            });
+            return invalid;
+        }
+
+        form.addEventListener("change", function (event) {
+            var name = event.target.name;
+            if (name === "neighbourhoods") syncNeighbourhoods();
+            if (name === "propertyCategory" || name === "propertyType") syncProperty();
+            if (ERRORS[name]) clearError(name);
+            syncSummaries();
+        });
+
+        form.addEventListener("input", function (event) {
+            if (ERRORS[event.target.name]) clearError(event.target.name);
+            syncSummaries();
+        });
+
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            if (!isActive(submit)) return;
+            var invalid = validate();
+            if (invalid.length) {
+                // The first error's group is unfolded, so the agent sees what to fix.
+                var target = errorTarget(invalid[0]);
+                target.closest("details").open = true;
+                target.focus();
+                return;
+            }
+
+            var area = parseAmount(field("area").value);
+            var fields = {
+                city: f.city,
+                neighbourhoods: $all('[name="neighbourhoods"]:checked', form).map(function (b) {
+                    return b.value;
+                }),
+                propertyCategory: checked("propertyCategory"),
+                propertyType: checked("propertyType"),
+                furnitureType: visible("furnitureType") ? checked("furnitureType") : null,
+                rooms: visible("rooms") ? checked("rooms") : null,
+                parkings: visible("parkings") ? checked("parkings") : null,
+                area: area || null,
+                amenities: AMENITY_KEYS.filter(function (key) {
+                    return field(key).checked;
+                }),
+                price: parseAmount(field("price").value),
+                movingPeriod: checked("movingPeriod"),
+                comments: field("comments").value.trim() || null
+            };
+
+            // PROTOTYPE: simulates POST /v1/mandates/{id} with the whole search (UpdateMandateRequest).
+            setActive(submit, false);
+            submit.textContent = "Enregistrement…";
+            window.setTimeout(function () {
+                var current = stateOf(id);
+                current.fields = fields;
+                current.editedAt = Date.now();
+                saveState(id, current);
+                window.location.href = "../mandate.html?id=" + encodeURIComponent(id) + "&saved=1";
+            }, 600);
+        });
+
+        syncNeighbourhoods();
+        syncProperty();
+        syncSummaries();
+        $("[data-edit]").hidden = false;
+    }
+
+
+    /*
+     * ---------- listing.html, listing/*.html — the listing of an approved LISTING mandate ----------
+     * The agent creates it from the mandate (POST /v1/listings: a DRAFT, pre-filled from the landlord's answers),
+     * visits the property, checks each section of the checklist (POST /v1/listings/{id}) and adds the photos
+     * (POST /v1/listings/{id}/images/upload), then sends it to be checked. Once checked, it's published, its title,
+     * summary and description written by AI from the audit, the photos and the remarks: the agent never writes them.
+     * PROTOTYPE: ndopify-server has neither a submit nor a publish endpoint yet, nor any check that the mandate is an
+     * approved LISTING one; "PENDING" stands for the listing being checked.
+     */
+    var LISTING_SECTIONS = [
+        { key: "location", label: "Emplacement", page: "emplacement.html" },
+        { key: "gps", label: "Position GPS", page: "position.html" },
+        { key: "property", label: "Le bien", page: "bien.html" },
+        { key: "amenities", label: "Eau, électricité, accès", page: "equipements.html" },
+        { key: "terms", label: "Loyer et conditions", page: "conditions.html" },
+        { key: "photos", label: "Photos", page: "photos.html" },
+        { key: "remarks", label: "Vos remarques", page: "remarques.html", optional: true }
+    ];
+    var MIN_LISTING_PHOTOS = 5;
+    var MAX_LISTING_PHOTOS = 20;
+    // A DRAFT sent back by the check is "À corriger" (see listingTag).
+    var LISTING_TAGS = {
+        // No listing yet: the mandate's line only (index.html's card, mandate.html's panel)
+        NONE: ["À créer", "neutral"],
+        DRAFT: ["Brouillon", "info"],
+        REJECTED: ["À corriger", "warning"],
+        PENDING: ["En vérification", "warning"],
+        PUBLISHED: ["Publiée", "success"],
+        RENTED: ["Loué", "warning"],
+        SOLD: ["Vendu", "warning"]
+    };
+    var LISTING_FURNITURE_LABELS = { FULLY_FURNISHED: "Meublé", UNFURNISHED: "Non meublé" };
+    var ROAD_ACCESS_KEYS = ["roadPaved", "trackAccessibleByCar", "trackInaccessibleByCar"];
+    var SECTION_SAVED = {
+        location: "Emplacement enregistré.",
+        gps: "Position GPS enregistrée.",
+        property: "Caractéristiques du bien enregistrées.",
+        amenities: "Équipements enregistrés.",
+        terms: "Loyer et conditions enregistrés.",
+        remarks: "Remarques enregistrées."
+    };
+
+    // PROTOTYPE: another agent's published listing, matched to search 204 (co-brokerage), as GET /v1/listings/5001
+    // would return it. It is not in the session: it belongs to Clarisse Mbarga (agent.js's 1001), never to this agent.
+    var CO_BROKERAGE_LISTING = {
+        id: 5001,
+        mandateId: "1111",
+        status: "PUBLISHED",
+        createdAt: Date.now() - 42 * DAY_MS,
+        publishedAt: Date.now() - 30 * DAY_MS,
+        agent: {
+            id: "1001", firstName: "Clarisse", lastName: "Mbarga", photoUrl: null,
+            whatsappNumber: "+237699123456", whatsappDisplay: "+237 6 99 12 34 56"
+        },
+        fields: {
+            city: "Douala",
+            neighbourhood: "Bonapriso",
+            landmark: "À deux pas du carrefour Bonapriso",
+            accessDirections: "Immeuble bleu, 3e étage, porte de droite.",
+            latitude: 4.0483,
+            longitude: 9.7042,
+            accuracy: 8,
+            propertyCategory: "RESIDENTIAL",
+            propertyType: "APARTMENT",
+            furnitureType: "FULLY_FURNISHED",
+            rooms: 2,
+            bathrooms: 1,
+            livingRooms: 1,
+            kitchens: 1,
+            parkings: 1,
+            area: 80,
+            amenities: ["waterTank", "generatorSet", "securedFenced", "dedicatedWaterMeter",
+                "dedicatedElectricityMeter", "securityGuard"],
+            price: 250000,
+            securityDeposit: 2,
+            advanceRent: 1,
+            availableFrom: isoDate(Date.now() + 7 * DAY_MS),
+            agentRemarks: "Le bien est libre depuis le 1er novembre. Visites possibles en semaine après 17 h."
+        },
+        // Every section checked on site, and the 5 verified photos the check needs.
+        checked: { location: 1, gps: 1, property: 1, amenities: 1, terms: 1 },
+        photos: [1, 2, 3, 4, 5].map(function (n) {
+            return { id: n, src: "assets/images/listing-" + n + ".jpg", status: "VERIFIED" };
+        })
+    };
+
+    function listings() {
+        try {
+            return JSON.parse(store.get(KEYS.listings)) || {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    // false when the session is full (photos)
+    function saveListing(listing) {
+        var all = listings();
+        all[listing.id] = listing;
+        return store.set(KEYS.listings, JSON.stringify(all));
+    }
+
+    // A mandate has one listing at most (409 LISTING_ALREADY_EXISTS).
+    function listingOf(mandateId) {
+        var all = listings();
+        var id = Object.keys(all).filter(function (key) {
+            return all[key].mandateId === String(mandateId);
+        })[0];
+        return id ? all[id] : null;
+    }
+
+    // v2: a listing of a SALE mandate (a seller's property): "Prix et conditions", a price with no "/ mois", no
+    // rental terms. Another agent's listing (CO_BROKERAGE_LISTING) isn't in MANDATES: a rental.
+    function listingIsSale(listing) {
+        return !!listing && isSale(listing.mandateId);
+    }
+
+    // The checklist's label of a section: the terms of a sale are its price.
+    function sectionLabel(s, listing) {
+        return s.key === "terms" && listingIsSale(listing) ? "Prix et conditions" : s.label;
+    }
+
+    // Set by initListingSection: the section page's listing is a sale (ownerText, LISTING_APPLIES).
+    var currentListingSale = false;
+
+    // Only an approved LISTING mandate (a landlord's) gets a listing.
+    function canList(mandateId) {
+        return ownsMandate(mandateId) && MANDATES[mandateId].party === "bailleur" &&
+            stateOf(mandateId).status === "APPROVED";
+    }
+
+    function listingTag(listing) {
+        return listing.status === "DRAFT" && listing.rejection ? "REJECTED" : listing.status;
+    }
+
+    // The listing's line of a landlord's approved mandate ([data-listing-line]): "Annonce n° 501" and its status tag,
+    // "Annonce" "À créer" before it's created; just "Annonce" on index.html's card (numbered false), so that it fits
+    // one line on a phone with its tag. [data-listing-number] is a link: the listing, or the mandate (where it's
+    // created) on index.html's card.
+    function fillListingLine(line, mandateId, listing, numbered) {
+        var tag = listing ? listingTag(listing) : "NONE";
+        var number = $("[data-listing-number]", line);
+        number.textContent = listing && numbered ? "Annonce n° " + listing.id : "Annonce";
+        if (number.tagName === "A") {
+            number.href = listing ? "listing.html?id=" + encodeURIComponent(listing.id)
+                : "mandate.html?id=" + encodeURIComponent(mandateId);
+        }
+        var tagEl = $("[data-listing-status-tag]", line);
+        tagEl.textContent = LISTING_TAGS[tag][0] +
+            (tag === "PUBLISHED" ? " le " + formatShortDate(listing.publishedAt) : "");
+        tagEl.className = "status-tag status-tag--" + LISTING_TAGS[tag][1];
+    }
+
+    // A mandate's count ("2", or "3+" for 3 or more) as a number, as ListingService.create does: 3
+    function countOf(value) {
+        var n = parseInt(value, 10);
+        return isNaN(n) ? null : n;
+    }
+
+    function isoDate(ms) {
+        var d = new Date(ms);
+        return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" +
+            String(d.getDate()).padStart(2, "0");
+    }
+
+    function plural(n, one, many) {
+        return n + " " + (n > 1 ? many : one);
+    }
+
+    // PROTOTYPE: simulates POST /v1/listings { mandateId }. "owner" keeps the landlord's answers, so that each section
+    // shows what the agent changed.
+    function createListing(mandateId) {
+        var f = fieldsOf(mandateId);
+        var fields = {
+            city: f.city,
+            neighbourhood: f.neighbourhoods[0] || "",
+            landmark: "",
+            accessDirections: "",
+            latitude: null,
+            longitude: null,
+            // Not in UpdateListingRequest: shown next to the position only
+            accuracy: null,
+            propertyCategory: f.propertyCategory,
+            propertyType: f.propertyType,
+            // v2: a sale has no furniture question
+            furnitureType: isSale(mandateId) ? null : f.furnitureType || null,
+            rooms: countOf(f.rooms),
+            bathrooms: null,
+            livingRooms: null,
+            kitchens: null,
+            parkings: countOf(f.parkings),
+            area: f.area || null,
+            levels: null,
+            floorLevel: null,
+            amenities: f.amenities.slice(),
+            price: f.price,
+            securityDeposit: f.securityDeposit || null,
+            advanceRent: f.advanceRent || null,
+            leaseTerm: null,
+            noticePeriod: null,
+            // PROTOTYPE: the mandates of this prototype have no availableFrom (V7_2)
+            availableFrom: f.availableFrom || isoDate(Date.now() + 14 * DAY_MS),
+            agentRemarks: ""
+        };
+        var ids = Object.keys(listings()).map(Number);
+        var listing = {
+            id: ids.length ? Math.max.apply(null, ids) + 1 : 501,
+            mandateId: String(mandateId),
+            status: "DRAFT",
+            createdAt: Date.now(),
+            fields: fields,
+            owner: JSON.parse(JSON.stringify(fields)),
+            // When each section was last saved: a section counts once the agent has checked it on site
+            checked: {},
+            // { id, src, status: PENDING_VERIFICATION | VERIFIED | REJECTED, errorMessage? }, oldest first
+            photos: []
+        };
+        saveListing(listing);
+        return listing;
+    }
+
+    function goodPhotos(listing) {
+        return listing.photos.filter(function (photo) {
+            return photo.status !== "REJECTED";
+        }).length;
+    }
+
+    function sectionDone(listing, key) {
+        // A photo refused by the check is deleted (or replaced) before sending again
+        if (key === "photos") return goodPhotos(listing) >= MIN_LISTING_PHOTOS && goodPhotos(listing) === listing.photos.length;
+        if (key === "remarks") return true;
+        return !!listing.checked[key];
+    }
+
+    // What's left before sending: "Emplacement, 2 photos".
+    function missingSections(listing) {
+        return LISTING_SECTIONS.filter(function (s) {
+            return !s.optional && !sectionDone(listing, s.key);
+        }).map(function (s) {
+            if (s.key !== "photos") return sectionLabel(s, listing);
+            var refused = listing.photos.length - goodPhotos(listing);
+            var short = MIN_LISTING_PHOTOS - goodPhotos(listing);
+            return [refused ? (refused > 1 ? "les photos refusées" : "la photo refusée") : null,
+                short > 0 ? plural(short, "photo", "photos") : null].filter(Boolean).join(", ");
+        });
+    }
+
+    function listingTitle(listing) {
+        var f = listing.fields;
+        var type = PROPERTY_TYPE_SHORT[f.propertyType] || PROPERTY_TYPE_LABELS[f.propertyType] || "Bien";
+        return type + ", " + (f.neighbourhood || f.city);
+    }
+
+    // PROTOTYPE: no public portal here, the shared link is a stub.
+    function publicUrlOf(listing) {
+        return "https://ndopify.com/listing/" + encodeURIComponent(listing.id);
+    }
+
+    function amenityLabels(keys) {
+        var labels = [];
+        AMENITY_GROUPS.forEach(function (group) {
+            group[1].forEach(function (a) {
+                if (keys.indexOf(a[0]) !== -1) labels.push(a[1]);
+            });
+        });
+        return labels;
+    }
+
+    // The checklist row's one line: the section's main values.
+    function sectionSummary(listing, key) {
+        var f = listing.fields;
+        switch (key) {
+            case "location":
+                return [f.neighbourhood, f.landmark || "Point de repère à noter"].join(" · ");
+            case "gps":
+                return f.latitude != null
+                    ? f.latitude.toFixed(5) + ", " + f.longitude.toFixed(5) + (f.accuracy ? " (± " + f.accuracy + " m)" : "")
+                    : "À relever devant l'entrée du bien";
+            case "property":
+                return [PROPERTY_TYPE_LABELS[f.propertyType], f.rooms != null ? plural(f.rooms, "chambre", "chambres") : null,
+                    f.area ? f.area + " m²" : null].filter(Boolean).join(" · ");
+            case "amenities":
+                var road = f.amenities.filter(function (a) {
+                    return ROAD_ACCESS_KEYS.indexOf(a) !== -1;
+                });
+                var others = f.amenities.length - road.length;
+                return [road.length ? amenityLabels(road)[0] : "Accès à préciser",
+                    others ? plural(others, "équipement", "équipements") : "aucun équipement"].join(" · ");
+            case "terms":
+                if (listingIsSale(listing)) return formatSalePrice(f.price) + " · prix de vente";
+                return formatRent(f.price) +
+                    (f.securityDeposit ? " · caution " + f.securityDeposit + " mois" : "");
+            case "photos":
+                var n = goodPhotos(listing);
+                return (n ? plural(n, "photo", "photos") : "Aucune photo") +
+                    (n < MIN_LISTING_PHOTOS ? " · " + MIN_LISTING_PHOTOS + " au moins" : "");
+            default:
+                return f.agentRemarks || "Aucune remarque";
+        }
+    }
+
+    // [label, tag style] of a checklist row.
+    function sectionState(listing, key) {
+        var done = sectionDone(listing, key);
+        if (key === "remarks") return listing.fields.agentRemarks ? ["Ajoutées", "success"] : ["Facultatif", "neutral"];
+        if (done) return ["Vérifié", "success"];
+        if (listing.rejection && listing.rejection.sections.indexOf(key) !== -1) return ["À corriger", "warning"];
+        return [key === "photos" ? "À compléter" : "À vérifier", "warning"];
+    }
+
+    // The listing's agent card: the standard footer's contents, in its own box (photo or initials, name, WhatsApp).
+    // Its profile link returns to the listing as it is shown, so the back chain survives the detour.
+    function renderCoBrokerageAgent(agent, listingUrl) {
+        fillAgentCard($("[data-agent-card]"), agent, listingUrl);
+    }
+
+    function initListing() {
+        var params = new URLSearchParams(window.location.search);
+        var id = params.get("id");
+        var readOnly = id === String(CO_BROKERAGE_LISTING.id);
+        var listing = readOnly ? CO_BROKERAGE_LISTING : listings()[id];
+        if (!listing || (!readOnly && !ownsMandate(listing.mandateId))) {
+            $("[data-listing-locked]").hidden = false;
+            return;
+        }
+        // Another agent's listing belongs to another agent's mandate: never link to it. ?match= (a co-brokerage
+        // match) returns to the search it came from; a ?back= (the profile's card) returns there; else the Espace agent.
+        var back = params.get("back");
+        // A same-origin path only: no scheme (`:`), no protocol-relative host, no backslash (the server's rule).
+        var sameOrigin = back && back.indexOf(":") < 0 && back.indexOf("//") !== 0 && back.charAt(0) !== "\\" ? back : null;
+        var mandateLink = sameOrigin
+            ? sameOrigin
+            : readOnly
+                ? "mandate.html?id=204#match-9009-title"
+                : "mandate.html?id=" + encodeURIComponent(listing.mandateId);
+        $all("[data-mandate-link]").forEach(function (a) {
+            a.href = mandateLink;
+            if (sameOrigin) a.textContent = "← Retour";
+            else if (readOnly) a.textContent = "← Retour aux biens correspondants";
+        });
+        if (readOnly) {
+            var listingUrl = "listing.html?id=" + encodeURIComponent(id) +
+                (params.get("match") ? "&match=" + encodeURIComponent(params.get("match")) : "") +
+                (sameOrigin ? "&back=" + encodeURIComponent(sameOrigin) : "");
+            renderCoBrokerageAgent(listing.agent, listingUrl);
+        }
+
+        var share = $("[data-listing-share]");
+        var shareLabel = $("[data-share-label]", share);
+        var shareStatus = $("[data-share-status]");
+        share.addEventListener("click", function () {
+            var url = share.getAttribute("data-share-url");
+            if (!url) return;
+            var title = share.getAttribute("data-share-title") || document.title;
+            if (typeof navigator.share === "function") {
+                navigator.share({ title: title, url: url }).catch(function () { /* dismissed */ });
+                return;
+            }
+            if (!navigator.clipboard || !navigator.clipboard.writeText) return;
+            navigator.clipboard.writeText(url).then(function () {
+                shareLabel.textContent = "Lien copié";
+                shareStatus.textContent = "Lien copié.";
+                window.setTimeout(function () {
+                    shareLabel.textContent = "Partager";
+                    shareStatus.textContent = "";
+                }, 2000);
+            }).catch(function () { /* nothing */ });
+        });
+
+        $("[data-listing-mandate]").textContent = listing.mandateId;
+        $("[data-listing-created]").textContent = formatShortDate(listing.createdAt);
+
+        var flash = $("[data-listing-flash]");
+        var list = $("[data-checklist]");
+        var template = $("[data-checklist-template]");
+        var submit = $("[data-listing-submit]");
+        var missing = $("[data-listing-missing]");
+
+        function showFlash(text) {
+            $("[data-listing-flash-text]").textContent = text;
+            flash.hidden = false;
+            flash.focus();
+        }
+
+        function render() {
+            listing = readOnly ? CO_BROKERAGE_LISTING : listings()[id];
+            var tag = listingTag(listing);
+            var editable = listing.status === "DRAFT";
+            var title = (readOnly ? "" : "Annonce · ") + listingTitle(listing);
+            document.title = title + " — Ndopify Partner Central";
+            $("[data-listing-title]").textContent = title;
+            $("[data-listing-meta]").hidden = readOnly;
+            $("[data-listing-origin]").hidden = !readOnly;
+            $("[data-listing-agent]").hidden = !readOnly;
+            var tagEl = $("[data-listing-tag]");
+            tagEl.textContent = LISTING_TAGS[tag][0] +
+                (listing.status === "PUBLISHED" ? " le " + formatShortDate(listing.publishedAt) : "");
+            tagEl.className = "status-tag status-tag--" + LISTING_TAGS[tag][1];
+
+            $all("[data-listing-panel]").forEach(function (panel) {
+                panel.hidden = readOnly || panel.getAttribute("data-listing-panel") !== tag;
+            });
+            if (listing.rejection) $("[data-rejection-reason]").textContent = listing.rejection.reason;
+            if (listing.submittedAt) $("[data-submitted-at]").textContent = formatDate(listing.submittedAt);
+            // PROTOTYPE: no public portal here, the link goes to a stub
+            var publicUrl = ["PUBLISHED", "RENTED", "SOLD"].indexOf(listing.status) !== -1 ? publicUrlOf(listing) : null;
+            $("[data-listing-public]").hidden = !publicUrl;
+            if (publicUrl) {
+                $("[data-listing-public-url]").href = publicUrl;
+                share.setAttribute("data-share-url", publicUrl);
+                share.setAttribute("data-share-title", "Annonce · " + listingTitle(listing));
+                share.hidden = !(typeof navigator.share === "function" ||
+                    (navigator.clipboard && navigator.clipboard.writeText));
+            } else {
+                share.hidden = true;
+            }
+            // Published: its activity (views, interested clients, visits). Never another agent's.
+            var stats = $("[data-listing-stats]");
+            stats.hidden = readOnly || listing.status !== "PUBLISHED";
+            $("[data-listing-stats-text]", stats).textContent = statsSummary(listing.mandateId);
+
+            var done = LISTING_SECTIONS.filter(function (s) {
+                return !s.optional && sectionDone(listing, s.key);
+            }).length;
+            $("[data-checklist-progress]").textContent = done + " sections sur " +
+                (LISTING_SECTIONS.length - 1) + " vérifiées";
+
+            // Each row opens its section: to edit it while a draft, to view it (read-only) once sent.
+            // Another agent's listing has no section pages here: its rows are plain text.
+            list.textContent = "";
+            LISTING_SECTIONS.forEach(function (s) {
+                var item = template.content.firstElementChild.cloneNode(true);
+                var row = document.createElement(readOnly ? "div" : "a");
+                row.className = "checklist__row";
+                if (!readOnly) row.href = "listing/" + s.page + "?id=" + encodeURIComponent(id);
+                while (item.firstChild) row.appendChild(item.firstChild);
+                item.appendChild(row);
+                $("[data-section-title]", item).textContent = sectionLabel(s, listing);
+                $("[data-section-summary]", item).textContent = sectionSummary(listing, s.key);
+                var state = sectionState(listing, s.key);
+                var stateEl = $("[data-section-state]", item);
+                stateEl.textContent = state[0];
+                stateEl.className = "status-tag status-tag--" + state[1];
+                list.appendChild(item);
+            });
+
+            var left = missingSections(listing);
+            $("[data-listing-send]").hidden = readOnly || !editable;
+            setActive(submit, left.length === 0);
+            missing.textContent = left.length ? "Encore à faire : " + left.join(", ") + "." :
+                "Tout est vérifié : vous pouvez envoyer l'annonce.";
+        }
+
+        function update(changes) {
+            var current = listings()[id];
+            Object.keys(changes).forEach(function (key) {
+                current[key] = changes[key];
+            });
+            saveListing(current);
+            render();
+        }
+
+        // PROTOTYPE: there's no submit endpoint yet (see above).
+        submit.addEventListener("click", function () {
+            if (!isActive(submit)) {
+                missing.focus();
+                return;
+            }
+            setActive(submit, false);
+            submit.textContent = "Envoi…";
+            window.setTimeout(function () {
+                submit.textContent = "Envoyer pour vérification";
+                update({ status: "PENDING", submittedAt: Date.now(), rejection: null });
+                showFlash("Annonce envoyée. Nous vous préviendrons dès sa publication.");
+            }, 600);
+        });
+
+        // PROTOTYPE: the check publishes the listing, its texts written by AI.
+        $("[data-simulate-publish]").addEventListener("click", function () {
+            var photos = listings()[id].photos.map(function (photo) {
+                photo.status = "VERIFIED";
+                return photo;
+            });
+            update({ status: "PUBLISHED", publishedAt: Date.now(), photos: photos });
+            showFlash("L'annonce est publiée.");
+        });
+
+        // PROTOTYPE: the check sends it back, with a photo refused and the landmark to make clearer.
+        $("[data-simulate-rejection]").addEventListener("click", function () {
+            var current = listings()[id];
+            var photo = current.photos.filter(function (p) {
+                return p.status !== "REJECTED";
+            })[0];
+            if (photo) {
+                photo.status = "REJECTED";
+                photo.errorMessage = "Photo floue : reprenez-la à la lumière du jour.";
+            }
+            delete current.checked.location;
+            current.status = "DRAFT";
+            current.rejection = {
+                at: Date.now(),
+                reason: "Une photo est floue, et le point de repère ne suffit pas pour trouver le bien.",
+                sections: ["location", "photos"]
+            };
+            saveListing(current);
+            render();
+            showFlash("L'annonce vous a été renvoyée pour correction.");
+        });
+
+        render();
+        $("[data-listing]").hidden = false;
+
+        var saved = params.get("saved");
+        if (saved && SECTION_SAVED[saved]) {
+            // v2: a sale's terms are its price
+            showFlash(saved === "terms" && listingIsSale(listing) ? "Prix et conditions enregistrés." : SECTION_SAVED[saved]);
+            params.delete("saved");
+            window.history.replaceState(null, "", window.location.pathname + "?" + params.toString());
+        }
+    }
+
+    /* listing/*.html: one section of the checklist. Its form only holds the section's fields. */
+
+    // The questions of "Le bien" that apply to a property type (as offer-property.js: LAND is commercial).
+    var LISTING_APPLIES = {
+        furniture: function (a) {
+            // v2: furniture is a rental question only
+            return !currentListingSale && a.propertyCategory === "RESIDENTIAL" && a.propertyType !== "BUILDING";
+        },
+        rooms: function (a) {
+            return a.propertyCategory === "RESIDENTIAL" && ["ROOM", "STUDIO", "BUILDING"].indexOf(a.propertyType) === -1;
+        },
+        bathrooms: function (a) {
+            return a.propertyType !== "LAND";
+        },
+        kitchens: function (a) {
+            return a.propertyCategory === "RESIDENTIAL" && ["ROOM", "BUILDING"].indexOf(a.propertyType) === -1;
+        },
+        parkings: function (a) {
+            return a.propertyType !== "ROOM";
+        },
+        levels: function (a) {
+            return ["HOUSE", "DUPLEX", "BUILDING"].indexOf(a.propertyType) !== -1;
+        },
+        floorLevel: function (a) {
+            return ["ROOM", "STUDIO", "APARTMENT", "OFFICE", "RETAIL"].indexOf(a.propertyType) !== -1;
+        }
+    };
+
+    function fillListingForm(form, f) {
+        $all("input, select, textarea", form).forEach(function (el) {
+            var name = el.name;
+            if (!name) return;
+            if (el.type === "checkbox") el.checked = f.amenities.indexOf(name) !== -1;
+            else if (name === "roadAccess") el.checked = f.amenities.indexOf(el.value) !== -1;
+            else if (el.type === "radio") el.checked = String(f[name]) === el.value;
+            else if (el.getAttribute("data-kind") === "amount") el.value = f[name] ? f[name].toLocaleString("fr-FR") : "";
+            else el.value = f[name] == null ? "" : f[name];
+        });
+    }
+
+    // The section's values, as UpdateListingRequest names them. A question hidden for the type is saved empty.
+    function readListingForm(form) {
+        var values = {};
+        var amenities = null;
+        $all("input, select, textarea", form).forEach(function (el) {
+            var name = el.name;
+            if (!name) return;
+            var hidden = !!el.closest("[hidden]");
+            if (el.type === "checkbox" || name === "roadAccess") {
+                amenities = amenities || [];
+                if (el.checked && !hidden) amenities.push(el.type === "checkbox" ? name : el.value);
+                return;
+            }
+            if (el.type === "radio") {
+                if (!(name in values)) values[name] = null;
+                if (el.checked && !hidden) values[name] = el.value;
+                return;
+            }
+            var v = hidden ? "" : el.value.trim();
+            var kind = el.getAttribute("data-kind");
+            if (kind === "amount") values[name] = parseAmount(v);
+            else if (kind === "int") values[name] = v === "" ? null : /^\d+$/.test(v) ? parseInt(v, 10) : NaN;
+            else if (kind === "number") values[name] = v === "" ? null : Number(v);
+            else values[name] = v;
+        });
+        if (amenities) values.amenities = amenities;
+        return values;
+    }
+
+    function ownerText(name, value) {
+        switch (name) {
+            case "propertyCategory":
+                return CATEGORY_LABELS[value];
+            case "propertyType":
+                return PROPERTY_TYPE_LABELS[value];
+            case "furnitureType":
+                return LISTING_FURNITURE_LABELS[value];
+            case "price":
+                return value.toLocaleString("fr-FR") + (currentListingSale ? " FCFA" : " FCFA / mois");
+            case "securityDeposit":
+            case "advanceRent":
+                return value + " mois";
+            case "area":
+                return value + " m²";
+            case "availableFrom":
+                return formatDate(new Date(value + "T00:00").getTime());
+            case "amenities":
+                return amenityLabels(value).join(", ") || "aucun équipement";
+            default:
+                return String(value);
+        }
+    }
+
+    // "Indiqué par le propriétaire : …" under each field the agent changed from the landlord's answer.
+    function syncOwnerHints(form, owner) {
+        var values = readListingForm(form);
+        $all("[data-owner-for]", form).forEach(function (hint) {
+            var name = hint.getAttribute("data-owner-for");
+            var was = owner[name];
+            var now = values[name];
+            var same = name === "amenities"
+                ? was.slice().sort().join() === (now || []).slice().sort().join()
+                : String(was == null ? "" : was) === String(now == null ? "" : now);
+            hint.hidden = was == null || was === "" || same;
+            hint.textContent = "Indiqué par le propriétaire : " + (was == null ? "" : ownerText(name, was));
+        });
+    }
+
+    // [name, message] of each invalid field.
+    var LISTING_RULES = {
+        location: function (v) {
+            var errors = [];
+            if (!v.neighbourhood) errors.push(["neighbourhood", "Choisissez le quartier du bien."]);
+            if (!v.landmark) errors.push(["landmark", "Indiquez un point de repère connu : école, carrefour, commerce…"]);
+            return errors;
+        },
+        gps: function (v) {
+            return v.latitude == null ? [["latitude", "Relevez la position GPS depuis le bien."]] : [];
+        },
+        property: function (v, form) {
+            var errors = [];
+            function shown(name) {
+                var el = $('[name="' + name + '"]', form);
+                return el && !el.closest("[hidden]");
+            }
+            if (!v.propertyCategory) errors.push(["propertyCategory", "Choisissez l'usage du bien."]);
+            if (!v.propertyType) errors.push(["propertyType", "Choisissez le type de bien."]);
+            if (shown("furnitureType") && !v.furnitureType) {
+                errors.push(["furnitureType", "Indiquez si le bien est meublé."]);
+            }
+            ["rooms", "bathrooms", "livingRooms", "kitchens", "parkings", "levels", "floorLevel", "area"]
+                .forEach(function (name) {
+                    if (!shown(name)) return;
+                    var required = ["rooms", "bathrooms", "area"].indexOf(name) !== -1;
+                    if (v[name] == null && required) errors.push([name, "Indiquez ce nombre, compté sur place."]);
+                    else if (isNaN(v[name])) errors.push([name, "Indiquez un nombre entier."]);
+                    else if (name === "area" && !(v.area > 0)) errors.push([name, "Indiquez la surface en m²."]);
+                });
+            return errors;
+        },
+        amenities: function (v) {
+            var road = (v.amenities || []).filter(function (a) {
+                return ROAD_ACCESS_KEYS.indexOf(a) !== -1;
+            });
+            return road.length ? [] : [["roadAccess", "Indiquez l'accès routier au bien."]];
+        },
+        terms: function (v) {
+            var errors = [];
+            // v2: a sale's price is a total, and it has no deposit
+            if (currentListingSale) {
+                if (v.price === null) errors.push(["price", "Indiquez le prix de vente."]);
+                else if (isNaN(v.price)) errors.push(["price", "Indiquez le prix de vente en chiffres, en FCFA."]);
+            } else {
+                if (v.price === null) errors.push(["price", "Indiquez le loyer mensuel."]);
+                else if (isNaN(v.price)) errors.push(["price", "Indiquez le loyer en chiffres, en FCFA par mois."]);
+                if (!v.securityDeposit) errors.push(["securityDeposit", "Choisissez la caution demandée."]);
+            }
+            if (!v.availableFrom) errors.push(["availableFrom", "Indiquez la date à laquelle le bien est libre."]);
+            else if (new Date(v.availableFrom + "T00:00").getTime() > Date.now() + 365 * DAY_MS) {
+                errors.push(["availableFrom", "Choisissez une date dans les 12 prochains mois."]);
+            }
+            return errors;
+        },
+        remarks: function () {
+            return [];
+        }
+    };
+
+    function showListingErrors(form, errors) {
+        $all(".field__error", form).forEach(function (el) {
+            el.hidden = true;
+        });
+        $all("[aria-invalid]", form).forEach(function (el) {
+            el.removeAttribute("aria-invalid");
+        });
+        errors.forEach(function (error) {
+            var input = $('[data-field="' + error[0] + '"]', form) || $('[name="' + error[0] + '"]', form);
+            setFieldError(input, $("#" + error[0] + "-error", form), error[1]);
+        });
+        if (errors.length) {
+            var first = $('[data-field="' + errors[0][0] + '"]', form) || $('[name="' + errors[0][0] + '"]', form);
+            first.focus();
+        }
+    }
+
+    function initListingProperty(form) {
+        function sync() {
+            var category = ($('[name="propertyCategory"]:checked', form) || {}).value;
+            $all('[name="propertyType"]', form).forEach(function (radio) {
+                var fits = radio.closest("[data-categories]").getAttribute("data-categories").split(" ")
+                    .indexOf(category) !== -1;
+                radio.closest(".choice").hidden = !fits;
+                if (!fits) radio.checked = false;
+            });
+            var a = {
+                propertyCategory: category,
+                propertyType: ($('[name="propertyType"]:checked', form) || {}).value
+            };
+            $all("[data-applies]", form).forEach(function (el) {
+                el.hidden = !a.propertyType || !LISTING_APPLIES[el.getAttribute("data-applies")](a);
+            });
+        }
+        $all('[name="propertyCategory"], [name="propertyType"]', form).forEach(function (radio) {
+            radio.addEventListener("change", sync);
+        });
+        sync();
+    }
+
+    function initListingGps(form) {
+        var button = $("[data-gps]", form);
+        var result = $("[data-gps-result]", form);
+        var weak = $("[data-gps-weak]", form);
+        var error = $("#latitude-error", form);
+
+        function show() {
+            var lat = form.elements.latitude.value;
+            var lng = form.elements.longitude.value;
+            var accuracy = Number(form.elements.accuracy.value);
+            result.hidden = !lat;
+            if (!lat) return;
+            $("[data-gps-coords]", result).textContent = Number(lat).toFixed(5) + ", " + Number(lng).toFixed(5) +
+                (accuracy ? " (± " + accuracy + " m)" : "");
+            $("[data-gps-map]", result).href = "https://www.openstreetmap.org/?mlat=" + lat + "&mlon=" + lng +
+                "#map=18/" + lat + "/" + lng;
+            // Indoors or under a roof the phone guesses: the agent takes it again outside, at the door
+            weak.hidden = !(accuracy > 50);
+            button.textContent = "Relever à nouveau";
+        }
+
+        function set(coords) {
+            form.elements.latitude.value = coords.latitude;
+            form.elements.longitude.value = coords.longitude;
+            form.elements.accuracy.value = Math.round(coords.accuracy);
+            setFieldError(button, error, null);
+            show();
+        }
+
+        button.addEventListener("click", function () {
+            if (!navigator.geolocation) {
+                setFieldError(button, error, "Ce navigateur ne donne pas la position : utilisez celui de votre téléphone.");
+                return;
+            }
+            var label = button.textContent;
+            setActive(button, false);
+            button.textContent = "Localisation…";
+            navigator.geolocation.getCurrentPosition(function (position) {
+                setActive(button, true);
+                set(position.coords);
+            }, function (e) {
+                setActive(button, true);
+                button.textContent = label;
+                setFieldError(button, error, e.code === 1
+                    ? "Autorisez l'accès à votre position dans le navigateur, puis réessayez."
+                    : "Position introuvable : sortez devant l'entrée du bien et réessayez.");
+            }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+        });
+
+        // PROTOTYPE: a position in Bonapriso, for a computer without GPS.
+        $("[data-simulate-gps]", form).addEventListener("click", function () {
+            set({ latitude: 4.0335 + Math.random() / 1000, longitude: 9.6942 + Math.random() / 1000, accuracy: 8 });
+        });
+
+        show();
+    }
+
+    function initListingPhotos(listing, readonly) {
+        var grid = $("[data-photos]");
+        var template = $("[data-photo-template]");
+        var count = $("[data-photo-count]");
+        var error = $("#photos-error");
+        var inputs = $all("[data-photo-input]");
+        var live = $("[data-photo-live]");
+        var pending = 0;
+
+        function render() {
+            listing = listings()[listing.id];
+            grid.textContent = "";
+            listing.photos.forEach(function (photo, i) {
+                var item = template.content.firstElementChild.cloneNode(true);
+                var img = $("img", item);
+                img.src = photo.src;
+                img.alt = "Photo " + (i + 1);
+                var rejected = photo.status === "REJECTED";
+                item.classList.toggle("photo--rejected", rejected);
+                var note = $("[data-photo-note]", item);
+                note.textContent = rejected ? photo.errorMessage : photo.status === "VERIFIED" ? "Vérifiée" : "Envoyée";
+                $("[data-photo-delete]", item).hidden = !!readonly;
+                $("[data-photo-delete]", item).setAttribute("aria-label", "Supprimer la photo " + (i + 1));
+                $("[data-photo-delete]", item).addEventListener("click", function () {
+                    // PROTOTYPE: ndopify-server can't delete a listing's image yet.
+                    var current = listings()[listing.id];
+                    current.photos = current.photos.filter(function (p) {
+                        return p.id !== photo.id;
+                    });
+                    saveListing(current);
+                    render();
+                    announce(live, "Photo " + (i + 1) + " supprimée.");
+                });
+                grid.appendChild(item);
+            });
+            for (var n = 0; n < pending; n++) {
+                var placeholder = document.createElement("li");
+                placeholder.className = "photo photo--pending";
+                placeholder.textContent = "Envoi…";
+                grid.appendChild(placeholder);
+            }
+            var good = goodPhotos(listing);
+            var refused = listing.photos.length - good;
+            count.textContent = plural(good, "photo", "photos") + (readonly ? "" : refused
+                ? " · supprimez " + (refused > 1 ? "les photos refusées" : "la photo refusée") + " et reprenez-la"
+                : good < MIN_LISTING_PHOTOS ? " · encore " + (MIN_LISTING_PHOTOS - good) + " au moins"
+                    : " · c'est suffisant, ajoutez-en si utile");
+            var full = listing.photos.length + pending >= MAX_LISTING_PHOTOS;
+            inputs.forEach(function (input) {
+                input.disabled = full;
+            });
+        }
+
+        // Each photo is sent as soon as it's taken, so a visit cut short loses nothing.
+        function add(file) {
+            if (ACCEPTED_TYPES.indexOf(file.type) === -1) {
+                setFieldError(inputs[0], error, file.name + " n'est pas une photo JPEG, PNG ou WEBP.");
+                return;
+            }
+            if (file.size > MAX_FILE_BYTES) {
+                setFieldError(inputs[0], error, file.name + " dépasse 5 Mo.");
+                return;
+            }
+            if (listings()[listing.id].photos.length + pending >= MAX_LISTING_PHOTOS) {
+                setFieldError(inputs[0], error, MAX_LISTING_PHOTOS + " photos au plus.");
+                return;
+            }
+            pending++;
+            render();
+            // PROTOTYPE: simulates POST /v1/listings/{id}/images/upload, kept small for the session's storage
+            toThumbnail(file, function (src) {
+                window.setTimeout(function () {
+                    pending--;
+                    var current = listings()[listing.id];
+                    if (src) {
+                        current.photos.push({ id: Date.now() + Math.random(), src: src, status: "PENDING_VERIFICATION" });
+                        if (!saveListing(current)) {
+                            setFieldError(inputs[0], error, "Mémoire du prototype pleine : supprimez des photos.");
+                        }
+                    } else {
+                        setFieldError(inputs[0], error, file.name + " ne peut pas être lue.");
+                    }
+                    render();
+                    announce(live, count.textContent);
+                }, 400);
+            }, 480);
+        }
+
+        if (readonly) {
+            $("[data-photo-actions]").hidden = true;
+            $(".photo-tips").hidden = true;
+            $(".form__actions [data-back-link]").textContent = "Retour à l'annonce";
+        }
+        inputs.forEach(function (input) {
+            input.addEventListener("change", function () {
+                setFieldError(inputs[0], error, null);
+                Array.prototype.forEach.call(input.files, add);
+                input.value = "";
+            });
+        });
+        render();
+    }
+
+    // A sent section: its answers only (the choices not taken and the empty fields left out), nothing to act on.
+    function showListingReadonly(form, listing) {
+        syncOwnerHints(form, listing.owner);
+        form.classList.add("listing-readonly");
+        $all(".field, fieldset.choices", form).forEach(function (group) {
+            var answered = $all("input, select, textarea", group).some(function (el) {
+                return el.type === "checkbox" || el.type === "radio" ? el.checked : el.value.trim() !== "";
+            });
+            if (!answered) group.hidden = true;
+        });
+        $all("input, select, textarea, button", form).forEach(function (el) {
+            el.disabled = true;
+        });
+        $all("[data-gps], [data-gps-prototype], [data-gps-hint], [data-gps-weak], [data-section-submit]", form)
+            .forEach(function (el) {
+                el.hidden = true;
+            });
+        $all(".form__actions [data-back-link]", form).forEach(function (a) {
+            a.textContent = "Retour à l'annonce";
+            a.className = "btn btn--primary";
+        });
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+        });
+    }
+
+    function initListingSection() {
+        var section = document.body.getAttribute("data-section");
+        var id = new URLSearchParams(window.location.search).get("id");
+        var listing = listings()[id];
+        var back = "../listing.html?id=" + encodeURIComponent(id);
+        $all("[data-back-link]").forEach(function (a) {
+            a.href = back;
+        });
+        var locked = $("[data-section-locked]");
+        if (!listing || !ownsMandate(listing.mandateId)) {
+            locked.hidden = false;
+            return;
+        }
+        // v2: a sale's wording and fields (data-sale-text, data-rental-only)
+        currentListingSale = listingIsSale(listing);
+        applyDealWording(currentListingSale);
+        // Sent: nothing changes during the check nor once published, the section is only shown
+        var readonly = listing.status !== "DRAFT";
+        if (readonly) {
+            $("[data-section-readonly-text]").textContent = (listing.status === "PUBLISHED"
+                ? "Annonce publiée le " + formatDate(listing.publishedAt)
+                : "Annonce en vérification depuis le " + formatDate(listing.submittedAt)) +
+                " : voici ce que vous avez relevé, il ne peut plus être modifié.";
+            $("[data-section-readonly]").hidden = false;
+            // The instruction is for the visit
+            $("[data-section-content] .page-intro > p:last-child").hidden = true;
+        }
+        document.title = $("[data-section-content] h1").textContent + " · " + listingTitle(listing) + " — Ndopify Partner Central";
+        $("[data-section-meta]").textContent = "Annonce · " + listingTitle(listing) + " · mandat n° " +
+            listing.mandateId;
+        $("[data-section-content]").hidden = false;
+        if (section === "photos") {
+            initListingPhotos(listing, readonly);
+            return;
+        }
+
+        var form = $("[data-section-form]");
+        fillListingForm(form, listing.fields);
+        if (section === "property") initListingProperty(form);
+        if (section === "gps") initListingGps(form);
+        if (readonly) {
+            showListingReadonly(form, listing);
+            return;
+        }
+        if (section === "terms") form.elements.availableFrom.min = isoDate(Date.now());
+        function sync(event) {
+            syncOwnerHints(form, listing.owner);
+            // A field's error goes once it's changed
+            var name = event && event.target.name;
+            var error = name && $("#" + name + "-error", form);
+            if (error) setFieldError(event.target, error, null);
+        }
+        form.addEventListener("input", sync);
+        form.addEventListener("change", sync);
+        sync();
+
+        var submit = $("[data-section-submit]", form);
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            if (!isActive(submit)) return;
+            var values = readListingForm(form);
+            var errors = LISTING_RULES[section](values, form);
+            showListingErrors(form, errors);
+            if (errors.length) return;
+            // PROTOTYPE: simulates POST /v1/listings/{id} (UpdateListingRequest: every field, with the version)
+            setActive(submit, false);
+            submit.textContent = "Enregistrement…";
+            window.setTimeout(function () {
+                var current = listings()[id];
+                Object.keys(values).forEach(function (key) {
+                    current.fields[key] = values[key];
+                });
+                current.checked[section] = Date.now();
+                saveListing(current);
+                window.location.href = back + "&saved=" + section;
+            }, 500);
+        });
+    }
+
+    /* ---------- mandate/close.html — close a mandate (counterpart, rent, confirmation) ---------- */
+
+    function closeDrafts() {
+        try {
+            return JSON.parse(store.get(KEYS.close)) || {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function closeDraft(mandateId) {
+        return closeDrafts()[mandateId] || {};
+    }
+
+    function saveCloseDraft(mandateId, draft) {
+        var all = closeDrafts();
+        all[mandateId] = draft;
+        store.set(KEYS.close, JSON.stringify(all));
+    }
+
+    function clearCloseDraft(mandateId) {
+        var all = closeDrafts();
+        delete all[mandateId];
+        store.set(KEYS.close, JSON.stringify(all));
+    }
+
+    // Only a match the client answered interested is evidence of the deal (a visit request is an accepted match too).
+    function interestedMatch(m) {
+        var answer = answerOf(m);
+        return m.status === "ACCEPTED" || answer === "ACCEPTED" || answer === "VISIT";
+    }
+
+    // The clients a landlord's rental may have been made with: the interested ones among the listing's Propositions.
+    // Another agent's client can't be named nor its mandate closed.
+    function closeClients(mandateId) {
+        if (MANDATES[mandateId].party !== "bailleur") return [];
+        var listing = cardListingOf(mandateId);
+        if (!listing || listing.status !== "PUBLISHED") return [];
+        return listingProposalsOf(mandateId).filter(function (m) {
+            return !m.otherAgent && interestedMatch(m);
+        });
+    }
+
+    // The listings a search may have ended on: the interested matches only.
+    function closeListings(mandateId) {
+        if (MANDATES[mandateId].party === "bailleur") return [];
+        return matchesOf(mandateId).filter(interestedMatch);
+    }
+
+    // The client's interest, as the closing lists word it: "Intéressé le 29 oct. · visite le 5 nov.".
+    function interestLabel(m) {
+        if (!interestedMatch(m)) return "En attente de réponse";
+        var text = "Intéressé" + (m.answeredAt ? " le " + formatShortDate(m.answeredAt) : "");
+        if (answerOf(m) === "VISIT" && m.visit && m.visit.at) text += " · visite le " + formatShortDate(m.visit.at);
+        return text;
+    }
+
+    // One client, as a choice: "Sandrine Eboa / Intéressé le 29 oct. · visite le 5 nov.".
+    function closeClientOption(m, index) {
+        var label = document.createElement("label");
+        label.className = "choice";
+        var input = document.createElement("input");
+        input.type = "radio";
+        input.name = "closeCounterpart";
+        input.value = m.mandateId ? String(m.mandateId) : "client-" + index;
+        label.appendChild(input);
+
+        var text = document.createElement("span");
+        text.textContent = m.client;
+        var meta = document.createElement("span");
+        meta.className = "close-client__meta";
+        meta.textContent = interestLabel(m);
+        text.appendChild(meta);
+        label.appendChild(text);
+        return label;
+    }
+
+    // One listing, as a choice: "Appartement · 3 chambres, Bonapriso — annonce n° 3012 / 240K FCFA / mois · Intéressé…".
+    function closeListingOption(m) {
+        var label = document.createElement("label");
+        label.className = "choice";
+        var input = document.createElement("input");
+        input.type = "radio";
+        input.name = "closeCounterpart";
+        input.value = String(m.listingId);
+        label.appendChild(input);
+
+        var text = document.createElement("span");
+        text.textContent = matchTitle(m) + ", " + m.neighbourhood + " — annonce n° " + m.listingId;
+        var meta = document.createElement("span");
+        meta.className = "close-client__meta";
+        meta.textContent = formatRent(m.price) + " · " + interestLabel(m);
+        text.appendChild(meta);
+        label.appendChild(text);
+        return label;
+    }
+
+    // A client whose search the prototype knows (204): its mandate is closed with this one.
+    function ownSearchOf(client) {
+        return client && client.mandateId && MANDATES[client.mandateId] && ownsMandate(client.mandateId)
+            ? client.mandateId : null;
+    }
+
+    // The mandate of the listing, when the prototype models it: only 501 (mandate 203) has one; the other fixture
+    // listings of the matches don't. Served, every listing has its mandate: close it only when it's the agent's.
+    function listingMandateOf(listingId) {
+        if (String(listingId) === "501") return "203";
+        var all = listings();
+        var key = Object.keys(all).filter(function (k) {
+            return String(all[k].id) === String(listingId);
+        })[0];
+        return key ? all[key].mandateId : null;
+    }
+
+    function listingById(listingId) {
+        var all = listings();
+        var key = Object.keys(all).filter(function (k) {
+            return String(all[k].id) === String(listingId);
+        })[0];
+        return key ? all[key] : null;
+    }
+
+    // "Appartement · 3 chambres, Bonapriso · annonce n° 501", without the listing when there's none.
+    function closeDealLabel(mandateId) {
+        var f = fieldsOf(mandateId);
+        var rooms = countOf(f.rooms);
+        var label = (PROPERTY_TYPE_LABELS[f.propertyType] || "Bien") +
+            (rooms ? " · " + plural(rooms, "chambre", "chambres") : "");
+        if (f.neighbourhoods[0]) label += ", " + f.neighbourhoods[0];
+        var listing = cardListingOf(mandateId);
+        return listing ? label + " · annonce n° " + listing.id : label;
+    }
+
+    function initMandateClose() {
+        var query = new URLSearchParams(window.location.search);
+        var id = query.get("id");
+        $all("[data-back-link]").forEach(function (a) {
+            a.href = "../mandate.html?id=" + encodeURIComponent(id || "");
+        });
+
+        if (!ownsMandate(id)) {
+            $("[data-close-locked]").hidden = false;
+            return;
+        }
+        var initial = stateOf(id);
+        if (initial.status !== "APPROVED") {
+            $("[data-close-locked-title]").textContent = initial.status === "CLOSED" ||
+                initial.status === "CANCELLED"
+                ? "Ce mandat n'est plus actif" : "Ce mandat ne peut pas encore être fermé";
+            $("[data-close-locked-text]").textContent = initial.status === "CLOSED" ||
+                initial.status === "CANCELLED"
+                ? "Il ne figure plus dans vos mandats en cours." : "Un mandat se ferme une fois approuvé par le client.";
+            $("[data-close-locked]").hidden = false;
+            return;
+        }
+
+        var mandate = MANDATES[id];
+        var owner = mandate.party === "bailleur";
+        var form = $("[data-close-form]");
+        var next = $("[data-close-next]", form);
+        var back = $("[data-close-back]", form);
+        var stepsBox = $("[data-close-steps]", form);
+        var counterpartBox = $("[data-close-counterparts]", form);
+        var counterpartError = $("#counterpart-error", form);
+        var price = $("#finalPrice", form);
+        var priceError = $("#finalPrice-error", form);
+
+        // Step 1 is the deal's other side: the client of a listing, the listing of a search.
+        var counterpartStep = owner ? "client" : "listing";
+        // v2: a sale closes on the sale price (no periodicity), with the buyer / seller words.
+        var sale = isSale(id);
+        applyDealWording(sale, document);
+        $('[data-close-step="counterpart"]', form).setAttribute("data-close-step", counterpartStep);
+        $("[data-counterpart-legend]", form).textContent = owner
+            ? (sale ? "À quel acheteur le bien a-t-il été vendu ?" : "Avec quel client le bien a-t-il été loué ?")
+            : "Sur quel bien la recherche s'est-elle conclue ?";
+        $("[data-counterpart-hint]", form).textContent = owner
+            ? (sale ? "Les acheteurs qui ont répondu intéressés. Il peut aussi avoir été vendu autrement."
+                : "Les clients qui ont répondu intéressés. Il peut aussi avoir été loué autrement.")
+            : (sale ? "Les biens qui ont intéressé l'acheteur. Il peut aussi avoir acheté ailleurs."
+                : "Les biens qui ont intéressé le client. Il peut aussi avoir trouvé ailleurs.");
+        $all("[data-none]", form).forEach(function (el) {
+            el.hidden = el.getAttribute("data-none") !== (owner ? "client" : "listing");
+        });
+
+        var candidates = owner ? closeClients(id) : closeListings(id);
+        var steps = (candidates.length ? [counterpartStep] : []).concat(["price", "confirm"]);
+        var draft = closeDraft(id);
+        // The landlord's listing, only for a listing mandate (a search has none of its own).
+        var listing = owner ? cardListingOf(id) : null;
+        var STEP_LABELS = {
+            client: sale ? "Acheteur" : "Client", listing: "Bien", price: sale ? "Prix" : "Loyer",
+            confirm: "Confirmation"
+        };
+
+        document.title = "Fermer le mandat " + id + " — Ndopify Partner Central";
+        $("[data-close-title]").textContent = titleOf(id);
+        $("[data-close-number]").textContent = id;
+
+        function chosenClient() {
+            if (draft.client === undefined || draft.client === "none") return null;
+            return candidates.filter(function (m) {
+                return String(m.mandateId) === draft.client;
+            })[0] || null;
+        }
+
+        function chosenMatch() {
+            if (draft.listing === undefined || draft.listing === "none") return null;
+            return candidates.filter(function (m) {
+                return String(m.listingId) === draft.listing;
+            })[0] || null;
+        }
+
+        function counterpartChosen() {
+            if (owner) {
+                return draft.client === "none" || candidates.some(function (m) {
+                    return String(m.mandateId) === draft.client;
+                });
+            }
+            return draft.listing === "none" || candidates.some(function (m) {
+                return String(m.listingId) === draft.listing;
+            });
+        }
+
+        // The steps are answered in order: a step beyond the first missing one isn't shown (a server redirect).
+        function stepComplete(name) {
+            if (name === counterpartStep) return counterpartChosen();
+            if (name === "price") return typeof draft.price === "number" && draft.price > 0;
+            return true;
+        }
+
+        var firstIncomplete = steps.findIndex(function (name) {
+            return !stepComplete(name);
+        });
+        if (firstIncomplete === -1) firstIncomplete = steps.length - 1;
+        var requested = steps.indexOf(query.get("step"));
+        var step = requested === -1 ? 0 : Math.min(requested, firstIncomplete);
+
+        // The prototype's ?listing=published survives the steps, like the served session keeps the draft.
+        function stepUrl(name) {
+            var params = new URLSearchParams(window.location.search);
+            params.set("id", id);
+            params.set("step", name);
+            return "close.html?" + params.toString();
+        }
+
+        function goTo(name) {
+            window.location.href = stepUrl(name);
+        }
+
+        function renderCounterparts() {
+            counterpartBox.textContent = "";
+            candidates.forEach(function (m, index) {
+                var label = owner ? closeClientOption(m, index) : closeListingOption(m);
+                var input = $("input", label);
+                input.checked = owner ? draft.client === input.value : draft.listing === input.value;
+                counterpartBox.appendChild(label);
+            });
+            var none = $('[data-none="' + (owner ? "client" : "listing") + '"] input', form);
+            none.checked = (owner ? draft.client : draft.listing) === "none";
+        }
+
+        // The rent step starts at the property's price; for an outside property, the search's budget.
+        function defaultPrice() {
+            if (owner) return fieldsOf(id).price;
+            var match = chosenMatch();
+            return match ? match.price : fieldsOf(id).price;
+        }
+
+        function fillRecap() {
+            var client = owner ? chosenClient() : null;
+            var searchId = owner ? ownSearchOf(client) : null;
+            var match = owner ? null : chosenMatch();
+            var counterpart = match ? listingMandateOf(match.listingId) : null;
+
+            $("[data-recap-listing]", form).textContent = owner
+                ? closeDealLabel(id)
+                : (match ? matchTitle(match) + ", " + match.neighbourhood + " · annonce n° " + match.listingId
+                    : "Un bien hors de vos annonces");
+            $("[data-recap-client]", form).textContent = owner
+                ? (client ? client.client + (searchId ? " — sa recherche sera aussi fermée" : "")
+                    : sale ? "Aucun acheteur de vos recherches" : "Aucun client de vos recherches")
+                : contactName(contactOf(id));
+            $("[data-recap-price]", form).textContent = formatFullPriceOf(id, draft.price);
+
+            // What confirming does: this mandate, the listing, the deal's other mandate when the agent owns it.
+            var note;
+            if (owner) {
+                var actions = ["le mandat n° " + id + " est fermé"];
+                if (listing) actions.push("l'annonce n° " + listing.id + " est retirée du marché");
+                if (client && searchId) actions.push("la recherche de " + client.client + " est fermée");
+                note = "À la confirmation : " + actions.join(", ") + ".";
+            } else if (match) {
+                note = "À la confirmation : le mandat n° " + id + " est fermé, l'annonce n° " + match.listingId +
+                    " est retirée du marché" + (counterpart
+                        ? " et le mandat " + (sale ? "du vendeur" : "du bailleur") + " n° " + counterpart + " est fermé"
+                        : " et le mandat " + (sale ? "du vendeur" : "du bailleur") + " est fermé") + ".";
+            } else {
+                note = "À la confirmation : le mandat n° " + id + " est fermé. Le bien n'étant pas de vos annonces, " +
+                    "aucune annonce n'est retirée du marché.";
+            }
+            $("[data-recap-note]", form).textContent = note + " Cette action est définitive.";
+        }
+
+        function render() {
+            var current = steps[step];
+            $all("[data-close-step]", form).forEach(function (el) {
+                el.hidden = el.getAttribute("data-close-step") !== current;
+            });
+
+            stepsBox.textContent = "";
+            steps.forEach(function (name, i) {
+                var li = document.createElement("li");
+                li.className = "close-steps__item";
+                li.setAttribute("data-done", i < step ? "true" : "false");
+                if (i === step) li.setAttribute("aria-current", "step");
+                var mark = document.createElement("span");
+                mark.className = "close-steps__mark";
+                mark.textContent = i < step ? "✓" : String(i + 1);
+                li.appendChild(mark);
+                var label = document.createElement("span");
+                label.textContent = STEP_LABELS[name];
+                li.appendChild(label);
+                stepsBox.appendChild(li);
+            });
+
+            back.textContent = step === 0 ? "Retour au mandat" : "Précédent";
+            next.textContent = current === "confirm" ? "Confirmer la fermeture" : "Continuer";
+            if (current === counterpartStep) renderCounterparts();
+            if (current === "price") {
+                price.value = (typeof draft.price === "number" ? draft.price : defaultPrice())
+                    .toLocaleString("fr-FR");
+            }
+            if (current === "confirm") fillRecap();
+
+            var first = $("input", $('[data-close-step="' + current + '"]', form));
+            (first || next).focus();
+        }
+
+        // A client's search, closed with the landlord's mandate (one deal = one match).
+        function closeSearchMandate(mandateId, amount, listingId) {
+            if (!mandateId || !MANDATES[mandateId] || !ownsMandate(mandateId)) return;
+            var state = stateOf(mandateId);
+            if (state.status === "CLOSED" || state.status === "CANCELLED") return;
+            state.status = "CLOSED";
+            state.closedAt = Date.now();
+            state.finalPrice = amount;
+            state.closedByMandate = id;
+            if (listingId) state.closedListingId = listingId;
+            saveState(mandateId, state);
+        }
+
+        // The landlord's mandate, closed with the search: only when the listing is the agent's own.
+        function closeListingMandate(mandateId, amount, listingId, clientName, searchId) {
+            if (!mandateId || !MANDATES[mandateId] || !ownsMandate(mandateId)) return;
+            var state = stateOf(mandateId);
+            if (state.status === "CLOSED" || state.status === "CANCELLED") return;
+            state.status = "CLOSED";
+            state.closedAt = Date.now();
+            state.finalPrice = amount;
+            state.closedClientName = clientName;
+            state.closedClientMandate = searchId;
+            state.closedListingId = listingId;
+            saveState(mandateId, state);
+        }
+
+        function confirmClose() {
+            var client = owner ? chosenClient() : null;
+            var searchId = owner ? ownSearchOf(client) : null;
+            var match = owner ? null : chosenMatch();
+            var counterpart = match ? listingMandateOf(match.listingId) : null;
+
+            var changes = { status: "CLOSED", closedAt: Date.now(), finalPrice: draft.price };
+            if (owner) {
+                if (listing) changes.closedListingId = listing.id;
+                changes.closedClientName = client ? client.client : null;
+                changes.closedClientMandate = searchId;
+            } else if (match) {
+                changes.closedListingId = match.listingId;
+                if (counterpart) changes.closedByMandate = counterpart;
+            }
+
+            setActive(next, false);
+            next.textContent = "Fermeture…";
+            window.setTimeout(function () {
+                // PROTOTYPE: ListingService.onMandateClosed → RENTED (SOLD for a sale)
+                var saved = owner ? listingOf(id) : (match ? listingById(match.listingId) : null);
+                if (saved) {
+                    saved.status = "RENTED";
+                    saved.closedAt = Date.now();
+                    saveListing(saved);
+                }
+                if (owner) {
+                    closeSearchMandate(searchId, draft.price, listing ? listing.id : null);
+                } else if (match && counterpart) {
+                    closeListingMandate(counterpart, draft.price, match.listingId, contactName(contactOf(id)), id);
+                }
+
+                var state = stateOf(id);
+                Object.keys(changes).forEach(function (key) {
+                    state[key] = changes[key];
+                });
+                saveState(id, state);
+                clearCloseDraft(id);
+                window.location.href = "../mandate.html?id=" + encodeURIComponent(id) + "&closed=1";
+            }, 600);
+        }
+
+        // No preselection: the agent answers, "none" (another client / an outside property) included.
+        form.addEventListener("change", function (event) {
+            if (event.target.name === "closeCounterpart") {
+                setFieldError($('[name="closeCounterpart"]', form), counterpartError, null);
+            }
+        });
+
+        price.addEventListener("input", function () {
+            setFieldError(price, priceError, null);
+        });
+
+        back.addEventListener("click", function () {
+            if (step === 0) {
+                clearCloseDraft(id);
+                window.location.href = "../mandate.html?id=" + encodeURIComponent(id);
+                return;
+            }
+            goTo(steps[step - 1]);
+        });
+
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            if (!isActive(next)) return;
+            var current = steps[step];
+
+            if (current === counterpartStep) {
+                var input = $('[name="closeCounterpart"]:checked', form);
+                if (!input) {
+                    setFieldError($('[name="closeCounterpart"]', form), counterpartError,
+                        owner ? (sale ? "Choisissez l'acheteur, ou « vendu à un autre acheteur »."
+                            : "Choisissez le client, ou « loué à un autre client ».")
+                            : "Choisissez le bien, ou « un bien hors de vos annonces ».");
+                    $('[name="closeCounterpart"]', form).focus();
+                    return;
+                }
+                if (owner) draft.client = input.value;
+                else draft.listing = input.value;
+                saveCloseDraft(id, draft);
+                goTo("price");
+                return;
+            }
+            if (current === "price") {
+                var digits = price.value.replace(/[\s.]/g, "");
+                var amount = parseInt(digits, 10);
+                if (!/^\d+$/.test(digits) || !(amount > 0)) {
+                    setFieldError(price, priceError, sale ? "Indiquez le prix de vente final, en FCFA."
+                        : "Indiquez le loyer convenu, en FCFA par mois.");
+                    price.focus();
+                    return;
+                }
+                draft.price = amount;
+                saveCloseDraft(id, draft);
+                goTo("confirm");
+                return;
+            }
+            confirmClose();
+        });
+
+        render();
+        $("[data-close-page]").hidden = false;
+    }
+
+    /* ---------- mandate/contract.html ---------- */
+
+    // The visit fee: "5000" becomes "5 000" as it is typed, like the closing page's rent.
+    function initMandateContract() {
+        bindAmount($("#visitFee"));
+        // v2: the mandate's wording (?id=): a sale adds its commission field (a proposal, see contract.html).
+        var id = new URLSearchParams(window.location.search).get("id");
+        if (!MANDATES[id]) return;
+        var p = partyWords(MANDATES[id]);
+        // "le vendeur" → "au vendeur", "l'acheteur" → "à l'acheteur"
+        var to = p.the.indexOf("le ") === 0 ? "au " + p.the.slice(3) : "à " + p.the;
+        $("[data-contract-title]").textContent = "Envoyer le mandat " + to;
+        $("[data-contract-intro]").textContent = "Confirmez les conditions que " + p.the + " acceptera en signant.";
+        $("[data-contract-submit]").textContent = "Envoyer " + to;
+        $all("[data-back-link]").forEach(function (a) {
+            a.href = "../mandate.html?id=" + encodeURIComponent(id);
+        });
+        applyDealWording(isSale(id));
+    }
+
+    // For the pages' own scripts (visit.js): the helpers they share with this file.
+    window.NPC = {
+        store: store,
+        $: $,
+        $all: $all,
+        announce: announce,
+        setFieldError: setFieldError,
+        setActive: setActive,
+        isActive: isActive,
+        displayPhone: displayPhone,
+        fillAgentCard: fillAgentCard
+    };
+
+    /* ---------- Boot ---------- */
+    var pages = {
+        login: initLogin,
+        "kyc-wizard": initKycWizard,
+        "agent-home": initAgentHome,
+        mandate: initMandate,
+        "mandate-edit": initMandateEdit,
+        "mandate-close": initMandateClose,
+        "mandate-contract": initMandateContract,
+        "mandate-visit": initMandateVisit,
+        "customer-edit": initCustomerEdit,
+        listing: initListing,
+        "listing-section": initListingSection
+    };
+
+    document.addEventListener("DOMContentLoaded", function () {
+        initUserMenu();
+        var init = pages[document.body.getAttribute("data-page")];
+        if (init) init();
+    });
+})();
