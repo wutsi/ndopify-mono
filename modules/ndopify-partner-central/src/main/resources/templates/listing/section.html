@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head(${section} ? ${section.pageTitle} : 'Annonce — Ndopify Partner Central', |Une section de l'annonce, vérifiée sur place pendant la visite du bien.|, ${ {'join','find-property','home','listing'} }, ${ {'partner-central','listing'} }, false)}"></head>
+<head th:replace="~{fragments/head :: head(${section} ? ${section.pageTitle} : 'Annonce — Ndopify Partner Central', |Une section de l'annonce, vérifiée sur place pendant la visite du bien.|, false)}"></head>
 <!--/*
   One section of a listing's checklist (ListingSectionController), from the prototype's listing/emplacement.html,
   position.html, bien.html, equipements.html, conditions.html and remarques.html: "section" is the SectionView (absent

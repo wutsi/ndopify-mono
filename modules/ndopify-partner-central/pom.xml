@@ -28,6 +28,11 @@
         </repository>
     </repositories>
 
+    <properties>
+        <frontend-maven-plugin.version>1.15.1</frontend-maven-plugin.version>
+        <node.version>v26.13.1</node.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.wutsi.ndopify</groupId>
@@ -149,6 +154,34 @@
                         <goals>
                             <goal>build-info</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>${frontend-maven-plugin.version}</version>
+                <configuration>
+                    <nodeVersion>${node.version}</nodeVersion>
+                    <installDirectory>${project.build.directory}</installDirectory>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>install-node-and-npm</id>
+                        <phase>generate-resources</phase>
+                        <goals><goal>install-node-and-npm</goal></goals>
+                    </execution>
+                    <execution>
+                        <id>npm-ci</id>
+                        <phase>generate-resources</phase>
+                        <goals><goal>npm</goal></goals>
+                        <configuration><arguments>ci</arguments></configuration>
+                    </execution>
+                    <execution>
+                        <id>build-assets</id>
+                        <phase>generate-resources</phase>
+                        <goals><goal>npm</goal></goals>
+                        <configuration><arguments>run build</arguments></configuration>
                     </execution>
                 </executions>
             </plugin>

@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head(${missing} ? 'Agent introuvable — Ndopify Partner Central' : ${profile.name} + ' — Ndopify Partner Central', |Profil d'un agent du réseau Ndopify.|, ${ {'agent'} }, ${ {'partner-central'} }, false)}"></head>
+<head th:replace="~{fragments/head :: head(${missing} ? 'Agent introuvable — Ndopify Partner Central' : ${profile.name} + ' — Ndopify Partner Central', |Profil d'un agent du réseau Ndopify.|, false)}"></head>
 <!--/*
   Another agent's profile (AgentProfileController), opened from one of that agent's listings once co-brokerage ships.
   "profile" is the AgentProfileView (absent when "missing": an unknown or missing id, answered with a 404).

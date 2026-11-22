@@ -299,14 +299,11 @@ class ProfileTemplateTest {
     }
 
     @Test
-    fun `photo - loads the direct upload before kyc js`() {
+    fun `photo - loads the bundle`() {
         val page = render(get("/profile/photo"))
 
-        val scripts = page.select("script[src]").map { it.attr("src") }
-        val direct = scripts.indexOf("/assets/js/direct-upload.js")
-        assertTrue(direct >= 0, scripts.toString())
-        assertTrue(direct < scripts.indexOf("/assets/js/kyc.js"), scripts.toString())
-        assertTrue(page.selectFirst("script[src$=direct-upload.js]")!!.hasAttr("defer"))
+        assertNotNull(page.selectFirst("link[href=/assets/dist/app.min.css]"))
+        assertTrue(page.selectFirst("script[src=/assets/dist/app.min.js]")!!.hasAttr("defer"))
     }
 
     @Test

@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head(${step == 'confirmation'} ? 'Demande envoyée — Ndopify' : 'Trouver un bien — Ndopify', 'Décrivez le bien que vous cherchez : un Agent Vérifié Ndopify de votre secteur vous accompagne. 3 à 5 minutes, aucun document requis.', ${ {'join','find-property'} }, ${ {'util','find-property'} }, true)}"></head>
+<head th:replace="~{fragments/head :: head(${step == 'confirmation'} ? 'Demande envoyée — Ndopify' : 'Trouver un bien — Ndopify', 'Décrivez le bien que vous cherchez : un Agent Vérifié Ndopify de votre secteur vous accompagne. 3 à 5 minutes, aucun document requis.', true)}"></head>
 <!--/*
   One page, seven steps then the confirmation: FindPropertyController picks the step (model attribute "step") and
   only renders that one. Each step is its own form, posted to /find-property/{step}; the answers live in the HTTP

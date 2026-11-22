@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head('Modifier mon profil — Ndopify Partner Central', |Modifiez votre profil d'agent Ndopify.|, ${ {'join','profile'} }, ${ {'util','partner-central','join'} }, true)}"></head>
+<head th:replace="~{fragments/head :: head('Modifier mon profil — Ndopify Partner Central', |Modifiez votre profil d'agent Ndopify.|, true)}"></head>
 <!--/*
   The agent's profile (ProfileController, POST /profile), pre-filled from "answers", with "errors" per field and
   "error" when the server couldn't save it. join.js enhances it like the join wizard's steps (intl-tel-input, the

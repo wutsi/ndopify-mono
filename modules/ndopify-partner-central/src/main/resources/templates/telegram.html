@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head('Connecter Telegram — Ndopify Partner Central', 'Connectez votre compte Telegram pour recevoir vos notifications Ndopify.', ${ {'telegram'} }, ${ {'partner-central'} }, false)}"></head>
+<head th:replace="~{fragments/head :: head('Connecter Telegram — Ndopify Partner Central', 'Connectez votre compte Telegram pour recevoir vos notifications Ndopify.', false)}"></head>
 <!--/*
   The Telegram connection page (TelegramController): the three steps and their two actions, each inside its step —
   the code request in the first, the bot's link in the second, which stays disabled until a code is pending.

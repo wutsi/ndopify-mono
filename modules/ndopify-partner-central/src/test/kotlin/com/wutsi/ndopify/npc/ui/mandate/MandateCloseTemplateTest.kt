@@ -149,10 +149,7 @@ class MandateCloseTemplateTest {
 
         val page = render("/mandates/201/close")
 
-        assertEquals(
-            listOf("/assets/js/partner-central.js", "/assets/js/mandate.js"),
-            page.select("script[src]").map { it.attr("src") },
-        )
+        assertNotNull(page.selectFirst("script[src=/assets/dist/app.min.js]"))
     }
 
     @Test

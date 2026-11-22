@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head(${step == 'code'} ? 'Code de connexion — Ndopify Partner Central' : 'Connexion — Ndopify Partner Central', |Connectez-vous à l'espace partenaires Ndopify avec votre adresse email et un code à usage unique.|, null, ${ {'partner-central'} }, false)}"></head>
+<head th:replace="~{fragments/head :: head(${step == 'code'} ? 'Code de connexion — Ndopify Partner Central' : 'Connexion — Ndopify Partner Central', |Connectez-vous à l'espace partenaires Ndopify avec votre adresse email et un code à usage unique.|, false)}"></head>
 <!--/* One page, two steps: LoginController picks the step (model attribute "step") and only renders that one. */-->
 <body data-page="login">
 <th:block th:replace="~{fragments/site-header :: header(@{/login}, false)}"></th:block>

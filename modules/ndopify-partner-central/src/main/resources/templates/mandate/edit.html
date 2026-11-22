@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head(${answers} ? |Modifier le mandat ${mandate.id} — Ndopify Partner Central| : 'Modifier le mandat — Ndopify Partner Central', |Modifier un mandat de l'agent avant son approbation.|, ${ {'join','home'} }, ${ {'partner-central','mandate'} }, true)}"></head>
+<head th:replace="~{fragments/head :: head(${answers} ? |Modifier le mandat ${mandate.id} — Ndopify Partner Central| : 'Modifier le mandat — Ndopify Partner Central', |Modifier un mandat de l'agent avant son approbation.|, true)}"></head>
 <!--/*
   Edit a mandate (MandateController, POST /mandates/{id}/edit), reached from the mandate page's "Modifier le mandat"
   while it's Assigné or En approbation. One form, in five groups folded by default so a quick fix stays short on a

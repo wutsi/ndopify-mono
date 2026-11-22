@@ -28,6 +28,8 @@ target/
 application.pid
 application.port
 
+node_modules/
+
 chromedriver
 
 **/mnist_test.csv

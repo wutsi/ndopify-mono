@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head(|Modifier les coordonnées ${mandate?.words?.of ?: 'du client'} — Mandat n° ${mandateId} — Ndopify Partner Central|, |Corriger les coordonnées d'un client : prénom, nom, adresse email et numéro WhatsApp.|, ${ {'join','home'} }, ${ {'util','partner-central','mandate'} }, true)}"></head>
+<head th:replace="~{fragments/head :: head(|Modifier les coordonnées ${mandate?.words?.of ?: 'du client'} — Mandat n° ${mandateId} — Ndopify Partner Central|, |Corriger les coordonnées d'un client : prénom, nom, adresse email et numéro WhatsApp.|, true)}"></head>
 <!--/*
   Correct a mandate's customer details (CustomerEditController, POST /mandates/{id}/customer/edit), reached from the
   mandate page's "Modifier", until the mandate is closed. Saved with POST /v1/mandates/{id}/customer

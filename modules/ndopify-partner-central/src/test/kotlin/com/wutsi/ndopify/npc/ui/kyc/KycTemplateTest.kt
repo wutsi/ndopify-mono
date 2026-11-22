@@ -128,13 +128,13 @@ class KycTemplateTest {
     }
 
     @Test
-    fun `direct upload script before kyc js`() {
+    fun `loads the bundle`() {
         given(case())
 
-        val scripts = render(get("/kyc")).select("script[src]").map { it.attr("src") }
+        val page = render(get("/kyc"))
 
-        assertTrue(scripts.contains("/assets/js/direct-upload.js"), scripts.toString())
-        assertTrue(scripts.indexOf("/assets/js/direct-upload.js") < scripts.indexOf("/assets/js/kyc.js"), scripts.toString())
+        assertEquals("/assets/dist/app.min.css", page.selectFirst("link[href=/assets/dist/app.min.css]")?.attr("href"))
+        assertNotNull(page.selectFirst("script[src=/assets/dist/app.min.js]"))
     }
 
     @Test

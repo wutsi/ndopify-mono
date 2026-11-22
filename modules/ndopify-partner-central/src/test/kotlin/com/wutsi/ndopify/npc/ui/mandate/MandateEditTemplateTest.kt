@@ -277,7 +277,7 @@ class MandateEditTemplateTest {
     fun `script and hooks`() {
         val page = render(MANDATE)
 
-        assertTrue(page.selectFirst("script[src=/assets/js/mandate.js]")!!.hasAttr("defer"))
+        assertTrue(page.selectFirst("script[src=/assets/dist/app.min.js]")!!.hasAttr("defer"))
         assertNotNull(page.selectFirst("script[src*=slim-select@4.3.0]"))
         assertNotNull(page.selectFirst("link[href*=slim-select@4.3.0]"))
         assertEquals("mandate-edit", page.body().attr("data-page"))

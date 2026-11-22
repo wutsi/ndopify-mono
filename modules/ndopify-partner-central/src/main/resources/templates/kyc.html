@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head(|Vérification d'identité — Ndopify Partner Central|, |Vérifiez votre identité d'agent Ndopify : téléversez votre carte nationale d'identité, envoyez votre dossier et suivez son examen.|, null, ${ {'partner-central','direct-upload','kyc'} }, false)}"></head>
+<head th:replace="~{fragments/head :: head(|Vérification d'identité — Ndopify Partner Central|, |Vérifiez votre identité d'agent Ndopify : téléversez votre carte nationale d'identité, envoyez votre dossier et suivez son examen.|, false)}"></head>
 <body data-page="kyc">
     <th:block th:replace="~{fragments/site-header :: header(@{/}, true)}"></th:block>
     <main id="main" class="page">
