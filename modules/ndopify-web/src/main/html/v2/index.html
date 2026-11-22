@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Ndopify — Un agent immobilier vérifié pour votre projet</title>
+    <meta
+        content="Louer, acheter, mettre en location ou vendre : dites-nous votre projet, un agent vérifié de votre secteur le prend en charge, avec un mandat clair signé en ligne."
+        name="description">
+    <link href="https://www.ndopify.com/" rel="canonical">
+    <meta content="website" property="og:type">
+    <meta content="Ndopify — Un agent vérifié pour votre projet immobilier" property="og:title">
+    <meta
+        content="Louer, acheter, mettre en location ou vendre : un agent vérifié de votre secteur prend votre projet en charge."
+        property="og:description">
+    <meta content="https://www.ndopify.com/assets/images/og-image.png" property="og:image">
+    <meta content="https://www.ndopify.com/" property="og:url">
+    <meta content="summary_large_image" name="twitter:card">
+    <meta content="#1d7edf" name="theme-color">
+    <link href="assets/images/icon.png" rel="icon">
+    <link href="assets/images/icon.png" rel="apple-touch-icon">
+    <link href="assets/css/styles.css" rel="stylesheet">
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "Ndopify",
+            "url": "https://www.ndopify.com/",
+            "logo": "https://www.ndopify.com/assets/images/logo.png"
+        }
+    </script>
+</head>
+<!--
+  v2 prototype — home (served at "/"): the goal picker.
+  Ndopify matches a customer with a verified agent; the home only asks "what's your project?" and routes to the
+  landing page of that mandate:
+    Louer              → louer.html    (SEARCH  · RENTAL) → {partnerCentralUrl}/find-property
+    Acheter            → acheter.html  (SEARCH  · SALE)   → {partnerCentralUrl}/find-property?type=SALE
+    Mettre en location → bailleur.html (LISTING · RENTAL) → {partnerCentralUrl}/offer-property
+    Vendre             → vendre.html   (LISTING · SALE)   → {partnerCentralUrl}/offer-property?type=SALE
+  No listing to browse: the cards are the only way in. Each card is a plain link (works without JavaScript).
+  Out of the MVP, so never promised here: closing (lease or deed of sale), payments through the platform,
+  title-deed checks, Pass Visite.
+-->
+<body>
+<a class="skip-link" href="#main">Aller au contenu principal</a>
+<header class="site-header">
+    <a aria-label="Ndopify — accueil" class="site-header__logo" href="index.html">
+        <img alt="Ndopify" height="36" src="assets/images/logo.png" width="140">
+    </a>
+    <nav aria-label="Navigation principale" class="site-nav">
+        <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle"><span aria-hidden="true"
+                                                                                                class="nav-toggle__icon">☰</span>
+            Menu
+        </button>
+        <ul class="site-nav__list" id="primary-nav-list">
+            <li><a href="louer.html">Louer</a></li>
+            <li><a href="acheter.html">Acheter</a></li>
+            <li><a href="bailleur.html">Propriétaires</a></li>
+            <li><a href="agent.html">Agents</a></li>
+        </ul>
+    </nav>
+</header>
+
+<main id="main">
+    <section aria-labelledby="hero-heading" class="section section--default">
+        <div class="container hero">
+            <div>
+                <span class="hero__eyebrow">Des agents vérifiés, dans votre secteur</span>
+                <h1 id="hero-heading">Quel est votre projet immobilier ?</h1>
+                <p class="hero__sub">Dites-nous ce que vous voulez faire. Ndopify confie votre projet à un agent
+                    vérifié de votre secteur, qui s'en occupe du début à la fin.</p>
+            </div>
+            <div class="goal-groups">
+                <section aria-labelledby="goal-search" class="goal-group">
+                    <h2 id="goal-search">Je cherche un bien</h2>
+                    <ul class="goal-list">
+                        <li>
+                            <a class="goal-card" href="louer.html">
+                                <span class="goal-card__title">Louer</span>
+                                <span class="goal-card__text">Un agent cherche pour vous et organise vos visites.</span>
+                                <span aria-hidden="true" class="goal-card__arrow">→</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="goal-card" href="acheter.html">
+                                <span class="goal-card__title">Acheter</span>
+                                <span class="goal-card__text">Une maison, un appartement ou un terrain : un agent cherche
+                                    et visite avec vous, même à distance.</span>
+                                <span aria-hidden="true" class="goal-card__arrow">→</span>
+                            </a>
+                        </li>
+                    </ul>
+                </section>
+                <section aria-labelledby="goal-owner" class="goal-group">
+                    <h2 id="goal-owner">J'ai un bien</h2>
+                    <ul class="goal-list">
+                        <li>
+                            <a class="goal-card" href="bailleur.html">
+                                <span class="goal-card__title">Mettre en location</span>
+                                <span class="goal-card__text">Un agent de votre quartier trouve votre locataire.</span>
+                                <span aria-hidden="true" class="goal-card__arrow">→</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="goal-card" href="vendre.html">
+                                <span class="goal-card__title">Vendre</span>
+                                <span class="goal-card__text">Un agent de votre quartier présente votre bien aux
+                                    acheteurs qui cherchent ce que vous vendez.</span>
+                                <span aria-hidden="true" class="goal-card__arrow">→</span>
+                            </a>
+                        </li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="garanties-heading" class="section section--secondary">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="garanties-heading">Un agent, pas une liste d'annonces</h2>
+                <p>Quel que soit votre projet, vous avez un seul interlocuteur : un agent vérifié qui travaille pour
+                    vous.</p>
+            </div>
+            <ul class="card-grid">
+                <li class="card">
+                    <h3 class="card-title">Un agent vérifié</h3>
+                    <p>Chaque agent a fait vérifier sa pièce d'identité et un compte Mobile Money à son nom avant de
+                        recevoir son premier mandat.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Un agent de votre secteur</h3>
+                    <p>Votre projet est confié à un agent qui travaille dans les quartiers concernés et qui traite ce
+                        type de projet : location, vente ou les deux.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Un mandat clair, signé en ligne</h3>
+                    <p>Ce que vous voulez, ce que fait votre agent et sa commission sont écrits dans un mandat que vous
+                        signez en ligne.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Rien à payer pour commencer</h3>
+                    <p>La commission de votre agent n'est due que si votre projet aboutit grâce à lui, comme le dit
+                        votre mandat.</p>
+                </li>
+            </ul>
+        </div>
+    </section>
+
+    <section aria-labelledby="comment-heading" class="section section--default">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="comment-heading">Comment ça marche</h2>
+            </div>
+            <ol class="steps">
+                <li><h3>Dites-nous votre projet</h3>
+                    <p>Louer, acheter, mettre en location ou vendre : la ville, les quartiers, le type de bien et votre
+                        budget ou votre prix.</p></li>
+                <li><h3>Un agent l'accepte</h3>
+                    <p>Votre projet est proposé à un agent vérifié de votre secteur. Le premier qui l'accepte devient
+                        votre agent ; vous êtes prévenu par e-mail.</p></li>
+                <li><h3>Signez votre mandat</h3>
+                    <p>Vous recevez le mandat par e-mail et le signez en ligne, sans vous déplacer.</p></li>
+                <li><h3>Votre agent s'en occupe</h3>
+                    <p>Il vous propose des biens ou des clients qui vous correspondent et organise les visites, sur
+                        place ou en vidéo.</p></li>
+            </ol>
+        </div>
+    </section>
+
+    <section aria-labelledby="agent-heading" class="section section--secondary">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="agent-heading">Vous êtes agent immobilier ?</h2>
+                <p>Recevez des mandats de location et de vente dans vos quartiers, de clients qui ont déjà décrit leur
+                    projet.</p>
+            </div>
+            <div class="cta-row">
+                <a class="btn btn-outline" href="agent.html">Découvrir le réseau d'agents</a>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div class="container site-footer__inner">
+        <img alt="Ndopify" height="32" src="assets/images/icon.png" width="32">
+        <nav aria-label="Navigation du pied de page">
+            <ul>
+                <li><a href="louer.html">Louer</a></li>
+                <li><a href="acheter.html">Acheter</a></li>
+                <li><a href="bailleur.html">Propriétaires</a></li>
+                <li><a href="agent.html">Agents</a></li>
+            </ul>
+        </nav>
+        <small>© 2026 Ndopify. Des agents vérifiés, à votre service.</small>
+    </div>
+</footer>
+
+<script src="assets/js/main.js"></script>
+</body>
+</html>

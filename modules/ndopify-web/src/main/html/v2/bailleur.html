@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Ndopify — Confiez la location de votre bien à un agent vérifié</title>
+    <meta
+        content="Proposez votre bien : un agent vérifié de votre quartier l'audite, le publie et le présente aux locataires dont la recherche lui correspond. Gratuit jusqu'à la signature du bail."
+        name="description">
+    <link href="https://www.ndopify.com/bailleur.html" rel="canonical">
+    <meta content="website" property="og:type">
+    <meta content="Ndopify — Un agent vérifié pour louer votre bien" property="og:title">
+    <meta
+        content="Audit et photos par un agent vérifié, présentation aux locataires qui cherchent un bien comme le vôtre, visites organisées."
+        property="og:description">
+    <meta content="https://www.ndopify.com/assets/images/og-image.png" property="og:image">
+    <meta content="https://www.ndopify.com/bailleur.html" property="og:url">
+    <meta content="summary_large_image" name="twitter:card">
+    <meta content="#1d7edf" name="theme-color">
+    <link href="assets/images/icon.png" rel="icon">
+    <link href="assets/images/icon.png" rel="apple-touch-icon">
+    <link href="assets/css/styles.css" rel="stylesheet">
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "Ndopify",
+            "url": "https://www.ndopify.com/",
+            "logo": "https://www.ndopify.com/assets/images/logo.png"
+        }
+    </script>
+</head>
+<!--
+  v2 prototype — owner landing page, letting (served at "/owner").
+  Unchanged from the MVP but for the nav and the Mettre en location / Vendre switch (vendre.html is the sale side).
+  Pillar 2 (matching an owner with an agent): the owner's listing mandate, the agent's audit and publication, the
+  listing proposed to the tenants whose search it fits, and the visits the agent runs.
+  The call to action is Partner Central's public "Proposer un bien" wizard: {partnerCentralUrl}/offer-property.
+  Out of the MVP, so never promised here: tenant vetting or files for the owner to review, title-deed checks, rent
+  collection, lease signature through the platform.
+-->
+<body>
+<a class="skip-link" href="#main">Aller au contenu principal</a>
+<header class="site-header">
+    <a aria-label="Ndopify — accueil" class="site-header__logo" href="index.html">
+        <img alt="Ndopify" height="36" src="assets/images/logo.png" width="140">
+    </a>
+    <nav aria-label="Navigation principale" class="site-nav">
+        <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle"><span aria-hidden="true"
+                                                                                                class="nav-toggle__icon">☰</span>
+            Propriétaires
+        </button>
+        <ul class="site-nav__list" id="primary-nav-list">
+            <li><a href="louer.html">Louer</a></li>
+            <li><a href="acheter.html">Acheter</a></li>
+            <li><a aria-current="page" href="bailleur.html">Propriétaires</a></li>
+            <li><a href="agent.html">Agents</a></li>
+        </ul>
+    </nav>
+</header>
+
+<main id="main">
+    <section class="section section--default">
+        <div class="container hero">
+            <nav aria-label="Votre projet" class="goal-switch">
+                <a aria-current="page" href="bailleur.html">Mettre en location</a>
+                <a href="vendre.html">Vendre</a>
+            </nav>
+            <span class="hero__eyebrow">Un agent vérifié, dans votre quartier</span>
+            <h1>Confiez la location de votre bien à un agent vérifié</h1>
+            <p class="hero__sub">Décrivez votre bien en quelques minutes. Un agent de votre quartier l'audite, le
+                publie et le présente aux locataires qui cherchent exactement ce que vous proposez.</p>
+            <ul class="proof-stats">
+                <li><strong>0 FCFA</strong>pour l'audit, les photos</li>
+                <li><strong>100 %</strong>de vos loyers versés directement à vous</li>
+                <li><strong>1 mois</strong>en commission à la signature du bail</li>
+            </ul>
+            <div class="cta-row">
+                <a class="btn btn-primary" href="https://partner.ndopify.com/offer-property">Proposer mon bien</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="garanties-heading" class="section section--secondary">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="garanties-heading">Nos garanties</h2>
+                <p>Un agent qui travaille pour votre bien, sans que vous perdiez la main sur la location.</p>
+            </div>
+            <ul class="card-grid">
+                <li class="card">
+                    <h3 class="card-title">Un agent vérifié de votre quartier</h3>
+                    <p>Votre bien est confié à un agent dont l'identité et le compte Mobile Money ont été vérifiés,
+                        et qui travaille dans votre quartier.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Un bien audité, une annonce fidèle</h3>
+                    <p>L'agent visite votre bien, le photographie, relève sa position et ses compteurs, et vérifie
+                        chaque information avant de le publier.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Présenté aux bons locataires</h3>
+                    <p>Votre bien est proposé aux locataires dont la recherche lui correspond : quartier, budget, type
+                        de bien et équipements.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Vous gardez la main</h3>
+                    <p>Vous fixez le loyer et les conditions, vous choisissez votre locataire et vous encaissez vos
+                        loyers directement.</p>
+                </li>
+            </ul>
+            <div class="cta-row">
+                <a class="btn btn-primary" href="https://partner.ndopify.com/offer-property">Proposer mon bien</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="comment-heading" class="section section--default">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="comment-heading">Comment ça marche</h2>
+            </div>
+            <ol class="steps">
+                <li><h3>Décrivez votre bien</h3>
+                    <p>Ville, quartier, type de bien, loyer, avance, caution, équipements et date de disponibilité.</p>
+                </li>
+                <li><h3>Un agent prend votre bien</h3>
+                    <p>Un agent vérifié de votre quartier l'accepte. Vous recevez un e-mail, puis le mandat à signer en
+                        ligne.</p></li>
+                <li><h3>Audit &amp; publication</h3>
+                    <p>Votre agent vient voir le bien, prend les photos, vérifie les informations et publie
+                        l'annonce.</p></li>
+                <li><h3>Propositions &amp; visites</h3>
+                    <p>Votre agent présente le bien aux locataires dont la recherche correspond et organise les
+                        visites avec ceux qu'il intéresse.</p></li>
+            </ol>
+            <div class="cta-row">
+                <a class="btn btn-primary" href="https://partner.ndopify.com/offer-property">Proposer mon bien</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="faq-heading" class="section section--secondary">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="faq-heading">Questions fréquentes</h2>
+            </div>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-1" aria-expanded="false" class="faq-trigger">Combien ça coûte
+                            ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-1"><p>Rien avant la signature du bail : l'audit, les photos,
+                        la publication et les visites sont gratuits. Si votre bien est loué grâce à votre agent, la
+                        commission est d'1 mois de loyer, comme indiqué dans votre mandat.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-2" aria-expanded="false" class="faq-trigger">Comment est choisi
+                            l'agent qui s'occupe de mon bien ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-2"><p>Votre bien est proposé en priorité aux agents vérifiés
+                        de votre quartier, selon leur disponibilité, leur réactivité et les avis de leurs clients. Le
+                        premier qui l'accepte devient votre agent.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-3" aria-expanded="false" class="faq-trigger">Pourquoi signer un
+                            mandat ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-3"><p>Le mandat écrit les conditions de location de votre
+                        bien et ce que fait votre agent. Vous le recevez par e-mail et le signez en ligne, sans vous
+                        déplacer.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-4" aria-expanded="false" class="faq-trigger">Que vérifie l'agent
+                            pendant l'audit ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-4"><p>Il visite le bien, prend les photos, relève sa position
+                        GPS et ses compteurs d'eau et d'électricité, et contrôle la description, les équipements et les
+                        conditions avant de publier l'annonce.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-5" aria-expanded="false" class="faq-trigger">À qui mon bien est-il
+                            présenté ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-5"><p>Aux locataires dont la recherche lui correspond. Votre
+                        agent le leur propose ; ceux qui sont intéressés demandent une visite, qu'il organise sur place
+                        ou en vidéo.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-6" aria-expanded="false" class="faq-trigger">Qui choisit le
+                            locataire et qui encaisse les loyers ?<span aria-hidden="true" class="chevron">▾</span>
+                        </button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-6"><p>Vous. Votre agent vous présente les locataires
+                        intéressés, vous décidez avec qui signer le bail, et vous percevez vos loyers directement :
+                        Ndopify n'y touche jamais.</p></div>
+                </div>
+            </div>
+            <div class="cta-row">
+                <a class="btn btn-primary" href="https://partner.ndopify.com/offer-property">Proposer mon bien</a>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div class="container site-footer__inner">
+        <img alt="Ndopify" height="32" src="assets/images/icon.png" width="32">
+        <nav aria-label="Navigation du pied de page">
+            <ul>
+                <li><a href="louer.html">Louer</a></li>
+                <li><a href="acheter.html">Acheter</a></li>
+                <li><a href="bailleur.html">Propriétaires</a></li>
+                <li><a href="agent.html">Agents</a></li>
+            </ul>
+        </nav>
+        <small>© 2026 Ndopify. Des agents vérifiés, à votre service.</small>
+    </div>
+</footer>
+
+<script src="assets/js/main.js"></script>
+</body>
+</html>

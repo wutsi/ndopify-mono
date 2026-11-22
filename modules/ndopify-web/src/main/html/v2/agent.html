@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Ndopify — Recevez des mandats de clients dans votre secteur</title>
+    <meta
+        content="Rejoignez le réseau d'agents vérifiés Ndopify : des mandats de location et de vente dans vos quartiers, les biens qui correspondent à vos clients, vos visites organisées. Inscription gratuite."
+        name="description">
+    <link href="https://www.ndopify.com/agent.html" rel="canonical">
+    <meta content="website" property="og:type">
+    <meta content="Ndopify — Des mandats de clients dans votre secteur" property="og:title">
+    <meta
+        content="Mandats signés dans vos quartiers, biens correspondants trouvés pour vous, visites organisées. Inscription gratuite."
+        property="og:description">
+    <meta content="https://www.ndopify.com/assets/images/og-image.png" property="og:image">
+    <meta content="https://www.ndopify.com/agent.html" property="og:url">
+    <meta content="summary_large_image" name="twitter:card">
+    <meta content="#1d7edf" name="theme-color">
+    <link href="assets/images/icon.png" rel="icon">
+    <link href="assets/images/icon.png" rel="apple-touch-icon">
+    <link href="assets/css/styles.css" rel="stylesheet">
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "Ndopify",
+            "url": "https://www.ndopify.com/",
+            "logo": "https://www.ndopify.com/assets/images/logo.png"
+        }
+    </script>
+</head>
+<!--
+  v2 prototype — agent landing page (served at "/agent").
+  v2: sale mandates (buyers' SEARCH and sellers' LISTING with listingType = SALE) next to the rental ones, and the
+  agent's specialisation (rental, sale or both, and property types, land included), which dispatch filters on.
+  Pillar 1 (agent subscription: join + KYC), then pillars 2 and 3 from the agent's side: mandate offers in their
+  neighbourhoods, the matching listings (theirs and their peers'), the visits they run from Partner Central.
+  The call to action is Partner Central's public "Rejoindre" wizard: {partnerCentralUrl}/join.
+  Out of the MVP, so never promised here: visit indemnity, commission split or payout, automatic co-brokerage split,
+  transaction "lock" (anti-sautage), NIU.
+-->
+<body>
+<a class="skip-link" href="#main">Aller au contenu principal</a>
+<header class="site-header">
+    <a aria-label="Ndopify — accueil" class="site-header__logo" href="index.html">
+        <img alt="Ndopify" height="36" src="assets/images/logo.png" width="140">
+    </a>
+    <nav aria-label="Navigation principale" class="site-nav">
+        <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle"><span aria-hidden="true"
+                                                                                                class="nav-toggle__icon">☰</span>
+            Agents
+        </button>
+        <ul class="site-nav__list" id="primary-nav-list">
+            <li><a href="louer.html">Louer</a></li>
+            <li><a href="acheter.html">Acheter</a></li>
+            <li><a href="bailleur.html">Propriétaires</a></li>
+            <li><a aria-current="page" href="agent.html">Agents</a></li>
+        </ul>
+    </nav>
+</header>
+
+<main id="main">
+    <section class="section section--default">
+        <div class="container hero">
+            <span class="hero__eyebrow">Réseau d'agents vérifiés</span>
+            <h1>Recevez des clients qui vous ont choisi, dans votre secteur</h1>
+            <p class="hero__sub">Locataires, acheteurs et propriétaires décrivent leur projet sur Ndopify. Leurs mandats sont
+                proposés aux agents vérifiés de leurs quartiers : acceptez ceux qui vous conviennent, Ndopify s'occupe
+                du reste.</p>
+            <ul class="proof-stats">
+                <li><strong>0 FCFA</strong>de frais d'inscription</li>
+                <li><strong>Location</strong>et vente : les mandats que vous traitez</li>
+                <li><strong>1 h</strong>pour accepter un mandat</li>
+            </ul>
+            <div class="cta-row">
+                <a class="btn btn-primary" href="https://partner.ndopify.com/join">Rejoindre le réseau</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="garanties-heading" class="section section--secondary">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="garanties-heading">Ce que Ndopify fait pour vous</h2>
+                <p>Moins de prospection, moins de visites pour rien : plus de temps pour conclure.</p>
+            </div>
+            <ul class="card-grid">
+                <li class="card">
+                    <h3 class="card-title">Des mandats dans vos quartiers</h3>
+                    <p>Recherches de locataires et d'acheteurs, biens à louer ou à vendre vous sont proposés selon vos
+                        quartiers, votre disponibilité et vos avis clients.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Les mandats que vous traitez</h3>
+                    <p>Location, vente ou les deux, et les types de biens que vous connaissez, terrains compris : vous
+                        ne recevez que les mandats de votre spécialité.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Des mandats signés</h3>
+                    <p>Votre client signe son mandat en ligne : vous savez exactement ce qu'il cherche et vous
+                        travaillez dans un cadre clair.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Les bons biens, trouvés pour vous</h3>
+                    <p>Ndopify rapproche vos recherches des biens publiés, les vôtres comme ceux de vos confrères, et
+                        vous dit pourquoi chacun correspond.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Des visites qui comptent</h3>
+                    <p>Le client choisit son créneau, vous le confirmez, il vous donne son code à l'arrivée et donne
+                        son avis après la visite.</p>
+                </li>
+            </ul>
+            <div class="cta-row">
+                <a class="btn btn-primary" href="https://partner.ndopify.com/join">Rejoindre le réseau</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="comment-heading" class="section section--default">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="comment-heading">Comment ça marche</h2>
+            </div>
+            <ol class="steps">
+                <li><h3>Inscription &amp; vérification</h3>
+                    <p>Créez votre profil, choisissez vos quartiers et votre spécialité (location, vente ou les
+                        deux), puis envoyez votre pièce d'identité et un selfie.</p></li>
+                <li><h3>Acceptez vos mandats</h3>
+                    <p>Recevez les mandats de vos quartiers sur Telegram ou par e-mail et acceptez-les depuis Partner
+                        Central.</p></li>
+                <li><h3>Proposez des biens</h3>
+                    <p>Publiez les biens de vos propriétaires après l'audit, et proposez à vos clients ceux qui
+                        correspondent à leur recherche.</p></li>
+                <li><h3>Menez vos visites</h3>
+                    <p>Confirmez les demandes, démarrez la visite avec le code du client, terminez-la, puis recevez son
+                        avis.</p></li>
+            </ol>
+            <div class="cta-row">
+                <a class="btn btn-primary" href="https://partner.ndopify.com/join">Rejoindre le réseau</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="faq-heading" class="section section--secondary">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="faq-heading">Questions fréquentes</h2>
+            </div>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-1" aria-expanded="false" class="faq-trigger">De quoi ai-je besoin
+                            pour m'inscrire ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-1"><p>Une adresse e-mail, un numéro WhatsApp, un numéro
+                        Mobile Money à votre nom, votre pièce d'identité (CNI ou passeport, recto et verso) et un
+                        selfie.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-2" aria-expanded="false" class="faq-trigger">Comment mon profil
+                            est-il vérifié ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-2"><p>Après votre inscription, vous recevez par e-mail un
+                        lien pour envoyer vos documents. Ndopify contrôle votre pièce d'identité et vérifie que le
+                        compte Mobile Money est bien à votre nom ; vous êtes prévenu par e-mail du résultat.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-3" aria-expanded="false" class="faq-trigger">Comment les mandats me
+                            sont-ils attribués ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-3"><p>Chaque mandat est proposé à un agent à la fois, en
+                        priorité dans le quartier du client, selon la disponibilité, l'équité entre agents, la
+                        réactivité et les avis clients. Vous avez 1 h (en journée) pour l'accepter ou le refuser ;
+                        sinon, il passe à l'agent suivant.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-8" aria-expanded="false" class="faq-trigger">Puis-je recevoir des
+                            mandats de vente ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-8"><p>Oui. Indiquez dans votre profil les mandats que vous
+                        traitez : location, vente ou les deux, et les types de biens (appartements, maisons, terrains,
+                        locaux commerciaux…). Les mandats de vente ne sont proposés qu'aux agents qui les traitent. Votre
+                        commission est celle écrite dans le mandat, due quand la vente est conclue grâce à vous.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-4" aria-expanded="false" class="faq-trigger">Combien de mandats
+                            puis-je suivre ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-4"><p>Jusqu'à 5 mandats en même temps, pour que chaque client
+                        soit bien suivi. Dès que l'un se termine, vous pouvez en recevoir un nouveau.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-5" aria-expanded="false" class="faq-trigger">Puis-je proposer les
+                            biens d'un autre agent ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-5"><p>Oui. Ndopify vous signale les biens publiés par vos
+                        confrères qui correspondent à vos recherches, et prévient l'agent du bien quand son bien
+                        intéresse ou est visité — sans jamais lui donner les coordonnées de votre client.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-6" aria-expanded="false" class="faq-trigger">Puis-je rester
+                            indépendant ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-6"><p>Oui. Vous pouvez être agent indépendant ou rattaché à
+                        une agence immobilière.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-7" aria-expanded="false" class="faq-trigger">Y a-t-il des frais
+                            d'adhésion ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-7"><p>Non. L'inscription et l'utilisation de Partner Central
+                        sont gratuites : aucun frais d'inscription ni d'abonnement.</p></div>
+                </div>
+            </div>
+            <div class="cta-row">
+                <a class="btn btn-primary" href="https://partner.ndopify.com/join">Rejoindre le réseau</a>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div class="container site-footer__inner">
+        <img alt="Ndopify" height="32" src="assets/images/icon.png" width="32">
+        <nav aria-label="Navigation du pied de page">
+            <ul>
+                <li><a href="louer.html">Louer</a></li>
+                <li><a href="acheter.html">Acheter</a></li>
+                <li><a href="bailleur.html">Propriétaires</a></li>
+                <li><a href="agent.html">Agents</a></li>
+            </ul>
+        </nav>
+        <small>© 2026 Ndopify. Des agents vérifiés, à votre service.</small>
+    </div>
+</footer>
+
+<script src="assets/js/main.js"></script>
+</body>
+</html>
