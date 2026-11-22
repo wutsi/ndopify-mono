@@ -44,6 +44,13 @@ class PwaAssetsTest {
     }
 
     @Test
+    fun offlinePageHasNoFaviconButKeepsTheAppleIcon() {
+        val html = resource("public/offline.html")
+        assertFalse(html.contains("rel=\"icon\""), "no favicon link")
+        assertTrue(html.contains("rel=\"apple-touch-icon\" href=\"/assets/images/apple-touch-icon.png\""))
+    }
+
+    @Test
     fun offlinePageIsSelfContained() {
         val html = resource("public/offline.html")
         assertTrue(html.contains("Vous êtes hors ligne"))
