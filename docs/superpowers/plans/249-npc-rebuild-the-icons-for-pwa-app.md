@@ -4,7 +4,7 @@
 
 **Goal:** Replace Partner Central's shared Ndopify artwork with the dedicated house/N icon set, rebuild the five PWA/apple PNGs from it, and remove the browser-tab favicon from the BFF and the prototype.
 
-**Architecture:** The 500×500 attachment becomes the master `public/assets/images/icon.png`; a one-off, **uncommitted** Python/Pillow script derives the two `any` icons (the artwork resized) and the maskable pair plus the 180 `apple-touch-icon` (a full-bleed `#1d7edf` tile with the artwork at 90%, its white margin clipped away). `templates/fragments/head.html` and `public/offline.html` lose their `<link rel="icon">` lines while keeping the manifest and apple-touch links; the three favicon files are deleted, and `/favicon.ico` stays a public, never-remembered path that now answers 404. The manifest's icon list, the service worker and the cache headers do not change.
+**Architecture:** The polished 500×500 attachment becomes the master `public/assets/images/icon.png`; a one-off, **uncommitted** Python/Pillow script derives the two `any` icons (the artwork resized) and the maskable pair plus the 180 `apple-touch-icon` (a full-bleed `#1d7edf` tile with the artwork at 90%, its white margin clipped away). `templates/fragments/head.html` and `public/offline.html` lose their `<link rel="icon">` lines while keeping the manifest and apple-touch links; the three favicon files are deleted, and `/favicon.ico` stays a public, never-remembered path that now answers 404. The manifest's icon list, the service worker and the cache headers do not change.
 
 **Tech Stack:** Kotlin, Spring Boot 4.1.2 (Thymeleaf, Security), Maven, JUnit 5 + `kotlin.test` + jsoup, `java.awt.ImageIO` for the PNG assertions, Python 3 + Pillow for the one-off asset generation (not a project dependency).
 
@@ -14,9 +14,9 @@
 
 - `modules/ndopify-partner-central` only: no `ndopify-dto`, `ndopify-web-core`, `ndopify-server`, `ndopify-web` or `ndopify-esignature` change; no database, Flyway, `application*.yml` or new project dependency.
 - **The approved prototype is the baseline.** This plan ports it; it does not design anything. The head loses the favicon link, and the icons are exactly the sheet's composition. Do not reopen the design; do not edit `src/main/html/` (it is the approved prototype, already committed with this plan).
-- The master is the story's attachment, byte for byte:
-  `https://github.com/user-attachments/assets/b7f9d547-a614-46de-b318-dca4aef459ab` — 500×500 PNG, opaque white square, `#1d7edf` circle with a ~7 px white margin, black house/N and its white window. SHA-256 of that file:
-  `0a1638ee9bd9092f89305a93de5c6d923727517c57446d541eb2b2f20fe15855`.
+- The master is the **polished** story attachment, byte for byte — the story owner's later comment ("Here is the update icon image, more polished. Use this image instead") overrides the original attachment:
+  `https://github.com/user-attachments/assets/1d0bb5dc-0347-432a-bbe3-676ed52683fb` — 500×500 PNG, opaque white square, `#1d7edf` circle with a ~7 px white margin, black house/N and its white window. SHA-256 of that file:
+  `01edbaf4068aaef59a202e000ea9abc07dd0e11a9d2198a40bd7e7115f97a74c`.
 - Icon values, exactly: brand blue `#1d7edf` (`BLUE = (29, 126, 223)`); artwork scale `MARK_SCALE = 0.9` of the tile; the circle that removes the white margin is drawn at a **94 %** diameter of the scaled artwork (`inset = round(side * 0.03)`), because the artwork's blue circle leaves a white ring inside its square.
 - Delivered sizes: `icon-192.png` 192×192, `icon-512.png` 512×512 (`any`, the artwork as supplied), `icon-maskable-192.png` 192×192, `icon-maskable-512.png` 512×512 (`maskable`, full-bleed blue), `apple-touch-icon.png` 180×180 (full-bleed blue). No 48/32/16 files: the sheet's are legibility previews.
 - The manifest keeps its four icons, the white theme color and its other fields; the service worker's precache (`/offline.html`, `logo.png`) and every `Cache-Control` rule are untouched.
@@ -188,7 +188,7 @@ fun masterIconIsTheSuppliedArtwork() {
     assertEquals(WHITE, rgb(master, 0, 0))          // opaque white square (not the old transparent corner)
     assertEquals(BLUE, rgb(master, 250, 30))        // the blue circle
     assertEquals(0x000000, rgb(master, 250, 250))   // the black house/N
-    assertEquals(WHITE, rgb(master, 231, 130))      // the white window
+    assertEquals(WHITE, rgb(master, 245, 140))      // the white window
 }
 
 @Test
@@ -244,7 +244,7 @@ Add `import kotlin.math.abs` too. Keep the existing `pngSize` helper.
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `cd modules/ndopify-partner-central && mvn test -Dtest=PwaAssetsTest`
-Expected: FAIL on `masterIconIsTheSuppliedArtwork` — the old `icon.png` has a transparent corner (`getRGB(0,0)` is `0x00000000`, so `rgb(...)` is `0x000000`, not `white`), and its pixel at (231,130) is not the window.
+Expected: FAIL on `masterIconIsTheSuppliedArtwork` — the old `icon.png` has a transparent corner (`getRGB(0,0)` is `0x00000000`, so `rgb(...)` is `0x000000`, not `white`), and its artwork is not the polished master.
 
 - [ ] **Step 3: Download the master and verify it**
 
@@ -252,13 +252,13 @@ From the module directory:
 
 ```bash
 curl -sL -o src/main/resources/public/assets/images/icon.png \
-  "https://github.com/user-attachments/assets/b7f9d547-a614-46de-b318-dca4aef459ab"
+  "https://github.com/user-attachments/assets/1d0bb5dc-0347-432a-bbe3-676ed52683fb"
 file src/main/resources/public/assets/images/icon.png
 shasum -a 256 src/main/resources/public/assets/images/icon.png
 ```
 
 Expected: `PNG image data, 500 x 500, 8-bit/color RGBA, non-interlaced` and
-`0a1638ee9bd9092f89305a93de5c6d923727517c57446d541eb2b2f20fe15855`. A different digest means the wrong
+`01edbaf4068aaef59a202e000ea9abc07dd0e11a9d2198a40bd7e7115f97a74c`. A different digest means the wrong
 file: stop and re-check the attachment URL.
 
 - [ ] **Step 4: Generate the five derivatives**
