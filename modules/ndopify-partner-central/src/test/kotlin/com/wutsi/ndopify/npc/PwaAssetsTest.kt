@@ -9,6 +9,7 @@ import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
@@ -49,7 +50,13 @@ class PwaAssetsTest {
             assertEquals(width to height, pngSize(resourceBytes("public" + icon["src"].asText())))
         }
         assertEquals(180 to 180, pngSize(resourceBytes("public/assets/images/apple-touch-icon.png")))
-        assertTrue(resourceBytes("public/favicon.ico").size > 0)
+    }
+
+    @Test
+    fun faviconFilesAreGone() {
+        assertNull(javaClass.classLoader.getResource("public/favicon.ico"))
+        assertNull(javaClass.classLoader.getResource("public/assets/images/favicon-16.png"))
+        assertNull(javaClass.classLoader.getResource("public/assets/images/favicon-32.png"))
     }
 
     @Test
