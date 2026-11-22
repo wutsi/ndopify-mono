@@ -77,8 +77,10 @@ Signed-in pages:
   proposes a match (`POST /mandates/{mandateId}/matches/{matchId}/propose`) or sets it aside
   (`.../dismiss`). Another agent's mandate a match belongs to is never named nor linked.
 - **Installable app (PWA)** — `public/manifest.json` and the generated service worker (`/sw.js`) let a phone install
-  the app; a failed navigation shows the self-contained French `/offline.html`. HTML and API responses are never
-  cached, only the versioned assets.
+  the app; a failed navigation shows the self-contained French `/offline.html`. The manifest ships `any` and
+  `maskable` icons at 192 and 512 px (`assets/images/icon-*.png`), with `apple-touch-icon.png` (180 px),
+  `favicon-16/32.png` and `/favicon.ico` for the rest. HTML and API responses are never cached, only the versioned
+  assets.
 
 Every form posts without JavaScript; the scripts in `src/main/assets/js/` (`join.js`, `find-property.js`,
 `offer-property.js`, `kyc.js`, `home.js`, `mandate.js`, `listing.js`) only enhance (dropdowns, intl-tel-input, photo
@@ -92,8 +94,9 @@ resizing, in-page camera, countdowns, in-place confirmations). They ship in one 
   [`ndopify-web-core`](../ndopify-web-core/README.md), declared by `config/WebCoreConfiguration`.
 - **Authentication** — the access token is stored in the `__npc_access_token` HTTP-only cookie
   (`AccessTokenService`). `JwtAuthenticationFilter` decodes it on each request and clears it once it no longer
-  decodes (expired); everything except `/assets/**`, `/sw.js`, `/offline.html`, `/manifest.json`, `/login/**`,
-  `/error`, `/join/**`, `/find-property/**`, `/offer-property/**` and `/locations/**` requires authentication, and
+  decodes (expired); everything except `/assets/**`, `/sw.js`, `/offline.html`, `/manifest.json`, `/favicon.ico`,
+  `/login/**`, `/error`, `/join/**`, `/find-property/**`, `/offer-property/**` and `/locations/**` requires
+  authentication, and
   unauthenticated requests are redirected to `/login`.
   The web app's `JwtDecoder` reads the claims without checking the signature (only ndopify-server has the secret and
   checks it on each call); it is never trusted on its own.
