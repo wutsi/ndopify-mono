@@ -18,14 +18,7 @@
   "not-yours" (the token is another customer's). Nothing about the match is shown.
 */-->
 <body data-page="match-link">
-<a class="skip-link" href="#main">Aller au contenu principal</a>
-<header class="site-header">
-    <a aria-label="Ndopify — accueil" class="site-header__logo" th:href="@{/}">
-        <img alt="Ndopify" height="36" width="140"
-             th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
-             th:src="${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
-    </a>
-</header>
+<th:block th:replace="~{fragments/site-header :: header(null, null, true)}"></th:block>
 
 <main id="main">
     <section class="section section--default">

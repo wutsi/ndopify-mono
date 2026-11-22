@@ -24,25 +24,7 @@
   feedback form, or its thanks once answered; no check-in UI. Never agentRemarks.
 */-->
 <body class="visit-page" data-page="visit">
-<a class="skip-link" href="#main">Aller au contenu principal</a>
-<header class="site-header">
-    <a aria-label="Ndopify — accueil" class="site-header__logo" th:href="@{/}">
-        <img alt="Ndopify" height="36" width="140"
-             th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
-             th:src="${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
-    </a>
-    <nav aria-label="Navigation principale" class="site-nav">
-        <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle"><span aria-hidden="true"
-                                                                                                class="nav-toggle__icon">☰</span>
-            Menu
-        </button>
-        <ul class="site-nav__list" id="primary-nav-list">
-            <li><a aria-current="page" th:href="@{/}">Locataires</a></li>
-            <li><a th:href="@{/owner}">Propriétaires</a></li>
-            <li><a th:href="@{/agent}">Agents</a></li>
-        </ul>
-    </nav>
-</header>
+<th:block th:replace="~{fragments/site-header :: header('home', 'Menu', true)}"></th:block>
 
 <!-- Icon sprite (decorative: every icon sits next to its text) -->
 <svg aria-hidden="true" class="visually-hidden" focusable="false" xmlns="http://www.w3.org/2000/svg">

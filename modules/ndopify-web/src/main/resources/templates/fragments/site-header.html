@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/*
+  The page shell's skip link and header. "active" marks the current section; "menuLabel" is the nav toggle's label
+  (it is "Menu" on the listing, match and visit pages, not the section's name); "brand" replaces the tenant logo with
+  Ndopify's own on the 404, which renders without a tenant.
+*/-->
+<th:block th:fragment="header(active, menuLabel, brand)">
+    <a class="skip-link" href="#main">Aller au contenu principal</a>
+    <header class="site-header">
+        <a aria-label="Ndopify — accueil" class="site-header__logo" th:href="@{/}">
+            <img alt="Ndopify" height="36" width="140"
+                 th:alt="${!brand or #strings.isEmpty(tenant?.name)} ? 'Ndopify' : ${tenant.name}"
+                 th:src="${!brand or #strings.isEmpty(tenant?.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
+        </a>
+        <th:block th:if="${active != null}">
+            <nav aria-label="Navigation principale" class="site-nav">
+                <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle"><span aria-hidden="true"
+                                                                                                        class="nav-toggle__icon">☰</span>
+                    <th:block th:text="${menuLabel}">Menu</th:block>
+                </button>
+                <ul class="site-nav__list" id="primary-nav-list">
+                    <li><a th:attr="aria-current=${active == 'home' ? 'page' : null}" th:href="@{/}">Locataires</a></li>
+                    <li><a th:attr="aria-current=${active == 'owner' ? 'page' : null}" th:href="@{/owner}">Propriétaires</a></li>
+                    <li><a th:attr="aria-current=${active == 'agent' ? 'page' : null}" th:href="@{/agent}">Agents</a></li>
+                </ul>
+            </nav>
+        </th:block>
+    </header>
+</th:block>
+</body>
+</html>

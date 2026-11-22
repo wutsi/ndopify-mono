@@ -6,12 +6,7 @@
   Rendered by Spring Boot's error controller, outside of the page that failed: Ndopify's own logo, not the tenant's.
 */-->
 <body data-page="error-404">
-<a class="skip-link" href="#main">Aller au contenu principal</a>
-<header class="site-header">
-    <a aria-label="Ndopify — accueil" class="site-header__logo" th:href="@{/}">
-        <img alt="Ndopify" height="36" th:src="@{/assets/images/logo.png}" width="140">
-    </a>
-</header>
+<th:block th:replace="~{fragments/site-header :: header(null, null, false)}"></th:block>
 
 <main id="main">
     <section class="section section--default">
