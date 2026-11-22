@@ -18,6 +18,10 @@ data class Tenant(
     val timeFormat: String = "",
     val timeZone: String = "Africa/Douala", // IANA id
     val iconUrl: String? = null,
+    val icon192Url: String? = null,
+    val icon512Url: String? = null,
+    val maskableIconUrl: String? = null,
+    val appleTouchIconUrl: String? = null,
     val logoUrl: String? = null,
     val active: Boolean = true,
     val adminConsoleUrl: String? = null,
