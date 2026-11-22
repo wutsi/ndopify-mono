@@ -50,14 +50,17 @@ round after round. You never merge: the repo's merge step owns that.
 **Argument:** `<pr-number>` is a pull request of the current repository. If it is missing, stop and ask — never guess
 the pull request.
 
-**Precondition:** the PR's body references a story (`Refs #<id>` in the convention the repo's instructions require),
-that story is in the board's review status, and the PR is not merged. Otherwise stop and ask which story it belongs
-to, or point at the repo's merge step when it is already merged. Work from the branch's worktree (`git worktree list`).
+**Precondition:** the PR's body references a story (the profile's `repository.story_ref`), that story is in the
+profile's `tracker.statuses.review`, and the PR is not merged. Otherwise stop and ask which story it belongs to, or
+point at the repo's merge step when it is already merged. Work from the branch's worktree (`git worktree list`).
 
 Before anything else: read the repository's agent instructions (`AGENTS.md`, or `CLAUDE.md` when there is no
-`AGENTS.md`), the instructions of every package/module the story touches, and `MEMORY.md` when it exists. Their rules
-win over this instruction — notably the build, test and verification commands, the shared/published modules, the
-commit convention, and the UI language. Then read the story, its acceptance criteria and its plan.
+`AGENTS.md`), the instructions of every package/module the story touches, `MEMORY.md` when it exists, and the project
+profile (`.claude/project-profile.md`). Their rules win over this instruction; the profile overrides the generic
+defaults here — notably the build, test and verification commands, the shared/published modules, the commit convention
+and the UI language. If the profile is missing, its `platform` is not `github`, or a value this instruction needs is
+absent, stop and ask — never guess. A denied tool is a stop-and-report, never a workaround. Then read the story, its
+acceptance criteria and its plan.
 
 ## Resolve the PR, the story and the board
 
@@ -67,8 +70,8 @@ gh pr view <pr> --json number,title,body,state,headRefName,headRepository,baseRe
 gh pr diff <pr>
 ```
 
-The story id is the `Refs #<id>` in the PR body; read it with `gh issue view <id> --comments` and resolve the plan it
-links. Resolve the board from the story, never hardcode ids:
+The story id is the profile's `repository.story_ref` in the PR body; read it with `gh issue view <id> --comments` and
+resolve the plan it links. Resolve the board from the story, never hardcode ids:
 
 ```bash
 gh project list --owner <owner> --format json
@@ -79,7 +82,7 @@ gh project field-list <project-number> --owner <owner> --format json
 
 If the board is not owned by the repository owner, also try `gh project list --owner @me --format json`. If there is
 no board, or more than one, stop and ask. The reviewer only reads the status to check the precondition; it never
-moves the story: the story stays in review until the merge step closes it.
+moves the story: the story stays in `tracker.statuses.review` until the merge step closes it.
 
 ## The loop
 
@@ -98,8 +101,8 @@ work is done.
 
 Wait for every check to finish: `gh pr checks <pr> --watch`. The review starts only once they are all green; no check
 reported (a PR whose paths start no workflow) counts as green. A red check after a resolve is a finding of that round:
-fix it (step 4) without counting a new round. Red before round 1: report it to the user (`gh run view <run-id>
---log-failed`) and stop.
+fix it (step 4) without counting a new round. Red before round 1: report it (`gh run view <run-id> --log-failed`) and
+end with `OUTCOME: blocked`, the failure in `NOTES`.
 
 ## 2. Review
 
@@ -129,7 +132,8 @@ of it.
 
 ## 3. Verdict
 
-**No finding** — approve it and stop: the PR is approved on its head, ready for the repo's merge step; tell the user.
+**No finding** — approve it and stop: the PR is approved on its head, ready for the repo's merge step. End with the
+report (`OUTCOME: done`, `APPROVAL: yes`, `NEXT: merge <pr-number>`).
 
 ```bash
 gh pr review <pr> --approve --body "<Round n|Final> — Approved: <what was checked>"
@@ -148,10 +152,11 @@ gh api repos/<owner>/<repo>/pulls/<pr>/reviews --method POST --input review.json
 ```
 
 A 422 means a comment's line is not in the diff: move that finding to the body and post again. Then go to step 4 —
-or, on the `Final` review, stop: tell the user the findings left and the PR link. The PR stays open, the story stays
-in review; once fixed by hand, re-running the reviewer starts a new count.
+or, on the `Final` review, stop: end with `OUTCOME: blocked`, `APPROVAL: no`, the findings in `NOTES`, and
+`NEXT: fix the findings, then rerun review <pr-number>`. The PR stays open, the story stays in
+`tracker.statuses.review`; once fixed by hand, re-running the reviewer starts a new count.
 
-GitHub refuses `APPROVE` and `REQUEST_CHANGES` on a PR the user authored (the repo's push step opens every PR): then
+GitHub refuses `APPROVE` and `REQUEST_CHANGES` on a PR the user authored (the developer agent opens every PR): then
 post the same verdict with `gh pr review <pr> --comment` (approval) or `"event": "COMMENT"` (findings, inline comments
 kept), keeping the `<Round n|Final> — Approved` / `Changes requested` body.
 
@@ -161,26 +166,27 @@ Address every finding of the round, following `superpowers:receiving-code-review
 before changing it, one at a time.
 
 - **A finding that is right** — fix it on the branch under the implement rules: a test for a behavior change, at most
-  one shared module per commit (or none), conventional commits, the repo's verification command green in each touched
-  module including its coverage gate.
+  one shared module per commit (or none), conventional commits, the profile's `verification.command` green in each
+  touched module including its coverage gate.
 - **A finding that is wrong** — do not change the code; reply why (below). The next review must not raise it again.
 - **A finding that needs a decision of the user** (a product choice, a change to the plan or the acceptance
-  criteria) — stop and ask; resume the round with their answer. When you run as a subagent and cannot ask, stop and
-  return `GATE: question` with the question.
+  criteria) — stop and ask; resume the round with their answer. When you run as a subagent and cannot ask, end with
+  `OUTCOME: gate`, `GATE: question`, and the question in `NOTES`.
 
-Ship the fixes the way the repository's push/release step does:
+Ship the fixes the way the developer agent's release procedure does:
 
 1. **Push gate** — before every push, to the default branch or to the branch: `git status` is clean apart from the
-   local build override; `git diff` against the upstream touches only what this story needs; the root pins released
-   versions of its shared modules, never a local snapshot; commits are conventional commits. Use
-   `superpowers:verification-before-completion`: the repo's verification command is green on the tree being pushed.
-2. **Shared modules** — the modules the repo releases separately, as its instructions name them. A fix that touches
-   one is released from the default branch first: in its own worktree on the latest default branch, cherry-pick only
-   this story's commits that touch that module (oldest first), then check that the diff touches only that module (plus
-   the version properties a version bump changes), that every commit is a cherry-pick of this story's branch, and that
-   the module's verification is green. The release is automatic once those checks and the push gate pass — no user
-   OK — so push to the default branch and wait for its run to be green. A cherry-pick that does not apply cleanly, a
-   commit touching anything outside its module, or a red release run: stop and ask the user.
+   local build override; `git diff` against the upstream touches only what this story needs; the `version_file` pins
+   released versions of the profile's `shared_modules`, never a local snapshot; commits are conventional commits. Use
+   `superpowers:verification-before-completion`: the profile's `verification.command` is green on the tree being
+   pushed.
+2. **Shared modules** — the profile's `shared_modules`. A fix that touches one is released from the default branch
+   first: in its own worktree on the latest default branch, cherry-pick only this story's commits that touch that
+   module's `path` (oldest first), then check that the diff touches only that module (plus the `version_property`s a
+   version bump changes), that every commit is a cherry-pick of this story's branch, and that the module's verification
+   is green. The release is automatic once those checks and the push gate pass — no user OK — so push to the default
+   branch and wait for its `release_workflow` run to be green. A cherry-pick that does not apply cleanly, a commit
+   touching anything outside its module, or a red release run: stop and ask the user.
 3. **Branch** — revert the local snapshot edit, rebase on the updated default branch: the released commits drop out,
    being already upstream (if git keeps one, as a conflict or a non-empty commit, stop and ask). Commit the version
    bump for the released shared modules, then push gate → `git push -u origin <branch>`; once the PR is already open,
@@ -196,16 +202,24 @@ gh api repos/<owner>/<repo>/pulls/<pr>/comments/<comment-id>/replies --method PO
 
 Then go to step 1 for the next round.
 
+## Report
+
+Your final message is the report in `.claude/agent-report.md`. An approval is `OUTCOME: done`, `PR: <number>`,
+`STATUS: <tracker.statuses.review>`, `APPROVAL: yes`, `NEXT: merge <pr-number>`. Findings left on the `Final` review
+are `OUTCOME: blocked`, `APPROVAL: no`, `NEXT: fix the findings, then rerun review <pr-number>`. A question is
+`OUTCOME: gate`, `GATE: question`.
+
 ## Stop and ask
 
 Stop instead of guessing when: a finding needs a product decision or a change to the plan or the acceptance criteria;
 a requirement is ambiguous; the story conflicts with a repository rule; a cherry-pick or a shared-module release does
 not fit these checks; a build fails twice for the same reason; or a step would be irreversible and is not listed here.
+When you run as a subagent and cannot ask, end with `OUTCOME: gate`, `GATE: question`, and the question in `NOTES`.
 Never merge, never open or close an issue, never force-push except `--force-with-lease` after a rebase, and never put
 unrelated changes in a commit.
 
 ## Done when
 
-The latest review approves the PR's head and its checks are green, and the user knows it is ready for the repo's merge
-step — or the reviewer stopped with findings left on the `Final` review (or a question), and the user knows them and
-what is left.
+The latest review approves the PR's head and its checks are green, and the report says `OUTCOME: done`, `APPROVAL: yes`,
+`NEXT: merge <pr-number>` — or the reviewer stopped with findings left on the `Final` review (or a question) and the
+report says so.
