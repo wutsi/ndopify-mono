@@ -34,6 +34,9 @@ import java.time.Duration
  * The URL is never trusted: the code step is only shown while a [PendingLogin] is in the session, otherwise the
  * e-mail step is. The e-mail lives in the session, never in the URL or a form field, so it doesn't end up in logs or
  * history and can't be swapped at verify time.
+ *
+ * A successful verify returns to the local page the session's [SignInTarget] remembers, and to `/` when there is
+ * none.
  */
 @Controller
 @RequestMapping("/login")
@@ -143,8 +146,11 @@ class LoginController(
         // A new session id once signed in, so that an id planted before (session fixation) is worth nothing
         request.changeSessionId()
         accessTokenService.set(accessToken)
-        // The Espace agent, which sends an agent who isn't verified yet to the KYC page.
-        return "redirect:/"
+        // The page the agent asked for before being sent to /login, else the Espace agent, which sends an agent who
+        // isn't verified yet to the KYC page. Read and cleared once, so a later sign-in doesn't reuse it.
+        val target = session.getAttribute(SignInTarget.SESSION_ATTRIBUTE) as SignInTarget?
+        session.removeAttribute(SignInTarget.SESSION_ATTRIBUTE)
+        return "redirect:" + (target?.redirectUrl() ?: "/")
     }
 
     private fun pending(session: HttpSession): PendingLogin? =
