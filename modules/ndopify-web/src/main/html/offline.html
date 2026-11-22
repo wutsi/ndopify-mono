@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hors ligne — Ndopify</title>
+    <meta name="description" content="Vous êtes hors ligne. Vérifiez votre connexion Internet, puis réessayez.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#1d7edf">
+    <link rel="icon" type="image/png" href="/assets/images/icon.png">
+    <link rel="apple-touch-icon" href="/assets/images/icon.png">
+    <!--
+      Prototype for public/offline.html, the static page the service worker serves when a navigation fails.
+
+      Like the Partner Central offline prototype, it links the app's PRODUCTION stylesheet
+      (../resources/public/…) rather than a copy, so the review shows the real look. In production this
+      <link> is removed and the needed rules are inlined (self-contained page, no webfont, no bundle).
+
+      The logo and favicon use the production absolute paths (/assets/images/…) as the story requires;
+      they will not resolve in a raw file:// preview — serve the page from the app root to see them.
+    -->
+    <link rel="stylesheet" href="../resources/public/assets/css/styles.css">
+    <style>
+        /* ---- offline.html only: a quiet, centred empty state on the public site's own tokens ---- */
+        .offline {
+            display: grid;
+            justify-items: center;
+            align-content: center;
+            gap: var(--space-lg);
+            /* Fill the space between the sticky header (61px) and .section's own vertical padding,
+               so the empty state is centred in the viewport. */
+            min-height: calc(100vh - 61px - 2 * var(--space-section));
+            text-align: center;
+        }
+
+        .offline__icon {
+            display: grid;
+            place-items: center;
+            width: 6rem;
+            height: 6rem;
+            margin: 0;
+            border-radius: 50%;
+            background: var(--color-bg-secondary);
+            color: var(--color-primary);
+        }
+
+        .offline__title {
+            margin: 0;
+            font-family: var(--font-heading);
+            font-size: var(--h1-size);
+            line-height: 1.2;
+        }
+
+        .offline__text {
+            margin: 0;
+            max-width: 28rem;
+            color: var(--color-text-default);
+        }
+
+        /* Reserves its line so the button doesn't jump when the status appears */
+        .offline__status {
+            margin: 0;
+            min-height: 1.5em;
+            font-size: 0.875rem;
+            color: var(--color-text-success);
+        }
+
+        .offline__note {
+            margin: 0;
+            max-width: 28rem;
+            font-size: 0.875rem;
+            color: var(--color-text-disabled);
+        }
+    </style>
+</head>
+<!--/*
+  Shown when the app can't reach its server: the service worker serves this page for a failed navigation.
+  No account menu (nobody is known here) and no link that would fail while offline.
+
+  The button is a link to "/" so it still retries without JavaScript; the script turns it into a reload and,
+  once the connection is back, says so and reloads by itself.
+*/-->
+<body data-page="offline">
+    <a class="skip-link" href="#main">Aller au contenu principal</a>
+    <header class="site-header">
+        <span class="site-header__logo">
+            <img src="/assets/images/logo.png" alt="Ndopify" width="140" height="36">
+        </span>
+    </header>
+    <main id="main">
+        <section class="section section--default">
+            <div class="container">
+                <section class="offline" aria-labelledby="offline-title">
+                    <p class="offline__icon" aria-hidden="true">
+                        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+                            <path d="M12 20h.01"/>
+                            <path d="M8.5 16.4a5 5 0 0 1 7 0"/>
+                            <path d="M5 12.9a10 10 0 0 1 5.2-2.7"/>
+                            <path d="M19 12.9a10 10 0 0 0-2-1.5"/>
+                            <path d="M2 8.8a15 15 0 0 1 4.2-2.6"/>
+                            <path d="M22 8.8a15 15 0 0 0-11.3-3.8"/>
+                            <path d="m2 2 20 20"/>
+                        </svg>
+                    </p>
+                    <h1 id="offline-title" class="offline__title" tabindex="-1">Vous êtes hors ligne</h1>
+                    <p class="offline__text">
+                        Ndopify a besoin d'une connexion Internet pour afficher cette page.
+                        Vérifiez votre connexion, puis réessayez.
+                    </p>
+                    <p class="offline__status" role="status" aria-live="polite" data-offline-status></p>
+                    <a class="btn btn-primary" href="/" data-retry>Réessayer</a>
+                    <p class="offline__note">
+                        Si vous venez d'envoyer un formulaire, vérifiez son résultat une fois reconnecté.
+                    </p>
+                </section>
+            </div>
+        </section>
+    </main>
+    <script>
+        (function () {
+            "use strict";
+
+            var status = document.querySelector("[data-offline-status]");
+            var retry = document.querySelector("[data-retry]");
+            var reloaded = false;
+
+            function reload() {
+                if (reloaded) return;
+                reloaded = true;
+                window.location.reload();
+            }
+
+            // Review-only: open this page as "offline.html?status=online" to preview the back-online state.
+            // In production the "online" event below writes the same line and reloads by itself.
+            if (status && /(?:^|[?&])status=online(?:&|$)/.test(window.location.search)) {
+                status.textContent = "Connexion rétablie. Rechargement…";
+            }
+
+            // Back online: say so, then reload once by itself.
+            window.addEventListener("online", function () {
+                if (!status) return;
+                status.textContent = "Connexion rétablie. Rechargement…";
+                window.setTimeout(reload, 900);
+            });
+
+            // Without JavaScript the link still retries by navigating to the app.
+            if (retry) {
+                retry.addEventListener("click", function (event) {
+                    event.preventDefault();
+                    reload();
+                });
+            }
+        })();
+    </script>
+</body>
+</html>
