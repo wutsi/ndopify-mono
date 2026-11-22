@@ -20,11 +20,7 @@
             </div>
 
             <div class="alert alert--success" role="status" data-telegram-sent th:if="${telegramCodeSent}">
-                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-                    <circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/>
-                    <path d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor"
-                          stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
+                <svg th:replace="~{fragments/icon :: check('icon')}"></svg>
                 <div>
                     <p class="alert__title">Code envoyé</p>
                     <p>Consultez l'adresse e-mail de votre compte, puis envoyez <code>/connect</code> suivi du
@@ -33,11 +29,7 @@
             </div>
 
             <div class="alert alert--error" role="alert" data-telegram-error th:if="${telegramError}">
-                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-                    <circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/>
-                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor"
-                          stroke-width="1.5" stroke-linecap="round"/>
-                </svg>
+                <svg th:replace="~{fragments/icon :: close}"></svg>
                 <div>
                     <p class="alert__title">Connexion impossible</p>
                     <p th:text="${telegramError}">L'envoi du code a échoué.</p>

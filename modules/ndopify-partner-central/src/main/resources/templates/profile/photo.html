@@ -35,11 +35,11 @@
                             <span data-upload-label th:text="${photoUrl} ? 'Changer la photo' : 'Choisir une photo'">Choisir une photo</span>
                         </label>
                         <p class="visually-hidden" role="status" data-upload-status></p>
-                        <p class="field__error" id="photo-error" role="alert" hidden th:hidden="${error == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${error}"></span></p>
+                        <p class="field__error" id="photo-error" role="alert" hidden th:hidden="${error == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${error}"></span></p>
                     </div>
 
                     <div class="hint" id="photo-hint">
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <svg th:replace="~{fragments/icon :: info}"></svg>
                         <div>
                             <p>Pour une photo professionnelle&nbsp;:</p>
                             <ul>

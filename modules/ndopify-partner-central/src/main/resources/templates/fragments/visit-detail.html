@@ -20,7 +20,7 @@
             <span data-visit-when th:text="${v.whenText}">pour le sam. 7 novembre 2026 à 10:30</span></span>
     </p>
     <p class="visit-detail__timer" th:if="${v.expiresIn != null}" data-visit-timer>
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        <svg th:replace="~{fragments/icon :: clock}"></svg>
         <span>Il reste <strong th:text="${v.expiresIn}">42 h</strong> pour confirmer</span>
     </p>
     <a class="btn btn--primary btn--compact visit-detail__cta" th:if="${v.status.name() == 'REQUESTED'}"

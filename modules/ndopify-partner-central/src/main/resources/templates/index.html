@@ -70,7 +70,7 @@
             </div>
 
             <div class="alert alert--warning" th:if="${kyc == 'todo'}" data-kyc-banner="todo">
-                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <svg th:replace="~{fragments/icon :: warning}"></svg>
                 <div>
                     <p class="alert__title">Vérifiez votre identité</p>
                     <p>Un agent non vérifié ne peut pas recevoir de mandats.
@@ -86,7 +86,7 @@
                 </div>
             </div>
             <div class="alert alert--error" th:if="${kyc == 'rejected'}" data-kyc-banner="rejected">
-                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <svg th:replace="~{fragments/icon :: close}"></svg>
                 <div>
                     <p class="alert__title">Votre dossier n'a pas pu être validé</p>
                     <p>Soumettez de nouveaux documents pour recevoir des mandats.
@@ -103,7 +103,7 @@
 
                 <th:block th:switch="${assignment}">
                     <div class="alert alert--success" role="status" th:case="'accepted'" data-assignment-outcome>
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <svg th:replace="~{fragments/icon :: check('icon')}"></svg>
                         <div>
                             <p class="alert__title">Mandat accepté</p>
                             <p>Le client est prévenu et reçoit vos coordonnées : il va vous contacter.</p>
@@ -118,14 +118,14 @@
                         </div>
                     </div>
                     <div class="alert alert--warning" role="status" th:case="'closed'" data-assignment-outcome>
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <svg th:replace="~{fragments/icon :: warning}"></svg>
                         <div>
                             <p class="alert__title">Ce mandat n'est plus disponible</p>
                             <p>Son délai a expiré ou il a déjà été traité.</p>
                         </div>
                     </div>
                     <div class="alert alert--error" role="alert" th:case="'error'" data-assignment-outcome>
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        <svg th:replace="~{fragments/icon :: close}"></svg>
                         <div>
                             <p class="alert__title">Action impossible pour le moment</p>
                             <p>Réessayez dans quelques instants.</p>
@@ -134,7 +134,7 @@
                 </th:block>
 
                 <div class="alert alert--warning" th:if="${assignmentsUnavailable}" data-assignments-unavailable>
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <svg th:replace="~{fragments/icon :: warning}"></svg>
                     <p>Vos mandats ne peuvent pas être affichés pour le moment. Réessayez dans quelques instants.</p>
                 </div>
 
@@ -148,8 +148,7 @@
                                         th:replace="~{fragments/mandate-kind :: icon(${a.owner})}"></span><span
                                         th:text="${a.title}">Locataire</span></h3>
                                 <p class="assignment__timer" data-timer>
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                         stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                    <svg th:replace="~{fragments/icon :: clock}"></svg>
                                     <span>Il reste <strong data-timer-value th:text="${a.remaining}">52 min</strong></span>
                                 </p>
                             </div>
@@ -197,7 +196,7 @@
                             </div>
                             <div class="alert alert--warning assignment__confirm" data-decline-confirm
                                  th:attr="hidden=${confirming} ? null : 'hidden'">
-                                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                                <svg th:replace="~{fragments/icon :: warning}"></svg>
                                 <div>
                                     <p class="alert__title">Refuser ce mandat ?</p>
                                     <p>Il sera proposé à un autre agent et ne vous sera plus proposé.</p>
@@ -218,13 +217,13 @@
                 <h2 id="visits-title">Visites</h2>
 
                 <div class="alert alert--warning" th:if="${visits.unavailable}" data-visits-unavailable>
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <svg th:replace="~{fragments/icon :: warning}"></svg>
                     <p>Vos visites ne peuvent pas être affichées pour le moment. Réessayez dans quelques instants.</p>
                 </div>
 
                 <th:block th:switch="${visitOutcome}">
                     <div class="alert alert--success" role="status" th:case="'confirmed'" data-visit-outcome>
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <svg th:replace="~{fragments/icon :: check('icon')}"></svg>
                         <div>
                             <p class="alert__title">Visite confirmée</p>
                             <p th:if="${visitOutcomeText}" th:text="${visitOutcomeText}">Rendez-vous avec Sandrine Eboa le sam. 7 novembre 2026 à 10:30. Le client a reçu la date, l'adresse et son code.</p>
@@ -232,28 +231,28 @@
                         </div>
                     </div>
                     <div class="alert alert--warning" role="status" th:case="'invalid-slot'" data-visit-outcome>
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <svg th:replace="~{fragments/icon :: warning}"></svg>
                         <div>
                             <p class="alert__title">Créneau indisponible</p>
                             <p>Ce créneau n'est plus disponible. Choisissez-en un autre.</p>
                         </div>
                     </div>
                     <div class="alert alert--warning" role="status" th:case="'changed'" data-visit-outcome>
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <svg th:replace="~{fragments/icon :: warning}"></svg>
                         <div>
                             <p class="alert__title">Cette visite a changé</p>
                             <p>Vérifiez son état avant de recommencer.</p>
                         </div>
                     </div>
                     <div class="alert alert--warning" role="status" th:case="'whatsapp-missing'" data-visit-outcome>
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <svg th:replace="~{fragments/icon :: warning}"></svg>
                         <div>
                             <p class="alert__title">Visite vidéo impossible</p>
                             <p>Le client n'a pas de numéro WhatsApp : choisissez une visite sur place.</p>
                         </div>
                     </div>
                     <div class="alert alert--error" role="alert" th:case="'error'" data-visit-outcome>
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        <svg th:replace="~{fragments/icon :: close}"></svg>
                         <div>
                             <p class="alert__title">Action impossible pour le moment</p>
                             <p>Réessayez dans quelques instants.</p>
@@ -321,7 +320,7 @@
                 <p>Vos mandats, de l'approbation à la fermeture.</p>
 
                 <div class="alert alert--warning" th:if="${mandatesUnavailable}" data-mandates-unavailable>
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <svg th:replace="~{fragments/icon :: warning}"></svg>
                     <p>Vos mandats en cours ne peuvent pas être affichés pour le moment. Réessayez dans quelques instants.</p>
                 </div>
 
@@ -351,7 +350,7 @@
                      data-profile>
                 <h2 id="profile-title" class="visually-hidden">Mon profil</h2>
                 <div class="alert alert--success" role="status" th:if="${saved}" data-profile-saved>
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg th:replace="~{fragments/icon :: check('icon')}"></svg>
                     <p th:text="${saved == 'photo'} ? 'Votre photo de profil a été enregistrée.' : 'Votre profil a été enregistré.'">
                         Votre profil a été enregistré.</p>
                 </div>

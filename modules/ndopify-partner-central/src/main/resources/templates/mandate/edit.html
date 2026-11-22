@@ -20,7 +20,7 @@
             <p class="back-link"><a th:href="@{/mandates/{id}(id=${mandateId})}" data-back-link>← Retour au mandat</a></p>
 
             <div class="alert alert--warning" th:if="${locked}" data-edit-locked>
-                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <svg th:replace="~{fragments/icon :: warning}"></svg>
                 <div th:switch="${locked}">
                     <th:block th:case="'approved'">
                         <h1 class="alert__title">Ce mandat ne peut plus être modifié</h1>
@@ -40,14 +40,14 @@
                 </div>
 
                 <div class="hint" th:if="${mandate.status.name() == 'PENDING_APPROVAL'}" data-edit-resend>
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <svg th:replace="~{fragments/icon :: info}"></svg>
                     <p>Ce mandat attend la signature <span th:text="${mandate.words.of}">du client</span>&nbsp;: en l'enregistrant,
                         vous annulez le contrat qui lui a été envoyé. Il ne pourra plus le signer, et vous devrez lui
                         envoyer la nouvelle version.</p>
                 </div>
 
                 <div class="alert alert--error" role="alert" th:if="${error}" data-edit-error>
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <svg th:replace="~{fragments/icon :: close}"></svg>
                     <p th:text="${error}">Enregistrement impossible pour le moment.</p>
                 </div>
 
@@ -75,11 +75,11 @@
                                 <p class="field__counter" id="neighborhood-counter" data-neighborhood-counter
                                    th:text="|${#lists.size(neighborhoods)} sur 3 sélectionné${#lists.size(neighborhoods) > 1 ? 's' : ''}|">
                                     0 sur 3 sélectionné</p>
-                                <p class="field__error" id="neighborhoodIds-error" th:hidden="${errors['neighborhoodIds'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['neighborhoodIds']}"></span></p>
+                                <p class="field__error" id="neighborhoodIds-error" th:hidden="${errors['neighborhoodIds'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['neighborhoodIds']}"></span></p>
                                 <p class="visually-hidden" role="status" data-neighborhood-status></p>
                             </div>
                             <div class="hint" id="neighborhoods-hint">
-                                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                                <svg th:replace="~{fragments/icon :: info}"></svg>
                                 <p>Sans quartier, toute la ville est couverte. La ville ne peut pas changer&nbsp;: le mandat serait
                                     confié à un agent d'une autre ville.</p>
                             </div>
@@ -100,7 +100,7 @@
                                     <label class="choice"><input name="propertyCategory" type="radio" value="COMMERCIAL"
                                                                  th:checked="${answers.propertyCategory?.name() == 'COMMERCIAL'}"> <th:block th:text="${categoryLabels['COMMERCIAL']}">Commercial</th:block></label>
                                 </div>
-                                <p class="field__error" id="propertyCategory-error" th:hidden="${errors['propertyCategory'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['propertyCategory']}"></span></p>
+                                <p class="field__error" id="propertyCategory-error" th:hidden="${errors['propertyCategory'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['propertyCategory']}"></span></p>
                             </fieldset>
                             <fieldset class="choices" aria-describedby="propertyType-error" data-group="propertyType" th:attr="aria-invalid=${errors['propertyType'] != null ? 'true' : null}">
                                 <legend class="choices__legend">Type de bien <span class="field__optional" th:unless="${owner}">(facultatif)</span></legend>
@@ -130,7 +130,7 @@
                                         <label class="choice" data-categories="RESIDENTIAL COMMERCIAL" th:unless="${owner}"><input name="propertyType" type="radio" value="ANY"
                                                                      th:checked="${#strings.equals(answers.propertyType, 'ANY')}"> Indifférent</label>
                                 </div>
-                                <p class="field__error" id="propertyType-error" th:hidden="${errors['propertyType'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['propertyType']}"></span></p>
+                                <p class="field__error" id="propertyType-error" th:hidden="${errors['propertyType'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['propertyType']}"></span></p>
                             </fieldset>
                             <!-- Without JS every follow-up question shows; the server ignores those that don't apply to the type. -->
                             <fieldset class="choices" aria-describedby="rooms-error" data-group="rooms" th:attr="aria-invalid=${errors['rooms'] != null ? 'true' : null}">
@@ -147,7 +147,7 @@
                                         <label class="choice"><input name="rooms" type="radio" value="5+"
                                                                      th:checked="${#strings.equals(answers.rooms, '5+')}"> 5&nbsp;et&nbsp;+</label>
                                 </div>
-                                <p class="field__error" id="rooms-error" th:hidden="${errors['rooms'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['rooms']}"></span></p>
+                                <p class="field__error" id="rooms-error" th:hidden="${errors['rooms'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['rooms']}"></span></p>
                             </fieldset>
                             <fieldset class="choices" aria-describedby="furnitureType-error" data-group="furnitureType" th:attr="aria-invalid=${errors['furnitureType'] != null ? 'true' : null}">
                                 <legend class="choices__legend">Meublé&nbsp;?</legend>
@@ -159,7 +159,7 @@
                                         <label class="choice" th:unless="${owner}"><input name="furnitureType" type="radio" value="ANY"
                                                                      th:checked="${#strings.equals(answers.furnitureType, 'ANY')}"> Indifférent</label>
                                 </div>
-                                <p class="field__error" id="furnitureType-error" th:hidden="${errors['furnitureType'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['furnitureType']}"></span></p>
+                                <p class="field__error" id="furnitureType-error" th:hidden="${errors['furnitureType'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['furnitureType']}"></span></p>
                             </fieldset>
                             <fieldset class="choices" aria-describedby="parkings-error" data-group="parkings" th:attr="aria-invalid=${errors['parkings'] != null ? 'true' : null}">
                                 <legend class="choices__legend">Places de parking <span class="field__optional">(facultatif)</span></legend>
@@ -175,7 +175,7 @@
                                         <label class="choice" th:unless="${owner}"><input name="parkings" type="radio" value="ANY"
                                                                      th:checked="${#strings.equals(answers.parkings, 'ANY')}"> Indifférent</label>
                                 </div>
-                                <p class="field__error" id="parkings-error" th:hidden="${errors['parkings'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['parkings']}"></span></p>
+                                <p class="field__error" id="parkings-error" th:hidden="${errors['parkings'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['parkings']}"></span></p>
                             </fieldset>
                             <div class="field" data-group="area">
                                 <label class="field__label" for="area"><span th:text="${owner} ? 'Surface' : 'Surface minimale'">Surface minimale</span>
@@ -185,7 +185,7 @@
                                            th:value="${answers.area}" th:attr="aria-invalid=${errors['area'] != null ? 'true' : null}">
                                     <span aria-hidden="true" class="input-unit__suffix">m²</span>
                                 </div>
-                                <p class="field__error" id="area-error" th:hidden="${errors['area'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['area']}"></span></p>
+                                <p class="field__error" id="area-error" th:hidden="${errors['area'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['area']}"></span></p>
                             </div>
                         </div>
                     </details>
@@ -247,7 +247,7 @@
                                            aria-describedby="priceAmount-error" th:value="${answers.priceAmount}" th:attr="aria-invalid=${errors['priceAmount'] != null ? 'true' : null}">
                                     <span aria-hidden="true" class="input-unit__suffix" th:text="${currency} + ' / mois'">FCFA / mois</span>
                                 </div>
-                                <p class="field__error" id="priceAmount-error" th:hidden="${errors['priceAmount'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['priceAmount']}"></span></p>
+                                <p class="field__error" id="priceAmount-error" th:hidden="${errors['priceAmount'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['priceAmount']}"></span></p>
                             </div>
                             <fieldset class="choices" aria-describedby="movingPeriod-error" data-group="movingPeriod" th:attr="aria-invalid=${errors['movingPeriod'] != null ? 'true' : null}">
                                 <legend class="choices__legend" th:text="${owner} ? 'Disponibilité du bien' : 'Date d\'emménagement souhaitée'">Date d'emménagement souhaitée</legend>
@@ -259,7 +259,7 @@
                                     <label class="choice"><input name="movingPeriod" type="radio" value="AFTER_3_MONTHS" required
                                                                  th:checked="${answers.movingPeriod?.name() == 'AFTER_3_MONTHS'}"> <th:block th:text="${movingPeriodLabels['AFTER_3_MONTHS']}">Dans plus de 3&nbsp;mois</th:block></label>
                                 </div>
-                                <p class="field__error" id="movingPeriod-error" th:hidden="${errors['movingPeriod'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['movingPeriod']}"></span></p>
+                                <p class="field__error" id="movingPeriod-error" th:hidden="${errors['movingPeriod'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['movingPeriod']}"></span></p>
                             </fieldset>
                         </div>
                     </details>
@@ -274,7 +274,7 @@
                                 <label class="field__label" for="comments">Autres précisions <span class="field__optional">(facultatif)</span></label>
                                 <textarea class="input input--textarea" id="comments" name="comments" rows="4" maxlength="500"
                                           aria-describedby="comments-error" th:text="${answers.comments}" th:attr="aria-invalid=${errors['comments'] != null ? 'true' : null}"></textarea>
-                                <p class="field__error" id="comments-error" th:hidden="${errors['comments'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['comments']}"></span></p>
+                                <p class="field__error" id="comments-error" th:hidden="${errors['comments'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['comments']}"></span></p>
                             </div>
                         </div>
                     </details>

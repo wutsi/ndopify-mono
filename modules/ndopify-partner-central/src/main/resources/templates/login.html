@@ -20,20 +20,12 @@
                        name="email" required spellcheck="false" th:attr="aria-invalid=${error != null ? 'true' : null}" th:value="${email}"
                        type="email">
                 <div class="hint" id="email-hint">
-                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                        <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
-                        <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
-                    </svg>
+                    <svg th:replace="~{fragments/icon :: info}"></svg>
                     <p>Nous vous envoyons un code de connexion à 6&nbsp;chiffres par email. Aucun mot de passe à
                         retenir.</p>
                 </div>
                 <p class="field__error" id="email-error" th:hidden="${error == null}">
-                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                        <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
-                              stroke-width="1.5"/>
-                    </svg>
+                    <svg th:replace="~{fragments/icon :: close}"></svg>
                     <span data-error-text th:text="${error}"></span></p>
             </div>
 
@@ -68,22 +60,14 @@
                        name="code" required th:attr="aria-invalid=${error != null ? 'true' : null}"
                        type="text">
                 <div class="hint" id="code-hint">
-                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                        <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
-                        <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
-                    </svg>
+                    <svg th:replace="~{fragments/icon :: info}"></svg>
                     <div>
                         <p>Le code est valable 5&nbsp;minutes, jusqu'à <span data-expiry th:attr="data-expires-at=${expiresAt}">—</span>.</p>
                         <p>Vous ne le voyez pas&nbsp;? Regardez dans vos courriers indésirables.</p>
                     </div>
                 </div>
                 <p class="field__error" id="code-error" th:hidden="${error == null}">
-                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                        <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
-                              stroke-width="1.5"/>
-                    </svg>
+                    <svg th:replace="~{fragments/icon :: close}"></svg>
                     <span data-error-text th:text="${error}"></span></p>
             </div>
 

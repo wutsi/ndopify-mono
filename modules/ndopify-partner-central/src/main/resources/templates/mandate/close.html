@@ -28,7 +28,7 @@
 
             <!-- Locked: not the agent's mandate, or not (no longer) one that can be closed. -->
             <div class="alert alert--warning" th:if="${locked}" data-close-locked>
-                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <svg th:replace="~{fragments/icon :: warning}"></svg>
                 <div>
                     <h1 class="alert__title">Ce mandat n'est pas disponible</h1>
                     <p>Un mandat se ferme une fois approuvé par le client.</p>
@@ -44,7 +44,7 @@
 
                 <!-- A match chosen earlier that is no longer a candidate: the wizard restarted at the counterpart step. -->
                 <div class="alert alert--warning" th:if="${conflict}" tabindex="-1" role="status" data-close-conflict>
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <svg th:replace="~{fragments/icon :: warning}"></svg>
                     <p>La contrepartie choisie n'est plus disponible : choisissez-en une autre.</p>
                 </div>
 
@@ -70,7 +70,7 @@
                            th:text="${c.owner} ? 'Les clients qui ont répondu intéressés. Il peut aussi avoir été loué autrement.' : 'Les biens qui ont intéressé le client. Il peut aussi avoir trouvé ailleurs.'">Les clients qui ont répondu intéressés.</p>
 
                         <div class="alert alert--warning" th:if="${c.candidatesUnavailable}" data-counterpart-unavailable>
-                            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                            <svg th:replace="~{fragments/icon :: warning}"></svg>
                             <p th:text="${c.owner} ? 'Les clients intéressés ne peuvent pas être affichés pour le moment.' : 'Les biens correspondants ne peuvent pas être affichés pour le moment.'">Les biens correspondants ne peuvent pas être affichés pour le moment.</p>
                         </div>
 
@@ -108,7 +108,7 @@
                         </label>
 
                         <p class="field__error" id="counterpart-error" th:hidden="${errors['counterpart'] == null}">
-                            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                            <svg th:replace="~{fragments/icon :: close}"></svg>
                             <span data-error-text th:text="${errors['counterpart']}"></span>
                         </p>
                     </fieldset>
@@ -134,7 +134,7 @@
                             <span aria-hidden="true" class="input-unit__suffix" th:text="${currency} + ' / mois'">FCFA / mois</span>
                         </div>
                         <p class="field__error" id="finalPrice-error" th:hidden="${errors['finalPrice'] == null}">
-                            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                            <svg th:replace="~{fragments/icon :: close}"></svg>
                             <span data-error-text th:text="${errors['finalPrice']}"></span>
                         </p>
                     </div>

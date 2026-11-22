@@ -8,7 +8,7 @@
             <div class="page-intro" th:if="${view != 'confirmation'}">
                 <h1 tabindex="-1">Vérification d'identité</h1>
                 <div class="alert alert--warning" th:if="${view == 'wizard'}">
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <svg th:replace="~{fragments/icon :: warning}"></svg>
                     <p>Un agent non vérifié ne peut pas exercer sur la plateforme.</p>
                 </div>
             </div>
@@ -33,7 +33,7 @@
                     <p>Photographiez la face avant de votre carte nationale d'identité, celle avec votre photo.</p>
 
                     <div class="hint" id="front-hint">
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <svg th:replace="~{fragments/icon :: info}"></svg>
                         <div>
                             <p>Pour être acceptée, la photo doit&nbsp;:</p>
                             <ul>
@@ -60,7 +60,7 @@
                             <span data-upload-label th:text="${photoUrls['FRONT']} ? 'Changer la photo' : 'Choisir une photo du recto'">Choisir une photo du recto</span>
                         </label>
                         <p class="visually-hidden" role="status" data-upload-status></p>
-                        <p class="field__error" id="front-error" role="alert" hidden th:hidden="${error == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${error}"></span></p>
+                        <p class="field__error" id="front-error" role="alert" hidden th:hidden="${error == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${error}"></span></p>
                     </div>
 
                     <div class="form__actions">
@@ -74,7 +74,7 @@
                     <p>Retournez la carte et photographiez la face arrière.</p>
 
                     <div class="hint" id="back-hint">
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <svg th:replace="~{fragments/icon :: info}"></svg>
                         <div>
                             <p>Pour être acceptée, la photo doit&nbsp;:</p>
                             <ul>
@@ -101,7 +101,7 @@
                             <span data-upload-label th:text="${photoUrls['BACK']} ? 'Changer la photo' : 'Choisir une photo du verso'">Choisir une photo du verso</span>
                         </label>
                         <p class="visually-hidden" role="status" data-upload-status></p>
-                        <p class="field__error" id="back-error" role="alert" hidden th:hidden="${error == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${error}"></span></p>
+                        <p class="field__error" id="back-error" role="alert" hidden th:hidden="${error == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${error}"></span></p>
                     </div>
 
                     <div class="form__actions">
@@ -117,7 +117,7 @@
                         que c'est bien vous.</p>
 
                     <div class="hint" id="selfie-hint">
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <svg th:replace="~{fragments/icon :: info}"></svg>
                         <div>
                             <p>Pour être accepté, le selfie doit&nbsp;:</p>
                             <ul>
@@ -144,7 +144,7 @@
                         <button class="btn btn--outline btn--block" type="button" hidden data-camera-start>Activer la caméra</button>
 
                         <div class="alert alert--warning" hidden data-camera-problem>
-                            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                            <svg th:replace="~{fragments/icon :: warning}"></svg>
                             <p data-camera-problem-text></p>
                         </div>
 
@@ -158,7 +158,7 @@
                             </label>
                         </div>
                         <p class="visually-hidden" role="status" data-upload-status></p>
-                        <p class="field__error" id="selfie-error" role="alert" hidden th:hidden="${error == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${error}"></span></p>
+                        <p class="field__error" id="selfie-error" role="alert" hidden th:hidden="${error == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${error}"></span></p>
                     </div>
 
                     <div class="form__actions">
@@ -209,12 +209,12 @@
                     </dl>
 
                     <div class="alert alert--error" th:if="${error}">
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        <svg th:replace="~{fragments/icon :: close}"></svg>
                         <p th:text="${error}"></p>
                     </div>
 
                     <div class="hint" id="review-hint">
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <svg th:replace="~{fragments/icon :: info}"></svg>
                         <div>
                             <p>Après l'envoi, l'équipe Ndopify examine vos documents sous 24&nbsp;heures. Elle
                                 vérifie que votre selfie correspond à la photo de votre carte, et que le nom sur
@@ -234,7 +234,7 @@
 
             <section class="confirmation stack" aria-labelledby="confirmation-title" tabindex="-1"
                      th:if="${view == 'confirmation'}">
-                <span class="confirmation__mark"><svg class="confirmation__icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                <span class="confirmation__mark"><svg th:replace="~{fragments/icon :: check('confirmation__icon')}"></svg></span>
                 <h2 id="confirmation-title">Dossier envoyé</h2>
                 <p>Nous avons bien reçu vos documents. Leur examen prend jusqu'à 24&nbsp;heures.</p>
                 <p>Vous recevrez une notification par email et par SMS dès que l'examen sera terminé.</p>
@@ -266,7 +266,7 @@
                 <div class="stack" data-status="verified" th:if="${status == 'verified'}">
                     <h2>Votre identité est vérifiée</h2>
                     <div class="alert alert--success">
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <svg th:replace="~{fragments/icon :: check('icon')}"></svg>
                         <div>
                             <p class="alert__title">Statut&nbsp;: vérifié</p>
                             <p>Vous avez accès à l'ensemble des services de la plateforme.</p>
@@ -280,7 +280,7 @@
                 <div class="stack" data-status="rejected" th:if="${status == 'rejected'}">
                     <h2>Votre dossier n'a pas pu être validé</h2>
                     <div class="alert alert--error">
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        <svg th:replace="~{fragments/icon :: close}"></svg>
                         <div>
                             <p class="alert__title">Statut&nbsp;: rejeté</p>
                             <p th:text="|Motif : ${rejectionReason}|">Motif&nbsp;: la photo du recto est floue.</p>

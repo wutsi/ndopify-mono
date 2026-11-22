@@ -19,7 +19,7 @@
 
             <!-- Locked: not the agent's listing, or not found. -->
             <div class="alert alert--warning" th:if="${locked}" data-section-locked>
-                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <svg th:replace="~{fragments/icon :: warning}"></svg>
                 <div>
                     <h1 class="alert__title">Cette annonce n'est pas disponible</h1>
                     <p>Une annonce se crée depuis un mandat de bailleur approuvé.</p>
@@ -28,7 +28,7 @@
 
             <!-- Unavailable: ndopify-server couldn't answer. -->
             <div class="alert alert--error" role="alert" th:if="${unavailable}" data-section-unavailable>
-                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <svg th:replace="~{fragments/icon :: close}"></svg>
                 <div>
                     <h1 class="alert__title">Annonce indisponible pour le moment</h1>
                     <p>Réessayez dans quelques instants.</p>
@@ -52,13 +52,13 @@
 
                 <!-- Sent or published: the section as it was sent, read-only. -->
                 <div class="hint" th:if="${s.readonlyText}" data-section-readonly>
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <svg th:replace="~{fragments/icon :: info}"></svg>
                     <p th:text="${s.readonlyText}">Annonce en vérification depuis le 22 oct. 2026 : voici ce que vous avez relevé, il ne peut plus être modifié.</p>
                 </div>
 
                 <!-- Why it couldn't be saved (changed meanwhile, or ndopify-server unavailable): the answers are kept. -->
                 <div class="alert alert--error" role="alert" tabindex="-1" th:if="${error}" data-section-error>
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <svg th:replace="~{fragments/icon :: close}"></svg>
                     <p th:text="${error}">Enregistrement impossible pour le moment.</p>
                 </div>
 
@@ -352,10 +352,7 @@
 <th:block th:remove="all">
     <!--/* A field's error, shown when "errors" has a message for it: th:replace="~{:: error('field')}". */-->
     <p class="field__error" th:fragment="error(field)" th:hidden="${errors.get(field) == null}" th:id="|${field}-error|">
-        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
-        </svg>
+        <svg th:replace="~{fragments/icon :: close}"></svg>
         <span data-error-text th:text="${errors.get(field)}"></span></p>
 
     <!--/* A count of "Le bien": a whole number, as typed. */-->

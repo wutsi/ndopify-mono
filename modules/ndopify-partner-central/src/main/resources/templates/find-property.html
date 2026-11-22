@@ -127,12 +127,7 @@
                         <p class="visually-hidden" data-neighborhood-status role="status"></p>
                     </div>
                     <div class="hint" id="sector-hint">
-                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
-                                  stroke-width="1.5"/>
-                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
-                        </svg>
+                        <svg th:replace="~{fragments/icon :: info}"></svg>
                         <div>
                             <p>Facultatif&nbsp;: sans quartier, toute la ville est couverte. Sinon, choisissez jusqu'à 3&nbsp;quartiers, par ordre de préférence. Une fois les 3 choisis,
                                 retirez-en un pour en prendre un autre.</p>
@@ -351,12 +346,7 @@
                         <p th:replace="~{:: error('movingPeriod')}"></p>
                     </fieldset>
                     <div class="hint" id="price-hint">
-                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
-                                  stroke-width="1.5"/>
-                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
-                        </svg>
+                        <svg th:replace="~{fragments/icon :: info}"></svg>
                         <div>
                             <p>Votre agent ne vous propose que des biens dans ce budget. La caution et les mois
                                 d'avance se discutent avec le bailleur, lors de la visite.</p>
@@ -444,25 +434,14 @@
                         <p th:replace="~{:: error('comments')}"></p>
                     </div>
                     <div class="hint" id="contact-hint">
-                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
-                                  stroke-width="1.5"/>
-                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
-                        </svg>
+                        <svg th:replace="~{fragments/icon :: info}"></svg>
                         <div>
                             <p>Votre agent vous écrit sur WhatsApp. Votre email sert à vous envoyer le suivi de votre
                                 demande&nbsp;; il n'est jamais communiqué aux bailleurs.</p>
                         </div>
                     </div>
                     <div class="alert alert--warning" data-phone-unavailable hidden>
-                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                            <path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-linejoin="round"
-                                  stroke-width="1.5"/>
-                            <path d="M10 8v4" fill="none" stroke="currentColor" stroke-linecap="round"
-                                  stroke-width="1.5"/>
-                            <circle cx="10" cy="14.5" fill="currentColor" r="1"/>
-                        </svg>
+                        <svg th:replace="~{fragments/icon :: warning}"></svg>
                         <div>
                             <p class="alert__title">Nous ne pouvons pas vérifier votre numéro pour l'instant</p>
                             <p>Vérifiez votre connexion internet, puis rechargez la page.</p>
@@ -596,23 +575,14 @@
 
                     <!--/* The submission failed: the answers are still in the session, ready to be sent again. */-->
                     <div class="alert alert--error" data-submit-error role="alert" th:if="${error != null}">
-                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
-                                  stroke-width="1.5"/>
-                        </svg>
+                        <svg th:replace="~{fragments/icon :: close}"></svg>
                         <div>
                             <p class="alert__title" th:text="${error}">Envoi impossible pour le moment.</p>
                         </div>
                     </div>
 
                     <div class="hint" id="review-hint">
-                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
-                                  stroke-width="1.5"/>
-                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
-                        </svg>
+                        <svg th:replace="~{fragments/icon :: info}"></svg>
                         <div>
                             <p>L'envoi de votre demande est gratuit et ne vous engage à rien.</p>
                         </div>
@@ -632,11 +602,7 @@
         <!--/* Confirmation — only rendered while a sent request is in the session */-->
         <section aria-labelledby="confirmation-title" class="confirmation stack" data-confirmation tabindex="-1"
                  th:if="${step == 'confirmation'}">
-            <span class="confirmation__mark"><svg aria-hidden="true" class="confirmation__icon" focusable="false"
-                                                  viewBox="0 0 20 20"><circle cx="10" cy="10" fill="none" r="8.25"
-                                                                            stroke="currentColor" stroke-width="1.5"/><path
-                d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-linecap="round"
-                stroke-linejoin="round" stroke-width="1.5"/></svg></span>
+            <span class="confirmation__mark"><svg th:replace="~{fragments/icon :: check('confirmation__icon')}"></svg></span>
             <h2 id="confirmation-title">Demande envoyée</h2>
             <p>Merci&nbsp;! Votre demande est enregistrée. Voici la suite&nbsp;:</p>
             <ol class="next-steps">
@@ -676,11 +642,7 @@
 <!--/* A field's error, shown when "errors" has a message for it: th:replace="~{:: error('field')}". */-->
 <th:block th:remove="all">
     <p class="field__error" th:fragment="error(field)" th:hidden="${errors.get(field) == null}" th:id="|${field}-error|">
-        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
-                  stroke-width="1.5"/>
-        </svg>
+        <svg th:replace="~{fragments/icon :: close}"></svg>
         <span data-error-text th:text="${errors.get(field)}"></span></p>
 </th:block>
 </body>

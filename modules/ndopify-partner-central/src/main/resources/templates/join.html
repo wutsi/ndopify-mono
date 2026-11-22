@@ -65,11 +65,7 @@
                                th:attr="aria-invalid=${errors['firstName'] != null ? 'true' : null}"
                                th:value="${answers.firstName}" type="text">
                         <p class="field__error" id="firstName-error" th:hidden="${errors['firstName'] == null}">
-                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
-                                      stroke-width="1.5"/>
-                            </svg>
+                            <svg th:replace="~{fragments/icon :: close}"></svg>
                             <span data-error-text th:text="${errors['firstName']}"></span></p>
                     </div>
                     <div class="field">
@@ -79,11 +75,7 @@
                                th:attr="aria-invalid=${errors['lastName'] != null ? 'true' : null}"
                                th:value="${answers.lastName}" type="text">
                         <p class="field__error" id="lastName-error" th:hidden="${errors['lastName'] == null}">
-                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
-                                      stroke-width="1.5"/>
-                            </svg>
+                            <svg th:replace="~{fragments/icon :: close}"></svg>
                             <span data-error-text th:text="${errors['lastName']}"></span></p>
                     </div>
                     <div class="field">
@@ -93,11 +85,7 @@
                                th:attr="aria-invalid=${errors['email'] != null ? 'true' : null}"
                                th:value="${answers.email}" type="email">
                         <p class="field__error" id="email-error" th:hidden="${errors['email'] == null}">
-                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
-                                      stroke-width="1.5"/>
-                            </svg>
+                            <svg th:replace="~{fragments/icon :: close}"></svg>
                             <span data-error-text th:text="${errors['email']}"></span></p>
                     </div>
                     <div class="field">
@@ -109,20 +97,11 @@
                                th:value="${answers.whatsappNumber}" type="tel">
                         <p class="field__error" id="whatsappNumber-error"
                            th:hidden="${errors['whatsappNumber'] == null}">
-                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
-                                      stroke-width="1.5"/>
-                            </svg>
+                            <svg th:replace="~{fragments/icon :: close}"></svg>
                             <span data-error-text th:text="${errors['whatsappNumber']}"></span></p>
                     </div>
                     <div class="hint" id="identity-hint">
-                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
-                                  stroke-width="1.5"/>
-                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
-                        </svg>
+                        <svg th:replace="~{fragments/icon :: info}"></svg>
                         <div>
                             <p>Saisissez vos prénom et nom tels qu'ils figurent sur votre carte nationale
                                 d'identité&nbsp;: ils seront comparés lors de la vérification de votre identité.</p>
@@ -131,13 +110,7 @@
                         </div>
                     </div>
                     <div class="alert alert--warning" data-phone-unavailable hidden>
-                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                            <path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-linejoin="round"
-                                  stroke-width="1.5"/>
-                            <path d="M10 8v4" fill="none" stroke="currentColor" stroke-linecap="round"
-                                  stroke-width="1.5"/>
-                            <circle cx="10" cy="14.5" fill="currentColor" r="1"/>
-                        </svg>
+                        <svg th:replace="~{fragments/icon :: warning}"></svg>
                         <div>
                             <p class="alert__title">Nous ne pouvons pas vérifier votre numéro pour l'instant</p>
                             <p>Vérifiez votre connexion internet, puis rechargez la page.</p>
@@ -181,11 +154,7 @@
                         </div>
                         <p class="field__error" id="experienceLevel-error"
                            th:hidden="${errors['experienceLevel'] == null}">
-                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
-                                      stroke-width="1.5"/>
-                            </svg>
+                            <svg th:replace="~{fragments/icon :: close}"></svg>
                             <span data-error-text th:text="${errors['experienceLevel']}"></span></p>
                     </fieldset>
                     <fieldset aria-describedby="agentType-error" class="choices" data-group="agentType"
@@ -200,20 +169,11 @@
                                                          type="radio" value="REAL_ESTATE_AGENT"> <th:block th:text="${agentTypeLabels['REAL_ESTATE_AGENT']}">Rattaché à une agence immobilière</th:block></label>
                         </div>
                         <p class="field__error" id="agentType-error" th:hidden="${errors['agentType'] == null}">
-                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
-                                      stroke-width="1.5"/>
-                            </svg>
+                            <svg th:replace="~{fragments/icon :: close}"></svg>
                             <span data-error-text th:text="${errors['agentType']}"></span></p>
                     </fieldset>
                     <div class="hint" id="experience-hint">
-                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
-                                  stroke-width="1.5"/>
-                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
-                        </svg>
+                        <svg th:replace="~{fragments/icon :: info}"></svg>
                         <div>
                             <p>Les débutants sont les bienvenus&nbsp;: il n'y a pas de minimum d'expérience pour
                                 rejoindre Ndopify.</p>
@@ -249,11 +209,7 @@
                                     th:value="${city.id}">Yaoundé</option>
                         </select>
                         <p class="field__error" id="cityId-error" th:hidden="${errors['cityId'] == null}">
-                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
-                                      stroke-width="1.5"/>
-                            </svg>
+                            <svg th:replace="~{fragments/icon :: close}"></svg>
                             <span data-error-text th:text="${errors['cityId']}"></span></p>
                     </div>
                     <p data-neighborhoods-empty th:hidden="${city != null}">Choisissez d'abord votre ville pour voir ses
@@ -273,21 +229,12 @@
                             0 sur 3 sélectionné</p>
                         <p class="field__error" id="neighborhoodIds-error"
                            th:hidden="${errors['neighborhoodIds'] == null}">
-                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
-                                      stroke-width="1.5"/>
-                            </svg>
+                            <svg th:replace="~{fragments/icon :: close}"></svg>
                             <span data-error-text th:text="${errors['neighborhoodIds']}"></span></p>
                         <p class="visually-hidden" data-neighborhood-status role="status"></p>
                     </div>
                     <div class="hint" id="sector-hint">
-                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
-                                  stroke-width="1.5"/>
-                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
-                        </svg>
+                        <svg th:replace="~{fragments/icon :: info}"></svg>
                         <div>
                             <p>Choisissez de 1 à 3&nbsp;quartiers. Une fois les 3 choisis, retirez-en un pour en
                                 prendre un autre.</p>
@@ -331,20 +278,11 @@
                         </label>
                         <p class="field__error" id="mobileMoneyNumber-error"
                            th:hidden="${errors['mobileMoneyNumber'] == null}">
-                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
-                                      stroke-width="1.5"/>
-                            </svg>
+                            <svg th:replace="~{fragments/icon :: close}"></svg>
                             <span data-error-text th:text="${errors['mobileMoneyNumber']}"></span></p>
                     </div>
                     <div class="hint" id="payment-hint">
-                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
-                                  stroke-width="1.5"/>
-                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
-                        </svg>
+                        <svg th:replace="~{fragments/icon :: info}"></svg>
                         <div>
                             <p>MTN Mobile Money ou Orange Money.</p>
                             <p>Le compte doit être à votre nom&nbsp;: lors de la vérification, nous comparons le nom
@@ -352,13 +290,7 @@
                         </div>
                     </div>
                     <div class="alert alert--warning" data-phone-unavailable hidden>
-                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                            <path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-linejoin="round"
-                                  stroke-width="1.5"/>
-                            <path d="M10 8v4" fill="none" stroke="currentColor" stroke-linecap="round"
-                                  stroke-width="1.5"/>
-                            <circle cx="10" cy="14.5" fill="currentColor" r="1"/>
-                        </svg>
+                        <svg th:replace="~{fragments/icon :: warning}"></svg>
                         <div>
                             <p class="alert__title">Nous ne pouvons pas vérifier votre numéro pour l'instant</p>
                             <p>Vérifiez votre connexion internet, puis rechargez la page.</p>
@@ -481,11 +413,7 @@
 
                     <!--/* The submission failed: the answers are still in the session, ready to be sent again. */-->
                     <div class="alert alert--error" data-submit-error role="alert" th:if="${error != null}">
-                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
-                                  stroke-width="1.5"/>
-                        </svg>
+                        <svg th:replace="~{fragments/icon :: close}"></svg>
                         <div>
                             <p class="alert__title" th:text="${error}">Envoi impossible pour le moment.</p>
                             <p th:if="${existingAccount == true}"><a th:href="@{/login}">Connectez-vous à votre
@@ -498,12 +426,7 @@
                     </div>
 
                     <div class="hint" id="review-hint">
-                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
-                                  stroke-width="1.5"/>
-                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
-                        </svg>
+                        <svg th:replace="~{fragments/icon :: info}"></svg>
                         <div>
                             <p>Après l'envoi, vous recevrez par email un lien sécurisé pour vérifier votre identité.
                                 Préparez le recto et le verso de votre carte nationale d'identité.</p>
@@ -524,11 +447,7 @@
         <!--/* Confirmation — only rendered while a submitted application is in the session */-->
         <section aria-labelledby="confirmation-title" class="confirmation stack" data-confirmation tabindex="-1"
                  th:if="${step == 'confirmation'}">
-            <span class="confirmation__mark"><svg aria-hidden="true" class="confirmation__icon" focusable="false"
-                                                  viewBox="0 0 20 20"><circle cx="10" cy="10" fill="none" r="8.25"
-                                                                            stroke="currentColor" stroke-width="1.5"/><path
-                d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-linecap="round"
-                stroke-linejoin="round" stroke-width="1.5"/></svg></span>
+            <span class="confirmation__mark"><svg th:replace="~{fragments/icon :: check('confirmation__icon')}"></svg></span>
             <h2 id="confirmation-title">Candidature envoyée</h2>
             <p>Bienvenue chez Ndopify&nbsp;! Votre compte agent est créé. Voici les prochaines étapes&nbsp;:</p>
             <ol class="next-steps">
