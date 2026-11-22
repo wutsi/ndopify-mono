@@ -36,7 +36,8 @@ import java.time.Duration
  * history and can't be swapped at verify time.
  *
  * A successful verify returns to the local page the session's [SignInTarget] remembers, and to `/` when there is
- * none.
+ * none. Its fragment comes from the login page's hidden field, filled from `location.hash` by the page script: the
+ * browser never sends a fragment to the server.
  */
 @Controller
 @RequestMapping("/login")
@@ -69,7 +70,7 @@ class LoginController(
         return if (requestedStep == STEP_CODE && pending != null) {
             codeStep(pending, model)
         } else {
-            emailStep(pending?.email, model)
+            emailStep(pending?.email, session, model)
         }
     }
 
@@ -90,6 +91,13 @@ class LoginController(
         } else {
             form.email.trim().lowercase()
         }
+        // The browser never sends a URL fragment: the login page lifted it into a hidden field. Kept on the target
+        // before the code is requested, so a rejected e-mail doesn't lose it.
+        val fragment = SignInTarget.fragmentOf(form.fragment)
+        if (fragment != null) {
+            val target = session.getAttribute(SignInTarget.SESSION_ATTRIBUTE) as SignInTarget?
+            target?.let { session.setAttribute(SignInTarget.SESSION_ATTRIBUTE, it.copy(fragment = fragment)) }
+        }
         try {
             otpClient.create(CreateOtpRequest(email = email, ttl = OTP_TTL.seconds.toInt()))
         } catch (ex: HttpClientErrorException) {
@@ -106,7 +114,7 @@ class LoginController(
                     "Cette adresse email n'est pas valide!"
                 },
             )
-            return emailStep(email, model)
+            return emailStep(email, session, model)
         }
 
         session.setAttribute(
@@ -156,9 +164,13 @@ class LoginController(
     private fun pending(session: HttpSession): PendingLogin? =
         session.getAttribute(PendingLogin.SESSION_ATTRIBUTE) as PendingLogin?
 
-    private fun emailStep(email: String?, model: Model): String {
+    private fun signInTarget(session: HttpSession): SignInTarget? =
+        session.getAttribute(SignInTarget.SESSION_ATTRIBUTE) as SignInTarget?
+
+    private fun emailStep(email: String?, session: HttpSession, model: Model): String {
         model.addAttribute("step", STEP_EMAIL)
         model.addAttribute("email", email)
+        model.addAttribute("fragment", signInTarget(session)?.fragment)
         return VIEW
     }
 

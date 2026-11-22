@@ -157,8 +157,31 @@ class LoginControllerTest {
     }
 
     @Test
+    fun submitStoresTheFragmentOnTheTarget() {
+        session.setAttribute(SignInTarget.SESSION_ATTRIBUTE, SignInTarget("/mandates/42"))
+
+        val result = mvc.perform(
+            post("/login").param("email", "ray@gmail.com").param("fragment", "match-7").session(session),
+        ).andReturn()
+
+        assertEquals(
+            SignInTarget("/mandates/42", fragment = "match-7"),
+            session.getAttribute(SignInTarget.SESSION_ATTRIBUTE),
+        )
+        assertEquals("redirect:/login?step=code", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun submitIgnoresAFragmentWithoutATarget() {
+        mvc.perform(post("/login").param("email", "ray@gmail.com").param("fragment", "match-7").session(session))
+
+        assertNull(session.getAttribute(SignInTarget.SESSION_ATTRIBUTE))
+    }
+
+    @Test
     fun submitRejectedByServer() {
         session.setAttribute(PendingLogin.SESSION_ATTRIBUTE, pending)
+        session.setAttribute(SignInTarget.SESSION_ATTRIBUTE, SignInTarget("/mandates/42", fragment = "match-7"))
         doThrow(HttpClientErrorException(HttpStatus.BAD_REQUEST)).whenever(otpClient).create(any())
 
         val result = mvc.perform(post("/login").param("email", "ray").session(session)).andReturn()
@@ -166,6 +189,7 @@ class LoginControllerTest {
         assertEquals("login", result.modelAndView?.viewName)
         assertEquals("email", model(result)["step"])
         assertEquals("ray", model(result)["email"])
+        assertEquals("match-7", model(result)["fragment"])
         assertTrue(model(result)["error"] is String)
         assertTrue(result.flashMap.isEmpty())
         assertNull(session.getAttribute(PendingLogin.SESSION_ATTRIBUTE))
