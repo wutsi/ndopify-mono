@@ -112,6 +112,8 @@ class MatchServiceTest {
 
     private fun scored(total: Double): MatchResult = MatchResult.Scored(score(total))
     private val ruledOut = MatchResult.RuledOut(MatchRuleOut.PROPERTY_TYPE, "search=APARTMENT listing=LAND")
+    private val ruledOutDocuments =
+        MatchResult.RuledOut(MatchRuleOut.TITLE_DOCUMENTS, "required=[LAND_TITLE] declared=[]")
 
     @BeforeTest
     fun setUp() {
@@ -226,6 +228,19 @@ class MatchServiceTest {
         doReturn(ruledOut).whenever(matcher).evaluate(any(), any(), any(), any())
 
         assertEquals(0, service.matchMandate(MANDATE_ID))
+        verify(matchDao).delete(existing)
+        verify(matchDao, never()).save(any<MatchEntity>())
+    }
+
+    @Test
+    fun `matchMandate deletes an ACTIVE own match ruled out on documents`() {
+        val existing = MatchEntity(id = 7L, mandate = search, listing = listing1, status = MatchStatus.ACTIVE)
+        doReturn(listOf(listing1)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(existing).whenever(matchDao).findByMandateAndListing(search, listing1)
+        doReturn(ruledOutDocuments).whenever(matcher).evaluate(any(), any(), any(), anyOrNull())
+
+        assertEquals(0, service.matchMandate(MANDATE_ID))
+
         verify(matchDao).delete(existing)
         verify(matchDao, never()).save(any<MatchEntity>())
     }
@@ -470,6 +485,28 @@ class MatchServiceTest {
         doReturn(listOf(otherListing)).whenever(listingDao)
             .findByCityIdAndListingTypeAndStatusAndAgentIdNot(CITY_ID, ListingType.RENTAL, ListingStatus.PUBLISHED, AGENT_ID)
         doReturn(ruledOut).whenever(matcher).evaluate(any(), any(), any(), anyOrNull())
+
+        assertEquals(0, service.matchMandate(MANDATE_ID))
+
+        verify(matchDao, never()).delete(any<MatchEntity>())
+        verify(matchDao, never()).save(any<MatchEntity>())
+    }
+
+    @Test
+    fun `matchMandate keeps a co-brokerage match ruled out on documents`() {
+        val existing = MatchEntity(
+            id = 7L,
+            mandate = search,
+            listing = otherListing,
+            status = MatchStatus.ACTIVE,
+            coBrokerage = true,
+        )
+        doReturn(emptyList<ListingEntity>()).whenever(listingDao)
+            .findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(existing).whenever(matchDao).findByMandateAndListing(search, otherListing)
+        doReturn(listOf(otherListing)).whenever(listingDao)
+            .findByCityIdAndListingTypeAndStatusAndAgentIdNot(CITY_ID, ListingType.RENTAL, ListingStatus.PUBLISHED, AGENT_ID)
+        doReturn(ruledOutDocuments).whenever(matcher).evaluate(any(), any(), any(), anyOrNull())
 
         assertEquals(0, service.matchMandate(MANDATE_ID))
 
