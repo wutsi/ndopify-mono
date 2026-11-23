@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(
+    |Ndopify — Confiez la vente de votre bien à un agent vérifié|,
+    |Maison, appartement ou terrain : proposez votre bien, un agent vérifié de votre quartier l'audite, le publie et le présente aux acheteurs dont la recherche lui correspond.|,
+    ${#strings.isEmpty(tenant.publicPortalUrl) ? null : tenant.publicPortalUrl + '/owner/sell'},
+    |Ndopify — Un agent vérifié pour vendre votre bien|,
+    |Audit et photos par un agent vérifié, présentation aux acheteurs qui cherchent un bien comme le vôtre, visites organisées.|,
+    null,
+    null,
+    null,
+    false,
+    true,
+    ~{fragments/structured-data :: organization})}"></head>
+<!--/*
+  The seller landing page (OwnerController), ported from the prototype src/main/html/v2/vendre.html. A LISTING mandate
+  with listingType = SALE: the agent audits and publishes the property, proposes it to the buyers whose search fits it,
+  and runs the visits. Every call to action opens Partner Central's "Proposer un bien" wizard in its sale branch
+  (offerPropertyUrl), and is left out without it. Never promised here: a payment through Ndopify, a title check, an
+  agent specialisation.
+*/-->
+<body data-page="owner">
+<th:block th:replace="~{fragments/site-header :: header('owner', 'Menu', true)}"></th:block>
+
+<main id="main">
+    <section class="section section--default">
+        <div class="container hero">
+            <nav aria-label="Votre projet" class="goal-switch">
+                <a th:href="@{/owner}">Mettre en location</a>
+                <a aria-current="page" th:href="@{/owner/sell}">Vendre</a>
+            </nav>
+            <span class="hero__eyebrow">Un agent vérifié, dans votre quartier</span>
+            <h1>Confiez la vente de votre bien à un agent vérifié</h1>
+            <p class="hero__sub">Maison, appartement ou terrain : décrivez votre bien en quelques minutes. Un agent de
+                votre quartier l'audite, le publie et le présente aux acheteurs qui cherchent exactement ce que vous
+                vendez.</p>
+            <ul class="proof-stats">
+                <li><strong>0 FCFA</strong>pour l'audit, les photos</li>
+                <li><strong>100 %</strong>du prix de vente versé directement à vous</li>
+                <li><strong>Commission</strong>un pourcentage du prix de vente, écrit dans le mandat</li>
+            </ul>
+            <div class="cta-row" th:if="${offerPropertyUrl}">
+                <a class="btn btn-primary" th:href="${offerPropertyUrl}">Proposer mon bien</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="agent-heading" class="section section--secondary">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="agent-heading">Ce que fait votre agent pour vous</h2>
+                <p>Un agent qui travaille pour la vente de votre bien, sans que vous perdiez la main.</p>
+            </div>
+            <ul class="card-grid">
+                <li class="card">
+                    <h3 class="card-title">Il audite votre bien</h3>
+                    <p>Il le visite, le photographie, relève sa position et vérifie chaque information avant de le
+                        publier.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Il le présente aux bons acheteurs</h3>
+                    <p>Votre bien est proposé aux acheteurs dont la recherche lui correspond : quartier, budget et type
+                        de bien.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Il fait les visites</h3>
+                    <p>Sur place ou en vidéo pour les acheteurs à distance : vous n'avez pas à être présent à chaque
+                        visite.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Il vous présente les intéressés</h3>
+                    <p>Il vous transmet les acheteurs intéressés et leurs retours. Vous fixez le prix et choisissez
+                        votre acheteur.</p>
+                </li>
+            </ul>
+        </div>
+    </section>
+
+    <section aria-labelledby="choix-heading" class="section section--default">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="choix-heading">Le bon agent pour votre bien</h2>
+            </div>
+            <ul class="card-grid">
+                <li class="card">
+                    <h3 class="card-title">Un agent vérifié</h3>
+                    <p>Son identité et son compte Mobile Money ont été vérifiés avant son premier mandat.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Un agent de votre quartier</h3>
+                    <p>Votre bien est proposé aux agents vérifiés de votre quartier, quel que soit le type de bien : un
+                        même agent traite les locations et les ventes.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Un agent disponible et bien noté</h3>
+                    <p>Choisi selon sa disponibilité, sa réactivité et les avis de ses clients.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Un mandat de vente signé</h3>
+                    <p>Votre prix, ce que fait votre agent et sa commission, un pourcentage du prix de vente, sont
+                        écrits dans un mandat que vous signez en ligne.</p>
+                </li>
+            </ul>
+            <div class="callout">
+                <h3>Votre bien est présenté aux acheteurs qui le cherchent</h3>
+                <p>Sur Ndopify, les acheteurs décrivent leur projet à un agent. Votre agent voit les recherches qui
+                    correspondent à votre bien, les siennes comme celles de ses confrères.</p>
+            </div>
+            <div class="cta-row" th:if="${offerPropertyUrl}">
+                <a class="btn btn-primary" th:href="${offerPropertyUrl}">Proposer mon bien</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="comment-heading" class="section section--secondary">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="comment-heading">Comment ça marche</h2>
+            </div>
+            <ol class="steps">
+                <li><h3>Décrivez votre bien</h3>
+                    <p>Ville, quartier, type de bien (maison, appartement, terrain…), surface et prix demandé.</p></li>
+                <li><h3>Un agent vérifié l'accepte</h3>
+                    <p>Un agent vérifié de votre quartier prend votre bien. Vous recevez un e-mail, puis le mandat de
+                        vente à signer en ligne.</p></li>
+                <li><h3>Audit &amp; publication</h3>
+                    <p>Votre agent vient voir le bien, prend les photos, vérifie les informations et publie
+                        l'annonce.</p></li>
+                <li><h3>Acheteurs &amp; visites</h3>
+                    <p>Votre agent présente le bien aux acheteurs dont la recherche correspond et organise les visites
+                        avec ceux qu'il intéresse.</p></li>
+            </ol>
+            <div class="cta-row" th:if="${offerPropertyUrl}">
+                <a class="btn btn-primary" th:href="${offerPropertyUrl}">Proposer mon bien</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="faq-heading" class="section section--default">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="faq-heading">Questions fréquentes</h2>
+            </div>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-1" aria-expanded="false" class="faq-trigger">Combien ça coûte
+                            ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-1"><p>Rien avant la vente : l'audit, les photos et la
+                        publication sont gratuits. Si votre bien est vendu grâce à votre agent, sa
+                        commission, un pourcentage du prix de vente, est celle écrite dans votre mandat. Ndopify ne
+                        perçoit aucun paiement.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-2" aria-expanded="false" class="faq-trigger">Comment est choisi
+                            l'agent qui s'occupe de mon bien ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-2"><p>Votre bien est proposé, un agent à la fois, aux agents
+                        vérifiés de votre quartier, selon leur disponibilité, leur réactivité et les avis de leurs
+                        clients. Le premier qui l'accepte devient votre agent.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-3" aria-expanded="false" class="faq-trigger">Qui fixe le prix et
+                            choisit l'acheteur ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-3"><p>Vous. Votre agent vous conseille et vous présente les
+                        acheteurs intéressés ; vous décidez du prix et de l'acheteur, et le prix de vente vous est
+                        versé directement.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-4" aria-expanded="false" class="faq-trigger">Puis-je vendre un
+                            terrain ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-4"><p>Oui. Choisissez « Terrain » comme type de bien : il
+                        est confié à un agent vérifié de votre quartier.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-5" aria-expanded="false" class="faq-trigger">Et la signature de la
+                            vente ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-5"><p>Elle se fait chez le notaire, entre vous et votre
+                        acheteur. Le titre foncier et les autres documents se vérifient à ce moment-là : Ndopify ne les
+                        contrôle pas. Ndopify vous met en relation avec un agent et des acheteurs ; il ne prend pas part
+                        à l'acte de vente ni au paiement.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-6" aria-expanded="false" class="faq-trigger">Je veux plutôt louer
+                            mon bien<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-6"><p>Confiez-le à un agent pour la location : <a
+                        th:href="@{/owner}">mettre mon bien en location</a>.</p></div>
+                </div>
+            </div>
+            <div class="cta-row" th:if="${offerPropertyUrl}">
+                <a class="btn btn-primary" th:href="${offerPropertyUrl}">Proposer mon bien</a>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/site-footer :: footer('© 2026 Ndopify. Des agents vérifiés, à votre service.', true)}"></footer>
+
+</body>
+</html>

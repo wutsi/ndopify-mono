@@ -22,6 +22,10 @@
 <main id="main">
     <section class="section section--default">
         <div class="container hero">
+            <nav aria-label="Votre projet" class="goal-switch">
+                <a aria-current="page" th:href="@{/owner}">Mettre en location</a>
+                <a th:href="@{/owner/sell}">Vendre</a>
+            </nav>
             <span class="hero__eyebrow">Un agent vérifié, dans votre quartier</span>
             <h1>Confiez la location de votre bien à un agent vérifié</h1>
             <p class="hero__sub">Décrivez votre bien en quelques minutes. Un agent de votre quartier l'audite, le
