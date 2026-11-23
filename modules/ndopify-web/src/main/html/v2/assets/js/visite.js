@@ -37,6 +37,8 @@
   var params = new URLSearchParams(location.search);
   // ON_SITE or VIDEO: the [data-visit-type] variants
   var type = params.get('type') === 'video' ? 'VIDEO' : 'ON_SITE';
+  // v2 (#259): &sale=1, the visit of a SALE match (annonce.js toggles its words); the state links keep it.
+  var SALE = params.get('sale') === '1';
 
   function has(node, attr, state) {
     return node.getAttribute(attr).split(/\s+/).indexOf(state) !== -1;
@@ -68,7 +70,8 @@
   function go(state) {
     render(state);
     var param = Object.keys(STATES).filter(function (k) { return STATES[k] === state; })[0];
-    history.replaceState(null, '', location.pathname + '?state=' + param + (type === 'VIDEO' ? '&type=video' : ''));
+    history.replaceState(null, '', location.pathname + '?state=' + param +
+      (type === 'VIDEO' ? '&type=video' : '') + (SALE ? '&sale=1' : ''));
     var block = Array.prototype.filter.call(document.querySelectorAll('[data-visit-state]'), function (b) {
       return !b.hidden;
     })[0];
@@ -91,6 +94,13 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     render(STATES[params.get('state')] || 'CONFIRMED');
+    if (SALE) {
+      document.title = 'Votre visite : villa 4 chambres, Bonapriso — Douala | Ndopify';
+      // "Demander une autre visite" stays on the sale variant.
+      document.querySelectorAll('a[href^="proposition.html?"]').forEach(function (a) {
+        a.href = a.getAttribute('href') + '&sale=1';
+      });
+    }
 
     // PROTOTYPE: simulates POST /v1/visits/{id}/feedback { interest, reasonCode, comment }: once only.
     var feedback = document.querySelector('[data-feedback-form]');

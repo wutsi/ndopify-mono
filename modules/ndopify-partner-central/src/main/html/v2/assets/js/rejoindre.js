@@ -5,10 +5,7 @@
  * Back button works, but the URL is never trusted: a step only opens once every earlier step is complete.
  * Answers live in sessionStorage until the review step submits them; field names match CreateAgentRequest
  * (ndopify-dto). Server calls are simulated; every simulation is marked "PROTOTYPE".
- * v2 (sales): the experience step also asks the agent's specialisation — the mandates it handles (listingTypes:
- * RENTAL, SALE) and the properties (propertyCategories: RESIDENTIAL, COMMERCIAL, plus land: true for "Terrains").
- * Proposed CreateAgentRequest fields, not in ndopify-dto yet; dispatch would only offer an agent the mandates its
- * specialisation covers.
+ * v2 (sales): every verified agent handles rentals and sales, so the wizard asks no specialisation.
  */
 (function () {
     "use strict";
@@ -97,10 +94,6 @@
         INDEPENDANT: "Indépendant",
         REAL_ESTATE_AGENT: "Rattaché à une agence immobilière"
     };
-
-    // v2: the agent's specialisation. "Terrains" (LAND) is a property type, not a category: it is sent as land = true.
-    var LISTING_TYPE_LABELS = { RENTAL: "Location", SALE: "Vente" };
-    var PROPERTY_KIND_LABELS = { RESIDENTIAL: "Logements", COMMERCIAL: "Locaux commerciaux", LAND: "Terrains" };
 
     /* ---------- Storage (fails soft: private mode, quota) ---------- */
     var store = {
@@ -322,43 +315,6 @@
         };
     }
 
-    function checkedValues(name) {
-        return $all('input[name="' + name + '"]:checked').map(function (input) {
-            return input.value;
-        });
-    }
-
-    function setCheckedValues(name, values) {
-        $all('input[name="' + name + '"]').forEach(function (input) {
-            input.checked = (values || []).indexOf(input.value) !== -1;
-        });
-    }
-
-    // A group of checkboxes of which at least one must be ticked.
-    function checkboxField(name, emptyMessage) {
-        return {
-            target: $('[data-group="' + name + '"]'),
-            error: $("#" + name + "-error"),
-            touched: function () {
-                return checkedValues(name).length > 0;
-            },
-            validate: function () {
-                return checkedValues(name).length ? "" : emptyMessage;
-            }
-        };
-    }
-
-    // The saved specialisation's "Quels biens ?" boxes: its categories, plus LAND when land is true.
-    function propertyKindsOf(a) {
-        return (a.propertyCategories || []).concat(a.land ? ["LAND"] : []);
-    }
-
-    function knownAll(values, labels) {
-        return Array.isArray(values) && values.length > 0 && values.every(function (v) {
-            return !!labels[v];
-        });
-    }
-
     function radioField(name, emptyMessage) {
         return {
             target: $('[data-group="' + name + '"]'),
@@ -396,8 +352,7 @@
                 return !!a.firstName && !!a.lastName && EMAIL_PATTERN.test(a.email || "") && !isKnownEmail(a.email) &&
                     /^\+[1-9]\d{6,14}$/.test(a.whatsappNumber || "");
             case "experience":
-                return !!EXPERIENCE_LABELS[a.experienceLevel] && !!AGENT_TYPE_LABELS[a.agentType] &&
-                    knownAll(a.listingTypes, LISTING_TYPE_LABELS) && knownAll(propertyKindsOf(a), PROPERTY_KIND_LABELS);
+                return !!EXPERIENCE_LABELS[a.experienceLevel] && !!AGENT_TYPE_LABELS[a.agentType];
             case "secteur":
                 return a.cityId > 0 && Array.isArray(a.neighborhoodIds) &&
                     a.neighborhoodIds.length >= 1 && a.neighborhoodIds.length <= MAX_NEIGHBORHOODS;
@@ -461,25 +416,15 @@
         var answers = loadAnswers();
         setChecked("experienceLevel", answers.experienceLevel);
         setChecked("agentType", answers.agentType);
-        setCheckedValues("listingTypes", answers.listingTypes);
-        setCheckedValues("propertyKinds", propertyKindsOf(answers));
         return {
             fields: [
                 radioField("experienceLevel", "Indiquez depuis combien de temps vous exercez."),
-                radioField("agentType", "Indiquez si vous êtes indépendant ou rattaché à une agence."),
-                checkboxField("listingTypes", "Cochez la location, la vente, ou les deux."),
-                checkboxField("propertyKinds", "Cochez au moins un type de bien.")
+                radioField("agentType", "Indiquez si vous êtes indépendant ou rattaché à une agence.")
             ],
             collect: function () {
-                var kinds = checkedValues("propertyKinds");
                 return {
                     experienceLevel: checkedValue("experienceLevel"),
-                    agentType: checkedValue("agentType"),
-                    listingTypes: checkedValues("listingTypes"),
-                    propertyCategories: kinds.filter(function (k) {
-                        return k !== "LAND";
-                    }),
-                    land: kinds.indexOf("LAND") !== -1
+                    agentType: checkedValue("agentType")
                 };
             }
         };
@@ -633,14 +578,6 @@
                 whatsappNumber: answers.whatsappNumber ? formatPhone(answers.whatsappNumber) : "",
                 experienceLevel: EXPERIENCE_LABELS[answers.experienceLevel] || "",
                 agentType: AGENT_TYPE_LABELS[answers.agentType] || "",
-                specialty: knownAll(answers.listingTypes, LISTING_TYPE_LABELS) &&
-                knownAll(propertyKindsOf(answers), PROPERTY_KIND_LABELS)
-                    ? answers.listingTypes.map(function (t) {
-                        return LISTING_TYPE_LABELS[t];
-                    }).join(" et ") + " · " + propertyKindsOf(answers).map(function (k) {
-                        return PROPERTY_KIND_LABELS[k];
-                    }).join(", ")
-                    : "",
                 cityId: locationNames[answers.cityId] || "",
                 neighborhoodIds: (answers.neighborhoodIds || [])
                     .map(function (id) {

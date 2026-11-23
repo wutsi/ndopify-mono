@@ -25,7 +25,7 @@
     notice period are the agent's, in months.
     v2: a SALE listing (the listing of mandate 301, a seller's villa) is "Prix et conditions": the sale price in FCFA
     (no periodicity, NONE) and the date it's free; deposit, advance, lease term and notice are rental-only
-    (data-rental-only: hidden, saved empty) and "Prix de vente" replaces "Loyer mensuel" (data-sale-text).
+    (data-rental-only: hidden, saved empty) and "Prix" replaces "Loyer mensuel" (data-sale-text).
     Once sent (en vérification, publiée), the section is read-only: only the answers given, no action.
     PROTOTYPE: ?id= of a listing (see listing.html). Saved in the
     session (KEYS.listings), the section is then "Vérifié" on the checklist.
@@ -85,7 +85,7 @@
                 </div>
                 <form class="form stack" novalidate data-section-form>
                     <div class="field">
-                        <label class="field__label" for="price" data-sale-text="Prix de vente">Loyer mensuel</label>
+                        <label class="field__label" for="price" data-sale-text="Prix">Loyer mensuel</label>
                         <div class="input-unit">
                             <input class="input" id="price" name="price" type="text" inputmode="numeric" autocomplete="off"
                                    data-kind="amount" aria-describedby="price-error">

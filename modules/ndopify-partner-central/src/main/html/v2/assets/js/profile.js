@@ -2,8 +2,7 @@
  * Ndopify Partner Central — profile pages (static prototype): profile/edit.html and profile/photo.html.
  * The saved profile is kept in sessionStorage ("npc.profile"), which index.html reads for its profile section.
  * Server calls are simulated; every simulation is marked "PROTOTYPE".
- * v2 (sales): the edit page also sets the agent's specialisation — listingTypes (RENTAL, SALE), propertyCategories
- * (RESIDENTIAL, COMMERCIAL) and land (the "Terrains" box). Proposed UpdateAgentRequest fields, not in ndopify-dto yet.
+ * v2 (sales): every verified agent handles rentals and sales, so the edit page has no specialisation.
  */
 (function () {
     "use strict";
@@ -22,10 +21,6 @@
         whatsappNumber: "+237677123456",
         experienceLevel: "SENIOR",
         agentType: "INDEPENDANT",
-        // v2: the specialisation dispatch filters on.
-        listingTypes: ["RENTAL", "SALE"],
-        propertyCategories: ["RESIDENTIAL"],
-        land: true,
         cityId: 2232593,
         cityName: "Douala",
         neighborhoodIds: [2007, 2001, 2006],
@@ -249,8 +244,6 @@
 
         setChecked("experienceLevel", profile.experienceLevel);
         setChecked("agentType", profile.agentType);
-        setCheckedValues("listingTypes", profile.listingTypes);
-        setCheckedValues("propertyKinds", (profile.propertyCategories || []).concat(profile.land ? ["LAND"] : []));
         bio.value = profile.biography || "";
 
         var city = slimSelect(citySelect, { placeholderText: "Choisissez une ville", ariaLabel: "Ville principale d'intervention" });
@@ -332,20 +325,6 @@
                 error: $("#agentType-error"),
                 validate: function () {
                     return checkedValue("agentType") ? "" : "Indiquez comment vous exercez.";
-                }
-            },
-            {
-                target: $('[data-group="listingTypes"]'),
-                error: $("#listingTypes-error"),
-                validate: function () {
-                    return checkedValues("listingTypes").length ? "" : "Cochez la location, la vente, ou les deux.";
-                }
-            },
-            {
-                target: $('[data-group="propertyKinds"]'),
-                error: $("#propertyKinds-error"),
-                validate: function () {
-                    return checkedValues("propertyKinds").length ? "" : "Cochez au moins un type de bien.";
                 }
             },
             {
@@ -456,11 +435,6 @@
                     whatsappNumber: phone.e164(),
                     experienceLevel: checkedValue("experienceLevel"),
                     agentType: checkedValue("agentType"),
-                    listingTypes: checkedValues("listingTypes"),
-                    propertyCategories: checkedValues("propertyKinds").filter(function (k) {
-                        return k !== "LAND";
-                    }),
-                    land: checkedValues("propertyKinds").indexOf("LAND") !== -1,
                     cityId: cityId(),
                     cityName: locationNames[cityId()],
                     neighborhoodIds: selected(),

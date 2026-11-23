@@ -7,14 +7,14 @@
     <meta
         content="Rejoignez le réseau d'agents vérifiés Ndopify : des mandats de location et de vente dans vos quartiers, les biens qui correspondent à vos clients, vos visites organisées. Inscription gratuite."
         name="description">
-    <link href="https://www.ndopify.com/agent.html" rel="canonical">
+    <link href="https://www.ndopify.com/agent" rel="canonical">
     <meta content="website" property="og:type">
     <meta content="Ndopify — Des mandats de clients dans votre secteur" property="og:title">
     <meta
         content="Mandats signés dans vos quartiers, biens correspondants trouvés pour vous, visites organisées. Inscription gratuite."
         property="og:description">
     <meta content="https://www.ndopify.com/assets/images/og-image.png" property="og:image">
-    <meta content="https://www.ndopify.com/agent.html" property="og:url">
+    <meta content="https://www.ndopify.com/agent" property="og:url">
     <meta content="summary_large_image" name="twitter:card">
     <meta content="#1d7edf" name="theme-color">
     <link href="assets/images/icon.png" rel="icon">
@@ -32,8 +32,8 @@
 </head>
 <!--
   v2 prototype — agent landing page (served at "/agent").
-  v2: sale mandates (buyers' SEARCH and sellers' LISTING with listingType = SALE) next to the rental ones, and the
-  agent's specialisation (rental, sale or both, and property types, land included), which dispatch filters on.
+  v2: sale mandates (buyers' SEARCH and sellers' LISTING with listingType = SALE) next to the rental ones. Every
+  verified agent handles rentals and sales: no specialisation anywhere.
   Pillar 1 (agent subscription: join + KYC), then pillars 2 and 3 from the agent's side: mandate offers in their
   neighbourhoods, the matching listings (theirs and their peers'), the visits they run from Partner Central.
   The call to action is Partner Central's public "Rejoindre" wizard: {partnerCentralUrl}/join.
@@ -70,7 +70,7 @@
                 du reste.</p>
             <ul class="proof-stats">
                 <li><strong>0 FCFA</strong>de frais d'inscription</li>
-                <li><strong>Location</strong>et vente : les mandats que vous traitez</li>
+                <li><strong>Location</strong>et vente : tous les mandats</li>
                 <li><strong>1 h</strong>pour accepter un mandat</li>
             </ul>
             <div class="cta-row">
@@ -92,9 +92,9 @@
                         quartiers, votre disponibilité et vos avis clients.</p>
                 </li>
                 <li class="card">
-                    <h3 class="card-title">Les mandats que vous traitez</h3>
-                    <p>Location, vente ou les deux, et les types de biens que vous connaissez, terrains compris : vous
-                        ne recevez que les mandats de votre spécialité.</p>
+                    <h3 class="card-title">Tous les mandats, sans spécialité</h3>
+                    <p>Chaque agent vérifié reçoit les recherches et les biens de ses quartiers, en location comme en
+                        vente : vous n'avez pas de spécialité à déclarer.</p>
                 </li>
                 <li class="card">
                     <h3 class="card-title">Des mandats signés</h3>
@@ -125,8 +125,8 @@
             </div>
             <ol class="steps">
                 <li><h3>Inscription &amp; vérification</h3>
-                    <p>Créez votre profil, choisissez vos quartiers et votre spécialité (location, vente ou les
-                        deux), puis envoyez votre pièce d'identité et un selfie.</p></li>
+                    <p>Créez votre profil, choisissez vos quartiers, puis envoyez votre pièce d'identité et un
+                        selfie.</p></li>
                 <li><h3>Acceptez vos mandats</h3>
                     <p>Recevez les mandats de vos quartiers sur Telegram ou par e-mail et acceptez-les depuis Partner
                         Central.</p></li>
@@ -182,11 +182,9 @@
                         <button aria-controls="faq-8" aria-expanded="false" class="faq-trigger">Puis-je recevoir des
                             mandats de vente ?<span aria-hidden="true" class="chevron">▾</span></button>
                     </h3>
-                    <div class="faq-panel" hidden id="faq-8"><p>Oui. Indiquez dans votre profil les mandats que vous
-                        traitez : location, vente ou les deux, et les types de biens (appartements, maisons, terrains,
-                        locaux commerciaux…). Les mandats de vente ne sont proposés qu'aux agents qui les traitent. Votre
-                        commission est celle écrite dans le mandat, due quand la vente est conclue grâce à vous.</p>
-                    </div>
+                    <div class="faq-panel" hidden id="faq-8"><p>Oui : chaque agent vérifié reçoit les mandats de
+                        location comme de vente de ses quartiers. Votre commission est un pourcentage du prix de vente,
+                        écrit dans le mandat, due quand la vente est conclue grâce à vous.</p></div>
                 </div>
                 <div class="faq-item">
                     <h3>

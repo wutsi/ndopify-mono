@@ -231,6 +231,8 @@
 .modal:target,
 .modal.is-open { display: flex; align-items: flex-end; justify-content: center; }
 .js .modal:target:not(.is-open) { display: none; }
+/* A SOLD sale's #visit popup is taken out of the page (annonce.js): not even a link ending in #visit opens it. */
+.js .modal[hidden] { display: none; }
 .modal__backdrop { position: absolute; inset: 0; background: rgba(4, 4, 4, 0.45); }
 .modal__panel {
   position: relative;

@@ -1856,8 +1856,9 @@
         var owner = MANDATES[id].party === "bailleur";
         var sale = isSale(id);
         var n = f.neighbourhoods.length;
-        // v2: a sale reads "Prix de vente" / "Budget total" (no "/ mois") and "Achat prévu"; it has no furniture.
-        var priceTerm = sale ? (owner ? "Prix de vente" : "Budget total") : (owner ? "Loyer" : "Budget");
+        // v2: a sale reads "Prix" (a seller's asking price) / "Budget" (a buyer's), no "/ mois", and "Achat prévu" /
+        // "Disponibilité"; it has no furniture.
+        var priceTerm = sale ? (owner ? "Prix" : "Budget") : (owner ? "Loyer" : "Budget");
         var dateTerm = owner ? "Disponibilité" : (sale ? "Achat prévu" : "Emménagement");
         var rows = [
             [n > 1 ? "Secteurs" : "Secteur", (n ? f.neighbourhoods.join(", ") : "Toute la ville") + " — " + f.city],
@@ -2149,7 +2150,7 @@
                 price: 250000000, availableIn: 0, score: 0.91,
                 initial: { status: "PROPOSED", sentAt: -6, answer: "ACCEPTED", answeredAt: -4 },
                 fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"],
-                    [true, "5 chambres, une de plus que souhaité"], [true, "Disponible dès maintenant"]]
+                    [true, "5 chambres, une de plus que souhaité"], [true, "Disponible avant votre achat"]]
             },
             {
                 id: "9302", listingId: "5021", propertyType: "VILLA", rooms: 4, neighbourhood: "Bonapriso",
@@ -2157,7 +2158,7 @@
                 agent: { id: "1001", name: "Clarisse Mbarga", whatsappNumber: "+237699123456" },
                 initial: { status: "PROPOSED", sentAt: -4, answer: "ACCEPTED", answeredAt: -2 },
                 fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"],
-                    [true, "4 chambres, comme souhaité"], [false, "Disponible dans un mois"]]
+                    [true, "4 chambres, comme souhaité"], [false, "Pas disponible avant votre achat"]]
             }
         ],
         304: [
@@ -2166,7 +2167,7 @@
                 price: 250000000, availableIn: 0, score: 0.87,
                 initial: { status: "PROPOSED", sentAt: -3, answer: "ACCEPTED", answeredAt: -1 },
                 fit: [[true, "Dans le secteur recherché"], [false, "4 % au-dessus du budget"],
-                    [true, "5 chambres, comme souhaité"], [true, "Disponible dès maintenant"]]
+                    [true, "5 chambres, comme souhaité"], [true, "Disponible avant votre achat"]]
             }
         ]
     };
@@ -2918,7 +2919,9 @@
             el.textContent = SIGNATURE_TTL_DAYS;
         });
         $("[data-approved-next]").textContent = mandate.party === "bailleur"
-            ? "Créez l'annonce et visitez le bien pour la compléter ; une fois publiée, organisez les visites."
+            ? (isSale(id)
+                ? "Créez l'annonce et visitez le bien pour la compléter ; une fois publiée, présentez le bien aux acheteurs."
+                : "Créez l'annonce et visitez le bien pour la compléter ; une fois publiée, organisez les visites.")
             : "Proposez des biens " + (isSale(id) ? "à l'acheteur" : "au client") + " et organisez les visites.";
 
         // The unboxed contact: role, name and best time to call, then the number (tel:) with its WhatsApp button, then
@@ -3318,8 +3321,9 @@
                 fillAgentCard(agentCard, match.agent,
                     "mandate.html?id=" + encodeURIComponent(id) + "#matches-title");
             }
-            // In bold: what the agent looks at first
-            fact(facts, "Loyer", formatCompactRent(match.price), "match__rent");
+            // In bold: what the agent looks at first. A sale's card reads "Prix", without " / mois".
+            fact(facts, isSale(id) ? "Prix" : "Loyer",
+                isSale(id) ? formatSalePrice(match.price) : formatCompactRent(match.price), "match__rent");
             fact(facts, "Disponibilité", matchAvailability(match));
             var fit = $("[data-match-fit]", item);
             match.fit.forEach(function (row) {
@@ -4094,7 +4098,7 @@
         /* Errors */
         var ERRORS = {
             price: sale
-                ? "Indiquez " + (owner ? "le prix de vente" : "le budget total") + ", en FCFA."
+                ? "Indiquez " + (owner ? "le prix" : "le budget") + ", en FCFA."
                 : "Indiquez " + (owner ? "le loyer" : "le budget") + ", en FCFA par mois.",
             movingPeriod: owner ? "Indiquez quand le bien est disponible."
                 : sale ? "Indiquez quand l'achat est prévu." : "Indiquez la date d'emménagement.",
@@ -4480,7 +4484,7 @@
                 return [road.length ? amenityLabels(road)[0] : "Accès à préciser",
                     others ? plural(others, "équipement", "équipements") : "aucun équipement"].join(" · ");
             case "terms":
-                if (listingIsSale(listing)) return formatSalePrice(f.price) + " · prix de vente";
+                if (listingIsSale(listing)) return formatSalePrice(f.price);
                 return formatRent(f.price) +
                     (f.securityDeposit ? " · caution " + f.securityDeposit + " mois" : "");
             case "photos":

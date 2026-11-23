@@ -32,7 +32,16 @@
         }
     </script>
 </head>
-<body class="listing-page">
+<!--
+  v2 (#259) — SALE variant: ?sale=1 shows the same page for a listing for sale (a villa in Bonapriso, 250 000 000
+  FCFA): badge "À vendre", price without " / mois", "Prix et conditions" with the price and the availability only
+  (never caution, advance, lease term, notice or furniture), and the interest form asking "Quand souhaitez-vous
+  acheter ?" (the same three horizons). &state=sold is the SOLD state: badge "Vendu", the price card keeps the last
+  published price with the notice instead of the terms and the call to action, and no interest form. The SALE copy is
+  in the markup ([data-sale-only]); annonce.js only toggles it, so the rental page (default) is unchanged and every
+  sale word is in the page itself.
+-->
+<body class="listing-page" data-listing-page>
 <a class="skip-link" href="#main">Aller au contenu principal</a>
 <header class="site-header">
     <a aria-label="Ndopify — accueil" class="site-header__logo" href="index.html">
@@ -81,16 +90,22 @@
         <div class="listing__head">
             <div class="listing__topline">
                 <p class="listing__badges">
-                    <span class="badge badge--info">À louer</span>
-                    <span class="badge badge--success">
+                    <span class="badge badge--info" data-rental-only>À louer</span>
+                    <span class="badge badge--info" data-sale-only data-sale-badge hidden>À vendre</span>
+                    <span class="badge badge--info" data-sold-only hidden>Vendu</span>
+                    <span class="badge badge--success" data-rental-only>
                         <svg aria-hidden="true" class="icon"><use href="#i-shield"/></svg>Logement audité
+                    </span>
+                    <span class="badge badge--success" data-sale-only hidden>
+                        <svg aria-hidden="true" class="icon"><use href="#i-shield"/></svg>Bien audité
                     </span>
                 </p>
                 <button class="btn btn-outline listing__share" data-share hidden type="button">
                     <svg aria-hidden="true" class="icon"><use href="#i-share"/></svg><span class="listing__share-label">Partager</span>
                 </button>
             </div>
-            <h1>Appartement meublé 2 chambres à Bonapriso</h1>
+            <h1><span data-rental-only>Appartement meublé 2 chambres à Bonapriso</span><span data-sale-only
+                                                                                      hidden>Villa 5 chambres à Bonapriso</span></h1>
             <p class="listing__location">
                 <svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>
                 Bonapriso, Douala · près de la boulangerie Zepol
@@ -98,7 +113,7 @@
         </div>
 
         <!-- Gallery: a grid from 768px, a swipeable strip below. The hero picture is the listing's heroImageId. -->
-        <section aria-label="Photos du logement" class="gallery">
+        <section aria-label="Photos du logement" class="gallery" data-rental-only>
             <a class="gallery__item gallery__item--hero" data-photo="0" href="https://picsum.photos/seed/ndopify-living/1600/1067">
                 <img alt="Salon lumineux avec canapé gris et baie vitrée" height="800"
                      src="https://picsum.photos/seed/ndopify-living/1200/800" width="1200">
@@ -122,18 +137,49 @@
             <a class="btn btn-outline gallery__all" data-photo="0" href="https://picsum.photos/seed/ndopify-living/1600/1067">Voir les 8 photos</a>
         </section>
 
+        <!-- SALE variant: the villa's photos (six). -->
+        <section aria-label="Photos du bien" class="gallery" data-sale-only hidden>
+            <a class="gallery__item gallery__item--hero" data-photo="0" href="https://picsum.photos/seed/ndopify-villa-living/1600/1067">
+                <img alt="Salon de la villa, ouvert sur le jardin" height="800"
+                     src="https://picsum.photos/seed/ndopify-villa-living/1200/800" width="1200">
+            </a>
+            <a class="gallery__item" data-photo="1" href="https://picsum.photos/seed/ndopify-villa-facade/1600/1067">
+                <img alt="Façade de la villa et portail" height="400" loading="lazy"
+                     src="https://picsum.photos/seed/ndopify-villa-facade/600/400" width="600">
+            </a>
+            <a class="gallery__item" data-photo="3" href="https://picsum.photos/seed/ndopify-villa-kitchen/1600/1067">
+                <img alt="Cuisine équipée" height="400" loading="lazy"
+                     src="https://picsum.photos/seed/ndopify-villa-kitchen/600/400" width="600">
+            </a>
+            <a class="gallery__item" data-photo="4" href="https://picsum.photos/seed/ndopify-villa-bedroom/1600/1067">
+                <img alt="Chambre principale avec salle de bains" height="400" loading="lazy"
+                     src="https://picsum.photos/seed/ndopify-villa-bedroom/600/400" width="600">
+            </a>
+            <a class="gallery__item" data-photo="5" href="https://picsum.photos/seed/ndopify-villa-garden/1600/1067">
+                <img alt="Jardin et terrasse" height="400" loading="lazy"
+                     src="https://picsum.photos/seed/ndopify-villa-garden/600/400" width="600">
+            </a>
+            <a class="btn btn-outline gallery__all" data-photo="0" href="https://picsum.photos/seed/ndopify-villa-living/1600/1067">Voir les 6 photos</a>
+        </section>
+
         <div class="listing__layout">
             <div class="listing__content">
 
-                <ul aria-label="En bref" class="key-facts">
+                <ul aria-label="En bref" class="key-facts" data-rental-only>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-bed"/></svg><strong>2</strong> chambres</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-bath"/></svg><strong>2</strong> salles de bains</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-area"/></svg><strong>95</strong> m²</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-sofa"/></svg>Meublé</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-car"/></svg><strong>1</strong> parking</li>
                 </ul>
+                <ul aria-label="En bref" class="key-facts" data-sale-only hidden>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-bed"/></svg><strong>5</strong> chambres</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-bath"/></svg><strong>4</strong> salles de bains</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-area"/></svg><strong>420</strong> m²</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-car"/></svg><strong>3</strong> parkings</li>
+                </ul>
 
-                <div class="audit-note">
+                <div class="audit-note" data-rental-only>
                     <svg aria-hidden="true" class="icon icon--lg"><use href="#i-shield"/></svg>
                     <div>
                         <p><strong>Logement audité par Ndopify le 12 octobre 2026.</strong></p>
@@ -141,8 +187,16 @@
                             sur place.</p>
                     </div>
                 </div>
+                <div class="audit-note" data-sale-only hidden>
+                    <svg aria-hidden="true" class="icon icon--lg"><use href="#i-shield"/></svg>
+                    <div>
+                        <p><strong>Bien audité par Ndopify le 18 novembre 2026.</strong></p>
+                        <p>Un agent vérifié a visité ce bien : photos, surface et position GPS ont été contrôlés sur
+                            place. Ndopify vérifie l'agent, pas les documents du bien.</p>
+                    </div>
+                </div>
 
-                <section aria-labelledby="description-heading" class="listing__section">
+                <section aria-labelledby="description-heading" class="listing__section" data-rental-only>
                     <h2 id="description-heading">À propos de ce logement</h2>
                     <p>Au 2<sup>e</sup> étage d'un petit immeuble calme et sécurisé, cet appartement entièrement meublé
                         offre un grand salon lumineux, deux chambres climatisées avec placards, une cuisine équipée
@@ -151,7 +205,16 @@
                         bitumée jusqu'au portail et le bâtiment dispose d'un gardien jour et nuit.</p>
                 </section>
 
-                <section aria-labelledby="features-heading" class="listing__section">
+                <section aria-labelledby="sale-description-heading" class="listing__section" data-sale-only hidden>
+                    <h2 id="sale-description-heading">À propos de ce bien</h2>
+                    <p>Villa de 420 m² sur deux niveaux, dans une rue calme de Bonapriso : grand salon ouvert sur la
+                        terrasse et le jardin, cinq chambres dont une suite parentale, quatre salles de bains et une
+                        cuisine équipée. Trois places de parking derrière le portail.</p>
+                    <p>La maison est vendue vide, avec ses équipements fixes. Le titre foncier et les autres documents
+                        se vérifient chez le notaire, entre l'acheteur et le vendeur : Ndopify ne les contrôle pas.</p>
+                </section>
+
+                <section aria-labelledby="features-heading" class="listing__section" data-rental-only>
                     <h2 id="features-heading">Caractéristiques</h2>
                     <dl class="spec-list">
                         <div><dt>Type de bien</dt><dd>Appartement</dd></div>
@@ -163,6 +226,20 @@
                         <div><dt>Surface</dt><dd>95 m²</dd></div>
                         <div><dt>Étage</dt><dd>2<sup>e</sup> sur 3</dd></div>
                         <div><dt>Parkings</dt><dd>1</dd></div>
+                    </dl>
+                </section>
+
+                <section aria-labelledby="sale-features-heading" class="listing__section" data-sale-only hidden>
+                    <h2 id="sale-features-heading">Caractéristiques</h2>
+                    <dl class="spec-list">
+                        <div><dt>Type de bien</dt><dd>Villa</dd></div>
+                        <div><dt>Chambres</dt><dd>5</dd></div>
+                        <div><dt>Salles de bains</dt><dd>4</dd></div>
+                        <div><dt>Salons</dt><dd>2</dd></div>
+                        <div><dt>Cuisines</dt><dd>1</dd></div>
+                        <div><dt>Surface</dt><dd>420 m²</dd></div>
+                        <div><dt>Niveaux</dt><dd>2</dd></div>
+                        <div><dt>Parkings</dt><dd>3</dd></div>
                     </dl>
                 </section>
 
@@ -202,7 +279,7 @@
                     </div>
                 </section>
 
-                <section aria-labelledby="terms-heading" class="listing__section">
+                <section aria-labelledby="terms-heading" class="listing__section" data-rental-only>
                     <h2 id="terms-heading">Conditions de location</h2>
                     <table class="terms-table">
                         <caption class="visually-hidden">Conditions de location du logement</caption>
@@ -218,6 +295,20 @@
                     <p class="terms-note">Les visites sont organisées par votre agent.</p>
                 </section>
 
+                <!-- Left out once the property is sold: its conditions no longer apply (data-sold-hide). -->
+                <section aria-labelledby="sale-terms-heading" class="listing__section" data-sale-only data-sold-hide
+                         hidden>
+                    <h2 id="sale-terms-heading">Prix et conditions</h2>
+                    <table class="terms-table">
+                        <caption class="visually-hidden">Prix et conditions du bien</caption>
+                        <tbody>
+                        <tr><th scope="row">Prix</th><td>250M FCFA</td></tr>
+                        <tr><th scope="row">Disponible</th><td>Libre maintenant</td></tr>
+                        </tbody>
+                    </table>
+                    <p class="terms-note">Les visites sont organisées par votre agent.</p>
+                </section>
+
                 <section aria-labelledby="location-heading" class="listing__section">
                     <h2 id="location-heading">Emplacement</h2>
                     <p>Bonapriso, Douala — près de la boulangerie Zepol. L'adresse exacte et l'itinéraire vous sont
@@ -228,23 +319,25 @@
             <!-- Price card: sticky on desktop; on mobile, the fixed bottom bar carries the same call to action. -->
             <aside aria-label="Prix et contact" class="listing__aside">
                 <div class="price-card">
-                    <p class="price-card__price"><strong>175K FCFA</strong> / mois</p>
-                    <ul class="price-card__terms">
+                    <p class="price-card__price" data-rental-only><strong>175K FCFA</strong> / mois</p>
+                    <p class="price-card__price" data-sale-only hidden><strong>250M FCFA</strong></p>
+                    <ul class="price-card__terms" data-rental-only data-price-terms>
                         <li>Caution : 2 mois</li>
                         <li>Avance : 3 mois</li>
                         <li>Disponible le 1<sup>er</sup> décembre 2026</li>
                     </ul>
-                    <a class="btn btn-primary price-card__cta" data-modal-open href="#visit">
+                    <ul class="price-card__terms" data-sale-only data-price-terms hidden>
+                        <li>Libre maintenant</li>
+                    </ul>
+                    <a class="btn btn-primary price-card__cta" data-interest-cta data-modal-open href="#visit">
                         <svg aria-hidden="true" class="icon"><use href="#i-search"/></svg>Être contacté par un agent
                     </a>
-                    <p class="price-card__hint">Un agent vous contacte sous 24 h pour organiser la visite.</p>
-                    <!--
-                      SOLD / RENTED listing: the price card keeps the last published price, with the notice below
-                      instead of the terms, the call to action and the hint; the bottom bar and the #visit popup are
-                      not rendered.
-                      <p class="price-card__closed">Ce logement est déjà loué.</p>
-                      <a class="btn btn-secondary price-card__cta" href="https://partner.ndopify.com/find-property">Lancer ma recherche</a>
-                    -->
+                    <p class="price-card__hint" data-interest-cta>Un agent vous contacte sous 24 h pour organiser la
+                        visite.</p>
+                    <!-- SOLD state (&state=sold): the price card keeps the last published price, with the notice below
+                         instead of the terms, the call to action and the hint; the bottom bar and the #visit popup are
+                         not offered. A sold listing has no call to action, as today. -->
+                    <p class="price-card__closed" data-sold-only hidden>Ce bien est déjà vendu.</p>
                 </div>
             </aside>
         </div>
@@ -252,10 +345,12 @@
 
     <!-- Below 1024px: one call to action, the price beside it -->
     <div class="cta-bar">
-        <p class="cta-bar__price"><strong>175K FCFA</strong> / mois</p>
-        <div class="cta-bar__actions">
+        <p class="cta-bar__price" data-rental-only><strong>175K FCFA</strong> / mois</p>
+        <p class="cta-bar__price" data-sale-only hidden><strong>250M FCFA</strong></p>
+        <div class="cta-bar__actions" data-interest-cta>
             <a class="btn btn-primary" data-modal-open href="#visit">Être contacté par un agent</a>
         </div>
+        <p class="cta-bar__note" data-sold-only hidden>Bien vendu</p>
     </div>
 </main>
 
@@ -275,8 +370,10 @@
         <header class="modal__header">
             <div>
                 <h2 class="modal__title" id="visit-title">Être contacté par un agent</h2>
-                <p class="modal__subtitle">Appartement meublé 2 chambres · Bonapriso<span
+                <p class="modal__subtitle" data-rental-only>Appartement meublé 2 chambres · Bonapriso<span
                         class="modal__price">&nbsp;· <strong>175K FCFA</strong> / mois</span></p>
+                <p class="modal__subtitle" data-sale-only hidden>Villa 5 chambres · Bonapriso<span
+                        class="modal__price">&nbsp;· <strong>250M FCFA</strong></span></p>
             </div>
             <a class="modal__close" data-modal-close href="#main">
                 <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
@@ -309,7 +406,8 @@
                 <span aria-live="polite" class="field-error"></span>
             </div>
             <div class="field">
-                <label id="moving-period-label">Date d'emménagement souhaitée</label>
+                <label id="moving-period-label"><span data-rental-only>Date d'emménagement souhaitée</span><span
+                        data-sale-only hidden>Quand souhaitez-vous acheter ?</span></label>
                 <div aria-labelledby="moving-period-label" class="option-grid" role="radiogroup">
                     <label><input name="movingPeriod" required type="radio" value="WITHIN_1_MONTH">Dans moins
                         d'1&nbsp;mois</label>
@@ -376,6 +474,35 @@
         {
             "src": "https://picsum.photos/seed/ndopify-street/1600/1067",
             "alt": "Rue bitumée devant l'immeuble"
+        }
+    ]
+</script>
+<!-- SALE variant: the villa's photos, in the gallery's order. -->
+<script id="listing-photos-sale" type="application/json">
+    [
+        {
+            "src": "https://picsum.photos/seed/ndopify-villa-living/1600/1067",
+            "alt": "Salon de la villa, ouvert sur le jardin"
+        },
+        {
+            "src": "https://picsum.photos/seed/ndopify-villa-facade/1600/1067",
+            "alt": "Façade de la villa et portail"
+        },
+        {
+            "src": "https://picsum.photos/seed/ndopify-villa-terrace/1600/1067",
+            "alt": "Terrasse couverte"
+        },
+        {
+            "src": "https://picsum.photos/seed/ndopify-villa-kitchen/1600/1067",
+            "alt": "Cuisine équipée"
+        },
+        {
+            "src": "https://picsum.photos/seed/ndopify-villa-bedroom/1600/1067",
+            "alt": "Chambre principale avec salle de bains"
+        },
+        {
+            "src": "https://picsum.photos/seed/ndopify-villa-garden/1600/1067",
+            "alt": "Jardin et terrasse"
         }
     ]
 </script>

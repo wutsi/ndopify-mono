@@ -33,12 +33,12 @@
 <!--
   v2 prototype — buyer landing page (served at "/acheter").
   A SEARCH mandate with listingType = SALE: the buyer is matched with a verified agent of their area who handles
-  sales; the agent proposes properties (matches) and runs the visits, as for a rental.
+  rentals and sales; the agent proposes properties (matches) and runs the visits, as for a rental.
   The call to action is Partner Central's public "Trouver un bien" wizard with the sale branch:
-  {partnerCentralUrl}/find-property?type=SALE (the wizard's sale branch is not built yet).
+  {partnerCentralUrl}/find-property?type=SALE.
   The page sells the agent, not properties: there is no list of properties for sale to browse.
   Out of the MVP, so never promised here: title-deed checks, notary / deed of sale, payments through the platform,
-  financing.
+  financing, an offer between buyer and seller, off-market inventory, an agent specialisation.
 -->
 <body>
 <a class="skip-link" href="#main">Aller au contenu principal</a>
@@ -67,11 +67,10 @@
                 <a href="louer.html">Louer</a>
                 <a aria-current="page" href="acheter.html">Acheter</a>
             </nav>
-            <span class="hero__eyebrow">Un agent vérifié, spécialiste de la vente</span>
+            <span class="hero__eyebrow">Un agent vérifié, dans votre secteur</span>
             <h1>Confiez votre projet d'achat à un agent vérifié</h1>
             <p class="hero__sub">Maison, appartement ou terrain : décrivez votre projet en quelques minutes. Un agent
-                de votre secteur, qui traite les ventes, cherche pour vous, vous propose des biens et visite avec
-                vous.</p>
+                de votre secteur cherche pour vous, vous propose des biens et visite avec vous.</p>
             <ul class="proof-stats">
                 <li><strong>100 %</strong>des agents vérifiés</li>
                 <li><strong>0 FCFA</strong>pour lancer votre recherche</li>
@@ -94,8 +93,7 @@
             <ul class="card-grid">
                 <li class="card">
                     <h3 class="card-title">Il cherche pour vous</h3>
-                    <p>Il connaît les quartiers que vous visez et les biens à vendre, y compris ceux qui ne sont
-                        affichés nulle part.</p>
+                    <p>Il connaît les quartiers que vous visez et les biens à vendre de son secteur.</p>
                 </li>
                 <li class="card">
                     <h3 class="card-title">Il vous propose des biens choisis</h3>
@@ -127,19 +125,19 @@
                     <p>Sa pièce d'identité et son compte Mobile Money ont été vérifiés avant son premier mandat.</p>
                 </li>
                 <li class="card">
-                    <h3 class="card-title">Un agent qui traite les ventes</h3>
-                    <p>Votre recherche n'est proposée qu'aux agents qui ont déclaré traiter les ventes et votre type de
-                        bien, terrains compris.</p>
+                    <h3 class="card-title">Un agent de votre secteur</h3>
+                    <p>Votre recherche est proposée aux agents vérifiés de vos quartiers, quel que soit le type de
+                        bien : un même agent traite les locations et les ventes.</p>
                 </li>
                 <li class="card">
-                    <h3 class="card-title">Un agent de votre secteur</h3>
+                    <h3 class="card-title">Un agent disponible et bien noté</h3>
                     <p>Il travaille dans les quartiers que vous avez choisis, et il est choisi selon sa disponibilité,
                         sa réactivité et les avis de ses clients.</p>
                 </li>
                 <li class="card">
                     <h3 class="card-title">Un mandat de recherche signé</h3>
-                    <p>Vos critères, ce que fait votre agent et sa commission sont écrits dans un mandat que vous
-                        signez en ligne.</p>
+                    <p>Vos critères, ce que fait votre agent et sa commission, un pourcentage du prix de vente, sont
+                        écrits dans un mandat que vous signez en ligne.</p>
                 </li>
             </ul>
             <div class="callout">
@@ -164,8 +162,8 @@
                     <p>Ville, quartiers, type de bien (maison, appartement, terrain…), budget et horizon d'achat.</p>
                 </li>
                 <li><h3>Un agent vérifié l'accepte</h3>
-                    <p>Un agent de votre secteur qui traite les ventes prend votre recherche. Vous recevez un e-mail,
-                        puis le mandat à signer en ligne.</p></li>
+                    <p>Un agent vérifié de votre secteur prend votre recherche. Vous recevez un e-mail, puis le mandat
+                        à signer en ligne.</p></li>
                 <li><h3>Recevez des propositions</h3>
                     <p>Votre agent vous envoie les biens qui correspondent à votre projet. Vous dites ce qui vous
                         intéresse.</p></li>
@@ -192,9 +190,8 @@
                             l'agent qui prend ma recherche ?<span aria-hidden="true" class="chevron">▾</span></button>
                     </h3>
                     <div class="faq-panel" hidden id="faq-1"><p>Votre recherche est proposée, un agent à la fois, aux
-                        agents vérifiés qui traitent les ventes et votre type de bien dans vos quartiers, selon leur
-                        disponibilité, leur réactivité et les avis de leurs clients. Le premier qui l'accepte devient
-                        votre agent.</p></div>
+                        agents vérifiés de vos quartiers, selon leur disponibilité, leur réactivité et les avis de
+                        leurs clients. Le premier qui l'accepte devient votre agent.</p></div>
                 </div>
                 <div class="faq-item">
                     <h3>
@@ -202,7 +199,7 @@
                             est-ce possible ?<span aria-hidden="true" class="chevron">▾</span></button>
                     </h3>
                     <div class="faq-panel" hidden id="faq-2"><p>Oui. Choisissez « Terrain » comme type de bien : votre
-                        recherche est confiée à un agent qui traite les terrains dans votre secteur.</p></div>
+                        recherche est confiée à un agent vérifié de votre secteur.</p></div>
                 </div>
                 <div class="faq-item">
                     <h3>
@@ -210,8 +207,9 @@
                             ?<span aria-hidden="true" class="chevron">▾</span></button>
                     </h3>
                     <div class="faq-panel" hidden id="faq-3"><p>Rien pour lancer votre recherche ni pour recevoir des
-                        propositions. La commission de votre agent est écrite dans votre mandat ; elle n'est due que si
-                        vous achetez un bien qu'il vous a trouvé. Ndopify ne perçoit aucun paiement.</p></div>
+                        propositions. La commission de votre agent, un pourcentage du prix de vente, est écrite dans
+                        votre mandat ; elle n'est due que si vous achetez un bien qu'il vous a trouvé. Ndopify ne
+                        perçoit aucun paiement.</p></div>
                 </div>
                 <div class="faq-item">
                     <h3>
@@ -237,8 +235,8 @@
                             mandat de recherche ?<span aria-hidden="true" class="chevron">▾</span></button>
                     </h3>
                     <div class="faq-panel" hidden id="faq-6"><p>Le mandat écrit ce que vous cherchez, ce que fait votre
-                        agent et sa commission. Vous le recevez par e-mail et le signez en ligne. Votre agent ne vous
-                        propose des visites qu'une fois le mandat signé.</p></div>
+                        agent et sa commission, un pourcentage du prix de vente. Vous le recevez par e-mail et le signez
+                        en ligne. Votre agent ne vous propose des visites qu'une fois le mandat signé.</p></div>
                 </div>
             </div>
             <div class="cta-row">

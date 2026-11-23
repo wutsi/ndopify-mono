@@ -47,7 +47,15 @@
   requested is a video one); otherwise the answer is kept in the session
   (proposition.js). Match 9001 of mandate 204 in Partner Central's prototype.
 -->
-<body class="listing-page">
+<!--
+  v2 (#259) — SALE variant: ?sale=1 is a buyer's SALE search (a villa of 4 bedrooms in Bonapriso, budget 250 000 000
+  FCFA), proposed through the same page: "<agent> vous propose ce bien", "Pourquoi ce bien ?", the search summary
+  without " / mois", "Ce bien vous intéresse" / "Pourquoi pas ce bien ?", and the availability reason "Disponible avant
+  votre achat". The five answers (PENDING, ACCEPTED, REJECTED, EXPIRED, UNAVAILABLE) are the same states with the sale
+  words. The sale copy is in the markup ([data-sale-only]); annonce.js only toggles it, so it is right without
+  JavaScript, and the rental page (default) is unchanged.
+-->
+<body class="listing-page" data-proposition-page>
 <a class="skip-link" href="#main">Aller au contenu principal</a>
 <header class="site-header">
     <a aria-label="Ndopify — accueil" class="site-header__logo" href="index.html">
@@ -97,21 +105,31 @@
             <div class="proposal__agent">
                 <span aria-hidden="true" class="proposal__avatar">SN</span>
                 <div>
-                    <h2 class="proposal__title" id="proposal-title">Sandrine, Serge vous propose ce logement</h2>
-                    <p class="proposal__subtitle">Pour votre recherche : appartement 3 chambres à Bonapriso,
-                        jusqu'à 250K FCFA / mois.</p>
+                    <h2 class="proposal__title" id="proposal-title">Sandrine, Serge vous propose ce <span
+                            data-rental-only>logement</span><span data-sale-only hidden>bien</span></h2>
+                    <p class="proposal__subtitle" data-rental-only>Pour votre recherche : appartement 3 chambres à
+                        Bonapriso, jusqu'à 250K FCFA / mois.</p>
+                    <p class="proposal__subtitle" data-sale-only hidden>Pour votre recherche : villa 4 chambres à
+                        Bonapriso, jusqu'à 250 000 000 FCFA.</p>
                 </div>
             </div>
 
             <!-- Folded by default: the listing comes first, the reasons are a tap away. -->
             <details class="proposal__why">
-                <summary>Pourquoi ce logement&nbsp;?<svg aria-hidden="true" class="icon proposal__chevron"><use href="#i-chevron-right"/></svg></summary>
-                <ul class="check-list proposal__fit">
+                <summary><span data-rental-only>Pourquoi ce logement&nbsp;?</span><span data-sale-only
+                                                                                     hidden>Pourquoi ce bien&nbsp;?</span><svg aria-hidden="true" class="icon proposal__chevron"><use href="#i-chevron-right"/></svg></summary>
+                <ul class="check-list proposal__fit" data-rental-only>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>À Bonapriso, le quartier que vous cherchez</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>240K FCFA / mois, dans votre budget</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>3 chambres, comme demandé</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>Non meublé, comme demandé</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg><span>Disponible le 1<sup>er</sup> décembre 2026, avant votre emménagement</span></li>
+                </ul>
+                <ul class="check-list proposal__fit" data-sale-only hidden>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>À Bonapriso, le quartier que vous cherchez</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>240M FCFA, dans votre budget</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>4 chambres, comme demandé</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg><span>Disponible avant votre achat</span></li>
                 </ul>
 
                 <!-- The amenities the client searched for, matched or missing -->
@@ -151,21 +169,26 @@
         <div class="listing__head">
             <div class="listing__topline">
                 <p class="listing__badges">
-                    <span class="badge badge--info">À louer</span>
-                    <span class="badge badge--success">
+                    <span class="badge badge--info" data-rental-only>À louer</span>
+                    <span class="badge badge--info" data-sale-only hidden>À vendre</span>
+                    <span class="badge badge--success" data-rental-only>
                         <svg aria-hidden="true" class="icon"><use href="#i-shield"/></svg>Logement audité
+                    </span>
+                    <span class="badge badge--success" data-sale-only hidden>
+                        <svg aria-hidden="true" class="icon"><use href="#i-shield"/></svg>Bien audité
                     </span>
                     <span class="badge badge--state" data-state-badge hidden></span>
                 </p>
             </div>
-            <h1>Appartement 3 chambres à Bonapriso</h1>
+            <h1><span data-rental-only>Appartement 3 chambres à Bonapriso</span><span data-sale-only hidden>Villa
+                4 chambres à Bonapriso</span></h1>
             <p class="listing__location">
                 <svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>
                 Bonapriso, Douala · près du rond-point Total Joss
             </p>
         </div>
 
-        <section aria-label="Photos du logement" class="gallery">
+        <section aria-label="Photos du logement" class="gallery" data-rental-only>
             <a class="gallery__item gallery__item--hero" data-photo="0" href="https://picsum.photos/seed/ndopify-m9001-living/1600/1067">
                 <img alt="Grand salon carrelé avec fenêtres sur la cour" height="800"
                      src="https://picsum.photos/seed/ndopify-m9001-living/1200/800" width="1200">
@@ -189,18 +212,48 @@
             <a class="btn btn-outline gallery__all" data-photo="0" href="https://picsum.photos/seed/ndopify-m9001-living/1600/1067">Voir les 6 photos</a>
         </section>
 
+        <section aria-label="Photos du bien" class="gallery" data-sale-only hidden>
+            <a class="gallery__item gallery__item--hero" data-photo="0" href="https://picsum.photos/seed/ndopify-m9301-living/1600/1067">
+                <img alt="Salon de la villa, ouvert sur la terrasse" height="800"
+                     src="https://picsum.photos/seed/ndopify-m9301-living/1200/800" width="1200">
+            </a>
+            <a class="gallery__item" data-photo="1" href="https://picsum.photos/seed/ndopify-m9301-facade/1600/1067">
+                <img alt="Façade de la villa et jardin" height="400" loading="lazy"
+                     src="https://picsum.photos/seed/ndopify-m9301-facade/600/400" width="600">
+            </a>
+            <a class="gallery__item" data-photo="3" href="https://picsum.photos/seed/ndopify-m9301-kitchen/1600/1067">
+                <img alt="Cuisine équipée" height="400" loading="lazy"
+                     src="https://picsum.photos/seed/ndopify-m9301-kitchen/600/400" width="600">
+            </a>
+            <a class="gallery__item" data-photo="4" href="https://picsum.photos/seed/ndopify-m9301-bedroom/1600/1067">
+                <img alt="Chambre principale" height="400" loading="lazy"
+                     src="https://picsum.photos/seed/ndopify-m9301-bedroom/600/400" width="600">
+            </a>
+            <a class="gallery__item" data-photo="5" href="https://picsum.photos/seed/ndopify-m9301-garden/1600/1067">
+                <img alt="Jardin et portail" height="400" loading="lazy"
+                     src="https://picsum.photos/seed/ndopify-m9301-garden/600/400" width="600">
+            </a>
+            <a class="btn btn-outline gallery__all" data-photo="0" href="https://picsum.photos/seed/ndopify-m9301-living/1600/1067">Voir les 6 photos</a>
+        </section>
+
         <div class="listing__layout">
             <div class="listing__content">
 
-                <ul aria-label="En bref" class="key-facts">
+                <ul aria-label="En bref" class="key-facts" data-rental-only>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-bed"/></svg><strong>3</strong> chambres</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-bath"/></svg><strong>2</strong> salles de bains</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-area"/></svg><strong>110</strong> m²</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-sofa"/></svg>Non meublé</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-car"/></svg><strong>1</strong> parking</li>
                 </ul>
+                <ul aria-label="En bref" class="key-facts" data-sale-only hidden>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-bed"/></svg><strong>4</strong> chambres</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-bath"/></svg><strong>3</strong> salles de bains</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-area"/></svg><strong>380</strong> m²</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-car"/></svg><strong>2</strong> parkings</li>
+                </ul>
 
-                <div class="audit-note">
+                <div class="audit-note" data-rental-only>
                     <svg aria-hidden="true" class="icon icon--lg"><use href="#i-shield"/></svg>
                     <div>
                         <p><strong>Logement audité par Ndopify le 18 octobre 2026.</strong></p>
@@ -208,8 +261,16 @@
                             place.</p>
                     </div>
                 </div>
+                <div class="audit-note" data-sale-only hidden>
+                    <svg aria-hidden="true" class="icon icon--lg"><use href="#i-shield"/></svg>
+                    <div>
+                        <p><strong>Bien audité par Ndopify le 16 novembre 2026.</strong></p>
+                        <p>Serge a visité ce bien : photos, surface et position GPS ont été contrôlés sur place.
+                            Ndopify vérifie l'agent, pas les documents du bien.</p>
+                    </div>
+                </div>
 
-                <section aria-labelledby="description-heading" class="listing__section">
+                <section aria-labelledby="description-heading" class="listing__section" data-rental-only>
                     <h2 id="description-heading">À propos de ce logement</h2>
                     <p>Au 1<sup>er</sup> étage d'une résidence clôturée, cet appartement non meublé offre un grand
                         salon, trois chambres avec placards, une cuisine et deux salles de bains. Une citerne assure
@@ -218,7 +279,16 @@
                         écoles et commerces de Bonapriso sont à quelques minutes à pied.</p>
                 </section>
 
-                <section aria-labelledby="features-heading" class="listing__section">
+                <section aria-labelledby="sale-description-heading" class="listing__section" data-sale-only hidden>
+                    <h2 id="sale-description-heading">À propos de ce bien</h2>
+                    <p>Villa de 380 m² dans une rue calme de Bonapriso : salon double ouvert sur la terrasse, quatre
+                        chambres dont une suite parentale, trois salles de bains, cuisine équipée et jardin arboré.
+                        Deux places de parking derrière le portail.</p>
+                    <p>La maison est vendue vide. Le titre foncier se vérifie chez le notaire, entre l'acheteur et le
+                        vendeur : Ndopify ne le contrôle pas.</p>
+                </section>
+
+                <section aria-labelledby="features-heading" class="listing__section" data-rental-only>
                     <h2 id="features-heading">Caractéristiques</h2>
                     <dl class="spec-list">
                         <div><dt>Type de bien</dt><dd>Appartement</dd></div>
@@ -230,6 +300,20 @@
                         <div><dt>Surface</dt><dd>110 m²</dd></div>
                         <div><dt>Étage</dt><dd>1<sup>er</sup> sur 2</dd></div>
                         <div><dt>Parkings</dt><dd>1</dd></div>
+                    </dl>
+                </section>
+
+                <section aria-labelledby="sale-features-heading" class="listing__section" data-sale-only hidden>
+                    <h2 id="sale-features-heading">Caractéristiques</h2>
+                    <dl class="spec-list">
+                        <div><dt>Type de bien</dt><dd>Villa</dd></div>
+                        <div><dt>Chambres</dt><dd>4</dd></div>
+                        <div><dt>Salles de bains</dt><dd>3</dd></div>
+                        <div><dt>Salons</dt><dd>2</dd></div>
+                        <div><dt>Cuisines</dt><dd>1</dd></div>
+                        <div><dt>Surface</dt><dd>380 m²</dd></div>
+                        <div><dt>Niveaux</dt><dd>1</dd></div>
+                        <div><dt>Parkings</dt><dd>2</dd></div>
                     </dl>
                 </section>
 
@@ -265,7 +349,7 @@
                     </div>
                 </section>
 
-                <section aria-labelledby="terms-heading" class="listing__section">
+                <section aria-labelledby="terms-heading" class="listing__section" data-rental-only>
                     <h2 id="terms-heading">Conditions de location</h2>
                     <table class="terms-table">
                         <caption class="visually-hidden">Conditions de location du logement</caption>
@@ -276,6 +360,18 @@
                         <tr><th scope="row">Durée du bail</th><td>12 mois</td></tr>
                         <tr><th scope="row">Préavis</th><td>1 mois</td></tr>
                         <tr><th scope="row">Disponible</th><td>À partir du 1<sup>er</sup> décembre 2026</td></tr>
+                        </tbody>
+                    </table>
+                    <p class="terms-note">Les visites sont organisées par votre agent. Frais de visite&nbsp;: <strong>5&nbsp;000&nbsp;FCFA</strong> par visite, réglés directement à lui.</p>
+                </section>
+
+                <section aria-labelledby="sale-terms-heading" class="listing__section" data-sale-only hidden>
+                    <h2 id="sale-terms-heading">Prix et conditions</h2>
+                    <table class="terms-table">
+                        <caption class="visually-hidden">Prix et conditions du bien</caption>
+                        <tbody>
+                        <tr><th scope="row">Prix</th><td>240M FCFA</td></tr>
+                        <tr><th scope="row">Disponible</th><td>Libre maintenant</td></tr>
                         </tbody>
                     </table>
                     <p class="terms-note">Les visites sont organisées par votre agent. Frais de visite&nbsp;: <strong>5&nbsp;000&nbsp;FCFA</strong> par visite, réglés directement à lui.</p>
@@ -308,15 +404,20 @@
             -->
             <aside aria-label="Prix et réponse" class="listing__aside">
                 <div class="price-card">
-                    <p class="price-card__price"><strong>240K FCFA</strong> / mois</p>
-                    <ul class="price-card__terms">
+                    <p class="price-card__price" data-rental-only><strong>240K FCFA</strong> / mois</p>
+                    <p class="price-card__price" data-sale-only hidden><strong>240M FCFA</strong></p>
+                    <ul class="price-card__terms" data-rental-only>
                         <li>Caution : 2 mois</li>
                         <li>Avance : 3 mois</li>
                         <li>Disponible le 1<sup>er</sup> décembre 2026</li>
                     </ul>
+                    <ul class="price-card__terms" data-sale-only hidden>
+                        <li>Libre maintenant</li>
+                    </ul>
 
                     <div class="answer" data-answer="PENDING">
-                        <p class="answer__question">Ce logement vous intéresse&nbsp;?</p>
+                        <p class="answer__question"><span data-rental-only>Ce logement vous intéresse&nbsp;?</span><span
+                                data-sale-only hidden>Ce bien vous intéresse&nbsp;?</span></p>
                         <form action="#main" data-accept-form method="post">
                             <button class="btn btn-primary price-card__cta" type="submit">Ça m'intéresse</button>
                         </form>
@@ -326,7 +427,9 @@
 
                     <div class="answer" data-answer="ACCEPTED" hidden>
                         <p class="answer__status answer__status--success">
-                            <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>Ce logement vous intéresse
+                            <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg><span
+                                data-rental-only>Ce logement vous intéresse</span><span data-sale-only hidden>Ce bien
+                                vous intéresse</span>
                         </p>
                         <a class="btn btn-primary price-card__cta" data-modal-open href="#visit">
                             <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Demander une visite
@@ -337,7 +440,9 @@
                     <!-- Accepted, no visit to request yet (the search mandate isn't signed) and none open -->
                     <div class="answer" data-answer="ACCEPTED_NO_VISIT" hidden>
                         <p class="answer__status answer__status--success">
-                            <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>Ce logement vous intéresse
+                            <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg><span
+                                data-rental-only>Ce logement vous intéresse</span><span data-sale-only hidden>Ce bien
+                                vous intéresse</span>
                         </p>
                         <p>Serge est prévenu. Pour organiser une visite, contactez-le : vous pourrez la demander ici
                             dès que votre mandat de recherche sera signé.</p>
@@ -348,7 +453,9 @@
                          page instead of the button (one open visit per match). -->
                     <div class="answer" data-answer="VISIT_REQUESTED" hidden>
                         <p class="answer__status answer__status--success">
-                            <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>Ce logement vous intéresse
+                            <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg><span
+                                data-rental-only>Ce logement vous intéresse</span><span data-sale-only hidden>Ce bien
+                                vous intéresse</span>
                         </p>
                         <p class="answer__visit">
                             <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>
@@ -359,19 +466,26 @@
                     </div>
 
                     <div class="answer" data-answer="REJECTED" hidden>
-                        <p class="answer__status">Vous avez écarté ce logement.</p>
-                        <p>Serge est prévenu et continue de chercher pour vous : il vous enverra d'autres logements.</p>
+                        <p class="answer__status"><span data-rental-only>Vous avez écarté ce logement.</span><span
+                                data-sale-only hidden>Vous avez écarté ce bien.</span></p>
+                        <p><span data-rental-only>Serge est prévenu et continue de chercher pour vous : il vous enverra
+                            d'autres logements.</span><span data-sale-only hidden>Serge est prévenu et continue de
+                            chercher pour vous : il vous enverra d'autres biens.</span></p>
                     </div>
 
                     <div class="answer" data-answer="EXPIRED" hidden>
                         <p class="answer__status">Cette proposition a expiré.</p>
-                        <p>Ce logement vous intéresse toujours&nbsp;? Contactez Serge.</p>
+                        <p><span data-rental-only>Ce logement vous intéresse toujours&nbsp;? Contactez Serge.</span><span
+                                data-sale-only hidden>Ce bien vous intéresse toujours&nbsp;? Contactez Serge.</span></p>
                         <a class="btn btn-secondary price-card__cta" href="https://wa.me/237677000111" rel="noopener" target="_blank">Contacter<span class="visually-hidden"> Serge sur WhatsApp</span></a>
                     </div>
 
                     <div class="answer" data-answer="UNAVAILABLE" hidden>
-                        <p class="answer__status">Ce logement n'est plus disponible.</p>
-                        <p>Il a été loué ou retiré. Serge continue de chercher pour vous.</p>
+                        <p class="answer__status"><span data-rental-only>Ce logement n'est plus disponible.</span><span
+                                data-sale-only hidden>Ce bien n'est plus disponible.</span></p>
+                        <p><span data-rental-only>Il a été loué ou retiré. Serge continue de chercher pour
+                            vous.</span><span data-sale-only hidden>Il a été vendu ou retiré. Serge continue de chercher
+                            pour vous.</span></p>
                         <a class="btn btn-secondary price-card__cta" href="https://wa.me/237677000111" rel="noopener" target="_blank">Contacter<span class="visually-hidden"> Serge sur WhatsApp</span></a>
                     </div>
                 </div>
@@ -380,7 +494,8 @@
     </div>
 
     <div class="cta-bar">
-        <p class="cta-bar__price"><strong>240K FCFA</strong> / mois</p>
+        <p class="cta-bar__price" data-rental-only><strong>240K FCFA</strong> / mois</p>
+        <p class="cta-bar__price" data-sale-only hidden><strong>240M FCFA</strong></p>
         <!--
           Below 1024px, one button: the two answers are in the #answer popup. Buttons never carry the agent's name
           (a first name can be long, and a button doesn't wrap): only sentences do, and visually-hidden labels.
@@ -395,7 +510,8 @@
         <div class="cta-bar__actions" data-bar-answer="VISIT_REQUESTED" hidden>
             <a class="btn btn-primary" href="visite.html?state=requested">Voir ma visite</a>
         </div>
-        <p class="cta-bar__note" data-bar-answer="REJECTED" hidden>Logement écarté</p>
+        <p class="cta-bar__note" data-bar-answer="REJECTED" hidden><span data-rental-only>Logement écarté</span><span
+                data-sale-only hidden>Bien écarté</span></p>
         <p class="cta-bar__note" data-bar-answer="EXPIRED" hidden>Proposition expirée</p>
         <p class="cta-bar__note" data-bar-answer="UNAVAILABLE" hidden>Plus disponible</p>
     </div>
@@ -410,9 +526,12 @@
     <div class="modal__panel">
         <header class="modal__header">
             <div>
-                <h2 class="modal__title" id="answer-title">Ce logement vous intéresse&nbsp;?</h2>
-                <p class="modal__subtitle">Appartement 3 chambres · Bonapriso<span
+                <h2 class="modal__title" id="answer-title"><span data-rental-only>Ce logement vous
+                    intéresse&nbsp;?</span><span data-sale-only hidden>Ce bien vous intéresse&nbsp;?</span></h2>
+                <p class="modal__subtitle" data-rental-only>Appartement 3 chambres · Bonapriso<span
                         class="modal__price">&nbsp;· <strong>240K FCFA</strong> / mois</span></p>
+                <p class="modal__subtitle" data-sale-only hidden>Villa 4 chambres · Bonapriso<span
+                        class="modal__price">&nbsp;· <strong>240M FCFA</strong></span></p>
             </div>
             <a class="modal__close" data-modal-close href="#main">
                 <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
@@ -439,7 +558,8 @@
     <div class="modal__panel">
         <header class="modal__header">
             <div>
-                <h2 class="modal__title" id="reject-title">Pourquoi pas ce logement&nbsp;?</h2>
+                <h2 class="modal__title" id="reject-title"><span data-rental-only>Pourquoi pas ce
+                    logement&nbsp;?</span><span data-sale-only hidden>Pourquoi pas ce bien&nbsp;?</span></h2>
                 <p class="modal__subtitle">Votre réponse aide Serge à mieux choisir les prochains.</p>
             </div>
             <a class="modal__close" data-modal-close href="#main">
@@ -484,8 +604,10 @@
         <header class="modal__header">
             <div>
                 <h2 class="modal__title" id="visit-title">Demander une visite</h2>
-                <p class="modal__subtitle">Appartement 3 chambres · Bonapriso<span
+                <p class="modal__subtitle" data-rental-only>Appartement 3 chambres · Bonapriso<span
                         class="modal__price">&nbsp;· <strong>240K FCFA</strong> / mois</span></p>
+                <p class="modal__subtitle" data-sale-only hidden>Villa 4 chambres · Bonapriso<span
+                        class="modal__price">&nbsp;· <strong>240M FCFA</strong></span></p>
             </div>
             <a class="modal__close" data-modal-close href="#main">
                 <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
@@ -503,9 +625,12 @@
                         <svg aria-hidden="true" class="icon"><use href="#i-video"/></svg>En vidéo</label>
                 </div>
                 <!-- The chosen type's line (CSS :has; both shown without it) -->
-                <p class="visit-type__hint visit-type__hint--on-site">Serge vous fait visiter le logement sur place.</p>
-                <p class="visit-type__hint visit-type__hint--video">Serge vous fait visiter le logement en direct, par
-                    appel vidéo WhatsApp.</p>
+                <p class="visit-type__hint visit-type__hint--on-site"><span data-rental-only>Serge vous fait visiter le
+                    logement sur place.</span><span data-sale-only hidden>Serge vous fait visiter le bien sur
+                    place.</span></p>
+                <p class="visit-type__hint visit-type__hint--video"><span data-rental-only>Serge vous fait visiter le
+                    logement en direct, par appel vidéo WhatsApp.</span><span data-sale-only hidden>Serge vous fait
+                    visiter le bien en direct, par appel vidéo WhatsApp.</span></p>
                 <span aria-live="polite" class="field-error"></span>
             </div>
             <p class="visit-request__contact">
@@ -598,6 +723,16 @@
         {"src": "https://picsum.photos/seed/ndopify-m9001-kitchen/1600/1067", "alt": "Cuisine avec plan de travail"},
         {"src": "https://picsum.photos/seed/ndopify-m9001-bathroom/1600/1067", "alt": "Salle de bains avec douche"},
         {"src": "https://picsum.photos/seed/ndopify-m9001-facade/1600/1067", "alt": "Façade de l'immeuble et portail"}
+    ]
+</script>
+<script id="listing-photos-sale" type="application/json">
+    [
+        {"src": "https://picsum.photos/seed/ndopify-m9301-living/1600/1067", "alt": "Salon de la villa, ouvert sur la terrasse"},
+        {"src": "https://picsum.photos/seed/ndopify-m9301-facade/1600/1067", "alt": "Façade de la villa et jardin"},
+        {"src": "https://picsum.photos/seed/ndopify-m9301-terrace/1600/1067", "alt": "Terrasse et jardin"},
+        {"src": "https://picsum.photos/seed/ndopify-m9301-kitchen/1600/1067", "alt": "Cuisine équipée"},
+        {"src": "https://picsum.photos/seed/ndopify-m9301-bedroom/1600/1067", "alt": "Chambre principale"},
+        {"src": "https://picsum.photos/seed/ndopify-m9301-garden/1600/1067", "alt": "Jardin et portail"}
     ]
 </script>
 <div aria-label="Photos du logement" aria-modal="true" class="lightbox" data-lightbox hidden role="dialog">

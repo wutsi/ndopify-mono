@@ -684,3 +684,12 @@ fieldset.step h3 { margin-bottom: var(--space-xl); }
 
 /* v2 — in the hero grid, the eyebrow keeps its own width instead of stretching */
 .hero > .hero__eyebrow { justify-self: start; margin-bottom: 0; }
+
+/* v2 (#259) — the sale / rental / sold variants are switched with the hidden attribute. Some of their elements set a
+   display (badges, galleries, terms lists…), which would beat the user agent's [hidden] rule: keep the switch working
+   for them. No visual change of its own. */
+[data-rental-only][hidden],
+[data-sale-only][hidden],
+[data-sold-only][hidden],
+[data-interest-cta][hidden],
+[data-price-terms][hidden] { display: none; }

@@ -26,8 +26,8 @@
     e-mailed to them. Edited while En approbation, the mandate must be sent again (request-approval regenerates the
     contract). Wording follows the party: a client's search (Budget, Emménagement, "Indifférent" choices) or a
     landlord's property (Loyer, Disponibilité, no "Indifférent").
-    v2: a SALE mandate (?id=104 once accepted) reads data-label-sale-tenant / data-label-sale-owner when set (Budget
-    total, Prix de vente, Achat prévu), its price has no "/ mois" (data-sale-text) and furniture isn't asked.
+    v2: a SALE mandate (?id=104 once accepted) reads data-label-sale-tenant / data-label-sale-owner when set (Budget,
+    Prix, Achat prévu), its price has no "/ mois" (data-sale-text) and furniture isn't asked.
     PROTOTYPE: ?id=101 to 103 once accepted, 201 or 202; any other mandate, or one approved since, shows the locked view.
     The changes are kept in the session (KEYS.mandates, the mandate's "fields").
 -->
@@ -245,7 +245,7 @@
                         </summary>
                         <div class="edit-group__body">
                                 <div class="field">
-                                    <label class="field__label" for="price" data-label-tenant="Budget mensuel" data-label-owner="Loyer mensuel" data-label-sale-tenant="Budget total" data-label-sale-owner="Prix de vente">Budget mensuel</label>
+                                    <label class="field__label" for="price" data-label-tenant="Budget mensuel" data-label-owner="Loyer mensuel" data-label-sale-tenant="Budget" data-label-sale-owner="Prix">Budget mensuel</label>
                                     <div class="input-unit">
                                         <input class="input" id="price" name="price" type="text" inputmode="numeric" required aria-describedby="price-error">
                                         <span aria-hidden="true" class="input-unit__suffix" data-sale-text="FCFA">FCFA / mois</span>

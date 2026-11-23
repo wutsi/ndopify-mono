@@ -15,6 +15,49 @@
     return node;
   }
 
+  // ---------------------------------------------------------------- Sale variant
+
+  // ?sale=1: the page is the SALE listing (a villa, in annonce.html; the buyer's search in proposition.html). Its sale
+  // words are in the markup ([data-sale-only] blocks, [data-rental-only] for the rental ones): this only toggles them,
+  // so every word is right without JavaScript. &state=sold is the SOLD state: badge "Vendu", no interest form, no call
+  // to action and no conditions (data-sold-hide), as a sold listing is served today.
+  var params = new URLSearchParams(location.search);
+  var isSale = params.get('sale') === '1';
+  var isSold = isSale && params.get('state') === 'sold';
+
+  function showAll(selector, shown) {
+    document.querySelectorAll(selector).forEach(function (node) {
+      node.hidden = !shown;
+    });
+  }
+
+  function initListingVariant() {
+    showAll('[data-rental-only]', !isSale);
+    showAll('[data-sale-only]', isSale);
+    showAll('[data-sold-only]', isSold);
+    if (isSold) {
+      showAll('[data-interest-cta]', false);
+      showAll('[data-price-terms]', false);
+      showAll('[data-sale-badge]', false);
+      showAll('[data-sold-hide]', false);
+      // No form at all once sold: the popup is not only unreachable, it is out of the page
+      var popup = document.getElementById('visit');
+      if (popup) popup.hidden = true;
+    }
+    if (!isSale) return;
+    // annonce.html only: the villa's tab title, its description and the photo viewer's label
+    if (document.querySelector('[data-listing-page]')) {
+      document.title = 'Villa 5 chambres à vendre, Bonapriso — Douala | Ndopify';
+      var description = document.querySelector('meta[name="description"]');
+      if (description) {
+        description.setAttribute('content', 'Villa 5 chambres à vendre à Bonapriso, Douala. 250M FCFA. ' +
+          'Photos, surface et position vérifiées sur place ; confiez votre recherche à un agent vérifié du secteur.');
+      }
+    }
+    var lightbox = document.querySelector('[data-lightbox]');
+    if (lightbox) lightbox.setAttribute('aria-label', 'Photos du bien');
+  }
+
   // ---------------------------------------------------------------- Popups
 
   // Any [data-modal-open] link opens the dialog its href names (#visit, #reject, #cancel…), [data-modal-close] closes
@@ -92,9 +135,10 @@
       }
     });
 
-    // Opened on load when the page comes back from the server with #visit, or from a shared link
+    // Opened on load when the page comes back from the server with #visit, or from a shared link. A dialog the page
+    // took out (a SOLD sale's #visit) never opens.
     var target = location.hash && document.getElementById(location.hash.slice(1));
-    if (target && target.classList.contains('modal')) open(target, null);
+    if (target && !target.hidden && target.classList.contains('modal')) open(target, null);
   }
 
   // ---------------------------------------------------------------- Visit form
@@ -170,7 +214,8 @@
         showError(email, /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())
           ? '' : 'Cette adresse e-mail n\'est pas valide, vérifiez-la.'),
         showError(phoneInput, phoneError()),
-        showError(movingPeriod, checkedPeriod ? '' : 'Choisissez votre date d\'emménagement.')
+        showError(movingPeriod, checkedPeriod ? '' : (isSale ? 'Choisissez quand vous souhaitez acheter.'
+          : 'Choisissez votre date d\'emménagement.'))
       ].every(Boolean);
       if (!ok) {
         form.querySelector('[aria-invalid="true"]').focus();
@@ -210,7 +255,7 @@
   // swiping scrolls it, the buttons and arrows too.
   function initLightbox() {
     var box = document.querySelector('[data-lightbox]');
-    var data = document.getElementById('listing-photos');
+    var data = document.getElementById(isSale ? 'listing-photos-sale' : 'listing-photos');
     if (!box || !data) return;
     var photos = JSON.parse(data.textContent);
     var track = box.querySelector('[data-lightbox-track]');
@@ -339,6 +384,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
+    initListingVariant();
     initDialogs();
     var visit = document.getElementById('visit');
     // proposition.html's #visit popup has no contact fields (the mandate's): proposition.js does its form

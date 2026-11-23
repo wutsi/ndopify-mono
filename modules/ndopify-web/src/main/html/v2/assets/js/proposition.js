@@ -4,12 +4,16 @@
 // mandate's).
 // PROTOTYPE: the answer is kept in the session (it is final: no way back from REJECTED or ACCEPTED);
 // ?state=accepted|accepted-no-visit|visit-requested|rejected|expired|unavailable shows a
-// state, &type=video a video visit requested.
+// state, &type=video a video visit requested, &sale=1 the buyer's SALE search (its own kept answer, visit links that
+// stay on the sale variant).
 // EXPIRED: the client didn't answer within 7 days, no answer anymore (set by the server only, never from here).
 (function () {
   'use strict';
 
   var KEY = 'ndw.proposition.9001';
+  // v2 (#259): ?sale=1 is the buyer's SALE search — its own kept answer, and visit links that stay on the sale variant.
+  var SALE = new URLSearchParams(location.search).get('sale') === '1';
+  if (SALE) KEY += '.sale';
   var STATES = {
     accepted: 'ACCEPTED', 'accepted-no-visit': 'ACCEPTED_NO_VISIT', 'visit-requested': 'VISIT_REQUESTED', rejected: 'REJECTED', expired: 'EXPIRED',
     unavailable: 'UNAVAILABLE'
@@ -17,6 +21,10 @@
   var BADGES = {
     ACCEPTED: 'Vous intéresse', ACCEPTED_NO_VISIT: 'Vous intéresse', VISIT_REQUESTED: 'Visite demandée', REJECTED: 'Écarté', UNAVAILABLE: 'Plus disponible'
   };
+
+  function visitUrl(state, video) {
+    return 'visite.html?state=' + state + (video ? '&type=video' : '') + (SALE ? '&sale=1' : '');
+  }
 
   var store = {
     get: function () {
@@ -53,7 +61,7 @@
         label.textContent = 'Demander une visite';
       } else if (state === 'VISIT_REQUESTED') {
         action.removeAttribute('data-modal-open');
-        action.setAttribute('href', visitLink ? visitLink.getAttribute('href') : 'visite.html?state=requested');
+        action.setAttribute('href', visitLink ? visitLink.getAttribute('href') : visitUrl('requested'));
         label.textContent = 'Voir ma visite';
       }
     }
@@ -139,7 +147,7 @@
         (type === 'VIDEO' ? 'visite vidéo' : 'visite sur place') + ' le ' + slot +
         '. Serge vous confirme la date par e-mail.';
       showSlot(TYPES[type] + ' · ' + slot);
-      done.querySelector('.btn-primary').href = 'visite.html?state=requested' + (type === 'VIDEO' ? '&type=video' : '');
+      done.querySelector('.btn-primary').href = visitUrl('requested', type === 'VIDEO');
       document.querySelectorAll('[data-answer="VISIT_REQUESTED"] a, [data-bar-answer="VISIT_REQUESTED"] a')
         .forEach(function (a) {
           a.href = done.querySelector('.btn-primary').href;
@@ -153,10 +161,17 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     render(initialState());
+    if (SALE) {
+      document.title = 'Un bien pour vous : villa 4 chambres, Bonapriso — Douala | Ndopify';
+      // The page's own visit links (the VISIT_REQUESTED answer) stay on the sale variant.
+      document.querySelectorAll('a[href^="visite.html?"]').forEach(function (a) {
+        a.href = a.getAttribute('href') + '&sale=1';
+      });
+    }
     if (new URLSearchParams(location.search).get('type') === 'video') {
       showSlot(TYPES.VIDEO + ' · samedi 7 novembre 2026 à 10h30');
-      document.querySelectorAll('a[href="visite.html?state=requested"]').forEach(function (a) {
-        a.href = 'visite.html?state=requested&type=video';
+      document.querySelectorAll('a[href^="visite.html?state=requested"]').forEach(function (a) {
+        a.href = visitUrl('requested', true);
       });
     }
 
@@ -168,8 +183,8 @@
         var popup = form.closest('.modal');
         if (popup) closeDialog(popup);
         answer('ACCEPTED');
-        flash('Merci Sandrine ! Serge est prévenu que ce logement vous intéresse. Choisissez maintenant un ' +
-          'créneau de visite.');
+        flash('Merci Sandrine ! Serge est prévenu que ' + (SALE ? 'ce bien' : 'ce logement') + ' vous intéresse. ' +
+          'Choisissez maintenant un créneau de visite.');
       });
     });
 

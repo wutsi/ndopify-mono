@@ -33,12 +33,12 @@
 <!--
   v2 prototype — seller landing page (served at "/owner/sell"; "/owner" is the letting side, bailleur.html).
   A LISTING mandate with listingType = SALE: the owner is matched with a verified agent of their neighbourhood who
-  handles sales; the agent audits and publishes the property, proposes it to the buyers whose SEARCH mandate fits
-  it, and runs the visits.
+  handles rentals and sales; the agent audits and publishes the property, proposes it to the buyers whose SEARCH
+  mandate fits it, and runs the visits.
   The call to action is Partner Central's public "Proposer un bien" wizard with the sale branch:
-  {partnerCentralUrl}/offer-property?type=SALE (the wizard's sale branch is not built yet).
+  {partnerCentralUrl}/offer-property?type=SALE.
   Out of the MVP, so never promised here: title-deed checks, buyer vetting (solvency), notary / deed of sale,
-  payments through the platform, valuation.
+  payments through the platform, valuation, an agent specialisation.
 -->
 <body>
 <a class="skip-link" href="#main">Aller au contenu principal</a>
@@ -70,12 +70,12 @@
             <span class="hero__eyebrow">Un agent vérifié, dans votre quartier</span>
             <h1>Confiez la vente de votre bien à un agent vérifié</h1>
             <p class="hero__sub">Maison, appartement ou terrain : décrivez votre bien en quelques minutes. Un agent de
-                votre quartier, qui traite les ventes, l'audite, le publie et le présente aux acheteurs qui cherchent
-                exactement ce que vous vendez.</p>
+                votre quartier l'audite, le publie et le présente aux acheteurs qui cherchent exactement ce que vous
+                vendez.</p>
             <ul class="proof-stats">
                 <li><strong>0 FCFA</strong>pour l'audit, les photos</li>
                 <li><strong>100 %</strong>du prix de vente versé directement à vous</li>
-                <li><strong>Commission</strong>due uniquement si votre bien est vendu</li>
+                <li><strong>Commission</strong>un pourcentage du prix de vente, écrit dans le mandat</li>
             </ul>
             <div class="cta-row">
                 <a class="btn btn-primary" href="https://partner.ndopify.com/offer-property?type=SALE">Proposer mon
@@ -126,24 +126,24 @@
                     <p>Son identité et son compte Mobile Money ont été vérifiés avant son premier mandat.</p>
                 </li>
                 <li class="card">
-                    <h3 class="card-title">Un agent qui traite les ventes</h3>
-                    <p>Votre bien n'est proposé qu'aux agents qui ont déclaré traiter les ventes et ce type de bien,
-                        terrains compris.</p>
+                    <h3 class="card-title">Un agent de votre quartier</h3>
+                    <p>Votre bien est proposé aux agents vérifiés de votre quartier, quel que soit le type de bien : un
+                        même agent traite les locations et les ventes.</p>
                 </li>
                 <li class="card">
-                    <h3 class="card-title">Un agent de votre quartier</h3>
+                    <h3 class="card-title">Un agent disponible et bien noté</h3>
                     <p>Choisi selon sa disponibilité, sa réactivité et les avis de ses clients.</p>
                 </li>
                 <li class="card">
                     <h3 class="card-title">Un mandat de vente signé</h3>
-                    <p>Votre prix, ce que fait votre agent et sa commission sont écrits dans un mandat que vous signez
-                        en ligne.</p>
+                    <p>Votre prix, ce que fait votre agent et sa commission, un pourcentage du prix de vente, sont
+                        écrits dans un mandat que vous signez en ligne.</p>
                 </li>
             </ul>
             <div class="callout">
-                <h3>Votre bien est déjà proposé aux acheteurs qui le cherchent</h3>
-                <p>Sur Ndopify, les acheteurs décrivent leur projet à un agent. Votre agent voit tout de suite les
-                    recherches qui correspondent à votre bien, les siennes comme celles de ses confrères.</p>
+                <h3>Votre bien est présenté aux acheteurs qui le cherchent</h3>
+                <p>Sur Ndopify, les acheteurs décrivent leur projet à un agent. Votre agent voit les recherches qui
+                    correspondent à votre bien, les siennes comme celles de ses confrères.</p>
             </div>
             <div class="cta-row">
                 <a class="btn btn-primary" href="https://partner.ndopify.com/offer-property?type=SALE">Proposer mon
@@ -161,8 +161,8 @@
                 <li><h3>Décrivez votre bien</h3>
                     <p>Ville, quartier, type de bien (maison, appartement, terrain…), surface et prix demandé.</p></li>
                 <li><h3>Un agent vérifié l'accepte</h3>
-                    <p>Un agent de votre quartier qui traite les ventes prend votre bien. Vous recevez un e-mail, puis
-                        le mandat de vente à signer en ligne.</p></li>
+                    <p>Un agent vérifié de votre quartier prend votre bien. Vous recevez un e-mail, puis le mandat de
+                        vente à signer en ligne.</p></li>
                 <li><h3>Audit &amp; publication</h3>
                     <p>Votre agent vient voir le bien, prend les photos, vérifie les informations et publie
                         l'annonce.</p></li>
@@ -188,9 +188,10 @@
                         <button aria-controls="faq-1" aria-expanded="false" class="faq-trigger">Combien ça coûte
                             ?<span aria-hidden="true" class="chevron">▾</span></button>
                     </h3>
-                    <div class="faq-panel" hidden id="faq-1"><p>Rien avant la vente : l'audit, les photos, la
-                        publication et les visites sont gratuits. Si votre bien est vendu grâce à votre agent, sa
-                        commission est celle écrite dans votre mandat. Ndopify ne perçoit aucun paiement.</p></div>
+                    <div class="faq-panel" hidden id="faq-1"><p>Rien avant la vente : l'audit, les photos et la
+                        publication sont gratuits. Si votre bien est vendu grâce à votre agent, sa
+                        commission, un pourcentage du prix de vente, est celle écrite dans votre mandat. Ndopify ne
+                        perçoit aucun paiement.</p></div>
                 </div>
                 <div class="faq-item">
                     <h3>
@@ -198,9 +199,8 @@
                             l'agent qui s'occupe de mon bien ?<span aria-hidden="true" class="chevron">▾</span></button>
                     </h3>
                     <div class="faq-panel" hidden id="faq-2"><p>Votre bien est proposé, un agent à la fois, aux agents
-                        vérifiés de votre quartier qui traitent les ventes et ce type de bien, selon leur
-                        disponibilité, leur réactivité et les avis de leurs clients. Le premier qui l'accepte devient
-                        votre agent.</p></div>
+                        vérifiés de votre quartier, selon leur disponibilité, leur réactivité et les avis de leurs
+                        clients. Le premier qui l'accepte devient votre agent.</p></div>
                 </div>
                 <div class="faq-item">
                     <h3>
@@ -217,7 +217,7 @@
                             terrain ?<span aria-hidden="true" class="chevron">▾</span></button>
                     </h3>
                     <div class="faq-panel" hidden id="faq-4"><p>Oui. Choisissez « Terrain » comme type de bien : il
-                        est confié à un agent qui traite les terrains dans votre quartier.</p></div>
+                        est confié à un agent vérifié de votre quartier.</p></div>
                 </div>
                 <div class="faq-item">
                     <h3>

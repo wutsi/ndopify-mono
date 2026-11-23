@@ -57,6 +57,9 @@
   cancelled-by-agent|expired|no-show|no-show-agent shows a state (default confirmed), and &type=video (or ?type=video
   alone) its video variant (data-visit-type); the forms move to the next state (visite.js). Visit of match 9001
   (proposition.html), mandate 204 in Partner Central's prototype.
+  v2 (#259): &sale=1 is the visit of a SALE match (proposition.html?sale=1): "Le bien" instead of "le logement", the
+  sale price, and once interested "Serge vous recontacte pour la suite de votre achat". The rest (fee, slots, cancel,
+  feedback) is the same. Rental page unchanged.
 -->
 <body class="visit-page">
 <a class="skip-link" href="#main">Aller au contenu principal</a>
@@ -107,11 +110,16 @@
         <!-- What and with whom, whatever the state -->
         <div class="visit-summary">
             <a class="visit-listing" href="proposition.html?state=visit-requested">
-                <img alt="" height="80" src="https://picsum.photos/seed/ndopify-m9001-living/240/160" width="120">
+                <img alt="" height="80" src="https://picsum.photos/seed/ndopify-m9001-living/240/160" width="120"
+                     data-rental-only>
+                <img alt="" height="80" src="https://picsum.photos/seed/ndopify-m9301-living/240/160" width="120"
+                     data-sale-only hidden>
                 <span class="visit-listing__text">
-                    <strong class="visit-listing__title">Appartement 3 chambres à Bonapriso</strong>
+                    <strong class="visit-listing__title"><span data-rental-only>Appartement 3 chambres à
+                        Bonapriso</span><span data-sale-only hidden>Villa 4 chambres à Bonapriso</span></strong>
                     <span class="visit-listing__place">Bonapriso, Douala</span>
-                    <span class="visit-listing__price"><strong>240K FCFA</strong> / mois</span>
+                    <span class="visit-listing__price" data-rental-only><strong>240K FCFA</strong> / mois</span>
+                    <span class="visit-listing__price" data-sale-only hidden><strong>240M FCFA</strong></span>
                 </span>
             </a>
             <div class="visit-agent">
@@ -199,7 +207,8 @@
 
             <!-- On site: the neighbourhood and the landmark; the agent gives the exact address before the visit -->
             <div class="visit-block" data-visit-type="ON_SITE">
-                <h3>Le logement</h3>
+                <h3 data-rental-only>Le logement</h3>
+                <h3 data-sale-only hidden>Le bien</h3>
                 <p class="visit-address__landmark"><svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>
                     <span>Bonapriso, Douala · près du rond-point Total Joss.</span></p>
                 <p>Serge vous communique l'adresse exacte et l'itinéraire avant la visite.</p>
@@ -207,7 +216,8 @@
 
             <!-- Video: never the exact address -->
             <div class="visit-block" data-visit-type="VIDEO" hidden>
-                <h3>Le logement</h3>
+                <h3 data-rental-only>Le logement</h3>
+                <h3 data-sale-only hidden>Le bien</h3>
                 <p class="visit-address__landmark"><svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>
                     <span>Bonapriso, Douala · près du rond-point Total Joss.</span></p>
                 <p>L'adresse exacte vous sera donnée si vous visitez sur place.</p>
@@ -271,8 +281,8 @@
                 serrures. Posez vos questions à Serge.</p>
             <p data-visit-type="VIDEO" hidden>Demandez à Serge de vous montrer chaque pièce de près : robinets, prises,
                 compteurs, fenêtres, serrures. Posez-lui vos questions.</p>
-            <p>À la fin, Serge clôture la visite : vous recevez un e-mail pour nous dire si le logement vous
-                intéresse.</p>
+            <p>À la fin, Serge clôture la visite : vous recevez un e-mail pour nous dire si <span data-rental-only>le
+                logement</span><span data-sale-only hidden>le bien</span> vous intéresse.</p>
         </section>
 
         <!-- ============================================================ COMPLETED: feedback, once -->
@@ -314,7 +324,9 @@
             <div data-visit-only="FEEDBACK_SENT">
                 <p class="notice notice--success">
                     <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
-                    <span>Le logement vous intéresse : Serge vous recontacte pour la suite.</span>
+                    <span data-rental-only>Le logement vous intéresse : Serge vous recontacte pour la suite.</span>
+                    <span data-sale-only hidden>Le bien vous intéresse : Serge vous recontacte pour la suite de votre
+                        achat.</span>
                 </p>
                 <p>Vous pouvez aussi lui écrire dès maintenant.</p>
                 <a class="btn btn-secondary" href="https://wa.me/237677000111" rel="noopener" target="_blank">
@@ -323,8 +335,8 @@
                 </a>
             </div>
             <div data-visit-only="FEEDBACK_SENT_NO" hidden>
-                <p>C'est noté : Serge est prévenu et continue de chercher pour vous. Il vous enverra d'autres
-                    logements.</p>
+                <p>C'est noté : Serge est prévenu et continue de chercher pour vous. Il vous enverra <span
+                        data-rental-only>d'autres logements.</span><span data-sale-only hidden>d'autres biens.</span></p>
             </div>
         </section>
 
@@ -338,7 +350,8 @@
             <p data-visit-only="CANCELLED">Serge est prévenu.</p>
             <p class="visit-facts__note" data-visit-only="CANCELLED_BY_AGENT" hidden>Son message : « Le propriétaire
                 n'est pas disponible ce jour-là, je vous propose une autre date. »</p>
-            <p>Le logement vous intéresse toujours&nbsp;? Vous pouvez demander une autre visite.</p>
+            <p><span data-rental-only>Le logement</span><span data-sale-only hidden>Le bien</span> vous intéresse
+                toujours&nbsp;? Vous pouvez demander une autre visite.</p>
             <a class="btn btn-primary" href="proposition.html?state=accepted">Demander une autre visite</a>
         </section>
 
@@ -347,7 +360,8 @@
             <h2 id="expired-title">Cette demande a expiré</h2>
             <p class="visit-ended"><span data-visit-type="ON_SITE">Sur place</span><span data-visit-type="VIDEO" hidden>Visite vidéo</span> · samedi 7 novembre 2026 à 10h30.</p>
             <p>Votre agent n'a pas confirmé votre demande à temps : elle a expiré.</p>
-            <p>Le logement vous intéresse toujours&nbsp;? Vous pouvez demander une autre visite.</p>
+            <p><span data-rental-only>Le logement</span><span data-sale-only hidden>Le bien</span> vous intéresse
+                toujours&nbsp;? Vous pouvez demander une autre visite.</p>
             <a class="btn btn-primary" href="proposition.html?state=accepted">Demander une autre visite</a>
         </section>
 
@@ -386,7 +400,8 @@
             <div>
                 <h2 class="modal__title" id="cancel-title"><span data-visit-only="REQUESTED" hidden>Annuler votre
                     demande&nbsp;?</span><span data-visit-only="CONFIRMED">Annuler la visite&nbsp;?</span></h2>
-                <p class="modal__subtitle">Appartement 3 chambres · Bonapriso</p>
+                <p class="modal__subtitle" data-rental-only>Appartement 3 chambres · Bonapriso</p>
+                <p class="modal__subtitle" data-sale-only hidden>Villa 4 chambres · Bonapriso</p>
             </div>
             <a class="modal__close" data-modal-close href="#main">
                 <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>

@@ -12,29 +12,47 @@ Ndopify matches a customer with a verified agent through a mandate; sales add tw
 | Buyer | SEARCH · SALE | `find-property.html?type=SALE` |
 | Seller | LISTING · SALE | `offer-property.html?type=SALE` |
 
-The DTOs already carry `listingType` (`SALE` / `RENTAL`) and `PeriodicityType.NONE`. A SALE mandate is offered only to
-agents whose specialisation covers it.
+The DTOs already carry `listingType` (`SALE` / `RENTAL`) and `PeriodicityType.NONE`. Every verified agent handles
+rentals and sales (decided 2026-11-22): no mandate is filtered on a specialisation, and no page asks for one.
 
 ## Changes from the current prototype
 
 | Page | Change |
 |---|---|
-| `find-property.html` (*Trouver un bien*) | Step 1 asks *Vous souhaitez : Louer / Acheter* (`listingType`, required, preselected from `?type=`). For a purchase: no *Chambre*, *Terrain* offered for residential use too (no rooms asked; its surface required), no furniture question, *Budget total* in FCFA (periodicity `NONE`, at least 1 000 000 FCFA), *Quand souhaitez-vous acheter ?* (same `MovingPeriod` values), the financing (*Comptant* / *Prêt bancaire* / *Transfert depuis l'étranger* / *Pas encore décidé*, required, review *Financement*; a rental sends none) and, for a *Terrain* purchase only, *Quels documents exigez-vous ?* (three documents, optional: *Titre foncier* / *Plan de bornage* / *Certificat de propriété*, review *Documents exigés*) and, as the budget is typed, the implied price per m² (display only, nothing stored); review *Achat, usage …* / *Achat prévu*. |
+| `find-property.html` (*Trouver un bien*) | Step 1 asks *Vous souhaitez : Louer / Acheter* (`listingType`, required, preselected from `?type=`). For a purchase: no *Chambre*, *Terrain* offered for residential use too (no rooms asked; its surface required), no furniture question, *Budget total* in FCFA (periodicity `NONE`, at least 1 000 000 FCFA), *Quand souhaitez-vous acheter ?* (same `MovingPeriod` values), the financing (*Comptant* / *Prêt bancaire* / *Transfert depuis l'étranger* / *Pas encore décidé*, required, review *Financement*; a rental sends none) and, for a *Terrain* purchase only, *Quels documents exigez-vous ?* (three documents, optional: *Titre foncier* / *Plan de bornage* / *Certificat de propriété*, review *Documents exigés*) and, as the budget is typed, the implied price per m² (display only, nothing stored); review *Achat, usage …* / *Achat prévu*. The sale reassurance names a verified agent of the area, not a sale specialist. |
 | `offer-property.html` (*Proposer un bien*) | Step 1 asks *Mettre en location / Vendre*, preselected from `?type=`. For a sale: *Prix de vente souhaité* in FCFA (periodicity `NONE`, at least 1 000 000 FCFA), no advance, deposit or furniture (sent as null), no *Chambre*, *Terrain* residential too; *Disponible à partir du* kept. A sale of a *Terrain* asks its *Document de propriété* (*Titre foncier* / *Plan de bornage* / *Certificat de propriété*, optional and several, review *Document de propriété*; sent only for a SALE · LAND, none is a valid answer). A sale of a *Terrain* also shows, as its surface is typed, the implied price per m² (asking price ÷ surface, rounded to the nearest 100 FCFA, display only, never stored). Rental/sale wordings are `data-for="RENTAL"` / `data-for="SALE"` pairs. *Quitter* and the confirmation go to the public site's `/owner/sell` for a sale, `/owner` for a rental. |
-| `rejoindre.html` (sign-up), `profile/edit.html` | The agent's specialisation, in the experience step (still 5 steps) and on the profile: *Quels mandats traitez-vous ?* (Location, Vente) and *Quels biens ?* (Logements, Locaux commerciaux, Terrains), at least one of each; shown on the review. Proposed fields: `listingTypes` (ListingType[]), `propertyCategories` (PropertyCategory[]), `land` (Boolean). |
-| `index.html` (Espace agent) | Every offer and *Mes mandats* card has a *Vente* / *Location* tag. Samples: sale offer **104** (a buyer's plot of land, 15M FCFA) and sale mandate **301** (a seller's villa, signed, listing to create). |
-| `mandate.html` | For a sale: *Acheteur* / *Vendeur*, *Budget total* / *Prix de vente* with no "/ mois", no rental terms; closing and cancel text for a sale (*Vente conclue*, *acte de vente*). The closed panel of a sale records the deal like the wizard that produced it: *Acheteur : …*, *Annonce n° … vendue*, *Vendu à un autre acheteur* for a deal closed without a counterpart, and the notice *félicitations pour cette vente !*. |
+| `rejoindre.html` (sign-up), `profile/edit.html` | No agent specialisation (every verified agent handles rentals and sales): the experience step keeps its *Depuis combien de temps exercez-vous ?* and *Comment exercez-vous ?* answers, the profile keeps its experience, city, neighbourhoods and biography. |
+| `index.html` (Espace agent) | Every offer and *Mes mandats* card has a *Vente* / *Location* tag. A sale's title reads *Acheteur* (a buyer's search) / *Vendeur* (a seller's listing), its facts *Budget* / *Prix* with no "/ mois" and *Achat prévu* / *Disponibilité*. Samples: sale offer **104** (a buyer's plot of land, 15M FCFA) and sale mandate **301** (a seller's villa, 250M FCFA, signed, listing to create). |
+| `mandate.html` | For a sale: *Acheteur* / *Vendeur* and a *Vente* tag, contact role *Acheteur* / *Vendeur*, criteria *Budget* / *Prix* with no "/ mois" and *Achat prévu* / *Disponibilité*, no furniture or other rental term; the next step addresses the buyer (*Proposez des biens à l'acheteur…*) or the seller (*… présentez le bien aux acheteurs*). Closing and cancel text for a sale (*Vente conclue*, *acte de vente*). |
+| `mandate.html` | The closed panel of a sale records the deal like the wizard that produced it: *Acheteur : …*, *Annonce n° … vendue*, *Vendu à un autre acheteur* for a deal closed without a counterpart, and the notice *félicitations pour cette vente !* (#258). |
 | `mandate.html` | A buyer's land purchase (#253/#256): *Documents exigés* (*Titre foncier · Plan de bornage*, or *Aucun document exigé*) stays among the **visible** criteria, with the note that a land for sale whose seller declared none of them is not proposed (*Un seul de ces documents déclaré suffit*). `?documents=none` shows a buyer who requires none: no note. |
-| `mandate/contract.html` | For a sale, a **Commission** field in % of the sale price (default 5 %): a proposal, see open questions. |
+| `mandate.html` | *Termes du contrat* (#257): a section after the progress and before *Sa recherche*, once the mandate has a contract — *Durée*, then for a sale *Commission* (*5 % du prix de vente* for 301, 7 % for 302), *Frais de visite* (*Aucun frais de visite* for 0), then *Signé le* / *Valable jusqu'au* once signed. A rental keeps today's rows, with no commission; a mandate not sent yet (104) has no section at all. |
+| `mandate/contract.html` | For a sale, a real **Commission** field in % of the sale price (#257): per mandate, whole number from 1 to 20, default 5 %, pre-filled from the contract (302 re-opens on 7 %, 301 on 5 %, 104 on the 5 % default as it has none); required, and posted without JavaScript. Hidden and disabled on a rental (201), whose success fee stays the contract's 1 month of rent. Its field error: *Indiquez un pourcentage entier, de 1 à 20 (par exemple 5).* |
 | `mandate/close.html` | For a sale: the counterpart step is *Acheteur* (a listing) / *Bien* (a search), *À quel acheteur le bien a-t-il été vendu ?*, *Vendu à un autre acheteur* / *Un bien hors de vos annonces*; the price step *Prix* / *Prix de vente final* in FCFA with no " / mois"; the recap *Acheteur* / *Prix de vente final*, its note naming the seller's / buyer's mandate; the request carries `PeriodicityType.NONE` (MONTHLY for a rental). Closing a buyer's search on another agent's listing leaves that listing on the market with its mandate: the note says so. |
-| `mandate/edit.html`, `listing.html`, `listing/conditions.html` | Sale labels; rental-only terms (deposit, advance, lease term, notice, furniture) hidden and saved empty; the listing's checklist row is *Prix et conditions*. |
+| `mandate/edit.html` | For a sale: the group *Budget et achat* (a buyer) / *Prix et disponibilité* (a seller), the *Budget* / *Prix* field in FCFA with no " / mois", no caution, advance, lease term, notice or furniture; its missing-price error names the *budget* / the *prix*. Rental unchanged. |
+| `listing.html`, `listing/conditions.html` | A sale listing's checklist row is *Prix et conditions*, its summary the sale price only. The conditions section is *Prix et conditions*: *Prix* and the date the property is free, the rental-only terms (caution, advance, lease term, notice, furniture) hidden and saved empty; the location and GPS hints say *acheteurs*, not *locataires*. |
+| Match cards (*Biens correspondants*, *Propositions*) | A sale's card reads *Prix* (no "/ mois") and *Disponibilité*, and its fit lines say *Disponible avant votre achat*. |
 | `offline.html` | Its links to the production stylesheet and icon go one level up (`../../resources/…`). |
 
 To review the sale states: `index.html` (offer 104, card 301), `mandate.html?id=301` (a seller's villa) and
-`mandate.html?id=302` (a seller's plot of land, whose criteria show its *Document de propriété*),
-`mandate/close.html?id=301`; accept offer 104 to open `mandate.html?id=104` (a buyer's land search: its visible
-*Documents exigés* and the note of #256 — `&documents=none` for *Aucun document exigé*, without the note) and
-`mandate/edit.html?id=104`; *Créer l'annonce* on 301, then `listing.html?id=501` and `listing/conditions.html?id=501`.
+`mandate.html?id=302` (a seller's plot of land, whose criteria show its *Document de propriété*), `mandate/close.html?id=301`;
+accept offer 104 to open `mandate.html?id=104` (a buyer's land search: its visible *Documents exigés* and the note of
+#256 — `&documents=none` for *Aucun document exigé*, without the note) and `mandate/edit.html?id=104`; *Créer
+l'annonce* on 301, then `listing.html?id=501` and `listing/conditions.html?id=501`.
+
+The empty and error states: `index.html?assignments=empty` (an agent without offers: no *Mandats proposés* section) and
+`index.html?mandates=empty` (no mandate in progress: the section's empty line). On `mandate/edit.html?id=104`, submit
+without a price: the error names the sale's *budget* (*Indiquez le budget, en FCFA.*). On
+`listing/conditions.html?id=501`, the section is *Prix et conditions*: submit without a price for its error, and note
+that the caution, advance, lease term and notice fields are absent (a sale saves them empty) and that
+`listing.html?id=501` summarises it as the sale price only.
+
+A sold sale listing: after `mandate.html?id=301&listing=published` and the closing of the #258 paragraph below,
+`listing.html?id=601` is the villa's listing, tagged *Vendu*, with no section to fill.
+
+The sale match cards are `mandate.html?id=303` and `?id=304`: the buyers of the seller's villa (301), with matches
+9301–9303 — *Prix*, *Disponibilité*, *Disponible avant votre achat*; 303's second match is another agent's villa
+(co-brokerage).
 
 Closing a sale (#258): `mandate.html?id=301&listing=published` shows the seller's villa published (listing 601) with
 the buyers it was sent to, then *Fermer le mandat* opens `mandate/close.html?id=301&listing=published`: the
@@ -45,23 +63,30 @@ acheteur* records the outside deal instead. `mandate.html?id=303` is the buyer's
 only closes the search. `?counterparts=unavailable` and `?counterpart=gone` show the counterpart step's two failures
 (the list unreadable, the answer kept no longer available).
 
+The contract (story #257): `mandate/contract.html?id=302` (a sale's *Commission* pre-filled with the contract's
+7 %), `?id=301` (5 %), `?id=104` (a sale with no contract yet: the 5 % default) and `?id=201` (a rental: no
+*Commission* field); submit the commission blank, 0, 21 or "5,5" for its error, and note the three terms stack on a
+phone. `mandate.html?id=301` and `?id=302` show *Termes du contrat* with the commission row (5 % and 7 % du prix de
+vente); `mandate.html?id=203` and `?id=204` a signed rental's terms, with no commission row, `?id=202` a rental's
+terms not signed yet (no *Signé le*), and `?id=104` no terms section at all (no contract).
+
 ## Out of scope, never promised here
 
 As in the MVP, plus, for sales: title-deed checks, buyer vetting or solvency, valuation, the deed of sale and the
-notary, and any payment through the platform.
+notary, any payment through the platform, and any agent specialisation.
+
+The commission of a sale is a percentage of the sale price, written in the mandate; the prototype gives no figure and
+never says who pays it (#257 owns the field).
 
 ## Open questions
 
-1. **Sale commission**: who pays (seller, buyer, both) and how much. The contract page proposes a % of the price,
-   default 5 %.
-2. **Specialisation and dispatch**: should a sale mandate fall back to any agent of the area when no specialist
-   accepts it? Are `listingTypes` / `propertyCategories` / `land` the right shape?
-3. **Timing**: a sale takes months; match expiry, mandate duration (*Durée*, 1–12 months) and the visit fee may need
-   their own defaults for a SALE.
-4. **Buying horizon**: reuse `MovingPeriod` (as here) or a sale-specific enum?
+1. **Sale commission figure and payer**: the pages say "un pourcentage du prix de vente, écrit dans le mandat", with no
+   figure and no promise about who pays.
+2. **Timing**: a sale takes months; match expiry and the visit fee may need their own defaults for a SALE.
+3. **Buying horizon**: reuse `MovingPeriod` (as here) or a sale-specific enum?
 
 ## Not done
 
 - Some generic wording still says "client" on a sale mandate (*Envoyer au client*, the contract page's resend line).
-- No sale match / proposal sample (`agent.html`, the visits) beyond the mandate pages.
+- E-mails and Telegram messages are approved copy in the story, not prototyped here.
 - Nothing in `templates/` or the BFF: this is the prototype only.
