@@ -179,8 +179,15 @@ class MandateTemplateTest {
         assertEquals("Locataire · Maison — Ndopify Partner Central", page.title())
         assertEquals("Locataire · Maison", page.selectFirst("h1")?.text())
         assertEquals("search", page.selectFirst("h1 [data-mandate-kind]")?.attr("data-mandate-kind"))
-        assertEquals("status-tag status-tag--warning", page.selectFirst(".mandate-intro .status-tag")?.className())
-        assertEquals("En approbation", page.selectFirst(".mandate-intro .status-tag")?.text())
+        // The type and the status are two pills of the same class, side by side outside the heading.
+        val tags = page.selectFirst(".mandate-intro__tags")!!
+        assertEquals(listOf("Location", "En approbation"), tags.select(".status-tag").map { it.text() })
+        assertEquals("status-tag status-tag--type", tags.selectFirst("[data-deal-tag]")?.className())
+        assertEquals(
+            "status-tag status-tag--warning",
+            tags.selectFirst(".status-tag:not(.status-tag--type)")?.className(),
+        )
+        assertNull(page.selectFirst("h1 [data-deal-tag]"))
         assertEquals("Mandat n° 201 · accepté le 10 oct. 2026", page.selectFirst(".mandate__meta")?.text())
         assertEquals("/#mandates-title", page.selectFirst(".back-link a")?.attr("href"))
         assertNotNull(page.selectFirst("nav.user-menu"))
@@ -671,7 +678,15 @@ class MandateTemplateTest {
         val page = render(APPROVED)
 
         assertTrue(page.text().contains("Une fois le bail signé, fermez le mandat (en bas de page) en indiquant le loyer convenu."))
-        assertNull(page.selectFirst("[data-deal-tag]"))
+        assertEquals("Location", page.selectFirst(".mandate-intro__tags [data-deal-tag]")?.text())
+    }
+
+    @Test
+    fun `an unknown listing type reads Location`() {
+        val page = render(APPROVED.copy(listingType = ListingType.UNKNOWN))
+
+        assertEquals("Location", page.selectFirst(".mandate-intro__tags [data-deal-tag]")?.text())
+        assertNull(page.selectFirst("h1 [data-deal-tag]"))
     }
 
     @Test
@@ -679,8 +694,10 @@ class MandateTemplateTest {
         val page = render(APPROVED.copy(listingType = ListingType.SALE))
 
         assertEquals("Acheteur · Maison", page.selectFirst("[data-mandate-title]")?.text())
-        assertEquals("Vente", page.selectFirst("h1 [data-deal-tag]")?.text())
-        assertEquals("status-tag status-tag--info", page.selectFirst("h1 [data-deal-tag]")?.className())
+        val tags = page.selectFirst(".mandate-intro__tags")!!
+        assertEquals(listOf("Vente", "Actif"), tags.select(".status-tag").map { it.text() })
+        assertEquals("status-tag status-tag--type", tags.selectFirst("[data-deal-tag]")?.className())
+        assertNull(page.selectFirst("h1 [data-deal-tag]"))
         assertEquals("Acheteur", page.selectFirst("[data-contact-role]")?.text())
         assertEquals("L'acheteur", page.selectFirst("#contact-title")?.text())
         assertEquals("Modifier les coordonnées de l'acheteur", page.selectFirst("[data-contact-edit]")?.attr("aria-label"))
@@ -695,7 +712,7 @@ class MandateTemplateTest {
         val page = render(APPROVED.copy(mandateType = MandateType.LISTING, listingType = ListingType.SALE))
 
         assertEquals("Vendeur · Maison", page.selectFirst("[data-mandate-title]")?.text())
-        assertEquals("Vente", page.selectFirst("h1 [data-deal-tag]")?.text())
+        assertEquals("Vente", page.selectFirst(".mandate-intro__tags [data-deal-tag]")?.text())
         assertEquals("Vendeur", page.selectFirst("[data-contact-role]")?.text())
         assertEquals("Le vendeur", page.selectFirst("#contact-title")?.text())
         assertEquals("Modifier les coordonnées du vendeur", page.selectFirst("[data-contact-edit]")?.attr("aria-label"))
