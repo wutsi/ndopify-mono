@@ -3,6 +3,7 @@ package com.wutsi.ndopify.esignature.ui.sign
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.wutsi.ndopify.contract.dto.ContractStatus
+import com.wutsi.ndopify.contract.dto.ContractType
 import com.wutsi.ndopify.esignature.client.ContractContent
 import com.wutsi.ndopify.esignature.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.AGENT
@@ -55,6 +56,15 @@ class SignViewsTest {
         assertEquals(CONTENT_HASH, view.contentHash)
         assertTrue(view.canSign)
         assertEquals(listOf(CONTENT_URL), fetched)
+    }
+
+    @Test
+    fun `a sale contract is named as in its e-mail`() {
+        val listing = views.build(CONTRACT.copy(type = ContractType.SALE_LISTING), CONTRACT_PARTY_ID, null, fetch)
+        assertEquals("Mandat de vente", listing.contractType)
+
+        val search = views.build(CONTRACT.copy(type = ContractType.SALE_SEARCH), CONTRACT_PARTY_ID, null, fetch)
+        assertEquals("Mandat de recherche (achat)", search.contractType)
     }
 
     @Test
