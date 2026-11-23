@@ -30,6 +30,12 @@ data class UpdateMandateRequest(
     val parkings: String? = null,
     val area: Int? = null,
 
+    /** The building's storeys (worded "étages"); a building sale only. */
+    val levels: Int? = null,
+
+    /** The building's dwellings/units; a building sale only. */
+    val units: Int? = null,
+
     val waterMeter: Boolean = false,
     val dedicatedWaterMeter: Boolean = false,
     val waterTank: Boolean = false,

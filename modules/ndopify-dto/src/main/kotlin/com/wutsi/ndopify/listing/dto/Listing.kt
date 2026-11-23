@@ -33,6 +33,9 @@ data class Listing(
     val parkings: Int? = null,
     val area: Int? = null,
     val levels: Int? = null,
+
+    /** The building's dwellings/units; a building sale only. */
+    val units: Int? = null,
     val floorLevel: Int? = null,
 
     val waterMeter: Boolean = false,

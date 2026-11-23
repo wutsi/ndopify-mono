@@ -16,6 +16,12 @@ data class Match(
     val neighborhoodScore: Double = 0.0,
     val priceScore: Double = 0.0,
     val roomsScore: Double = 0.0,
+
+    /** Closeness of the building's units; 1.0 when either side states none, or for any other pair. */
+    val unitsScore: Double = 1.0,
+
+    /** Closeness of the building's storeys (étages); 1.0 when either side states none, or for any other pair. */
+    val levelsScore: Double = 1.0,
     val amenitiesScore: Double = 0.0,
     val availabilityScore: Double = 0.0,
     val furnitureScore: Double = 0.0,

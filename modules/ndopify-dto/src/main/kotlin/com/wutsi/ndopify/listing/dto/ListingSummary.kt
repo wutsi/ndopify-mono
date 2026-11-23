@@ -22,6 +22,10 @@ data class ListingSummary(
     val rooms: Int? = null,
     val bathrooms: Int? = null,
     val area: Int? = null,
+    val levels: Int? = null,
+
+    /** The building's dwellings/units; a building sale only. */
+    val units: Int? = null,
 
     val price: Long = -1,
     val currencyCode: String = "",
