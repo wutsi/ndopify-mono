@@ -6,6 +6,7 @@ import com.wutsi.ndopify.listing.dto.ImageVariant
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.Location
@@ -93,6 +94,15 @@ class VisitTemplateTest {
     )
     private val images = listOf(ListingImage(id = 1, url = "https://cdn/1.jpg", title = "Photo 1"))
     private val locations = listOf(Location(id = 1, name = "Douala"), Location(id = 5, name = "Bonapriso"))
+
+    /** A SALE listing: a villa, 240M FCFA, no periodicity. */
+    private val saleListing = listing.copy(
+        listingType = ListingType.SALE,
+        propertyType = PropertyType.VILLA,
+        price = 240_000_000,
+        pricePeriodicityType = PeriodicityType.NONE,
+        title = "Villa 4 chambres à Bonapriso",
+    )
     private val agent = Agent(id = 3, party = Party(firstName = "Serge", lastName = "Ngono"), whatsappNumber = "+237677000111")
     private val customer = Customer(whatsappNumber = "+237699887766")
 
@@ -117,6 +127,7 @@ class VisitTemplateTest {
         agent: Agent? = this.agent,
         feedback: String? = null,
         images: List<ListingImage> = this.images,
+        listing: Listing? = this.listing,
     ) = VisitPages.of(
         visit,
         listing,
@@ -336,5 +347,58 @@ class VisitTemplateTest {
             render(of(visit(VisitStatus.COMPLETED, VisitType.ON_SITE).copy(visitFee = Money(5000, "XAF"))))
                 .selectFirst("[data-visit-fee]"),
         )
+    }
+
+    @Test
+    fun `a sale visit's page speaks of the bien and the purchase`() {
+        val doc = render(
+            of(
+                visit(VisitStatus.COMPLETED, VisitType.ON_SITE).copy(interest = VisitInterest.INTERESTED),
+                listing = saleListing,
+            ),
+        )
+
+        assertTrue(doc.text().contains("Le bien vous intéresse : Serge Ngono vous recontacte pour la suite de votre achat."))
+        assertEquals("240M FCFA", doc.selectFirst(".visit-listing__price")?.text())
+        listOf("logement", "dossier", "bail").forEach { assertFalse(doc.text().contains(it), it) }
+    }
+
+    @Test
+    fun `a sale visit's video block is the bien`() {
+        val doc = render(of(visit(VisitStatus.CONFIRMED, VisitType.VIDEO), listing = saleListing))
+
+        assertEquals("Le bien", doc.selectFirst("[data-visit-type=VIDEO] h3")?.text())
+        assertFalse(doc.text().contains("logement"))
+    }
+
+    @Test
+    fun `a sale visit's not interested thanks speak of other biens`() {
+        val doc = render(
+            of(
+                visit(VisitStatus.COMPLETED, VisitType.ON_SITE).copy(interest = VisitInterest.NOT_INTERESTED),
+                listing = saleListing,
+            ),
+        )
+
+        assertTrue(doc.text().contains("Il vous enverra d'autres biens."))
+        assertFalse(doc.text().contains("logement"))
+    }
+
+    @Test
+    fun `a sale visit's ended states speak of the bien`() {
+        listOf(VisitStatus.CANCELLED, VisitStatus.EXPIRED, VisitStatus.NO_SHOW).forEach { status ->
+            val doc = render(of(visit(status, VisitType.ON_SITE), listing = saleListing))
+
+            assertTrue(doc.text().contains("Le bien vous intéresse toujours"), status.name)
+            assertFalse(doc.text().contains("logement"), status.name)
+        }
+    }
+
+    @Test
+    fun `a sale visit's check-in e-mail is about the bien`() {
+        val doc = render(of(visit(VisitStatus.CHECKED_IN, VisitType.ON_SITE), listing = saleListing))
+
+        assertTrue(doc.text().contains("nous dire si le bien vous intéresse"))
+        assertFalse(doc.text().contains("logement"))
     }
 }

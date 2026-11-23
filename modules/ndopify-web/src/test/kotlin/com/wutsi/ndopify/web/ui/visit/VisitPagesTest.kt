@@ -4,6 +4,7 @@ import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
@@ -207,5 +208,22 @@ class VisitPagesTest {
         val page = of(visit(VisitStatus.CONFIRMED, VisitType.VIDEO).copy(visitFee = Money(5000, "XAF")))
 
         assertTrue(page.visitFee!!.replace('\u00a0', ' ').contains("5 000 FCFA"))
+    }
+
+    @Test
+    fun `a sale match's visit is worded for a buyer`() {
+        val page = of(visit(VisitStatus.REQUESTED, VisitType.ON_SITE), listing = Listing(listingType = ListingType.SALE))
+
+        assertTrue(page.sale)
+    }
+
+    @Test
+    fun `a rental match's visit keeps the rental wording`() {
+        assertFalse(of(visit(VisitStatus.REQUESTED, VisitType.ON_SITE)).sale)
+    }
+
+    @Test
+    fun `an unreadable listing counts as a rental`() {
+        assertFalse(of(visit(VisitStatus.REQUESTED, VisitType.ON_SITE), listing = null).sale)
     }
 }

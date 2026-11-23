@@ -141,7 +141,8 @@
 
             <!-- Video: never the exact address either -->
             <div class="visit-block" data-visit-type="VIDEO" th:if="${page.type.name() == 'VIDEO'}">
-                <h3>Le logement</h3>
+                <h3 th:if="${page.sale}">Le bien</h3>
+                <h3 th:unless="${page.sale}">Le logement</h3>
                 <p class="visit-address__landmark" th:if="${page.listing?.place}"><svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>
                     <span th:text="${page.listing?.place}">Bonapriso, Douala</span><span
                             th:if="${page.listing?.landmark}" th:text="' — ' + ${page.listing.landmark}"> — près de
@@ -175,8 +176,9 @@
                 fenêtres, serrures. Posez vos questions à votre agent.</p>
             <p th:if="${page.type.name() == 'VIDEO'}">Demandez à votre agent de vous montrer chaque pièce de près :
                 robinets, prises, compteurs, fenêtres, serrures. Posez-lui vos questions.</p>
-            <p>À la fin, votre agent clôture la visite : vous recevez un e-mail pour nous dire si le logement vous
-                intéresse.</p>
+            <p><th:block th:if="${page.sale}">À la fin, votre agent clôture la visite : vous recevez un e-mail pour nous
+                dire si le bien vous intéresse.</th:block><th:block th:unless="${page.sale}">À la fin, votre agent clôture
+                la visite : vous recevez un e-mail pour nous dire si le logement vous intéresse.</th:block></p>
         </section>
 
         <!-- ============================================================ COMPLETED -->
@@ -212,7 +214,10 @@
                 <th:block th:if="${page.feedbackInterest.name() == 'INTERESTED'}">
                     <p class="notice notice--success">
                         <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
-                        <span th:text="|Le logement vous intéresse : ${page.agent?.name ?: 'votre agent'} vous recontacte pour la suite (dossier, bail).|">Le logement vous intéresse : Serge vous recontacte pour la suite (dossier, bail).</span>
+                        <span th:if="${page.sale}"
+                              th:text="|Le bien vous intéresse : ${page.agent?.name ?: 'votre agent'} vous recontacte pour la suite de votre achat.|">Le bien vous intéresse : Serge vous recontacte pour la suite de votre achat.</span>
+                        <span th:unless="${page.sale}"
+                              th:text="|Le logement vous intéresse : ${page.agent?.name ?: 'votre agent'} vous recontacte pour la suite (dossier, bail).|">Le logement vous intéresse : Serge vous recontacte pour la suite (dossier, bail).</span>
                     </p>
                     <!--/* Both the copy and the link: an agent without a number leaves no WhatsApp promise */-->
                     <div class="feedback-thanks" th:if="${page.agent?.whatsappUrl}">
@@ -225,8 +230,12 @@
                         </a>
                     </div>
                 </th:block>
-                <p th:if="${page.feedbackInterest.name() == 'NOT_INTERESTED'}"
-                   th:text="|C'est noté : ${page.agent?.name ?: 'votre agent'} est prévenu et continue de chercher pour vous. Il vous enverra d'autres logements.|">C'est noté : Serge est prévenu et continue de chercher pour vous. Il vous enverra d'autres logements.</p>
+                <p th:if="${page.feedbackInterest.name() == 'NOT_INTERESTED' and page.sale}"
+                   th:text="|C'est noté : ${page.agent?.name ?: 'votre agent'} est prévenu et continue de chercher pour vous. Il vous enverra d'autres biens.|">C'est
+                    noté : Serge est prévenu et continue de chercher pour vous. Il vous enverra d'autres biens.</p>
+                <p th:if="${page.feedbackInterest.name() == 'NOT_INTERESTED' and !page.sale}"
+                   th:text="|C'est noté : ${page.agent?.name ?: 'votre agent'} est prévenu et continue de chercher pour vous. Il vous enverra d'autres logements.|">C'est
+                    noté : Serge est prévenu et continue de chercher pour vous. Il vous enverra d'autres logements.</p>
             </th:block>
         </section>
 
@@ -244,7 +253,7 @@
             <p class="visit-facts__note"
                th:if="${page.cancelledBy?.name() != 'CUSTOMER' and page.cancellationReason != null}"
                th:text="|Son message : « ${page.cancellationReason} »|">Son message : « … »</p>
-            <p>Le logement vous intéresse toujours&nbsp;? Vous pouvez demander une autre visite.</p>
+            <p><th:block th:if="${page.sale}">Le bien vous intéresse toujours&nbsp;?</th:block><th:block th:unless="${page.sale}">Le logement vous intéresse toujours&nbsp;?</th:block> Vous pouvez demander une autre visite.</p>
             <a class="btn btn-primary" th:href="${page.matchUrl}">Demander une autre visite</a>
         </section>
 
@@ -254,7 +263,7 @@
             <h2 id="expired-title">Cette demande a expiré</h2>
             <p class="visit-ended" th:text="${page.requestedSlot}">Sur place · samedi 7 novembre 2026 à 10h30</p>
             <p>Votre agent n'a pas confirmé votre demande à temps : elle a expiré.</p>
-            <p>Le logement vous intéresse toujours&nbsp;? Vous pouvez demander une autre visite.</p>
+            <p><th:block th:if="${page.sale}">Le bien vous intéresse toujours&nbsp;?</th:block><th:block th:unless="${page.sale}">Le logement vous intéresse toujours&nbsp;?</th:block> Vous pouvez demander une autre visite.</p>
             <a class="btn btn-primary" th:href="${page.matchUrl}">Demander une autre visite</a>
         </section>
 
@@ -269,7 +278,7 @@
                 <p th:unless="${page.noShowReason?.name() == 'CODE_REFUSED'}">Vous n'étiez pas à la visite.</p>
             </th:block>
             <p th:if="${page.noShowParty?.name() == 'AGENT'}">L'agent n'est pas venu / ne vous a pas appelé.</p>
-            <p>Le logement vous intéresse toujours&nbsp;? Vous pouvez demander une autre visite.</p>
+            <p><th:block th:if="${page.sale}">Le bien vous intéresse toujours&nbsp;?</th:block><th:block th:unless="${page.sale}">Le logement vous intéresse toujours&nbsp;?</th:block> Vous pouvez demander une autre visite.</p>
             <a class="btn btn-primary" th:href="${page.matchUrl}">Demander une autre visite</a>
         </section>
 
