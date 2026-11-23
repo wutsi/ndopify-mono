@@ -12,7 +12,8 @@
                         <a class="mandate-card__link" th:href="@{/mandates/{id}(id=${m.id})}"
                            th:text="${m.clientName ?: m.title}">Locataire · Maison</a>
                         <span class="mandate-card__kind" th:if="${m.clientName != null}" th:text="${m.title}">Locataire · Maison</span>
-                        <span class="status-tag status-tag--info" th:if="${m.sale}" data-deal-tag>Vente</span>
+                        <span class="status-tag status-tag--type" data-deal-tag
+                              th:text="${m.sale} ? 'Vente' : 'Location'">Vente</span>
                     </span>
                 </h3>
                 <p th:class="|status-tag status-tag--${m.tag.style}|" th:text="${m.tag.label}">Assigné</p>

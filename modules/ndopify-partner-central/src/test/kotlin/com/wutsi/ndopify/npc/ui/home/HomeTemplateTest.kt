@@ -204,7 +204,8 @@ class HomeTemplateTest {
         assertEquals("assignment-7", card.id())
         assertEquals("7", card.attr("data-assignment-id"))
         assertEquals((AssignmentViewsTest.NOW + 52 * 60_000L).toString(), card.attr("data-expires-at"))
-        assertEquals("Locataire", card.selectFirst("h3")?.text())
+        assertEquals("Locataire", card.selectFirst("h3 [data-deal-tag]")?.previousElementSibling()?.text())
+        assertEquals("Location", card.selectFirst("h3 [data-deal-tag]")?.text())
         assertEquals("search", card.selectFirst("h3 [data-mandate-kind]")?.attr("data-mandate-kind"))
         assertEquals("true", card.selectFirst("h3 [data-mandate-kind] svg")?.attr("aria-hidden"))
         assertEquals("52 min", card.selectFirst("[data-timer-value]")?.text())
@@ -362,19 +363,19 @@ class HomeTemplateTest {
         assertEquals("search", card.selectFirst("h3 [data-mandate-kind]")?.attr("data-mandate-kind"))
         assertEquals("mandate-201-title", card.selectFirst("h3")?.id())
         assertEquals("mandate-201-title", card.selectFirst("article")?.attr("aria-labelledby"))
-        assertEquals("status-tag status-tag--info", card.selectFirst(".status-tag")?.className())
-        assertEquals("Assigné", card.selectFirst(".status-tag")?.text())
+        assertEquals("status-tag status-tag--info", card.selectFirst(".status-tag:not(.status-tag--type)")?.className())
+        assertEquals("Assigné", card.selectFirst(".status-tag:not(.status-tag--type)")?.text())
         assertEquals(
             listOf("Secteurs", "Budget", "Emménagement"),
             card.select(".assignment__facts dt").map { it.text() })
         assertEquals("Bonapriso, Akwa", card.selectFirst(".assignment__facts dd")?.text())
-        assertEquals("status-tag status-tag--warning", cards[1].selectFirst(".status-tag")?.className())
+        assertEquals("status-tag status-tag--warning", cards[1].selectFirst(".status-tag:not(.status-tag--type)")?.className())
         assertTrue(page.selectFirst("[data-mandates-empty]")!!.hasAttr("hidden"))
         assertNull(page.selectFirst("[data-mandates-unavailable]"))
     }
 
     @Test
-    fun `sale cards carry the Vente tag`() {
+    fun `sale cards carry the Vente type badge`() {
         doReturn(listOf(ASSIGNMENT.copy(id = 104, mandateId = 104))).whenever(assignmentClient).pending(AGENT.id)
         doReturn(listOf(MandateSummariesTest.summary(MANDATE.copy(id = 104, listingType = ListingType.SALE))))
             .whenever(mandateClient).offered(AGENT.id)
@@ -391,19 +392,25 @@ class HomeTemplateTest {
         val offer = page.selectFirst("[data-assignment-id=104]")!!
         assertEquals("Acheteur", offer.selectFirst("[data-deal-tag]")?.previousElementSibling()?.text())
         assertEquals("Vente", offer.selectFirst("[data-deal-tag]")?.text())
-        assertEquals("status-tag status-tag--info", offer.selectFirst("[data-deal-tag]")?.className())
+        assertEquals("status-tag status-tag--type", offer.selectFirst("[data-deal-tag]")?.className())
 
         val card = page.selectFirst("[data-mandate-id=301]")!!
         assertEquals("Vendeur · Maison", card.selectFirst("a.mandate-card__link")?.text())
         assertEquals("Vente", card.selectFirst("[data-deal-tag]")?.text())
+        assertEquals("status-tag status-tag--type", card.selectFirst("[data-deal-tag]")?.className())
     }
 
     @Test
-    fun `a rental card carries no Vente tag`() {
+    fun `a rental card carries the Location type badge`() {
         val page = render(get("/"))
 
-        assertNull(page.selectFirst("[data-assignment] [data-deal-tag]"))
-        assertNull(page.selectFirst("[data-mandate-card] [data-deal-tag]"))
+        val offer = page.selectFirst("[data-assignment] [data-deal-tag]")
+        assertEquals("Location", offer?.text())
+        assertEquals("status-tag status-tag--type", offer?.className())
+
+        val card = page.selectFirst("[data-mandate-card] [data-deal-tag]")
+        assertEquals("Location", card?.text())
+        assertEquals("status-tag status-tag--type", card?.className())
     }
 
     @Test
