@@ -38,8 +38,11 @@
                 <h1>Trouver un bien</h1>
             </div>
             <div class="progress" data-progress-block>
-                <p class="progress__label" data-progress-label id="progress-label"
-                   th:text="|Étape ${stepNumber} sur ${stepCount}|">Étape 1 sur 7</p>
+                <div class="progress__head">
+                    <p class="progress__label" data-progress-label id="progress-label"
+                       th:text="|Étape ${stepNumber} sur ${stepCount}|">Étape 1 sur 7</p>
+                    <p class="project-tag" th:if="${step != 'need'}"><span class="visually-hidden">Projet&nbsp;: </span><span data-project-label th:text="${projectLabel}">Achat</span></p>
+                </div>
                 <div aria-labelledby="progress-label" class="progress__track" data-progress role="progressbar"
                      th:attr="aria-valuemin=1, aria-valuemax=${stepCount}, aria-valuenow=${stepNumber},
                               aria-valuetext=|Étape ${stepNumber} sur ${stepCount}|">
@@ -706,7 +709,10 @@
         <section aria-labelledby="confirmation-title" class="confirmation stack" data-confirmation tabindex="-1"
                  th:if="${step == 'confirmation'}">
             <span class="confirmation__mark"><svg th:replace="~{fragments/icon :: check('confirmation__icon')}"></svg></span>
-            <h2 id="confirmation-title">Demande envoyée</h2>
+            <div class="confirmation__head">
+                <h2 id="confirmation-title">Demande envoyée</h2>
+                <p class="project-tag"><span class="visually-hidden">Projet&nbsp;: </span><span data-project-label th:text="${projectLabel}">Achat</span></p>
+            </div>
             <p>Merci&nbsp;! Votre demande est enregistrée. Voici la suite&nbsp;:</p>
             <ol class="next-steps">
                 <li>
