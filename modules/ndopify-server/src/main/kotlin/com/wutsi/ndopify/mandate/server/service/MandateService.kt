@@ -164,8 +164,9 @@ class MandateService(
 
     /**
      * Creates the mandate. The purchase answers are the buyer's brief: a rental keeps no financing, and only a land
-     * purchase keeps documents (empty is a valid answer); the implied price per m² is computed on the page and never
-     * stored.
+     * purchase keeps documents (empty is a valid answer). The seller's ownership documents are the seller's brief in
+     * the same way: a rental and any non-land sale have none, and they filter nothing. The implied price per m² is
+     * computed on the page and never stored.
      */
     @Transactional
     fun create(request: CreateMandateRequest): MandateEntity {
@@ -179,6 +180,9 @@ class MandateService(
         val criteria = origin?.criteria ?: request
         val sale = criteria.listingType == ListingType.SALE
         val titleDocuments = criteria.titleDocuments
+            .filter { sale && criteria.propertyType == PropertyType.LAND && it != TitleDocumentType.UNKNOWN }
+            .distinct()
+        val ownershipDocuments = criteria.ownershipDocuments
             .filter { sale && criteria.propertyType == PropertyType.LAND && it != TitleDocumentType.UNKNOWN }
             .distinct()
         val customer = customerService.findOrCreate(
@@ -237,6 +241,7 @@ class MandateService(
                 listingType = criteria.listingType,
                 financingType = criteria.financingType?.takeIf { sale },
                 titleDocuments = titleDocuments,
+                ownershipDocuments = ownershipDocuments,
                 cityId = criteria.cityId,
                 neighborhoodIds = criteria.neighbourhoodIds,
                 propertyType = criteria.propertyType,
@@ -295,7 +300,8 @@ class MandateService(
      * change made since. A PENDING_APPROVAL mandate goes back to ASSIGNED and its contract is cancelled: the customer
      * mustn't sign the terms of before the change, and request-approval creates a new one. Like a signature, the
      * contract is locked before the mandate. The purchase answers are kept the same way as on create: no financing for
-     * a rental, documents only for a land purchase; the implied price per m² is never stored.
+     * a rental, documents only for a land purchase; the seller's ownership documents are kept for a land sale only and
+     * filter nothing. The implied price per m² is never stored.
      */
     @Transactional
     fun update(id: Long, request: UpdateMandateRequest): MandateEntity {
@@ -327,6 +333,9 @@ class MandateService(
         val titleDocuments = request.titleDocuments
             .filter { sale && request.propertyType == PropertyType.LAND && it != TitleDocumentType.UNKNOWN }
             .distinct()
+        val ownershipDocuments = request.ownershipDocuments
+            .filter { sale && request.propertyType == PropertyType.LAND && it != TitleDocumentType.UNKNOWN }
+            .distinct()
         return dao.save(
             mandate.copy(
                 status = status,
@@ -334,6 +343,7 @@ class MandateService(
                 listingType = request.listingType,
                 financingType = request.financingType?.takeIf { sale },
                 titleDocuments = titleDocuments,
+                ownershipDocuments = ownershipDocuments,
                 cityId = request.cityId,
                 neighborhoodIds = request.neighbourhoodIds,
                 propertyType = request.propertyType,

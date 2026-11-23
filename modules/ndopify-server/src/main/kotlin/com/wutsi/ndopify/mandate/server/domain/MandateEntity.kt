@@ -62,6 +62,10 @@ data class MandateEntity(
     @Convert(converter = TitleDocumentTypeListConverter::class)
     val titleDocuments: List<TitleDocumentType> = emptyList(),
 
+    /** The documents of ownership the seller declares: land sales only, empty otherwise. */
+    @Convert(converter = TitleDocumentTypeListConverter::class)
+    val ownershipDocuments: List<TitleDocumentType> = emptyList(),
+
     val cityId: Long = -1,
 
     // SUBSELECT, not per-mandate lazy loads: a mandate search maps every row to a DTO that carries its neighbourhoods,

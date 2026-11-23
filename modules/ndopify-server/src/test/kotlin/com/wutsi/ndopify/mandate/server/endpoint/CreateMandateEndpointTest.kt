@@ -439,6 +439,89 @@ class CreateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(emptyList(), mandate.titleDocuments)
     }
 
+    @Test
+    fun `create a land sale with its ownership documents`() {
+        val sale = request.copy(
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = PropertyType.LAND,
+            rooms = null,
+            furnitureType = null,
+            parkings = null,
+            area = 800,
+            price = Money(amount = 45_000_000, currency = "XAF", periodicity = PeriodicityType.NONE),
+            ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+        )
+
+        val created = rest.postForEntity("/v1/mandates", sale, CreateMandateResponse::class.java)
+
+        assertEquals(HttpStatus.OK, created.statusCode)
+        val mandate = rest.getForEntity("/v1/mandates/${created.body!!.mandateId}", GetMandateResponse::class.java)
+            .body!!.mandate
+        assertEquals(ListingType.SALE, mandate.listingType)
+        assertEquals(
+            listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+            mandate.ownershipDocuments,
+        )
+        assertEquals(PeriodicityType.NONE, mandate.price.periodicity)
+    }
+
+    @Test
+    fun `drop the ownership documents of a non-land sale`() {
+        val created = rest.postForEntity(
+            "/v1/mandates",
+            request.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
+                propertyType = PropertyType.VILLA,
+                ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE),
+            ),
+            CreateMandateResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, created.statusCode)
+        val mandate = rest.getForEntity("/v1/mandates/${created.body!!.mandateId}", GetMandateResponse::class.java)
+            .body!!.mandate
+        assertEquals(emptyList(), mandate.ownershipDocuments)
+    }
+
+    @Test
+    fun `drop the ownership documents of a rental`() {
+        val created = rest.postForEntity(
+            "/v1/mandates",
+            request.copy(
+                listingType = ListingType.RENTAL,
+                propertyType = PropertyType.LAND,
+                ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE),
+            ),
+            CreateMandateResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, created.statusCode)
+        val mandate = rest.getForEntity("/v1/mandates/${created.body!!.mandateId}", GetMandateResponse::class.java)
+            .body!!.mandate
+        assertEquals(emptyList(), mandate.ownershipDocuments)
+    }
+
+    @Test
+    fun `keep a land sale with no ownership document`() {
+        val created = rest.postForEntity(
+            "/v1/mandates",
+            request.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
+                propertyType = PropertyType.LAND,
+                ownershipDocuments = emptyList(),
+            ),
+            CreateMandateResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, created.statusCode)
+        val mandate = rest.getForEntity("/v1/mandates/${created.body!!.mandateId}", GetMandateResponse::class.java)
+            .body!!.mandate
+        assertEquals(emptyList(), mandate.ownershipDocuments)
+    }
+
     private fun countSearches(email: String): Int = ds.connection.use { conn ->
         conn.prepareStatement(
             "SELECT COUNT(*) FROM T_MANDATE m JOIN T_CUSTOMER c ON c.id = m.customer_id " +

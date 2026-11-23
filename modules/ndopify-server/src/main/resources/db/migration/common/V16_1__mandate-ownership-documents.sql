@@ -1,0 +1,2 @@
+ALTER TABLE T_MANDATE
+    ADD COLUMN ownership_documents TEXT NULL;

@@ -301,6 +301,72 @@ class UpdateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         )
     }
 
+    @Test
+    fun `update keeps the ownership documents of a land sale`() {
+        val sale = request.copy(
+            propertyType = PropertyType.LAND,
+            ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+        )
+
+        val response = rest.postForEntity("/v1/mandates/1", sale, Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val mandate = rest.getForEntity("/v1/mandates/1", GetMandateResponse::class.java).body!!.mandate
+        assertEquals(
+            listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+            mandate.ownershipDocuments,
+        )
+    }
+
+    @Test
+    fun `update drops the ownership documents of a non-land sale`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/1",
+            request.copy(propertyType = PropertyType.VILLA, ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE)),
+            Any::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(
+            emptyList(),
+            rest.getForEntity("/v1/mandates/1", GetMandateResponse::class.java).body!!.mandate.ownershipDocuments,
+        )
+    }
+
+    @Test
+    fun `update drops the ownership documents of a rental`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/1",
+            request.copy(
+                listingType = ListingType.RENTAL,
+                propertyType = PropertyType.LAND,
+                ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE),
+            ),
+            Any::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(
+            emptyList(),
+            rest.getForEntity("/v1/mandates/1", GetMandateResponse::class.java).body!!.mandate.ownershipDocuments,
+        )
+    }
+
+    @Test
+    fun `update keeps a land sale with no ownership document`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/1",
+            request.copy(propertyType = PropertyType.LAND, ownershipDocuments = emptyList()),
+            Any::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(
+            emptyList(),
+            rest.getForEntity("/v1/mandates/1", GetMandateResponse::class.java).body!!.mandate.ownershipDocuments,
+        )
+    }
+
     private fun neighborhoodIds(mandateId: Long): List<Long> {
         return ds.connection.use { conn ->
             conn.prepareStatement("SELECT neighborhood_id FROM T_MANDATE_NEIGHBORHOOD WHERE mandate_id = ?")
