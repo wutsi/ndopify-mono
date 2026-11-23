@@ -18,6 +18,9 @@ data class UpdateMandateRequest(
     /** The land documents a buyer requires; optional, land purchases only, empty otherwise. */
     val titleDocuments: List<TitleDocumentType> = emptyList(),
 
+    /** The documents of ownership the seller declares; optional, a land sale only, empty otherwise. */
+    val ownershipDocuments: List<TitleDocumentType> = emptyList(),
+
     val cityId: Long = -1,
     val neighbourhoodIds: List<Long> = emptyList(),
 
