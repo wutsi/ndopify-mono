@@ -30,6 +30,8 @@ class MandateMapper {
             rooms = entity.rooms,
             parkings = entity.parkings,
             area = entity.area,
+            levels = entity.levels,
+            units = entity.units,
             waterMeter = entity.waterMeter,
             dedicatedWaterMeter = entity.dedicatedWaterMeter,
             waterTank = entity.waterTank,

@@ -70,6 +70,14 @@ class MandateMapperTest {
     }
 
     @Test
+    fun `toMandate maps the building counts`() {
+        val mandate = mapper.toMandate(MandateEntity(levels = 3, units = 12))
+
+        assertEquals(3, mandate.levels)
+        assertEquals(12, mandate.units)
+    }
+
+    @Test
     fun `toMandate maps the deal the mandate was closed on`() {
         val entity = MandateEntity(
             id = 1L,
