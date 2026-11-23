@@ -5,8 +5,11 @@ import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
+import com.wutsi.ndopify.mandate.dto.FinancingType
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.npc.ui.join.JoinRules
 import com.wutsi.ndopify.npc.ui.mandate.Amenity
 import com.wutsi.ndopify.refdata.dto.Money
@@ -21,9 +24,14 @@ import java.io.Serializable
  *
  * `propertyType`, `furnitureType` and `parkings` are kept as text because they can be "Indifférent"
  * ([FindPropertyRules.ANY]), a UI answer the server doesn't know.
+ *
+ * `financingType` and `titleDocuments` are the buyer's brief for a purchase: a rental never sends them, and only a
+ * land purchase keeps documents. The price per m² the budget step shows is derived on the page and is never an
+ * answer here.
  */
 data class PendingMandate(
     val propertyCategory: PropertyCategory? = null,
+    val listingType: ListingType? = null,
     val cityId: Long? = null,
     val neighborhoodIds: List<Long> = emptyList(),
     val propertyType: String? = null,
@@ -31,9 +39,11 @@ data class PendingMandate(
     val furnitureType: String? = null,
     val parkings: String? = null,
     val area: Int? = null,
+    val titleDocuments: List<TitleDocumentType> = emptyList(),
     val amenities: Set<String> = emptySet(),
     val priceAmount: Long? = null,
     val movingPeriod: MovingPeriod? = null,
+    val financingType: FinancingType? = null,
     val firstName: String? = null,
     val lastName: String? = null,
     val email: String? = null,
@@ -50,26 +60,30 @@ data class PendingMandate(
 
     fun has(amenity: String): Boolean = amenities.contains(amenity)
 
+    fun isSale(): Boolean = FindPropertyRules.isSale(listingType)
+
     private fun type() = FindPropertyRules.parsePropertyType(propertyType)
 
     fun isComplete(step: String): Boolean = when (step) {
-        FindPropertyController.STEP_NEED -> FindPropertyRules.propertyCategory(propertyCategory) == null
+        FindPropertyController.STEP_NEED ->
+            FindPropertyRules.listingType(listingType) == null && FindPropertyRules.propertyCategory(propertyCategory) == null
 
         FindPropertyController.STEP_AREA ->
             FindPropertyRules.cityId(cityId) == null && FindPropertyRules.neighborhoodIds(neighborhoodIds) == null
 
         FindPropertyController.STEP_PROPERTY ->
-            FindPropertyRules.propertyType(propertyCategory, propertyType, null) == null &&
-                (!FindPropertyRules.needsRooms(propertyCategory, type(), null) || FindPropertyRules.rooms(rooms) == null) &&
-                (!FindPropertyRules.needsFurniture(type(), null) || FindPropertyRules.furnitureType(furnitureType) == null) &&
-                FindPropertyRules.area(area, false) == null
+            FindPropertyRules.propertyType(propertyCategory, propertyType, listingType) == null &&
+                (!FindPropertyRules.needsRooms(propertyCategory, type(), listingType) || FindPropertyRules.rooms(rooms) == null) &&
+                (!FindPropertyRules.needsFurniture(type(), listingType) || FindPropertyRules.furnitureType(furnitureType) == null) &&
+                FindPropertyRules.area(area, FindPropertyRules.needsArea(propertyCategory, type(), listingType)) == null
 
         // Every criterion is optional.
         FindPropertyController.STEP_AMENITIES -> true
 
         FindPropertyController.STEP_BUDGET ->
-            FindPropertyRules.isPriceAmount(priceAmount, null) &&
-                FindPropertyRules.movingPeriod(movingPeriod, null) == null
+            FindPropertyRules.isPriceAmount(priceAmount, listingType) &&
+                FindPropertyRules.movingPeriod(movingPeriod, listingType) == null &&
+                FindPropertyRules.financingType(financingType, listingType) == null
 
         FindPropertyController.STEP_CONTACT -> listOf(
             JoinRules.firstName(firstName),
@@ -88,21 +102,27 @@ data class PendingMandate(
         FindPropertyController.STEPS.dropLast(1).firstOrNull { step -> !isComplete(step) }
             ?: FindPropertyController.STEP_REVIEW
 
-    /** The answers as a TENANT rental mandate. Questions that don't apply to the chosen type are sent as null. */
+    /** The answers as a TENANT mandate. Questions that don't apply to the chosen type or project are sent as null. */
     fun toCreateMandateRequest(currency: String): CreateMandateRequest {
         val type = type()
+        val sale = isSale()
         return CreateMandateRequest(
             mandateType = MandateType.SEARCH,
-            // Only rentals for now: the visitor isn't asked.
-            listingType = ListingType.RENTAL,
+            // The wizard's project; the old hard-coded rental stays the default, never UNKNOWN.
+            listingType = listingType ?: ListingType.RENTAL,
+            // A rental never sends one; a non-land purchase sends no document either.
+            financingType = financingType.takeIf { sale },
+            titleDocuments = titleDocuments
+                .filter { sale && type == PropertyType.LAND }
+                .distinct(),
             propertyCategory = propertyCategory ?: PropertyCategory.UNKNOWN,
             cityId = cityId ?: -1,
             neighbourhoodIds = neighborhoodIds,
             propertyType = type,
             furnitureType = FurnitureType.entries
                 .firstOrNull { it.name == furnitureType }
-                ?.takeIf { FindPropertyRules.needsFurniture(type, null) },
-            rooms = rooms?.takeIf { FindPropertyRules.needsRooms(propertyCategory, type, null) },
+                ?.takeIf { FindPropertyRules.needsFurniture(type, listingType) },
+            rooms = rooms?.takeIf { FindPropertyRules.needsRooms(propertyCategory, type, listingType) },
             parkings = parkings?.takeIf { FindPropertyRules.asksParkings(type) && it != FindPropertyRules.ANY },
             area = area,
             waterMeter = has("waterMeter"),
@@ -119,7 +139,11 @@ data class PendingMandate(
             securedFenced = has("securedFenced"),
             securityGuard = has("securityGuard"),
             videoSurveillance = has("videoSurveillance"),
-            price = Money(amount = priceAmount ?: 0, currency = currency, periodicity = PeriodicityType.MONTHLY),
+            price = Money(
+                amount = priceAmount ?: 0,
+                currency = currency,
+                periodicity = if (sale) PeriodicityType.NONE else PeriodicityType.MONTHLY,
+            ),
             movingPeriod = movingPeriod ?: MovingPeriod.UNKNOWN,
             firstName = firstName.orEmpty(),
             lastName = lastName.orEmpty(),

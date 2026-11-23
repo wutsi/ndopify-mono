@@ -6,7 +6,9 @@ import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.mandate.dto.FinancingType
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
@@ -18,6 +20,7 @@ class PendingMandateTest {
     companion object {
         val COMPLETE = PendingMandate(
             propertyCategory = PropertyCategory.RESIDENTIAL,
+            listingType = ListingType.RENTAL,
             cityId = 2220957,
             neighborhoodIds = listOf(1001, 1002),
             propertyType = "APARTMENT",
@@ -89,6 +92,84 @@ class PendingMandateTest {
     fun changingCategoryInvalidatesProperty() {
         val changed = COMPLETE.copy(propertyCategory = PropertyCategory.COMMERCIAL)
         assertEquals("property", changed.firstIncompleteStep())
+    }
+
+    @Test
+    fun `a rental is the same request as before`() {
+        val pending = COMPLETE
+
+        val request = pending.toCreateMandateRequest("XAF")
+
+        assertEquals(ListingType.RENTAL, request.listingType)
+        assertEquals(PeriodicityType.MONTHLY, request.price.periodicity)
+        assertNull(request.financingType)
+        assertEquals(emptyList(), request.titleDocuments)
+    }
+
+    @Test
+    fun `a land purchase sends its financing and documents at a one-off price`() {
+        val pending = COMPLETE.copy(
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = "LAND",
+            area = 400,
+            priceAmount = 10_000_000,
+            financingType = FinancingType.CASH,
+            titleDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+            rooms = "3",
+            furnitureType = "UNFURNISHED",
+        )
+
+        val request = pending.toCreateMandateRequest("XAF")
+
+        assertEquals(ListingType.SALE, request.listingType)
+        assertEquals(PeriodicityType.NONE, request.price.periodicity)
+        assertEquals(FinancingType.CASH, request.financingType)
+        assertEquals(listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN), request.titleDocuments)
+        assertNull(request.rooms)
+        assertNull(request.furnitureType)
+        assertNull(request.securityDeposit)
+        assertNull(request.advanceRent)
+        assertNull(request.leaseTerm)
+        assertNull(request.noticePeriod)
+    }
+
+    @Test
+    fun `a villa purchase sends no document`() {
+        val pending = COMPLETE.copy(
+            listingType = ListingType.SALE,
+            propertyType = "VILLA",
+            titleDocuments = listOf(TitleDocumentType.LAND_TITLE),
+        )
+
+        assertEquals(emptyList(), pending.toCreateMandateRequest("XAF").titleDocuments)
+    }
+
+    @Test
+    fun `a land purchase without a document is complete`() {
+        val pending = PendingMandateTest.COMPLETE.copy(
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = "LAND",
+            area = 400,
+            rooms = null,
+            furnitureType = null,
+            parkings = null,
+            priceAmount = 10_000_000,
+            financingType = FinancingType.CASH,
+            titleDocuments = emptyList(),
+        )
+
+        assertTrue(pending.isComplete("property"))
+        assertFalse(pending.copy(area = null).isComplete("property"))
+    }
+
+    @Test
+    fun `a sale requires its financing`() {
+        val sale = COMPLETE.copy(listingType = ListingType.SALE, priceAmount = 10_000_000)
+
+        assertFalse(sale.isComplete("budget"))
+        assertTrue(sale.copy(financingType = FinancingType.CASH).isComplete("budget"))
     }
 
     @Test
