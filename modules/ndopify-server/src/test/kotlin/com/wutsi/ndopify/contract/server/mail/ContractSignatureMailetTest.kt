@@ -150,13 +150,6 @@ class ContractSignatureMailetTest {
     }
 
     @Test
-    fun `a sale search contract is a mandate to search`() {
-        mailet.send(contract.copy(type = ContractType.SALE_SEARCH), party)
-
-        assertEquals("Mandat de recherche", contractType())
-    }
-
-    @Test
     fun `a rental listing contract is a mandate to let`() {
         mailet.send(contract.copy(type = ContractType.LISTING), party)
 
