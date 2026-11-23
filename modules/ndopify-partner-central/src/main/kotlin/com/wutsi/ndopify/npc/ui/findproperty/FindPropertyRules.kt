@@ -126,6 +126,10 @@ object FindPropertyRules {
     fun listingType(value: ListingType?): String? =
         if (value == null || value == ListingType.UNKNOWN) "Indiquez si vous souhaitez louer ou acheter." else null
 
+    /** "Achat" / "Location", the buyer's project for every step after the first; rental when unanswered. */
+    fun projectLabel(listingType: ListingType?): String =
+        if (listingType == ListingType.SALE) "Achat" else "Location"
+
     fun propertyCategory(value: PropertyCategory?): String? =
         if (value == null || value == PropertyCategory.UNKNOWN) {
             "Indiquez si le bien est pour y habiter ou pour une activité."

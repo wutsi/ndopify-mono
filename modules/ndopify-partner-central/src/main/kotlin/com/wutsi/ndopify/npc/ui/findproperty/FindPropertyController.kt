@@ -83,6 +83,7 @@ class FindPropertyController(
             model.addAttribute("whatsappNumber", submitted.whatsappNumber)
             model.addAttribute("contactPeriodLabel", MandateLabels.CONTACT_PERIOD_LABELS[submitted.preferredContactPeriod])
             model.addAttribute("listingType", submitted.listingType)
+            model.addAttribute("projectLabel", FindPropertyRules.projectLabel(submitted.listingType))
             return VIEW
         }
 
@@ -308,6 +309,7 @@ class FindPropertyController(
         model.addAttribute("step", step)
         model.addAttribute("stepNumber", STEPS.indexOf(step) + 1)
         model.addAttribute("stepCount", STEPS.size)
+        model.addAttribute("projectLabel", FindPropertyRules.projectLabel(answers.listingType))
         model.addAttribute("answers", answers)
         model.addAttribute("errors", errors)
         // "Revenir à la revue" instead of "Suivant": only once every answer is in.

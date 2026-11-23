@@ -132,6 +132,27 @@ class OfferPropertyControllerTest {
     }
 
     @Test
+    fun `the project label follows the saved project`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale)
+        val saleStep = mvc.perform(get("/offer-property?step=features").session(session)).andReturn()
+        assertEquals("Vente", model(saleStep)["projectLabel"])
+
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, complete)
+        val rentalStep = mvc.perform(get("/offer-property?step=features").session(session)).andReturn()
+        assertEquals("Location", model(rentalStep)["projectLabel"])
+    }
+
+    @Test
+    fun `the confirmation carries the submitted project label`() {
+        session.setAttribute(
+            OfferPropertyController.SUBMITTED_ATTRIBUTE,
+            SubmittedMandate("ray@gmail.com", "+237670000001", ContactPeriodType.EVENING, ListingType.SALE),
+        )
+        val result = mvc.perform(get("/offer-property?step=confirmation").session(session)).andReturn()
+        assertEquals("Vente", model(result)["projectLabel"])
+    }
+
+    @Test
     fun noExitUrlWithoutPublicPortal() {
         doReturn(TENANT.copy(publicPortalUrl = " ")).whenever(tenantContext).getTenant()
 

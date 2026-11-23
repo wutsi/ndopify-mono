@@ -307,4 +307,11 @@ class FindPropertyRulesTest {
         assertNull(FindPropertyRules.comments("a".repeat(500)))
         assertEquals("Votre message ne doit pas dépasser 500 caractères.", FindPropertyRules.comments("a".repeat(501)))
     }
+
+    @Test
+    fun projectLabel() {
+        assertEquals("Achat", FindPropertyRules.projectLabel(ListingType.SALE))
+        assertEquals("Location", FindPropertyRules.projectLabel(ListingType.RENTAL))
+        assertEquals("Location", FindPropertyRules.projectLabel(null))
+    }
 }

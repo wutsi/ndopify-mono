@@ -624,6 +624,49 @@ class FindPropertyTemplateTest {
         assertEquals(tenant.publicPortalUrl, page.selectFirst(".cta-row a")?.attr("href"))
     }
 
+    @Test
+    fun `every step after the first shows the project pill`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete.copy(listingType = ListingType.SALE))
+
+        val page = render(get("/find-property?step=area"))
+
+        val pill = assertNotNull(page.selectFirst(".progress__head .project-tag"))
+        assertEquals("Achat", pill.selectFirst("[data-project-label]")?.text())
+        assertEquals("p", pill.tagName())
+        assertEquals("", pill.attr("role"))
+        assertEquals("", pill.attr("tabindex"))
+        assertNull(pill.selectFirst("a, button"))
+    }
+
+    @Test
+    fun `a rental step reads Location`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
+
+        val page = render(get("/find-property?step=area"))
+
+        assertEquals("Location", page.selectFirst(".progress__head [data-project-label]")?.text())
+    }
+
+    @Test
+    fun `step 1 shows no project pill`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, PendingMandate(listingType = ListingType.SALE))
+
+        assertNull(render(get("/find-property")).selectFirst(".project-tag"))
+    }
+
+    @Test
+    fun `the confirmation shows the submitted project under the title`() {
+        session.setAttribute(
+            SubmittedMandate.SESSION_ATTRIBUTE,
+            SubmittedMandate("ray@gmail.com", "+237670000001", ContactPeriodType.EVENING, ListingType.SALE),
+        )
+
+        val page = render(get("/find-property?step=confirmation"))
+
+        assertEquals("Achat", page.selectFirst(".confirmation__head [data-project-label]")?.text())
+        assertEquals("Demande envoyée", page.selectFirst("#confirmation-title")?.text())
+    }
+
     private fun render(request: MockHttpServletRequestBuilder): Document {
         val response = mvc.perform(request.session(session)).andReturn().response
         assertEquals(200, response.status)

@@ -999,6 +999,27 @@ class FindPropertyControllerTest {
         assertEquals("need", model(result)["step"])
     }
 
+    @Test
+    fun `the project label follows the saved project`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete.copy(listingType = ListingType.SALE))
+        val saleStep = mvc.perform(get("/find-property?step=area").session(session)).andReturn()
+        assertEquals("Achat", model(saleStep)["projectLabel"])
+
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
+        val rentalStep = mvc.perform(get("/find-property?step=area").session(session)).andReturn()
+        assertEquals("Location", model(rentalStep)["projectLabel"])
+    }
+
+    @Test
+    fun `the confirmation carries the submitted project label`() {
+        session.setAttribute(
+            SubmittedMandate.SESSION_ATTRIBUTE,
+            SubmittedMandate("ray@gmail.com", "+237670000001", ContactPeriodType.EVENING, ListingType.SALE),
+        )
+        val result = mvc.perform(get("/find-property?step=confirmation").session(session)).andReturn()
+        assertEquals("Achat", model(result)["projectLabel"])
+    }
+
     private fun pending(): PendingMandate? = session.getAttribute(PendingMandate.SESSION_ATTRIBUTE) as PendingMandate?
 
     @Suppress("UNCHECKED_CAST")

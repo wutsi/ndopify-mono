@@ -266,4 +266,11 @@ class OfferPropertyRulesTest {
         assertEquals(message, OfferPropertyRules.preferredContactPeriod(null))
         assertEquals(message, OfferPropertyRules.preferredContactPeriod(ContactPeriodType.UNKNOWN))
     }
+
+    @Test
+    fun projectLabel() {
+        assertEquals("Vente", OfferPropertyRules.projectLabel(ListingType.SALE))
+        assertEquals("Location", OfferPropertyRules.projectLabel(ListingType.RENTAL))
+        assertEquals("Location", OfferPropertyRules.projectLabel(null))
+    }
 }
