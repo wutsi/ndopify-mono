@@ -10,6 +10,7 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -899,6 +900,17 @@ class MandateTemplateTest {
     @Test
     fun `no documents note for a rental`() {
         assertNull(render(APPROVED).selectFirst("[data-mandate-documents-note]"))
+    }
+
+    @Test
+    fun `no documents note nor row for a non-land sale`() {
+        val page = render(LAND_SALE.copy(propertyType = PropertyType.HOUSE))
+
+        assertNull(page.selectFirst("[data-mandate-documents-note]"))
+        assertFalse(
+            (page.select("[data-mandate-key-criteria] .review__item") + page.select("[data-mandate-criteria] .review__item"))
+                .any { it.selectFirst("dt")?.text() == "Documents exigés" },
+        )
     }
 
     @Test

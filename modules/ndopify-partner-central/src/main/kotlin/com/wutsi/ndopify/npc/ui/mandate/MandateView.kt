@@ -41,7 +41,10 @@ data class MandateView(
     val outside: String?,
     /** Null when the customer can't be loaded. */
     val contact: ContactView?,
-    /** Sector, amount, moving date, type (with its rooms) and comments: always visible. */
+    /**
+     * Sector, amount, moving date, type (with its rooms), comments, and a land purchase's required documents (shown
+     * with the documents note): always visible.
+     */
     val keyCriteria: List<Pair<String, String>>,
     /** Under "Voir tous les critères". */
     val moreCriteria: List<Pair<String, String>>,

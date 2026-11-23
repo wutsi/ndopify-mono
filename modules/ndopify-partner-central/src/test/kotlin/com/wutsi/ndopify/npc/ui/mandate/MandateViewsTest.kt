@@ -345,6 +345,20 @@ class MandateViewsTest {
     }
 
     @Test
+    fun `a non-land sale has no documents row nor note`() {
+        val view = view(
+            APPROVED.copy(
+                listingType = ListingType.SALE,
+                propertyType = PropertyType.HOUSE,
+                titleDocuments = listOf(TitleDocumentType.LAND_TITLE),
+            ),
+        )
+
+        assertFalse(view.titleDocumentsRequired)
+        assertFalse((view.keyCriteria + view.moreCriteria).any { it.first == "Documents exigés" })
+    }
+
+    @Test
     fun `a seller's land mandate has no documents exigés row nor note`() {
         val view = view(
             MANDATE.copy(
