@@ -10,7 +10,9 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.mandate.dto.FinancingType
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.mandate.server.domain.AssignmentEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
@@ -100,6 +102,8 @@ class MandateOfferMailetTest {
                 "city" to "Yaounde",
                 "neighbourhoods" to "Bastos, Mvan",
                 "budget" to "1 500 000 XAF / mois",
+                "financing_type" to null,
+                "title_documents" to null,
                 "deadline_date" to "15/10/2026",
                 "deadline_time" to "13:00",
                 "offer_url" to "https://partner.ndopify.com",
@@ -160,6 +164,30 @@ class MandateOfferMailetTest {
 
         assertEquals("Achat", context["listing_type"])
         assertEquals("1 500 000 XAF", context["budget"])
+    }
+
+    @Test
+    fun `offer the financing and the land documents of a sale search`() {
+        val sale = mandate.copy(
+            listingType = ListingType.SALE,
+            propertyType = PropertyType.LAND,
+            pricePeriodicityType = PeriodicityType.NONE,
+            financingType = FinancingType.CASH,
+            titleDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+        )
+
+        val context = context(assignment.copy(mandate = sale))
+
+        assertEquals("Comptant", context["financing_type"])
+        assertEquals("Titre foncier · Plan de bornage", context["title_documents"])
+    }
+
+    @Test
+    fun `say no purchase answer for a rental search`() {
+        val context = context()
+
+        assertEquals(null, context["financing_type"])
+        assertEquals(null, context["title_documents"])
     }
 
     @Test

@@ -65,7 +65,11 @@ class MandateOfferMailet(
                             "available_from" to mandate.availableFrom?.let { date -> formatter.date(date) },
                         )
                     } else {
-                        mapOf("budget" to MandateMailLabels.budget(mandate, formatter))
+                        mapOf(
+                            "budget" to MandateMailLabels.budget(mandate, formatter),
+                            "financing_type" to MandateMailLabels.financingType(mandate),
+                            "title_documents" to MandateMailLabels.titleDocuments(mandate),
+                        )
                     }
                 )
             )

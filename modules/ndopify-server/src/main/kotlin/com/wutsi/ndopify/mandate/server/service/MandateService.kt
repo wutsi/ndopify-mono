@@ -20,6 +20,8 @@ import com.wutsi.ndopify.error.dto.ParameterType
 import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
+import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.server.service.RentalTerms
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
@@ -30,6 +32,7 @@ import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.RequestMandateApprovalRequest
 import com.wutsi.ndopify.mandate.dto.SearchMandateRequest
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.mandate.server.dao.AssignmentRepository
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
@@ -159,6 +162,11 @@ class MandateService(
         }
     }
 
+    /**
+     * Creates the mandate. The purchase answers are the buyer's brief: a rental keeps no financing, and only a land
+     * purchase keeps documents (empty is a valid answer); the implied price per m² is computed on the page and never
+     * stored.
+     */
     @Transactional
     fun create(request: CreateMandateRequest): MandateEntity {
         validateRentalTerms(request.securityDeposit, request.advanceRent)
@@ -169,6 +177,10 @@ class MandateService(
                 ?: throw NotFoundException(error = Error(code = ErrorCode.LISTING_NOT_FOUND))
         }
         val criteria = origin?.criteria ?: request
+        val sale = criteria.listingType == ListingType.SALE
+        val titleDocuments = criteria.titleDocuments
+            .filter { sale && criteria.propertyType == PropertyType.LAND && it != TitleDocumentType.UNKNOWN }
+            .distinct()
         val customer = customerService.findOrCreate(
             CreateCustomerRequest(
                 firstName = request.firstName,
@@ -223,6 +235,8 @@ class MandateService(
                 propertyCategory = criteria.propertyCategory,
                 mandateType = criteria.mandateType,
                 listingType = criteria.listingType,
+                financingType = criteria.financingType?.takeIf { sale },
+                titleDocuments = titleDocuments,
                 cityId = criteria.cityId,
                 neighborhoodIds = criteria.neighbourhoodIds,
                 propertyType = criteria.propertyType,
@@ -280,7 +294,8 @@ class MandateService(
      * when [UpdateMandateRequest.version] isn't the mandate's: the caller's copy is stale, saving it would overwrite the
      * change made since. A PENDING_APPROVAL mandate goes back to ASSIGNED and its contract is cancelled: the customer
      * mustn't sign the terms of before the change, and request-approval creates a new one. Like a signature, the
-     * contract is locked before the mandate.
+     * contract is locked before the mandate. The purchase answers are kept the same way as on create: no financing for
+     * a rental, documents only for a land purchase; the implied price per m² is never stored.
      */
     @Transactional
     fun update(id: Long, request: UpdateMandateRequest): MandateEntity {
@@ -308,11 +323,17 @@ class MandateService(
         } else {
             mandate.status
         }
+        val sale = request.listingType == ListingType.SALE
+        val titleDocuments = request.titleDocuments
+            .filter { sale && request.propertyType == PropertyType.LAND && it != TitleDocumentType.UNKNOWN }
+            .distinct()
         return dao.save(
             mandate.copy(
                 status = status,
                 propertyCategory = request.propertyCategory,
                 listingType = request.listingType,
+                financingType = request.financingType?.takeIf { sale },
+                titleDocuments = titleDocuments,
                 cityId = request.cityId,
                 neighborhoodIds = request.neighbourhoodIds,
                 propertyType = request.propertyType,

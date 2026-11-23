@@ -44,6 +44,16 @@
                         <li>
                             <b>Budget</b>: {{budget}}
                         </li>
+                        {{#financing_type}}
+                        <li>
+                            <b>Financement</b>: {{financing_type}}
+                        </li>
+                        {{/financing_type}}
+                        {{#title_documents}}
+                        <li>
+                            <b>Documents exigés</b>: {{title_documents}}
+                        </li>
+                        {{/title_documents}}
                     </ul>
                 </mj-text>
 

@@ -13,9 +13,12 @@ import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateResponse
+import com.wutsi.ndopify.mandate.dto.FinancingType
+import com.wutsi.ndopify.mandate.dto.GetMandateResponse
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.SearchAssignmentResponse
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.refdata.dto.Money
@@ -352,6 +355,88 @@ class CreateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         }
         assertTrue(agentMessage.content.toString().contains("Awa Ndiaye"))
         assertTrue(agentMessage.content.toString().contains("Contactez-le pour organiser la visite"))
+    }
+
+    // The price per m² is never stored: only the budget and the surface travel.
+
+    @Test
+    fun `create a sale search with its financing and land documents`() {
+        val sale = request.copy(
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.LAND,
+            rooms = null,
+            furnitureType = null,
+            parkings = null,
+            area = 400,
+            price = Money(amount = 10_000_000, currency = "XAF", periodicity = PeriodicityType.NONE),
+            financingType = FinancingType.CASH,
+            titleDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+        )
+
+        val created = rest.postForEntity("/v1/mandates", sale, CreateMandateResponse::class.java)
+
+        assertEquals(HttpStatus.OK, created.statusCode)
+        val mandate = rest.getForEntity("/v1/mandates/${created.body!!.mandateId}", GetMandateResponse::class.java)
+            .body!!.mandate
+        assertEquals(ListingType.SALE, mandate.listingType)
+        assertEquals(FinancingType.CASH, mandate.financingType)
+        assertEquals(listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN), mandate.titleDocuments)
+        assertEquals(PeriodicityType.NONE, mandate.price.periodicity)
+        assertNull(mandate.rooms)
+        assertNull(mandate.furnitureType)
+    }
+
+    @Test
+    fun `drop the financing of a rental`() {
+        val created = rest.postForEntity(
+            "/v1/mandates",
+            request.copy(listingType = ListingType.RENTAL, financingType = FinancingType.CASH),
+            CreateMandateResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, created.statusCode)
+        val mandate = rest.getForEntity("/v1/mandates/${created.body!!.mandateId}", GetMandateResponse::class.java)
+            .body!!.mandate
+        assertNull(mandate.financingType)
+    }
+
+    @Test
+    fun `drop the documents of a non-land sale`() {
+        val created = rest.postForEntity(
+            "/v1/mandates",
+            request.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
+                propertyType = PropertyType.VILLA,
+                titleDocuments = listOf(TitleDocumentType.LAND_TITLE),
+            ),
+            CreateMandateResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, created.statusCode)
+        val mandate = rest.getForEntity("/v1/mandates/${created.body!!.mandateId}", GetMandateResponse::class.java)
+            .body!!.mandate
+        assertEquals(emptyList(), mandate.titleDocuments)
+    }
+
+    @Test
+    fun `keep a land sale with no document`() {
+        val created = rest.postForEntity(
+            "/v1/mandates",
+            request.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = PropertyType.LAND,
+                titleDocuments = emptyList(),
+            ),
+            CreateMandateResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, created.statusCode)
+        val mandate = rest.getForEntity("/v1/mandates/${created.body!!.mandateId}", GetMandateResponse::class.java)
+            .body!!.mandate
+        assertEquals(emptyList(), mandate.titleDocuments)
     }
 
     private fun countSearches(email: String): Int = ds.connection.use { conn ->

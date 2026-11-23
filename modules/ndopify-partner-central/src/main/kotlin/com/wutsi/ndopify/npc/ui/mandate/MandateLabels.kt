@@ -2,11 +2,14 @@ package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.FurnitureType
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.mandate.dto.FinancingType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
@@ -95,6 +98,27 @@ object MandateLabels {
         PropertyCategory.COMMERCIAL to "Commercial",
     )
 
+    /** The step's verb, not the mandate's noun (prototype's LISTING_TYPE_LABELS). */
+    val LISTING_TYPE_LABELS: Map<ListingType, String> = linkedMapOf(
+        ListingType.RENTAL to "Louer",
+        ListingType.SALE to "Acheter",
+    )
+
+    /** How a purchase will be paid (prototype's FINANCING_LABELS). */
+    val FINANCING_LABELS: Map<FinancingType, String> = linkedMapOf(
+        FinancingType.CASH to "Comptant",
+        FinancingType.BANK_LOAN to "Prêt bancaire",
+        FinancingType.TRANSFER_FROM_ABROAD to "Transfert depuis l'étranger",
+        FinancingType.UNDECIDED to "Pas encore décidé",
+    )
+
+    /** The land documents a buyer may require (prototype's TITLE_DOCUMENT_LABELS). */
+    val TITLE_DOCUMENT_LABELS: Map<TitleDocumentType, String> = linkedMapOf(
+        TitleDocumentType.LAND_TITLE to "Titre foncier",
+        TitleDocumentType.SURVEY_PLAN to "Plan de bornage",
+        TitleDocumentType.CERTIFICATE_OF_OWNERSHIP to "Certificat de propriété",
+    )
+
     /** [labels] keyed by the enum's name: what a template looks up with a form's value (`labels['ROOM']`). */
     fun <E : Enum<E>> byName(labels: Map<E, String>): Map<String, String> = labels.mapKeys { it.key.name }
 
@@ -104,8 +128,16 @@ object MandateLabels {
 
     fun category(category: PropertyCategory): String? = CATEGORY_LABELS[category]
 
-    /** "Location, usage résidentiel", the wizards' project; null without a category. */
-    fun project(category: PropertyCategory?): String? = PROJECT_LABELS[category]?.let { "Location, $it" }
+    /** "Location, usage résidentiel" or "Achat, usage résidentiel", the wizards' project; null without a category. */
+    fun project(category: PropertyCategory?, listingType: ListingType?): String? =
+        PROJECT_LABELS[category]?.let { (if (FindPropertyRules.isSale(listingType)) "Achat, " else "Location, ") + it }
+
+    /** The review's horizon term: a purchase is planned, a rental is moved into (or installed for an activity). */
+    fun moveInTerm(listingType: ListingType?, category: PropertyCategory?): String = when {
+        FindPropertyRules.isSale(listingType) -> "Achat prévu"
+        category == PropertyCategory.COMMERCIAL -> "Date d'installation"
+        else -> "Date d'emménagement"
+    }
 
     fun propertyType(type: PropertyType?): String = PROPERTY_TYPE_LABELS[type] ?: "Tout type de bien"
 
@@ -147,10 +179,15 @@ object MandateLabels {
     fun title(mandate: Mandate): String =
         listOfNotNull(party(mandate.mandateType), shortPropertyType(mandate.propertyType)).joinToString(" · ")
 
+    /** "Titre foncier · Plan de bornage", in the stored order; "Aucun document exigé" for none. */
+    fun titleDocuments(documents: List<TitleDocumentType>): String =
+        documents.mapNotNull { TITLE_DOCUMENT_LABELS[it] }.joinToString(" · ").ifEmpty { "Aucun document exigé" }
+
     /**
      * The mandate's criteria as term → value rows, in the prototype's order (`criteriaOf`): sector, amount and moving
      * date first (a card's three facts), the category and the type (with them, the page's key criteria), then the
-     * follow-up questions that apply to the type, the amenities by group, and the comments.
+     * follow-up questions that apply to the type, the amenities by group, and the comments. A purchase has no
+     * furniture row, and adds the buyer's financing and the documents it requires for a plot of land.
      */
     fun criteria(
         mandate: Mandate,
@@ -158,6 +195,7 @@ object MandateLabels {
         formatter: TenantFormatter
     ): List<Pair<String, String>> {
         val owner = mandate.mandateType == MandateType.LISTING
+        val sale = FindPropertyRules.isSale(mandate.listingType)
         val type = mandate.propertyType
         val neighborhoods = mandate.neighborhoodIds.mapNotNull { locations[it]?.name }
         val sector = listOfNotNull(
@@ -178,12 +216,17 @@ object MandateLabels {
                 ),
             "Catégorie" to (category(mandate.propertyCategory) ?: NONE),
             "Type de propriété" to (PROPERTY_TYPE_LABELS[mandate.propertyType] ?: "Indifférent"),
-            ("Meublé" to furniture(mandate.furnitureType)).takeIf { FindPropertyRules.needsFurniture(type) },
+            ("Meublé" to furniture(mandate.furnitureType))
+                .takeIf { !sale && FindPropertyRules.needsFurniture(type, mandate.listingType) },
             mandate.rooms?.let { "Chambres" to it }
-                ?.takeIf { FindPropertyRules.needsRooms(mandate.propertyCategory, type) },
+                ?.takeIf { FindPropertyRules.needsRooms(mandate.propertyCategory, type, mandate.listingType) },
             ("Parking" to (mandate.parkings?.let { PARKING_VALUES[it] ?: it } ?: "Indifférent"))
                 .takeIf { FindPropertyRules.asksParkings(type) },
             mandate.area?.let { (if (owner) "Surface" else "Surface souhaitée") to formatNumber(it) + " m²" },
+        ) + listOfNotNull(
+            mandate.financingType?.takeIf { sale }?.let { "Financement" to (FINANCING_LABELS[it] ?: NONE) },
+            ("Documents exigés" to titleDocuments(mandate.titleDocuments))
+                .takeIf { sale && type == PropertyType.LAND },
         ) + amenityGroups(mandate) + listOfNotNull(mandate.comments?.trim()?.ifEmpty { null }
             ?.let { "Autres précisions" to it })
     }

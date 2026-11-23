@@ -10,12 +10,15 @@ import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateResponse
+import com.wutsi.ndopify.mandate.dto.FinancingType
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
@@ -177,6 +180,47 @@ class FindPropertyControllerTest {
     }
 
     @Test
+    fun `sale review labels`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = "LAND",
+                rooms = null,
+                furnitureType = null,
+                parkings = null,
+                area = 400,
+                priceAmount = 10_000_000,
+                financingType = FinancingType.CASH,
+                titleDocuments = emptyList(),
+            ),
+        )
+
+        val result = mvc.perform(get("/find-property?step=review").session(session)).andReturn()
+
+        assertEquals("Achat, usage commercial", model(result)["categoryLabel"])
+        assertEquals("10\u00a0000\u00a0000\u00a0FCFA", model(result)["priceLabel"])
+        assertEquals("Achat prévu", model(result)["moveInTerm"])
+        assertEquals("Comptant", model(result)["financingLabel"])
+        assertEquals("Aucun document exigé", model(result)["titleDocumentsLabel"])
+    }
+
+    @Test
+    fun `a rental review hides a leftover financing`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(listingType = ListingType.RENTAL, financingType = FinancingType.CASH),
+        )
+
+        val result = mvc.perform(get("/find-property?step=review").session(session)).andReturn()
+
+        assertEquals("review", model(result)["step"])
+        assertNull(model(result)["financingLabel"])
+        assertEquals("Budget mensuel", model(result)["priceTerm"])
+    }
+
+    @Test
     fun reviewLabelForAnyType() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
@@ -194,21 +238,71 @@ class FindPropertyControllerTest {
         assertEquals("Tout type de bien · 2 chambres · Non meublé", model(result)["propertyLabel"])
     }
 
+    @Test
+    fun `the need step stores the project`() {
+        val result = mvc.perform(
+            post("/find-property/need").session(session)
+                .param("listingType", "SALE")
+                .param("propertyCategory", "RESIDENTIAL"),
+        ).andReturn()
+
+        assertEquals("redirect:/find-property?step=area", result.modelAndView?.viewName)
+        assertEquals(ListingType.SALE, pending()?.listingType)
+        assertEquals(PropertyCategory.RESIDENTIAL, pending()?.propertyCategory)
+    }
+
+    @Test
+    fun `the need step requires the project`() {
+        val result = mvc.perform(post("/find-property/need").session(session)).andReturn()
+
+        assertEquals("need", model(result)["step"])
+        assertEquals("Indiquez si vous souhaitez louer ou acheter.", errors(result)["listingType"])
+        assertEquals("Indiquez si le bien est pour y habiter ou pour une activité.", errors(result)["propertyCategory"])
+        assertNull(pending())
+    }
+
+    @Test
+    fun `the type parameter preselects the project`() {
+        val result = mvc.perform(get("/find-property").param("type", "SALE").session(session)).andReturn()
+
+        assertEquals(ListingType.SALE, (model(result)["answers"] as PendingMandate).listingType)
+        assertNull(pending())
+    }
+
+    @Test
+    fun `the type parameter never overwrites a saved project`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, PendingMandate(listingType = ListingType.RENTAL))
+
+        val result = mvc.perform(get("/find-property").param("type", "SALE").session(session)).andReturn()
+
+        assertEquals(ListingType.RENTAL, (model(result)["answers"] as PendingMandate).listingType)
+    }
+
+    @Test
+    fun `an unknown type parameter is ignored`() {
+        val result = mvc.perform(get("/find-property").param("type", "ANY").session(session)).andReturn()
+
+        assertNull((model(result)["answers"] as PendingMandate).listingType)
+    }
+
     // POST /find-property/need
 
     @Test
     fun need() {
         val result = mvc.perform(
-            post("/find-property/need").session(session).param("propertyCategory", "RESIDENTIAL"),
+            post("/find-property/need").session(session)
+                .param("listingType", "RENTAL")
+                .param("propertyCategory", "RESIDENTIAL"),
         ).andReturn()
 
         assertEquals("redirect:/find-property?step=area", result.modelAndView?.viewName)
+        assertEquals(ListingType.RENTAL, pending()?.listingType)
         assertEquals(PropertyCategory.RESIDENTIAL, pending()?.propertyCategory)
     }
 
     @Test
     fun needMissing() {
-        val result = mvc.perform(post("/find-property/need").session(session)).andReturn()
+        val result = mvc.perform(post("/find-property/need").session(session).param("listingType", "RENTAL")).andReturn()
 
         assertEquals("need", model(result)["step"])
         assertEquals("Indiquez si le bien est pour y habiter ou pour une activité.", errors(result)["propertyCategory"])
@@ -222,7 +316,11 @@ class FindPropertyControllerTest {
             SubmittedMandate("ray@gmail.com", "+237670000001", null)
         )
 
-        mvc.perform(post("/find-property/need").session(session).param("propertyCategory", "COMMERCIAL")).andReturn()
+        mvc.perform(
+            post("/find-property/need").session(session)
+                .param("listingType", "RENTAL")
+                .param("propertyCategory", "COMMERCIAL"),
+        ).andReturn()
 
         assertNull(session.getAttribute(SubmittedMandate.SESSION_ATTRIBUTE))
     }
@@ -233,7 +331,7 @@ class FindPropertyControllerTest {
     fun area() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
-            PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL)
+            PendingMandate(listingType = ListingType.RENTAL, propertyCategory = PropertyCategory.RESIDENTIAL)
         )
 
         val result = mvc.perform(
@@ -251,7 +349,7 @@ class FindPropertyControllerTest {
     fun areaWithoutNeighborhoods() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
-            PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL)
+            PendingMandate(listingType = ListingType.RENTAL, propertyCategory = PropertyCategory.RESIDENTIAL)
         )
 
         val result = mvc.perform(post("/find-property/area").session(session).param("cityId", "$YAOUNDE")).andReturn()
@@ -275,7 +373,7 @@ class FindPropertyControllerTest {
     fun areaRejectsForeignCity() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
-            PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL)
+            PendingMandate(listingType = ListingType.RENTAL, propertyCategory = PropertyCategory.RESIDENTIAL)
         )
 
         val result = mvc.perform(
@@ -291,7 +389,7 @@ class FindPropertyControllerTest {
     fun areaRejectsNeighbourhoodOfOtherCity() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
-            PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL)
+            PendingMandate(listingType = ListingType.RENTAL, propertyCategory = PropertyCategory.RESIDENTIAL)
         )
 
         val result = mvc.perform(
@@ -306,7 +404,7 @@ class FindPropertyControllerTest {
     fun areaRejectsTooManyNeighbourhoods() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
-            PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL)
+            PendingMandate(listingType = ListingType.RENTAL, propertyCategory = PropertyCategory.RESIDENTIAL)
         )
 
         val result = mvc.perform(
@@ -323,7 +421,7 @@ class FindPropertyControllerTest {
     fun areaMissingCity() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
-            PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL)
+            PendingMandate(listingType = ListingType.RENTAL, propertyCategory = PropertyCategory.RESIDENTIAL)
         )
 
         val result = mvc.perform(post("/find-property/area").session(session)).andReturn()
@@ -352,6 +450,91 @@ class FindPropertyControllerTest {
         assertEquals("4", pending()?.rooms)
         assertEquals("UNFURNISHED", pending()?.furnitureType)
         assertEquals("2", pending()?.parkings)
+        assertNull(pending()?.area)
+    }
+
+    @Test
+    fun `a land purchase requires its surface`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(listingType = ListingType.SALE, propertyType = null, rooms = null),
+        )
+
+        val result = mvc.perform(
+            post("/find-property/property").session(session).param("propertyType", "LAND"),
+        ).andReturn()
+
+        assertEquals("property", model(result)["step"])
+        assertEquals("Indiquez la surface du terrain.", errors(result)["area"])
+        assertNull(pending()?.propertyType)
+    }
+
+    @Test
+    fun `a land purchase keeps any number of documents`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = null,
+                rooms = null,
+                furnitureType = null,
+                area = null,
+            ),
+        )
+
+        val result = mvc.perform(
+            post("/find-property/property").session(session)
+                .param("propertyType", "LAND")
+                .param("area", "400")
+                .param("titleDocuments", "LAND_TITLE", "SURVEY_PLAN"),
+        ).andReturn()
+
+        assertEquals("redirect:/find-property?step=amenities", result.modelAndView?.viewName)
+        assertEquals(
+            listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+            pending()?.titleDocuments,
+        )
+    }
+
+    @Test
+    fun `a villa purchase drops the documents`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(listingType = ListingType.SALE, propertyType = null, rooms = null),
+        )
+
+        mvc.perform(
+            post("/find-property/property").session(session)
+                .param("propertyType", "VILLA")
+                .param("titleDocuments", "LAND_TITLE"),
+        ).andReturn()
+
+        assertEquals(emptyList(), pending()?.titleDocuments)
+    }
+
+    @Test
+    fun `a land rental drops the documents`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(
+                listingType = ListingType.RENTAL,
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = null,
+                rooms = null,
+                furnitureType = null,
+                area = null,
+            ),
+        )
+
+        val result = mvc.perform(
+            post("/find-property/property").session(session)
+                .param("propertyType", "LAND")
+                .param("titleDocuments", "LAND_TITLE"),
+        ).andReturn()
+
+        assertEquals("redirect:/find-property?step=amenities", result.modelAndView?.viewName)
+        assertEquals(emptyList(), pending()?.titleDocuments)
         assertNull(pending()?.area)
     }
 
@@ -536,6 +719,68 @@ class FindPropertyControllerTest {
     }
 
     @Test
+    fun `a purchase requires its financing`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(listingType = ListingType.SALE, priceAmount = null, movingPeriod = null, financingType = null),
+        )
+
+        val result = mvc.perform(
+            post("/find-property/budget").session(session)
+                .param("priceAmount", "10 000 000")
+                .param("movingPeriod", "WITHIN_3_MONTHS"),
+        ).andReturn()
+
+        assertEquals("budget", model(result)["step"])
+        assertEquals("Indiquez comment vous financerez votre achat.", errors(result)["financingType"])
+        assertNull(pending()?.priceAmount)
+    }
+
+    @Test
+    fun `a purchase at the floor is accepted`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(listingType = ListingType.SALE, priceAmount = null, movingPeriod = null, financingType = null),
+        )
+
+        val result = mvc.perform(
+            post("/find-property/budget").session(session)
+                .param("priceAmount", "1 000 000")
+                .param("movingPeriod", "WITHIN_3_MONTHS")
+                .param("financingType", "CASH"),
+        ).andReturn()
+
+        assertEquals("redirect:/find-property?step=contact", result.modelAndView?.viewName)
+        assertEquals(1_000_000L, pending()?.priceAmount)
+        assertEquals(FinancingType.CASH, pending()?.financingType)
+    }
+
+    @Test
+    fun `a rental refuses a rent below the floor and needs no financing`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(listingType = ListingType.RENTAL, priceAmount = null, financingType = null),
+        )
+
+        val low = mvc.perform(
+            post("/find-property/budget").session(session)
+                .param("priceAmount", "4 000")
+                .param("movingPeriod", "WITHIN_1_MONTH"),
+        ).andReturn()
+        assertEquals("Indiquez un loyer d'au moins 5\u00a0000\u00a0FCFA par mois.", errors(low)["priceAmount"])
+
+        val result = mvc.perform(
+            post("/find-property/budget").session(session)
+                .param("priceAmount", "150 000")
+                .param("movingPeriod", "WITHIN_1_MONTH"),
+        ).andReturn()
+
+        assertEquals("redirect:/find-property?step=contact", result.modelAndView?.viewName)
+        assertEquals(150_000L, pending()?.priceAmount)
+        assertNull(pending()?.financingType)
+    }
+
+    @Test
     fun budgetBelowMinimum() {
         session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete.copy(priceAmount = null))
 
@@ -653,6 +898,7 @@ class FindPropertyControllerTest {
         assertEquals("ray@gmail.com", submitted.email)
         assertEquals("+237670000001", submitted.whatsappNumber)
         assertEquals(ContactPeriodType.EVENING, submitted.preferredContactPeriod)
+        assertEquals(ListingType.RENTAL, submitted.listingType)
     }
 
     @Test
@@ -732,6 +978,18 @@ class FindPropertyControllerTest {
         assertEquals("ra•••@gmail.com", model(result)["maskedEmail"])
         assertEquals("+237670000001", model(result)["whatsappNumber"])
         assertEquals("le soir", model(result)["contactPeriodLabel"])
+    }
+
+    @Test
+    fun `confirmation of a sale`() {
+        session.setAttribute(
+            SubmittedMandate.SESSION_ATTRIBUTE,
+            SubmittedMandate("ray@gmail.com", "+237670000001", ContactPeriodType.EVENING, ListingType.SALE),
+        )
+
+        val result = mvc.perform(get("/find-property?step=confirmation").session(session)).andReturn()
+
+        assertEquals(ListingType.SALE, model(result)["listingType"])
     }
 
     @Test

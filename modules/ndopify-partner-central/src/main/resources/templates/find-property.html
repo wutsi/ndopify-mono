@@ -52,14 +52,35 @@
 
             <!--/* Step 1: need (POST /find-property/need) */-->
             <form class="form" data-find-form method="post" novalidate th:action="@{/find-property/need}"
-                  th:if="${step == 'need'}">
+                  th:if="${step == 'need'}"
+                  th:attr="data-listing-type=${answers.listingType != null ? answers.listingType.name() : 'RENTAL'}">
                 <input name="returnTo" th:if="${returning}" type="hidden" value="review">
                 <fieldset class="step" data-step="need" tabindex="-1">
                     <legend class="visually-hidden" th:text="|Étape ${stepNumber} sur ${stepCount} : votre projet|">
                         Étape 1 sur 7 : votre projet</legend>
-                    <h3 aria-hidden="true">Que souhaitez-vous louer&nbsp;?</h3>
-                    <p>Décrivez le bien que vous cherchez à louer&nbsp;: un Agent Vérifié de votre secteur vous
-                        accompagne jusqu'à la signature. Comptez 3 à 5&nbsp;minutes, aucun document n'est demandé.</p>
+                    <h3 aria-hidden="true">Quel est votre projet&nbsp;?</h3>
+                    <p>Décrivez le bien que vous cherchez&nbsp;: un Agent Vérifié de votre secteur, qui traite ce type de
+                        projet, vous accompagne jusqu'à la signature. Comptez 3 à 5&nbsp;minutes, aucun document n'est
+                        demandé.</p>
+                    <fieldset aria-describedby="listingType-error" class="choices" data-group="listingType"
+                              th:attr="aria-invalid=${errors['listingType'] != null ? 'true' : null}">
+                        <legend class="choices__legend">Vous souhaitez&nbsp;:</legend>
+                        <div class="choices__grid">
+                            <label class="choice choice--described">
+                                <input name="listingType" required
+                                       th:checked="${#strings.equals(answers.listingType, 'RENTAL')}"
+                                       type="radio" value="RENTAL">
+                                <span><th:block th:text="${listingTypeLabels['RENTAL']}">Louer</th:block> <span class="choice__detail">Un agent cherche pour vous et organise vos
+                                    visites.</span></span></label>
+                            <label class="choice choice--described">
+                                <input name="listingType" required
+                                       th:checked="${#strings.equals(answers.listingType, 'SALE')}"
+                                       type="radio" value="SALE">
+                                <span><th:block th:text="${listingTypeLabels['SALE']}">Acheter</th:block> <span class="choice__detail">Maison, appartement, terrain… Un agent qui
+                                    traite les ventes cherche et visite avec vous.</span></span></label>
+                        </div>
+                        <p th:replace="~{:: error('listingType')}"></p>
+                    </fieldset>
                     <fieldset aria-describedby="propertyCategory-error" class="choices" data-group="propertyCategory"
                               th:attr="aria-invalid=${errors['propertyCategory'] != null ? 'true' : null}">
                         <legend class="choices__legend">Pour quel usage&nbsp;?</legend>
@@ -89,7 +110,8 @@
 
             <!--/* Step 2: area (POST /find-property/area) */-->
             <form class="form" data-find-form method="post" novalidate th:action="@{/find-property/area}"
-                  th:attr="data-locations-url=@{/locations}" th:if="${step == 'area'}">
+                  th:attr="data-locations-url=@{/locations}, data-listing-type=${answers.listingType != null ? answers.listingType.name() : 'RENTAL'}"
+                  th:if="${step == 'area'}">
                 <input name="returnTo" th:if="${returning}" type="hidden" value="review">
                 <fieldset class="step" data-step="area" tabindex="-1">
                     <legend class="visually-hidden"
@@ -145,9 +167,12 @@
 
             <!--/* Step 3: property (POST /find-property/property) */-->
             <form class="form" data-find-form method="post" novalidate th:action="@{/find-property/property}"
-                  th:if="${step == 'property'}">
+                  th:if="${step == 'property'}"
+                  th:attr="data-listing-type=${answers.listingType != null ? answers.listingType.name() : 'RENTAL'}">
                 <input name="returnTo" th:if="${returning}" type="hidden" value="review">
-                <fieldset class="step" data-step="property" tabindex="-1">
+                <fieldset class="step" data-step="property" tabindex="-1"
+                          th:with="sale=${#strings.equals(answers.listingType, 'SALE')},
+                                   landSale=${#strings.equals(answers.listingType, 'SALE') and #strings.equals(answers.propertyType, 'LAND')}">
                     <legend class="visually-hidden"
                             th:text="|Étape ${stepNumber} sur ${stepCount} : le bien recherché|">
                         Étape 3 sur 7 : le bien recherché</legend>
@@ -183,7 +208,8 @@
                     </fieldset>
 
                     <fieldset aria-describedby="furnitureType-error" class="choices" data-group="furnitureType"
-                              th:attr="aria-invalid=${errors['furnitureType'] != null ? 'true' : null}">
+                              th:attr="aria-invalid=${errors['furnitureType'] != null ? 'true' : null}"
+                              th:if="${!sale}">
                         <legend class="choices__legend">Meublé&nbsp;?</legend>
                         <div class="choices__grid">
                             <label class="choice"><input name="furnitureType"
@@ -220,8 +246,8 @@
 
                     <div class="field" data-group="area">
                         <label class="field__label" for="area"><span data-area-label
-                                th:text="${answers.propertyType == 'LAND'} ? 'Surface du terrain minimale' : 'Surface minimale'">Surface
-                            minimale</span> <span class="field__optional">(facultatif)</span></label>
+                                th:text="${landSale ? 'Surface du terrain' : (answers.propertyType == 'LAND' ? 'Surface du terrain minimale' : 'Surface minimale')}">Surface
+                            minimale</span> <span class="field__optional" data-area-optional th:unless="${landSale}">(facultatif)</span></label>
                         <div class="input-unit">
                             <input aria-describedby="area-error" class="input" id="area" inputmode="numeric" name="area"
                                    th:attr="aria-invalid=${errors['area'] != null ? 'true' : null}"
@@ -231,6 +257,22 @@
                         </div>
                         <p th:replace="~{:: error('area')}"></p>
                     </div>
+
+                    <!--/* Documents the buyer may require, asked only for a land purchase. Rendered even when hidden:
+                         without JS the boxes still post, and the server drops them for anything else. */-->
+                    <fieldset class="choices" data-group="titleDocuments" th:hidden="${!asksTitleDocuments}">
+                        <legend class="choices__legend">Quels documents exigez-vous&nbsp;? <span
+                                class="field__optional">(facultatif)</span></legend>
+                        <div class="choices__grid">
+                            <label class="choice" th:each="document : ${titleDocumentLabels}"><input
+                                    name="titleDocuments" type="checkbox"
+                                    th:checked="${answers.titleDocuments.![name].contains(document.key)}"
+                                    th:value="${document.key}"> <th:block
+                                    th:text="${document.value}">Titre foncier</th:block></label>
+                        </div>
+                        <p class="hint">Facultatif. Ces documents guident votre agent&nbsp;; ils ne filtrent pas les
+                            biens proposés.</p>
+                    </fieldset>
 
                     <div class="form__actions">
                         <a class="btn btn--outline" data-prev
@@ -244,7 +286,8 @@
 
             <!--/* Step 4: amenities (POST /find-property/amenities) — every box posts amenities=<field name> */-->
             <form class="form" data-find-form method="post" novalidate th:action="@{/find-property/amenities}"
-                  th:if="${step == 'amenities'}">
+                  th:if="${step == 'amenities'}"
+                  th:attr="data-listing-type=${answers.listingType != null ? answers.listingType.name() : 'RENTAL'}">
                 <input name="returnTo" th:if="${returning}" type="hidden" value="review">
                 <fieldset class="step" data-step="amenities" tabindex="-1">
                     <legend class="visually-hidden"
@@ -305,32 +348,43 @@
             <!--/* Step 5: budget (POST /find-property/budget) */-->
             <form class="form" data-find-form method="post" novalidate th:action="@{/find-property/budget}"
                   th:if="${step == 'budget'}"
-                  th:with="commercial=${#strings.equals(answers.propertyCategory, 'COMMERCIAL')}">
+                  th:with="commercial=${#strings.equals(answers.propertyCategory, 'COMMERCIAL')},
+                           sale=${#strings.equals(answers.listingType, 'SALE')}"
+                  th:attr="data-listing-type=${answers.listingType != null ? answers.listingType.name() : 'RENTAL'},
+                           data-area=${answers.area != null ? answers.area : ''},
+                           data-property-type=${answers.propertyType != null ? answers.propertyType : ''},
+                           data-currency=${currency}">
                 <input name="returnTo" th:if="${returning}" type="hidden" value="review">
                 <fieldset class="step" data-step="budget" tabindex="-1">
                     <legend class="visually-hidden"
                             th:text="|Étape ${stepNumber} sur ${stepCount} : votre budget et votre date d'emménagement|">
                         Étape 5 sur 7 : votre budget et votre date d'emménagement</legend>
                     <h3 aria-hidden="true">Votre budget et votre date</h3>
-                    <p data-budget-intro>Le montant maximal que vous êtes prêt à payer, et le moment où vous voulez
-                        vous installer.</p>
+                    <p data-budget-intro th:if="${sale}">Le prix maximal que vous êtes prêt à payer, et quand vous
+                        pensez acheter.</p>
+                    <p data-budget-intro th:unless="${sale}">Le montant maximal que vous êtes prêt à payer, et le moment
+                        où vous voulez vous installer.</p>
                     <div class="field">
-                        <label class="field__label" for="priceAmount">Budget mensuel</label>
+                        <label class="field__label" for="priceAmount"><span data-price-label
+                                th:text="${sale} ? 'Budget total' : 'Budget mensuel'">Budget mensuel</span></label>
                         <div class="input-unit">
                             <input aria-describedby="priceAmount-error price-hint" class="input" id="priceAmount"
                                    inputmode="numeric" name="priceAmount" required
                                    th:attr="aria-invalid=${errors['priceAmount'] != null ? 'true' : null}"
                                    th:value="${answers.priceAmount != null} ? ${#numbers.formatInteger(answers.priceAmount, 1, 'WHITESPACE')} : ''"
                                    type="text">
-                            <span aria-hidden="true" class="input-unit__suffix" th:text="${currency} + ' / mois'">FCFA / mois</span>
+                            <span aria-hidden="true" class="input-unit__suffix" data-price-suffix
+                                  th:text="|${currency}${sale ? '' : ' / mois'}|">FCFA / mois</span>
                         </div>
                         <p th:replace="~{:: error('priceAmount')}"></p>
+                        <!--/* Price per m², derived from the total budget and the surface (land purchase only): display
+                             only, never stored. Hidden until both exist; computed by find-property.js. */-->
+                        <p class="field__counter" data-price-per-sqm hidden></p>
                     </div>
                     <fieldset aria-describedby="movingPeriod-error" class="choices" data-group="movingPeriod"
                               th:attr="aria-invalid=${errors['movingPeriod'] != null ? 'true' : null}">
                         <!--/* A shop or an office is moved into too, but "s'installer" reads better for an activity. */-->
-                        <legend class="choices__legend" data-move-in-label
-                                th:text="${commercial} ? 'Date d\'installation souhaitée' : 'Date d\'emménagement souhaitée'">
+                        <legend class="choices__legend" data-move-in-label th:text="${moveInLabel}">
                             Date d'emménagement souhaitée</legend>
                         <div class="choices__grid">
                             <label class="choice"><input name="movingPeriod" required
@@ -345,11 +399,35 @@
                         </div>
                         <p th:replace="~{:: error('movingPeriod')}"></p>
                     </fieldset>
+                    <!--/* Financing is asked for a purchase only; a rental never shows nor sends it. */-->
+                    <fieldset aria-describedby="financingType-error" class="choices" data-group="financingType"
+                              th:attr="aria-invalid=${errors['financingType'] != null ? 'true' : null}"
+                              th:if="${sale}">
+                        <legend class="choices__legend">Comment financerez-vous votre achat&nbsp;?</legend>
+                        <div class="choices__grid">
+                            <label class="choice"><input name="financingType" required
+                                                         th:checked="${#strings.equals(answers.financingType, 'CASH')}"
+                                                         type="radio" value="CASH"> <th:block th:text="${financingLabels['CASH']}">Comptant</th:block></label>
+                            <label class="choice"><input name="financingType" required
+                                                         th:checked="${#strings.equals(answers.financingType, 'BANK_LOAN')}"
+                                                         type="radio" value="BANK_LOAN"> <th:block th:text="${financingLabels['BANK_LOAN']}">Prêt bancaire</th:block></label>
+                            <label class="choice"><input name="financingType" required
+                                                         th:checked="${#strings.equals(answers.financingType, 'TRANSFER_FROM_ABROAD')}"
+                                                         type="radio" value="TRANSFER_FROM_ABROAD"> <th:block th:text="${financingLabels['TRANSFER_FROM_ABROAD']}">Transfert depuis l'étranger</th:block></label>
+                            <label class="choice"><input name="financingType" required
+                                                         th:checked="${#strings.equals(answers.financingType, 'UNDECIDED')}"
+                                                         type="radio" value="UNDECIDED"> <th:block th:text="${financingLabels['UNDECIDED']}">Pas encore décidé</th:block></label>
+                        </div>
+                        <p th:replace="~{:: error('financingType')}"></p>
+                    </fieldset>
                     <div class="hint" id="price-hint">
                         <svg th:replace="~{fragments/icon :: info}"></svg>
                         <div>
-                            <p>Votre agent ne vous propose que des biens dans ce budget. La caution et les mois
-                                d'avance se discutent avec le bailleur, lors de la visite.</p>
+                            <p data-price-hint th:if="${sale}">Votre agent ne vous propose que des biens dans ce budget.
+                                Le prix se négocie ensuite avec le vendeur.</p>
+                            <p data-price-hint th:unless="${sale}">Votre agent ne vous propose que des biens dans ce
+                                budget. La caution et les mois d'avance se discutent avec le bailleur, lors de la
+                                visite.</p>
                         </div>
                     </div>
                     <div class="form__actions">
@@ -364,7 +442,8 @@
 
             <!--/* Step 6: contact (POST /find-property/contact) */-->
             <form class="form" data-find-form method="post" novalidate th:action="@{/find-property/contact}"
-                  th:if="${step == 'contact'}">
+                  th:if="${step == 'contact'}"
+                  th:attr="data-listing-type=${answers.listingType != null ? answers.listingType.name() : 'RENTAL'}">
                 <input name="returnTo" th:if="${returning}" type="hidden" value="review">
                 <fieldset class="step" data-step="contact" tabindex="-1">
                     <legend class="visually-hidden" th:text="|Étape ${stepNumber} sur ${stepCount} : vos coordonnées|">
@@ -460,7 +539,8 @@
             <!--/* Step 7: review (POST /find-property/review) — only reachable once every answer is in the session */-->
             <form class="form" data-find-form method="post" novalidate th:action="@{/find-property/review}"
                   th:if="${step == 'review'}"
-                  th:with="commercial=${#strings.equals(answers.propertyCategory, 'COMMERCIAL')}">
+                  th:with="commercial=${#strings.equals(answers.propertyCategory, 'COMMERCIAL')}"
+                  th:attr="data-listing-type=${answers.listingType != null ? answers.listingType.name() : 'RENTAL'}">
                 <fieldset class="step" data-step="review" tabindex="-1">
                     <legend class="visually-hidden"
                             th:text="|Étape ${stepNumber} sur ${stepCount} : revue de votre demande|">
@@ -505,6 +585,18 @@
                                         class="visually-hidden"> le bien recherché</span></a>
                             </dd>
                         </div>
+                        <!--/* The land documents a buyer requires: a land purchase only, and "Aucun document exigé" for none. */-->
+                        <div class="review__item" th:if="${titleDocumentsLabel != null}">
+                            <dt class="review__term">Documents exigés</dt>
+                            <dd class="review__value">
+                                <p data-review-value="titleDocuments" th:text="${titleDocumentsLabel}">Aucun document exigé</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/find-property(step='property', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> les documents exigés</span></a>
+                            </dd>
+                        </div>
                         <div class="review__item">
                             <dt class="review__term">Indispensable</dt>
                             <dd class="review__value">
@@ -520,7 +612,7 @@
                             </dd>
                         </div>
                         <div class="review__item">
-                            <dt class="review__term">Budget mensuel</dt>
+                            <dt class="review__term" th:text="${priceTerm}">Budget mensuel</dt>
                             <dd class="review__value">
                                 <p data-review-value="price" th:text="${priceLabel}">150K FCFA par mois</p>
                             </dd>
@@ -531,8 +623,7 @@
                             </dd>
                         </div>
                         <div class="review__item">
-                            <dt class="review__term" data-review-move-in-term
-                                th:text="${commercial} ? 'Date d\'installation' : 'Date d\'emménagement'">Date
+                            <dt class="review__term" data-review-move-in-term th:text="${moveInTerm}">Date
                                 d'emménagement</dt>
                             <dd class="review__value">
                                 <p data-review-value="movingPeriod" th:text="${movingPeriodLabel}">Dans moins d'1 mois</p>
@@ -541,6 +632,18 @@
                                 <a class="link-button review__edit"
                                    th:href="@{/find-property(step='budget', returnTo='review')}">Modifier<span
                                         class="visually-hidden"> votre date d'emménagement</span></a>
+                            </dd>
+                        </div>
+                        <!--/* How a purchase will be paid: a purchase only. */-->
+                        <div class="review__item" th:if="${financingLabel != null}">
+                            <dt class="review__term">Financement</dt>
+                            <dd class="review__value">
+                                <p data-review-value="financing" th:text="${financingLabel}">Comptant</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/find-property(step='budget', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> le financement</span></a>
                             </dd>
                         </div>
                         <div class="review__item">
@@ -608,8 +711,14 @@
             <ol class="next-steps">
                 <li>
                     <div>
-                        <p class="next-steps__title">Un agent vous est attribué</p>
-                        <p>Nous choisissons un Agent Vérifié qui connaît le secteur demandé.</p>
+                        <p class="next-steps__title" th:if="${#strings.equals(listingType.name(), 'SALE')}">Un agent
+                            vente vous est attribué</p>
+                        <p class="next-steps__title" th:unless="${#strings.equals(listingType.name(), 'SALE')}">Un agent
+                            vous est attribué</p>
+                        <p th:if="${#strings.equals(listingType.name(), 'SALE')}">Nous choisissons un Agent Vérifié qui
+                            traite les ventes et connaît le secteur demandé.</p>
+                        <p th:unless="${#strings.equals(listingType.name(), 'SALE')}">Nous choisissons un Agent Vérifié
+                            qui connaît le secteur demandé.</p>
                     </div>
                 </li>
                 <li>
@@ -624,9 +733,15 @@
                 </li>
                 <li>
                     <div>
-                        <p class="next-steps__title">Vous visitez des biens vérifiés</p>
-                        <p>Votre agent vous propose des biens qui correspondent à vos critères et vous accompagne
-                            jusqu'à la signature.</p>
+                        <p class="next-steps__title" th:if="${#strings.equals(listingType.name(), 'SALE')}">Vous visitez
+                            des biens à acheter</p>
+                        <p class="next-steps__title" th:unless="${#strings.equals(listingType.name(), 'SALE')}">Vous
+                            visitez des biens vérifiés</p>
+                        <p th:if="${#strings.equals(listingType.name(), 'SALE')}">Votre agent vous propose des biens à
+                            visiter qui correspondent à vos critères et vous accompagne jusqu'à la signature de la
+                            vente.</p>
+                        <p th:unless="${#strings.equals(listingType.name(), 'SALE')}">Votre agent vous propose des biens
+                            qui correspondent à vos critères et vous accompagne jusqu'à la signature.</p>
                     </div>
                 </li>
             </ol>

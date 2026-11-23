@@ -5,7 +5,9 @@ import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.mandate.dto.FinancingType
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.MANDATE
@@ -58,6 +60,21 @@ class MandateEditRulesTest {
         val request = MandateEditRules.request(FORM.copy(version = 3), MANDATE.copy(version = 4))
 
         assertEquals(3L, request.version)
+    }
+
+    @Test
+    fun `request - the purchase answers travel unchanged`() {
+        val sale = MANDATE.copy(
+            listingType = ListingType.SALE,
+            financingType = FinancingType.CASH,
+            titleDocuments = listOf(TitleDocumentType.LAND_TITLE),
+        )
+
+        val request = MandateEditRules.request(FORM, sale)
+
+        assertEquals(ListingType.SALE, request.listingType)
+        assertEquals(FinancingType.CASH, request.financingType)
+        assertEquals(listOf(TitleDocumentType.LAND_TITLE), request.titleDocuments)
     }
 
     @Test

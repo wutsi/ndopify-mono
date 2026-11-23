@@ -1,5 +1,8 @@
 package com.wutsi.ndopify.npc.ui.findproperty
 
+import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyController.Companion.STEPS
@@ -68,6 +71,7 @@ class FindPropertyController(
     @GetMapping
     fun show(
         @RequestParam(name = "step", required = false) requestedStep: String?,
+        @RequestParam(name = "type", required = false) type: String?,
         @RequestParam(required = false) returnTo: String?,
         session: HttpSession,
         model: Model,
@@ -78,10 +82,15 @@ class FindPropertyController(
             model.addAttribute("maskedEmail", LoginController.maskEmail(submitted.email))
             model.addAttribute("whatsappNumber", submitted.whatsappNumber)
             model.addAttribute("contactPeriodLabel", MandateLabels.CONTACT_PERIOD_LABELS[submitted.preferredContactPeriod])
+            model.addAttribute("listingType", submitted.listingType)
             return VIEW
         }
 
-        val pending = pending(session)
+        // The public site's links preselect the project (?type=SALE|RENTAL), never over a saved answer: the copy is
+        // for display only, and the session keeps what the visitor posted.
+        val pending = pending(session).let { saved ->
+            if (saved.listingType != null) saved else saved.copy(listingType = FindPropertyRules.parseListingType(type))
+        }
         val requested = STEPS.indexOf(requestedStep).coerceAtLeast(0)
         val allowed = STEPS.indexOf(pending.firstIncompleteStep())
         return step(STEPS[minOf(requested, allowed)], pending, returnTo, emptyMap(), model)
@@ -94,8 +103,14 @@ class FindPropertyController(
         session: HttpSession,
         model: Model,
     ): String {
-        val answers = pending(session).copy(propertyCategory = form.propertyCategory)
-        val errors = errors("propertyCategory" to FindPropertyRules.propertyCategory(answers.propertyCategory))
+        val answers = pending(session).copy(
+            listingType = form.listingType,
+            propertyCategory = form.propertyCategory,
+        )
+        val errors = errors(
+            "listingType" to FindPropertyRules.listingType(answers.listingType),
+            "propertyCategory" to FindPropertyRules.propertyCategory(answers.propertyCategory),
+        )
         return save(STEP_NEED, answers, errors, returnTo, session, model)
     }
 
@@ -132,27 +147,39 @@ class FindPropertyController(
         val type = FindPropertyRules.parsePropertyType(typeAnswer)
         val areaText = form.area?.trim().orEmpty()
         val area = FindPropertyRules.parseAmount(areaText)?.takeIf { it <= Int.MAX_VALUE }?.toInt()
+        // Documents are kept for a land purchase only; unknown names were rejected at binding.
+        val documents = form.titleDocuments
+            .filter { it in FindPropertyRules.titleDocumentTypes(pending.listingType, type) }
+            .distinct()
         val answers = pending.copy(
             propertyType = typeAnswer,
-            rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(pending.propertyCategory, type) },
-            furnitureType = form.furnitureType?.takeIf { FindPropertyRules.needsFurniture(type) },
+            rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(pending.propertyCategory, type, pending.listingType) },
+            furnitureType = form.furnitureType?.takeIf { FindPropertyRules.needsFurniture(type, pending.listingType) },
             parkings = form.parkings?.takeIf { it.isNotEmpty() && FindPropertyRules.asksParkings(type) },
             area = area,
+            titleDocuments = documents,
         )
+        val requiredArea = FindPropertyRules.needsArea(pending.propertyCategory, type, pending.listingType)
         val errors = errors(
-            "propertyType" to FindPropertyRules.propertyType(answers.propertyCategory, typeAnswer),
+            "propertyType" to FindPropertyRules.propertyType(answers.propertyCategory, typeAnswer, pending.listingType),
             "rooms" to
-                if (FindPropertyRules.needsRooms(answers.propertyCategory, type)) FindPropertyRules.rooms(answers.rooms) else null,
+                if (FindPropertyRules.needsRooms(answers.propertyCategory, type, pending.listingType)) {
+                    FindPropertyRules.rooms(answers.rooms)
+                } else {
+                    null
+                },
             "furnitureType" to
-                if (FindPropertyRules.needsFurniture(type)) FindPropertyRules.furnitureType(answers.furnitureType) else null,
+                if (FindPropertyRules.needsFurniture(type, pending.listingType)) {
+                    FindPropertyRules.furnitureType(answers.furnitureType)
+                } else {
+                    null
+                },
             "parkings" to FindPropertyRules.parkings(answers.parkings),
             // Something typed that isn't a usable number is an error too, not a silent "no area".
             "area" to if (areaText.isNotEmpty() && area == null) {
-                FindPropertyRules.area(0)
+                FindPropertyRules.area(0, requiredArea)
             } else {
-                FindPropertyRules.area(
-                area
-            )
+                FindPropertyRules.area(area, requiredArea)
             },
         )
         return save(STEP_PROPERTY, answers, errors, returnTo, session, model)
@@ -186,10 +213,12 @@ class FindPropertyController(
         val answers = pending.copy(
             priceAmount = FindPropertyRules.parseAmount(form.priceAmount),
             movingPeriod = form.movingPeriod,
+            financingType = form.financingType,
         )
         val errors = errors(
-            "priceAmount" to FindPropertyRules.priceAmount(answers.priceAmount, formatter()),
-            "movingPeriod" to FindPropertyRules.movingPeriod(answers.movingPeriod),
+            "priceAmount" to FindPropertyRules.priceAmount(answers.priceAmount, formatter(), pending.listingType),
+            "movingPeriod" to FindPropertyRules.movingPeriod(answers.movingPeriod, pending.listingType),
+            "financingType" to FindPropertyRules.financingType(answers.financingType, pending.listingType),
         )
         return save(STEP_BUDGET, answers, errors, returnTo, session, model)
     }
@@ -244,6 +273,7 @@ class FindPropertyController(
                 email = pending.email.orEmpty(),
                 whatsappNumber = pending.whatsappNumber.orEmpty(),
                 preferredContactPeriod = pending.preferredContactPeriod,
+                listingType = pending.listingType ?: ListingType.RENTAL,
             ),
         )
         return redirect(STEP_CONFIRMATION)
@@ -287,7 +317,10 @@ class FindPropertyController(
         )
 
         when (step) {
-            STEP_NEED -> model.addAttribute("categoryLabels", MandateLabels.byName(MandateLabels.CATEGORY_LABELS))
+            STEP_NEED -> {
+                model.addAttribute("categoryLabels", MandateLabels.byName(MandateLabels.CATEGORY_LABELS))
+                model.addAttribute("listingTypeLabels", MandateLabels.byName(MandateLabels.LISTING_TYPE_LABELS))
+            }
             STEP_AREA, STEP_REVIEW -> {
                 // Names of the chosen city and neighbourhoods: the selects' initial options, and the review.
                 // Capped: a step shown again with its errors may carry whatever ids were posted.
@@ -300,23 +333,57 @@ class FindPropertyController(
         if (step == STEP_PROPERTY) {
             model.addAttribute(
                 "propertyTypes",
-                FindPropertyRules.CATEGORIES_BY_TYPE.filterValues { it.contains(answers.propertyCategory) }.keys.toList(),
+                FindPropertyRules.propertyTypes(answers.propertyCategory!!, answers.listingType),
             )
             model.addAttribute("propertyTypeLabels", MandateLabels.PROPERTY_TYPE_LABELS)
             model.addAttribute("furnitureLabels", MandateLabels.byName(MandateLabels.FURNITURE_TYPE_LABELS))
+            model.addAttribute("titleDocumentLabels", MandateLabels.byName(MandateLabels.TITLE_DOCUMENT_LABELS))
+            model.addAttribute(
+                "asksTitleDocuments",
+                FindPropertyRules.titleDocumentTypes(
+                    answers.listingType,
+                    FindPropertyRules.parsePropertyType(answers.propertyType),
+                ).isNotEmpty(),
+            )
         }
         if (step == STEP_BUDGET) {
             model.addAttribute("currency", formatter().currency())
             model.addAttribute("movingPeriodLabels", MandateLabels.byName(MandateLabels.MOVE_IN_LABELS))
+            model.addAttribute("financingLabels", MandateLabels.byName(MandateLabels.FINANCING_LABELS))
+            model.addAttribute(
+                "moveInLabel",
+                when {
+                    answers.isSale() -> "Quand souhaitez-vous acheter\u00a0?"
+                    answers.propertyCategory == PropertyCategory.COMMERCIAL -> "Date d'installation souhaitée"
+                    else -> "Date d'emménagement souhaitée"
+                },
+            )
         }
         if (step == STEP_AMENITIES) {
             model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS)
         }
         if (step == STEP_REVIEW) {
-            model.addAttribute("categoryLabel", MandateLabels.project(answers.propertyCategory))
+            model.addAttribute("categoryLabel", MandateLabels.project(answers.propertyCategory, answers.listingType))
             model.addAttribute("propertyLabel", propertyLabel(answers))
-            model.addAttribute("priceLabel", answers.priceAmount?.let { formatter().money(it) + " par mois" })
+            model.addAttribute("priceTerm", if (answers.isSale()) "Budget total" else "Budget mensuel")
+            model.addAttribute(
+                "priceLabel",
+                answers.priceAmount?.let { formatter().money(it) + if (answers.isSale()) "" else " par mois" },
+            )
+            model.addAttribute("moveInTerm", MandateLabels.moveInTerm(answers.listingType, answers.propertyCategory))
             model.addAttribute("movingPeriodLabel", MandateLabels.MOVE_IN_LABELS[answers.movingPeriod])
+            model.addAttribute(
+                "financingLabel",
+                answers.financingType?.takeIf { answers.isSale() }?.let { MandateLabels.FINANCING_LABELS[it] },
+            )
+            model.addAttribute(
+                "titleDocumentsLabel",
+                answers.titleDocuments
+                    .takeIf {
+                        answers.isSale() && FindPropertyRules.parsePropertyType(answers.propertyType) == PropertyType.LAND
+                    }
+                    ?.let { MandateLabels.titleDocuments(it) },
+            )
             model.addAttribute("contactPeriodLabel", MandateLabels.CONTACT_PERIOD_LABELS[answers.preferredContactPeriod])
             model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS.filterKeys { answers.has(it) }.values.toList())
         }
@@ -328,8 +395,12 @@ class FindPropertyController(
         val type = FindPropertyRules.parsePropertyType(answers.propertyType)
         val parts = listOfNotNull(
             MandateLabels.PROPERTY_TYPE_LABELS[type] ?: "Tout type de bien",
-            MandateLabels.ROOM_LABELS[answers.rooms]?.takeIf { FindPropertyRules.needsRooms(answers.propertyCategory, type) },
-            MandateLabels.FURNITURE_LABELS[answers.furnitureType]?.takeIf { FindPropertyRules.needsFurniture(type) },
+            MandateLabels.ROOM_LABELS[answers.rooms]?.takeIf {
+                FindPropertyRules.needsRooms(answers.propertyCategory, type, answers.listingType)
+            },
+            MandateLabels.FURNITURE_LABELS[answers.furnitureType]?.takeIf {
+                FindPropertyRules.needsFurniture(type, answers.listingType)
+            },
             MandateLabels.PARKING_LABELS[answers.parkings]?.takeIf { FindPropertyRules.asksParkings(type) },
             answers.area?.let { MandateLabels.formatNumber(it) + " m² minimum" },
         )

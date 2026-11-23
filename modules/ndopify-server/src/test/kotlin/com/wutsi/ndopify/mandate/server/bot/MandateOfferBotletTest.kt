@@ -11,7 +11,9 @@ import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
+import com.wutsi.ndopify.mandate.dto.FinancingType
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.mandate.server.domain.AssignmentEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
@@ -72,6 +74,33 @@ class MandateOfferBotletTest {
         )
         assertEquals(listOf("Accepter", "Refuser"), buttons.firstValue.map { it.text })
         assertEquals(listOf("accept:99", "decline:99"), buttons.firstValue.map { it.callbackData })
+    }
+
+    @Test
+    fun `a land purchase offer carries its financing and its documents`() {
+        val assignment = AssignmentEntity(
+            id = 99L,
+            mandate = MandateEntity(
+                id = 5L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
+                listingType = ListingType.SALE, propertyType = PropertyType.LAND,
+                price = 10_000_000, currencyCode = "XAF",
+                financingType = FinancingType.CASH,
+                titleDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+            ),
+            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
+        )
+
+        botlet.send(assignment, agent, 1000L)
+
+        val text = argumentCaptor<String>()
+        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        assertEquals(
+            """
+            📋 Nouveau mandat : Achat - Terrain (Bastos) — 10 000 000 XAF · Financement : Comptant · Documents : Titre foncier · Plan de bornage
+            Expire le 15/01/2027 à 09:00.
+            """.trimIndent(),
+            text.firstValue,
+        )
     }
 
     @Test
