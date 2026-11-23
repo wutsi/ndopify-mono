@@ -20,6 +20,9 @@ import java.time.LocalDate
  * left out. The amounts next to the deposit and the advance are only given for a monthly price, which they're months
  * of. The visit popup's days go from tomorrow to tomorrow + 7 days in the tenant's time zone ([today] is its date),
  * its times from 10:00 to 21:00 every 30 minutes.
+ *
+ * A SALE listing's conditions are the price and the availability only, whatever rental terms were saved before: never a
+ * rent, a deposit, an advance, a lease term, a notice period nor the furniture.
  */
 object ListingPages {
     internal val PROPERTY_TYPE_LABELS: Map<PropertyType, String> = mapOf(
@@ -101,6 +104,7 @@ object ListingPages {
         val pricePeriod = PERIODS[listing.pricePeriodicityType]
         val price = listOfNotNull(priceAmount, pricePeriod).joinToString(" ")
         val available = listing.availableFrom?.takeIf { it.isAfter(today) }?.let { formatter.date(it) }
+        val sale = listing.listingType == ListingType.SALE
 
         return ListingPage(
             id = listing.id,
@@ -108,6 +112,8 @@ object ListingPages {
             metaDescription = closedNotice?.let { "$it $title" } ?: (listing.summary?.ifBlank { null } ?: title),
             canonicalUrl = canonicalUrl(tenant, listing),
             typeBadge = closedBadge ?: if (listing.listingType == ListingType.SALE) "À vendre" else "À louer",
+            sale = sale,
+            conditionsTitle = if (sale) "Prix et conditions" else "Conditions de location",
             place = listOfNotNull(neighborhood, city).joinToString(", "),
             landmark = listing.landmark?.ifBlank { null }?.let { "près de $it" },
             verifiedAt = listing.verifiedAt?.let { formatter.date(it) },
@@ -126,6 +132,11 @@ object ListingPages {
             pricePeriod = pricePeriod,
             terms = if (closed) {
                 emptyList()
+            } else if (sale) {
+                listOf(
+                    "Prix" to price,
+                    "Disponible" to (available?.let { "À partir du $it" } ?: "Immédiatement"),
+                )
             } else {
                 listOfNotNull(
                     "Loyer" to price,
@@ -139,6 +150,8 @@ object ListingPages {
             termsNote = "Les visites sont organisées par votre agent.",
             asideTerms = if (closed) {
                 emptyList()
+            } else if (sale) {
+                listOf(available?.let { "Disponible le $it" } ?: "Disponible immédiatement")
             } else {
                 listOfNotNull(
                     listing.securityDeposit?.let { if (it > 0) "Caution : $it mois" else "Sans caution" },

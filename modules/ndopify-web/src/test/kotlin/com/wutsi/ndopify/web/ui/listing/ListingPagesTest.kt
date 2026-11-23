@@ -70,6 +70,18 @@ class ListingPagesTest {
         verifiedAt = Date.from(LocalDate.of(2026, 10, 12).atStartOfDay(ZoneId.of("Africa/Douala")).toInstant()),
     )
 
+    /** A sale in Bonapriso (250M FCFA) carrying a deposit, an advance, a lease term and a notice period saved earlier. */
+    private val sale = listing.copy(
+        listingType = ListingType.SALE,
+        propertyType = PropertyType.VILLA,
+        rooms = 5,
+        price = 250_000_000,
+        pricePeriodicityType = PeriodicityType.NONE,
+        title = "Villa 5 chambres à Bonapriso",
+        summary = "250M FCFA. Bien audité par Ndopify.",
+        url = "/douala/bonapriso/listing/123/villa",
+    )
+
     private fun page(
         listing: Listing = this.listing,
         images: List<ListingImage> = emptyList(),
@@ -398,5 +410,60 @@ class ListingPagesTest {
     @Test
     fun `the conditions note is neutral`() {
         assertEquals("Les visites sont organisées par votre agent.", page().termsNote)
+    }
+
+    @Test
+    fun `a sale listing's conditions are price and availability only`() {
+        val page = page(sale.copy(availableFrom = LocalDate.of(2026, 12, 1)))
+
+        assertTrue(page.sale)
+        assertEquals("Prix et conditions", page.conditionsTitle)
+        assertEquals(listOf("Prix", "Disponible"), page.terms.map { it.first })
+        assertEquals(listOf("250M\u00A0FCFA", "À partir du 01 déc. 2026"), page.terms.map { it.second })
+        assertEquals(listOf("Disponible le 01 déc. 2026"), page.asideTerms)
+        assertNull(page.pricePeriod)
+        assertEquals("250M\u00A0FCFA", page.price)
+    }
+
+    @Test
+    fun `a sale listing never renders a stored rental term`() {
+        val page = page(sale)
+        val terms = page.terms.map { it.first } + page.asideTerms
+
+        // The fixture carries a deposit, an advance, a lease term and a notice period: none reaches the conditions
+        listOf("Loyer", "Caution", "Avance sur loyer", "Durée du bail", "Préavis", "Meublé").forEach {
+            assertFalse(terms.contains(it), it)
+        }
+        assertEquals(listOf("Prix", "Disponible"), page.terms.map { it.first })
+        assertEquals(listOf("Disponible le 01 déc. 2026"), page.asideTerms)
+    }
+
+    @Test
+    fun `a sale listing available immediately`() {
+        val page = page(sale.copy(availableFrom = null))
+
+        assertEquals(listOf("Prix" to "250M\u00A0FCFA", "Disponible" to "Immédiatement"), page.terms)
+        assertEquals(listOf("Disponible immédiatement"), page.asideTerms)
+    }
+
+    @Test
+    fun `a closed sale listing keeps no conditions`() {
+        val page = page(
+            sale.copy(
+                status = ListingStatus.SOLD,
+                closedAt = Date.from(LocalDate.of(2026, 10, 12).atStartOfDay(ZoneId.of("Africa/Douala")).toInstant()),
+            ),
+        )
+
+        assertTrue(page.sale)
+        assertEquals("Vendu le 12 oct. 2026", page.typeBadge)
+        assertEquals(emptyList(), page.terms)
+        assertEquals(emptyList(), page.asideTerms)
+    }
+
+    @Test
+    fun `a rental listing keeps its rental conditions title`() {
+        assertFalse(page().sale)
+        assertEquals("Conditions de location", page().conditionsTitle)
     }
 }

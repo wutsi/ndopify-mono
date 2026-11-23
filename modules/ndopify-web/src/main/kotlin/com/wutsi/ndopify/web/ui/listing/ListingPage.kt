@@ -12,6 +12,10 @@ data class ListingPage(
     val metaDescription: String,
     val canonicalUrl: String?,
     val typeBadge: String,
+    /** True for a SALE listing: the page speaks of a *bien*, and its conditions are the price and the availability. */
+    val sale: Boolean,
+    /** "Prix et conditions" for a sale, "Conditions de location" for a rental. */
+    val conditionsTitle: String,
     val place: String,
     val landmark: String?,
     val verifiedAt: String?,

@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.web.ui.listing
 
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.refdata.dto.Tenant
 import com.wutsi.ndopify.web.client.ndopify.NdListingClient
 import com.wutsi.ndopify.web.client.ndopify.NdLocationClient
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.RestClientException
 import org.springframework.web.servlet.view.RedirectView
 import java.time.Clock
 
@@ -75,14 +77,18 @@ class ListingController(
      * the interest to the search it already has (ndopify-server then records an accepted match), then shows the
      * confirmation. A filled honeypot or a rate-limited request (409 `MANDATE_RATE_LIMITED`) also shows it, without
      * anything created: the page never says which case it was. An invalid form or a 400 shows the page again, its
-     * popup open, with the French messages and the typed values.
+     * popup open, with the French messages and the typed values. A missing moving period is worded as a purchase
+     * horizon on a sale listing, which costs one read of the listing — and only then.
      */
     @PostMapping("/listings/{id}/interest")
     fun interest(@PathVariable id: Long, @ModelAttribute form: ListingInterestForm, model: Model): Any {
         if (form.isHoneypotFilled()) {
             return confirmation(id)
         }
-        val errors = ListingInterestRules.validate(form)
+        val errors = ListingInterestRules.validate(form).toMutableMap()
+        if (errors["movingPeriod"] != null && isSale(id)) {
+            errors["movingPeriod"] = ListingInterestRules.movingPeriodError(sale = true)
+        }
         if (errors.isNotEmpty()) {
             return page(id = id, model = model, form = form, errors = errors, done = false)
         }
@@ -126,5 +132,13 @@ class ListingController(
         RedirectView("${listingClient.get(id).url ?: "/"}?interest=done#visit").apply {
             setStatusCode(HttpStatus.FOUND)
             setExposeModelAttributes(false)
+        }
+
+    /** Whether the listing is a sale (its form then asks for a purchase horizon); a failed read counts as a rental. */
+    private fun isSale(id: Long): Boolean =
+        try {
+            listingClient.get(id).listingType == ListingType.SALE
+        } catch (ex: RestClientException) {
+            false
         }
 }
