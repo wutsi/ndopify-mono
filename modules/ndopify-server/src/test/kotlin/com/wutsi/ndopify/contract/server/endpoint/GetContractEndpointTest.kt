@@ -47,6 +47,7 @@ class GetContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals("https://cdn.ndopify.com/contracts/MNDT-2024-000001.pdf", contract.signedContentUrl)
         assertEquals(6, contract.durationMonths)
         assertEquals(Money(5000, "XAF"), contract.visitFee)
+        assertNull(contract.commissionRate) // A rental
         assertEquals(Date.from(Instant.parse("2099-05-25T00:00:00Z")), contract.signatureRequestedAt)
         assertNotNull(contract.signatureDeadline)
         assertNull(contract.validFrom)
@@ -69,6 +70,15 @@ class GetContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(ContractPartyRole.GUARANTOR, parties[1].role)
         assertFalse(parties[1].signed)
         assertNull(parties[1].signedAt)
+    }
+
+    @Test
+    fun `get - a sale contract's commission`() {
+        val response = rest.getForEntity("/v1/contracts/c-2", GetContractResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(ContractType.SALE_SEARCH, response.body!!.contract.type)
+        assertEquals(7, response.body!!.contract.commissionRate)
     }
 
     @Test

@@ -1,0 +1,2 @@
+ALTER TABLE T_CONTRACT
+    ADD COLUMN commission_rate INT NULL;

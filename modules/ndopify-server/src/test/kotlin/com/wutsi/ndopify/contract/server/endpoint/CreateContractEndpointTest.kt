@@ -131,6 +131,52 @@ class CreateContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `create - stores a sale's commission`() {
+        val response = rest.postForEntity(
+            "/v1/contracts",
+            request.copy(type = ContractType.SALE_LISTING, commissionRate = 7),
+            CreateContractResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val contract = dao.findById(response.body!!.contractId).get()
+        assertEquals(ContractType.SALE_LISTING, contract.type)
+        assertEquals(7, contract.commissionRate)
+    }
+
+    @Test
+    fun `create - a sale needs a commission`() {
+        assertBadRequest(
+            request.copy(type = ContractType.SALE_SEARCH, commissionRate = null),
+            ErrorCode.HTTP_INVALID_PARAMETER,
+            "commissionRate",
+        )
+    }
+
+    @Test
+    fun `create - refuses an out-of-range commission`() {
+        for (rate in listOf(0, 21)) {
+            assertBadRequest(
+                request.copy(type = ContractType.SALE_SEARCH, commissionRate = rate),
+                ErrorCode.HTTP_INVALID_PARAMETER,
+                "commissionRate",
+            )
+        }
+    }
+
+    @Test
+    fun `create - a rental ignores the commission`() {
+        val response = rest.postForEntity(
+            "/v1/contracts",
+            request.copy(type = ContractType.SEARCH, commissionRate = 7),
+            CreateContractResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertNull(dao.findById(response.body!!.contractId).get().commissionRate)
+    }
+
+    @Test
     fun `numbers follow each other`() {
         assertEquals("MNDT-$year-000001", createAndGetNumber(request))
         assertEquals("MNDT-$year-000002", createAndGetNumber(request.copy(type = ContractType.LISTING)))
