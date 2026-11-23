@@ -1,11 +1,16 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head(${close} ? |Fermer le mandat ${close.mandateId} — Ndopify Partner Central| : 'Fermer le mandat — Ndopify Partner Central', 'Fermer un mandat : le client, le loyer convenu, puis la confirmation.', false)}"></head>
+<head th:replace="~{fragments/head :: head(${close} ? |Fermer le mandat ${close.mandateId} — Ndopify Partner Central| : 'Fermer le mandat — Ndopify Partner Central', 'Fermer un mandat : la contrepartie, le prix convenu, puis la confirmation.', false)}"></head>
 <!--/*
     Closing a mandate (the deal's counterpart, the agreed rent, then the confirmation), one step at a time on its own
     page, reached from the mandate page's "Fermer le mandat" while the mandate is APPROVED. Each step is its own form,
     posted to MandateCloseController, and the URL is never trusted: the controller redirects a step back to the first
     unanswered one.
+
+    A SALE mandate ("close.sale") says price, never rent: the counterpart is "Acheteur" / "Bien", the price step "Prix"
+    / "Prix de vente final" in the tenant's currency with no " / mois", "Vendu à un autre acheteur", and the recap
+    "Acheteur" / "Prix de vente final" whose note names the buyer's / seller's mandate. The request carries
+    PeriodicityType.NONE (MONTHLY for a rental). Every sale label is a ternary whose else branch is the rental's text.
 
     - counterpart — the deal's other side: for a landlord's listing, the client it was rented to (its searches that
       answered ACCEPTED), or "Loué à un autre client"; for a search, the listing it ended on (its ACCEPTED matches),
@@ -65,9 +70,9 @@
                     <fieldset class="choices" aria-describedby="counterpart-error"
                               th:attr="aria-invalid=${errors['counterpart'] != null ? 'true' : null}">
                         <legend class="choices__legend"
-                                th:text="${c.owner} ? 'Avec quel client le bien a-t-il été loué ?' : 'Sur quel bien la recherche s\'est-elle conclue ?'">Avec quel client le bien a-t-il été loué ?</legend>
+                                th:text="${c.owner} ? (${c.sale} ? 'À quel acheteur le bien a-t-il été vendu ?' : 'Avec quel client le bien a-t-il été loué ?') : 'Sur quel bien la recherche s\'est-elle conclue ?'">Avec quel client le bien a-t-il été loué ?</legend>
                         <p class="close-hint"
-                           th:text="${c.owner} ? 'Les clients qui ont répondu intéressés. Il peut aussi avoir été loué autrement.' : 'Les biens qui ont intéressé le client. Il peut aussi avoir trouvé ailleurs.'">Les clients qui ont répondu intéressés.</p>
+                           th:text="${c.owner} ? (${c.sale} ? 'Les acheteurs qui ont répondu intéressés. Il peut aussi avoir été vendu autrement.' : 'Les clients qui ont répondu intéressés. Il peut aussi avoir été loué autrement.') : (${c.sale} ? 'Les biens qui ont intéressé l\'acheteur. Il peut aussi avoir acheté ailleurs.' : 'Les biens qui ont intéressé le client. Il peut aussi avoir trouvé ailleurs.')">Les clients qui ont répondu intéressés.</p>
 
                         <div class="alert alert--warning" th:if="${c.candidatesUnavailable}" data-counterpart-unavailable>
                             <svg th:replace="~{fragments/icon :: warning}"></svg>
@@ -98,7 +103,7 @@
                             <input name="counterpart" type="radio" value="outside"
                                    th:checked="${form.counterpart == 'outside'}">
                             <span>
-                                <th:block th:if="${c.owner}">Loué à un autre client
+                                <th:block th:if="${c.owner}"><span th:text="${c.sale} ? 'Vendu à un autre acheteur' : 'Loué à un autre client'">Loué à un autre client</span>
                                     <span class="close-client__meta">Sans passer par une de vos recherches</span>
                                 </th:block>
                                 <th:block th:unless="${c.owner}">Un bien hors de vos annonces
@@ -120,18 +125,21 @@
                     </div>
                 </form>
 
-                <!-- 2. The agreed rent, pre-filled from the selected listing's or the mandate's price. -->
+                <!-- 2. The agreed rent (a sale's price), pre-filled from the selected listing's or the mandate's price. -->
                 <form class="form mandate-close__form" method="post" novalidate
                       th:if="${c.step == 'price'}"
                       th:action="@{/mandates/{id}/close/price(id=${c.mandateId})}">
                     <div class="field">
-                        <p class="close-hint">Le bail est signé ? Confirmez le loyer convenu.</p>
-                        <label class="field__label" for="finalPrice">Loyer convenu</label>
+                        <p class="close-hint"
+                           th:text="${c.sale} ? 'L\'acte de vente est signé ? Confirmez le prix de vente final.' : 'Le bail est signé ? Confirmez le loyer convenu.'">Le bail est signé ? Confirmez le loyer convenu.</p>
+                        <label class="field__label" for="finalPrice"
+                               th:text="${c.sale} ? 'Prix de vente final' : 'Loyer convenu'">Loyer convenu</label>
                         <div class="input-unit">
                             <input class="input" id="finalPrice" name="finalPrice" type="text" inputmode="numeric"
                                    autocomplete="off" aria-describedby="finalPrice-error" th:value="${form.finalPrice}"
                                    th:attr="aria-invalid=${errors['finalPrice'] != null ? 'true' : null}">
-                            <span aria-hidden="true" class="input-unit__suffix" th:text="${currency} + ' / mois'">FCFA / mois</span>
+                            <span aria-hidden="true" class="input-unit__suffix"
+                                  th:text="${c.sale ? currency : currency + ' / mois'}">FCFA / mois</span>
                         </div>
                         <p class="field__error" id="finalPrice-error" th:hidden="${errors['finalPrice'] == null}">
                             <svg th:replace="~{fragments/icon :: close}"></svg>
@@ -159,12 +167,12 @@
                             <dd class="review__value" data-recap-property th:text="${c.recap.property}">Appartement · 3 chambres, Bonapriso — annonce n° 3012</dd>
                         </div>
                         <div class="review__item">
-                            <dt class="review__term">Client</dt>
+                            <dt class="review__term" th:text="${c.sale} ? 'Acheteur' : 'Client'">Client</dt>
                             <dd class="review__value" data-recap-client th:text="${c.recap.client}">Ray Sponsible</dd>
                         </div>
                         <div class="review__item">
-                            <dt class="review__term">Loyer convenu</dt>
-                            <dd class="review__value" data-recap-rent th:text="${c.recap.rent}">240 000 FCFA / mois</dd>
+                            <dt class="review__term" th:text="${c.sale} ? 'Prix de vente final' : 'Loyer convenu'">Loyer convenu</dt>
+                            <dd class="review__value" data-recap-rent th:text="${c.recap.price}">240 000 FCFA / mois</dd>
                         </div>
                     </dl>
                     <p class="close-hint" data-recap-note th:text="${c.recap.note}">À la confirmation : le mandat n° 201 est fermé. Cette action est définitive.</p>

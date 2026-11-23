@@ -39,7 +39,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 /**
  * The closing wizard (`mandate/close.html`), on its own page reached from the mandate page's *Fermer le mandat* link
  * while the mandate is APPROVED. Three steps, one at a time (`?step=`): the deal's counterpart (an ACCEPTED match), the
- * agreed rent, then the confirmation.
+ * agreed rent (a sale's final price), then the confirmation. A SALE mandate (`listingType == SALE`) sends
+ * `PeriodicityType.NONE` on its requests; a rental, and a legacy mandate without a type, `MONTHLY`.
  *
  * - `GET /mandates/{id}/close?step=…` shows a step; `POST /mandates/{id}/close/counterpart|price|confirm` validates it,
  *   stores its answer in the session's [PendingMandateClose] and redirects to the next step (or back to the mandate
@@ -187,13 +188,18 @@ class MandateCloseController(
         val amount = MandateCloseRules.amount(form.finalPrice)
         if (amount == null) {
             val steps = MandateCloseViews.steps(counterpartApplicable, mandate.mandateType == MandateType.LISTING, sale(mandate))
+            val error = if (sale(mandate)) {
+                "Indiquez le prix de vente final, en ${formatter().currency()}."
+            } else {
+                "Indiquez le loyer convenu, en ${formatter().currency()} par mois."
+            }
             return render(
                 mandate,
                 read,
                 steps,
                 PendingMandateClose.STEP_PRICE,
                 form,
-                mapOf("finalPrice" to "Indiquez le loyer convenu, en ${formatter().currency()} par mois."),
+                mapOf("finalPrice" to error),
                 draft,
                 model,
             )

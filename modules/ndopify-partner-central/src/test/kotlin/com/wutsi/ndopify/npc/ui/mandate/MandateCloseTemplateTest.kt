@@ -6,6 +6,7 @@ import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
@@ -365,5 +366,107 @@ class MandateCloseTemplateTest {
 
         assertNotNull(page.selectFirst("[data-close-conflict]"))
         assertTrue(text(page.selectFirst("[data-close-conflict]"))!!.contains("n'est plus disponible"))
+    }
+
+    // A sale mandate: the same wizard, worded sale.
+
+    private fun withSaleClients() {
+        withClients()
+        doReturn(MandateViewsTest.APPROVED.copy(mandateType = MandateType.LISTING, listingType = ListingType.SALE))
+            .whenever(mandateClient).get(201)
+    }
+
+    @Test
+    fun `a sale's closing page asks the buyer and the final sale price`() {
+        withSaleClients()
+
+        val counterpart = render("/mandates/201/close")
+
+        assertEquals(listOf("Acheteur", "Prix", "Confirmation"), counterpart.select(".close-steps__item > span:last-child").map { it.text() })
+        assertEquals(
+            "À quel acheteur le bien a-t-il été vendu ?",
+            text(counterpart.selectFirst("fieldset[aria-describedby=counterpart-error] legend")),
+        )
+        assertEquals(
+            "Les acheteurs qui ont répondu intéressés. Il peut aussi avoir été vendu autrement.",
+            text(counterpart.selectFirst("fieldset[aria-describedby=counterpart-error] .close-hint")),
+        )
+        assertTrue(text(counterpart.selectFirst("label.close-client-none"))!!.contains("Vendu à un autre acheteur"))
+
+        val price = render(
+            get("/mandates/201/close?step=price")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(matchId = 9002)),
+        )
+
+        assertEquals("Prix de vente final", price.selectFirst("label[for=finalPrice]")?.text())
+        assertEquals("L'acte de vente est signé ? Confirmez le prix de vente final.", text(price.selectFirst(".close-hint")))
+        assertEquals("FCFA", text(price.selectFirst(".input-unit__suffix")))
+        assertFalse(price.html().contains("/ mois"))
+
+        val confirm = render(
+            get("/mandates/201/close?step=confirm")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(matchId = 9002, priceAmount = 15_000_000)),
+        )
+
+        assertEquals(
+            listOf("Bien", "Acheteur", "Prix de vente final"),
+            confirm.select(".close-recap .review__term").map { it.text() },
+        )
+        assertEquals("15 000 000 FCFA", text(confirm.selectFirst("[data-recap-rent]")))
+        assertTrue(text(confirm.selectFirst("[data-recap-note]"))!!.contains("l'annonce est marquée vendue"))
+        assertTrue(text(confirm.selectFirst("[data-recap-note]"))!!.contains("le mandat de l'acheteur est fermé"))
+    }
+
+    @Test
+    fun `a sale's search counterpart step asks for the buyer's property`() {
+        withListings()
+        doReturn(MandateViewsTest.APPROVED.copy(listingType = ListingType.SALE)).whenever(mandateClient).get(201)
+
+        val page = render("/mandates/201/close")
+
+        assertEquals(listOf("Bien", "Prix", "Confirmation"), page.select(".close-steps__item > span:last-child").map { it.text() })
+        assertEquals(
+            "Les biens qui ont intéressé l'acheteur. Il peut aussi avoir acheté ailleurs.",
+            text(page.selectFirst("fieldset[aria-describedby=counterpart-error] .close-hint")),
+        )
+        assertEquals(
+            "Sur quel bien la recherche s'est-elle conclue ?",
+            text(page.selectFirst("fieldset[aria-describedby=counterpart-error] legend")),
+        )
+        assertTrue(text(page.selectFirst("label.close-client-none"))!!.contains("Un bien hors de vos annonces"))
+    }
+
+    @Test
+    fun `a rental's closing page is unchanged`() {
+        withClients()
+
+        val counterpart = render("/mandates/201/close")
+
+        assertEquals(listOf("Client", "Loyer", "Confirmation"), counterpart.select(".close-steps__item > span:last-child").map { it.text() })
+        assertEquals(
+            "Avec quel client le bien a-t-il été loué ?",
+            text(counterpart.selectFirst("fieldset[aria-describedby=counterpart-error] legend")),
+        )
+        assertTrue(text(counterpart.selectFirst("label.close-client-none"))!!.contains("Loué à un autre client"))
+
+        val price = render(
+            get("/mandates/201/close?step=price")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(matchId = 9002)),
+        )
+
+        assertEquals("Loyer convenu", price.selectFirst("label[for=finalPrice]")?.text())
+        assertEquals("Le bail est signé ? Confirmez le loyer convenu.", text(price.selectFirst(".close-hint")))
+        assertEquals("FCFA / mois", text(price.selectFirst(".input-unit__suffix")))
+    }
+
+    @Test
+    fun `an unknown listing type closes as a rental`() {
+        doReturn(MandateViewsTest.APPROVED.copy(listingType = ListingType.UNKNOWN)).whenever(mandateClient).get(201)
+        doReturn(emptyList<Match>()).whenever(matchClient).search(listOf(201L), listOf(MatchStatus.ACCEPTED))
+
+        val page = render("/mandates/201/close")
+
+        assertEquals(listOf("Loyer", "Confirmation"), page.select(".close-steps__item > span:last-child").map { it.text() })
+        assertEquals("Loyer convenu", page.selectFirst("label[for=finalPrice]")?.text())
     }
 }
