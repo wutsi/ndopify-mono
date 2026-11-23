@@ -48,7 +48,17 @@
         </div>
 
         <div class="progress" data-progress-block>
-            <p class="progress__label" data-progress-label id="progress-label">Étape 1 sur 7</p>
+            <div class="progress__head">
+                <p class="progress__label" data-progress-label id="progress-label">Étape 1 sur 7</p>
+                <!-- v2 (#273, AC 7): the project, from step 2 on, so a visitor knows whether they sell or let. Read-only
+                     text, never a control — step 1's choice stays the control. The word is the page's data-for pair,
+                     like every other project text (offer-property.js hides this one on step 1); in production the
+                     template renders it from the saved listingType, so it needs no script. -->
+                <p class="project-tag" data-project hidden>
+                    <span class="visually-hidden">Projet&nbsp;: </span><span data-for="RENTAL">Location</span><span
+                        data-for="SALE" hidden>Vente</span>
+                </p>
+            </div>
             <div aria-labelledby="progress-label" aria-valuemax="7" aria-valuemin="1"
                  aria-valuenow="1" aria-valuetext="Étape 1 sur 7" class="progress__track" data-progress
                  role="progressbar">
@@ -98,10 +108,14 @@
                                 habiter&nbsp;: chambre, studio, appartement, villa, immeuble…</span><span
                                 class="choice__detail" data-for="SALE" hidden>Pour y habiter&nbsp;: appartement,
                                 villa, immeuble, terrain à bâtir…</span></span></label>
+                        <!-- A plot of land is sold, never let (#275): the rental's description names no land, the
+                             sale's keeps it. -->
                         <label class="choice choice--described">
                             <input name="propertyCategory" required type="radio" value="COMMERCIAL">
-                            <span>Commercial <span class="choice__detail">Pour une activité&nbsp;: bureau,
-                                boutique, entrepôt, terrain…</span></span></label>
+                            <span>Commercial <span class="choice__detail" data-for="RENTAL">Pour une
+                                activité&nbsp;: bureau, boutique, entrepôt…</span><span class="choice__detail"
+                                data-for="SALE" hidden>Pour une activité&nbsp;: bureau, boutique, entrepôt,
+                                terrain…</span></span></label>
                     </div>
                     <p class="field__error" hidden id="propertyCategory-error">
                         <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
@@ -294,8 +308,10 @@
                         <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" required
                                                                                   type="radio" value="INDUSTRIAL">
                             Entrepôt, local industriel</label>
-                        <!-- A plot is sold to build a home as often as for an activity. -->
-                        <label class="choice" data-categories="COMMERCIAL" data-sale-categories="RESIDENTIAL COMMERCIAL"><input
+                        <!-- data-sale-categories: the categories of the type for a sale (none: not offered). A plot
+                             of land is sold, never let (#275): no rental category offers it (empty data-categories),
+                             both categories of a sale do. -->
+                        <label class="choice" data-categories="" data-sale-categories="RESIDENTIAL COMMERCIAL"><input
                             name="propertyType" required type="radio" value="LAND">
                             Terrain</label>
                     </div>
@@ -325,6 +341,10 @@
                         <span data-error-text></span></p>
                 </fieldset>
 
+                <!-- v2 (#273): a sale renders these three follow-up questions from the step's first render, before the
+                     type is saved, so the seller sees what's coming; they aren't required until the type is saved
+                     (offer-property.js drops `required` meanwhile), and a plot of land hides them for good. A rental
+                     waits for the type, as before. -->
                 <fieldset aria-describedby="rooms-error" class="choices" data-group="rooms" hidden>
                     <legend class="choices__legend">Nombre de chambres</legend>
                     <div class="choices__grid">
@@ -389,15 +409,16 @@
                         </svg>
                         <span data-error-text></span></p>
                     <!-- The implied price per m² of a sold plot of land: asking price ÷ surface, rounded to the
-                         nearest 100 FCFA. Display only — never stored, never sent, never on the review. Hidden until
-                         both exist; computed by offer-property.js. -->
+                         nearest 100 FCFA. Display only — never stored, never sent; the review repeats it right after
+                         the total price (#273). Hidden until both exist; computed by offer-property.js. -->
                     <p class="field__counter" data-price-per-sqm hidden></p>
                 </div>
 
-                <!-- The ownership documents the seller holds, asked only for a SALE · LAND (optional, several). An owner
-                     with none can continue: the agent checks the documents at the audit. A villa, apartment, studio,
-                     duplex, building or commercial sale is never asked; a rental never sends any. -->
-                <fieldset class="choices" data-group="ownershipDocuments" hidden>
+                <!-- The ownership documents the seller holds: visible for every sale from the step's first render, before
+                     the type is saved, and hidden once the type is saved as another one (#273). Optional and several:
+                     an owner with none can continue, the agent checking the documents at the audit. A rented property
+                     never shows them, nor sends any. -->
+                <fieldset class="choices" data-group="ownershipDocuments">
                     <legend class="choices__legend">Document de propriété <span
                         class="field__optional">(facultatif)</span></legend>
                     <div class="choices__grid">
@@ -649,6 +670,8 @@
                     <div class="review__item">
                         <dt class="review__term">Conditions</dt>
                         <dd class="review__value">
+                            <!-- One line per term; a sold plot of land gets its rate per m² right after the total price
+                                 (#273). -->
                             <p class="review__multiline" data-review-value="conditions" hidden></p>
                             <p class="review__missing" data-review-missing="conditions" hidden>
                                 <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
@@ -783,7 +806,15 @@
                                                                             stroke="currentColor" stroke-width="1.5"/><path
                 d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
                 stroke-width="1.5"/></svg></span>
-            <h2 id="confirmation-title">Bien enregistré</h2>
+            <div class="confirmation__head">
+                <h2 id="confirmation-title">Bien enregistré</h2>
+                <!-- v2 (#273, AC 7): the same read-only project pill as the progress header, under the title, from the
+                     page's data-for pair (offer-property.js applies the submitted listingType). -->
+                <p class="project-tag">
+                    <span class="visually-hidden">Projet&nbsp;: </span><span data-for="RENTAL">Location</span><span
+                        data-for="SALE" hidden>Vente</span>
+                </p>
+            </div>
             <p>Félicitations&nbsp;! Votre bien est enregistré. Voici la suite pour <span data-for="RENTAL">le
                 mettre en location</span><span data-for="SALE" hidden>le vendre</span>&nbsp;:</p>
             <ol class="next-steps">

@@ -17,3 +17,39 @@
 .confirmation .hint {
     text-align: left;
 }
+
+/*
+ * v2 (#273, AC 7): the project of the wizard ("Vente" / "Location"), next to the step count from step 2 on, and
+ * under "Bien enregistré" in the confirmation. A read-only pill, as quiet as it gets: the same shape as .deal-tag
+ * (home.css, the Vente / Location tag of the offers and mandates), repeated here because this page doesn't load
+ * home.css. The header row wraps rather than pushing the count or the pill out on a narrow phone.
+ */
+.progress__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-1) var(--space-3);
+}
+
+.project-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    background: var(--color-surface-alt);
+    color: var(--color-fg);
+    font-size: var(--step-hint);
+    font-weight: 600;
+    line-height: 1.6;
+    white-space: nowrap;
+}
+
+/* The confirmation is centred: the pill sits on its own line under the title, not beside the big heading. */
+.confirmation__head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+}

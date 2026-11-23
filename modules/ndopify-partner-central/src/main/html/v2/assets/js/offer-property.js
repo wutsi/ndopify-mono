@@ -18,6 +18,24 @@
  *    shown on the review as "Document de propriété";
  *  - shows the page's data-for="SALE" texts instead of the data-for="RENTAL" ones (applyProject), and its
  *    Quitter / confirmation links go to {publicPortalUrl}/owner/sell instead of /owner.
+ *
+ * #273 — a sale's follow-up questions and a plot's rate:
+ *  - before the type is saved, a sale shows the page's follow-up questions (rooms, parking, places) but doesn't
+ *    require them; once it is saved as Terrain they are gone (a plot has no bedroom nor parking);
+ *  - the ownership documents are visible for every sale from the step's first render, and hidden once the type is
+ *    saved as another one;
+ *  - a sold plot shows its implied rate under its surface ("Soit ≈ 56 300 FCFA/m² pour 800 m²", display only) and
+ *    the review repeats it right after the total asking price, before the availability;
+ *  - the review of a sale reads its total price in full ("45 000 000 FCFA", never a K/M short form).
+ *  - once step 1 is answered, every later step — the review included — and the confirmation carry the project
+ *    ("Vente" / "Location") as a read-only pill next to the step count / under "Bien enregistré" (AC 7). Step 1
+ *    keeps its choice only; the word is the page's data-for pair, so a land sale reads "Vente" like any other.
+ *  - ?sample= shortcuts seed the answers of these states (README › offer-property.html).
+ *
+ * #275 — a plot of land is sold, never let:
+ *  - a rental offers Terrain under neither category (data-categories is empty in the page): a posted
+ *    propertyType=LAND is refused by the rules ("Choisissez le type de bien."), as the BFF does;
+ *  - a sale keeps it under both (data-sale-categories, SALE_CATEGORIES), with its documents, surface and rate.
  */
 (function () {
     "use strict";
@@ -46,7 +64,8 @@
 
     var KEYS = {
         answers: "npc.offer-property",
-        done: "npc.offer-property.done"
+        done: "npc.offer-property.done",
+        sample: "npc.offer-property.sample"
     };
 
     // PROTOTYPE: rows the simulated GET /v1/locations serves, shaped like its Location DTO (ndopify-dto).
@@ -122,7 +141,8 @@
         OFFICE: { label: "Bureau", categories: ["COMMERCIAL"] },
         RETAIL: { label: "Commerce, boutique", categories: ["COMMERCIAL"] },
         INDUSTRIAL: { label: "Entrepôt, local industriel", categories: ["COMMERCIAL"] },
-        LAND: { label: "Terrain", categories: ["COMMERCIAL"] }
+        // A plot of land is sold, never let (#275): no rental category offers it; a sale, both.
+        LAND: { label: "Terrain", categories: [] }
     };
 
     var ROOM_LABELS = { "1": "1 chambre", "2": "2 chambres", "3": "3 chambres", "4": "4 chambres", "5+": "5 chambres et +" };
@@ -161,7 +181,8 @@
         ["securedFenced", "Barrière, clôture sécurisée"]
     ];
 
-    // For a sale, a room isn't offered and a plot is residential too (as data-sale-categories in the page).
+    // For a sale, a room isn't offered and a plot is offered under both uses (data-sale-categories in the page); a
+    // rental offers no plot at all (#275).
     var SALE_CATEGORIES = { ROOM: [], LAND: ["RESIDENTIAL", "COMMERCIAL"] };
 
     function isSale(a) {
@@ -191,27 +212,35 @@
         return a.propertyCategory === "RESIDENTIAL";
     }
 
+    /*
+     * Whether the type being chosen is saved and offered by the step-1 category. Until then a sale's questions are
+     * provisional: rendered, but not required (#273).
+     */
+    function isKnown(a) {
+        return !!PROPERTY_TYPES[a.propertyType] && typeFits(a);
+    }
+
     // A whole building is let as it is, furnished or not flat by flat: the agent sees it during the audit.
     function needsFurniture(a) {
-        return !isSale(a) && isResidential(a) && ["BUILDING", "LAND"].indexOf(a.propertyType) === -1;
+        return isKnown(a) && !isSale(a) && isResidential(a) && ["BUILDING", "LAND"].indexOf(a.propertyType) === -1;
     }
 
     function needsRooms(a) {
-        return isResidential(a) && ["ROOM", "STUDIO", "BUILDING", "LAND"].indexOf(a.propertyType) === -1;
+        return isKnown(a) && isResidential(a) && ["ROOM", "STUDIO", "BUILDING", "LAND"].indexOf(a.propertyType) === -1;
     }
 
     // A room is let in a shared home: its parking, if any, isn't its own. A plot has none yet.
     function needsParking(a) {
-        return isResidential(a) && ["ROOM", "LAND"].indexOf(a.propertyType) === -1;
+        return isKnown(a) && isResidential(a) && ["ROOM", "LAND"].indexOf(a.propertyType) === -1;
     }
 
     function needsArea(a) {
-        return a.propertyCategory === "COMMERCIAL" || a.propertyType === "LAND";
+        return isKnown(a) && (a.propertyCategory === "COMMERCIAL" || a.propertyType === "LAND");
     }
 
     // A plot of land sold: the only property whose ownership documents are asked (optional, sent only for a SALE · LAND).
     function needsOwnershipDocuments(a) {
-        return isSale(a) && a.propertyType === "LAND";
+        return isKnown(a) && isSale(a) && a.propertyType === "LAND";
     }
 
     /*
@@ -279,6 +308,96 @@
         });
         store.set(KEYS.answers, JSON.stringify(answers));
         return answers;
+    }
+
+    /*
+     * PROTOTYPE: ?sample= shortcuts for the states of #273 and #275 (README › offer-property.html). Each seeds the
+     * answers of the steps before the one it opens; the page then opens there (a step only opens once the earlier
+     * ones are complete). A sample already seeded isn't seeded again, so the reviewer can keep walking the wizard.
+     */
+    var SAMPLES = {
+        // A sale whose type isn't chosen yet: the follow-up questions show, not required; the documents show.
+        sale: { step: "caracteristiques" },
+        // A sold plot of land: no rooms nor parking, the documents, its surface and the implied rate per m².
+        land: { step: "caracteristiques", answers: { propertyType: "LAND", area: 800 } },
+        // The same without its surface: the step refuses it ("Indiquez la surface du terrain.").
+        "land-no-area": { step: "caracteristiques", answers: { propertyType: "LAND" } },
+        // A villa sold: the documents are hidden, the rooms and parking asked, no rate.
+        house: { step: "caracteristiques", answers: { propertyType: "HOUSE", rooms: "3", parkings: "2" } },
+        // The review of the sold plot, its two documents declared.
+        "land-review": {
+            step: "revue",
+            answers: { propertyType: "LAND", area: 800, ownershipDocuments: ["LAND_TITLE", "SURVEY_PLAN"] }
+        },
+        // The same with no document declared: "Aucun document déclaré".
+        "land-review-none": {
+            step: "revue",
+            answers: { propertyType: "LAND", area: 800, ownershipDocuments: [] }
+        },
+        // A rental, complete: its review (and each earlier step, walking back) reads "Location" next to the step
+        // count, and the confirmation under "Bien enregistré" — where the sale samples read "Vente" (AC 7).
+        rental: {
+            step: "revue",
+            answers: {
+                listingType: "RENTAL",
+                propertyType: "APARTMENT",
+                furnitureType: "UNFURNISHED",
+                rooms: "3",
+                parkings: "1",
+                priceAmount: 250000,
+                advanceRent: 2,
+                securityDeposit: 2
+            }
+        },
+        // #275: a rental posted with a plot of land. Terrain isn't offered for a rental any more: the step shows
+        // the commercial types alone and the answer is refused ("Choisissez le type de bien.", on *Suivant*), as
+        // the BFF's form re-rendered after the POST does.
+        "rental-land": {
+            step: "caracteristiques",
+            answers: {
+                listingType: "RENTAL",
+                propertyCategory: "COMMERCIAL",
+                propertyType: "LAND",
+                advanceRent: 1,
+                securityDeposit: 2
+            }
+        }
+    };
+
+    // The answers a sample starts from: a complete sale in Bastos, Yaoundé, at 45 000 000 FCFA for 800 m².
+    function sampleAnswers(name) {
+        var chosen = Object.prototype.hasOwnProperty.call(SAMPLES, name) ? SAMPLES[name] : null;
+        if (!chosen) return null;
+        return Object.assign({
+            listingType: "SALE",
+            propertyCategory: "RESIDENTIAL",
+            cityId: 2220957,
+            neighborhoodId: 1001,
+            priceAmount: 45000000,
+            availableFrom: isoDate(today()),
+            firstName: "Aïcha",
+            lastName: "Ngo Bassong",
+            email: "aicha.ngobassong@example.com",
+            whatsappNumber: "+237677123456",
+            preferredContactPeriod: "EVENING",
+            roadAccess: "roadPaved",
+            waterMeter: true,
+            electricityMeter: true,
+            securedFenced: true
+        }, chosen.answers || {});
+    }
+
+    // Seeds a ?sample= (once), and returns the step it opens, or null without a known sample.
+    function applySample() {
+        var name = new URLSearchParams(window.location.search).get("sample");
+        var answers = sampleAnswers(name);
+        if (!answers) return null;
+        if (store.get(KEYS.sample) !== name || !store.get(KEYS.answers)) {
+            store.set(KEYS.answers, JSON.stringify(answers));
+            store.set(KEYS.sample, name);
+            store.remove(KEYS.done);
+        }
+        return STEPS.indexOf(SAMPLES[name].step);
     }
 
     /* ---------- Helpers ---------- */
@@ -578,6 +697,33 @@
 
     function areaValid(area) {
         return area >= 5 && area <= 1000000;
+    }
+
+    /*
+     * The implied rate of a sold plot of land: asking price ÷ surface, rounded to the nearest 100 FCFA (#273). 0
+     * when the answers aren't a land sale, or when the price or the surface is missing or unusable. Display only:
+     * it is never stored, never sent.
+     */
+    function rateOf(a, price, surface) {
+        if (!needsOwnershipDocuments(a) || !(Number(price) > 0) || !areaValid(surface)) return 0;
+        return Math.round((Number(price) / surface) / 100) * 100;
+    }
+
+    /*
+     * "≈ 56 300 FCFA/m² pour 800 m²". The rate and the surface both go through formatNumber, like every amount on
+     * the page: thousands grouped, never a raw number. The prototype hard-codes fr-FR and FCFA; the production page
+     * formats them with the tenant's formatter (the tenant's locale and currency symbol).
+     */
+    function rateText(rate, surface) {
+        return "≈ " + formatNumber(rate) + " FCFA/m² pour " + formatNumber(surface) + " m²";
+    }
+
+    // A question is required only while it applies: the page marks the normal state with `required`, and the script
+    // drops it from a question a sale shows before its type is saved (#273).
+    function setRequired(name, required) {
+        $all('input[name="' + name + '"]').forEach(function (input) {
+            input.required = required;
+        });
     }
 
     function monthsValid(value, min, max) {
@@ -903,47 +1049,53 @@
             return area.value.trim() ? numberValue(area) : null;
         }
 
-        // A plot of land sold (the same case as its ownership documents): the implied price per m², total asking
-        // price ÷ surface, rounded to the nearest 100 FCFA. Display only — never stored, never sent, never on the
-        // review. Hidden until both a valid asking price (conditions step) and a valid surface exist; also hidden
-        // for a rental or another property type. The price is read from the saved answers, the surface as typed.
-        function updatePricePerSqm() {
+        // A sale whose type isn't saved yet: its follow-up questions are shown, but not required (#273). A rental
+        // waits for its type, as before.
+        function provisional() {
             var a = live();
-            var saved = loadAnswers();
-            var price = saved.priceAmount != null ? Number(saved.priceAmount) : 0;
+            return isSale(a) && !a.propertyType && isResidential(a);
+        }
+
+        // A plot of land sold (the same case as its ownership documents): its implied price per m², asking price ÷
+        // surface rounded to the nearest 100 FCFA. Display only — never stored, never sent. Hidden until both a valid
+        // asking price (conditions step) and a valid surface exist; also hidden for a rental or another type. The
+        // price is read from the saved answers, the surface as typed.
+        function updatePricePerSqm() {
             var surface = areaValue();
-            var show = needsOwnershipDocuments(a) && surface > 0 && areaValid(surface) && price > 0;
-            if (!show) {
-                perSqm.hidden = true;
-                perSqm.textContent = "";
-                return;
-            }
-            var rate = Math.round((price / surface) / 100) * 100;
+            var rate = rateOf(live(), loadAnswers().priceAmount, surface);
             if (rate <= 0) {
                 perSqm.hidden = true;
                 perSqm.textContent = "";
                 return;
             }
-            perSqm.textContent = "Soit ≈ " + formatNumber(rate) + " FCFA/m² pour " + formatNumber(surface) + " m²";
+            perSqm.textContent = "Soit " + rateText(rate, surface);
             perSqm.hidden = false;
         }
 
         // Shows only the questions that apply; a hidden question is never in error.
         function updateQuestions() {
             var a = live();
-            var chosen = typeFits(a);
+            var known = isKnown(a);
+            var before = provisional();
             var shown = {
-                furnitureType: chosen && needsFurniture(a),
-                rooms: chosen && needsRooms(a),
-                hasParking: chosen && needsParking(a),
-                parkings: chosen && asksPlaces(),
-                area: chosen && needsArea(a),
-                ownershipDocuments: chosen && needsOwnershipDocuments(a)
+                furnitureType: known && needsFurniture(a),
+                rooms: (known && needsRooms(a)) || before,
+                hasParking: (known && needsParking(a)) || before,
+                parkings: (known && asksPlaces()) || (before && checkedValue("hasParking") !== "NO"),
+                area: known && needsArea(a),
+                // Visible for every sale from the first render, hidden once the type is saved as another one (#273).
+                ownershipDocuments: isSale(a) && (!known || needsOwnershipDocuments(a))
             };
             Object.keys(groups).forEach(function (key) {
                 groups[key].hidden = !shown[key];
                 if (!shown[key]) setFieldError(groups[key], $("#" + key + "-error"), "");
             });
+            // A question shown before the type is saved isn't required yet; the documents are always optional.
+            setRequired("furnitureType", shown.furnitureType);
+            setRequired("rooms", known && needsRooms(a));
+            setRequired("hasParking", known && needsParking(a));
+            setRequired("parkings", known && asksPlaces());
+            setRequired("area", shown.area);
             $("[data-area-label]").textContent = a.propertyType === "LAND" ? "Surface du terrain estimée" : "Surface estimée";
             updatePricePerSqm();
         }
@@ -991,7 +1143,13 @@
                     },
                     validate: function () {
                         if (groups.area.hidden) return "";
-                        if (!area.value.trim()) return "Indiquez la surface, même approximative.";
+                        if (!area.value.trim()) {
+                            // A plot of land is sold by its surface, and its error names it — the wording of
+                            // OfferPropertyRules.
+                            return live().propertyType === "LAND"
+                                ? "Indiquez la surface du terrain."
+                                : "Indiquez la surface, même approximative.";
+                        }
                         return areaValid(areaValue()) ? "" : "Indiquez une surface d'au moins 5 m².";
                     }
                 }
@@ -1083,12 +1241,21 @@
 
         function describeConditions(a) {
             if (!isStepComplete("conditions", a)) return "";
-            if (isSale(a)) return [formatPrice(a.priceAmount) + " FCFA", formatAvailability(a.availableFrom)].join("\n");
+            var availability = formatAvailability(a.availableFrom);
+            if (isSale(a)) {
+                // The total asking price in full (#273), then — for a sold plot of land only — its implied rate per m²,
+                // right after it, before the availability.
+                var lines = [formatNumber(a.priceAmount) + " FCFA"];
+                var rate = rateOf(a, a.priceAmount, a.area);
+                if (rate > 0) lines.push(rateText(rate, a.area));
+                lines.push(availability);
+                return lines.join("\n");
+            }
             return [
                 formatPrice(a.priceAmount) + " FCFA par mois",
                 a.advanceRent ? "Avance de " + months(a.advanceRent) : "Sans avance de loyer",
                 "Caution de " + months(a.securityDeposit),
-                formatAvailability(a.availableFrom)
+                availability
             ].join("\n");
         }
 
@@ -1172,6 +1339,8 @@
         var confirmation = $("[data-confirmation]");
         var formParts = [$("[data-progress-block]"), $("[data-steps-title]"), form];
         var current = 0;
+        // A ?sample= seeds the session before the steps read their answers, and names the step it opens.
+        var sampleStep = applySample();
         var whatsapp = lazyPhone($("#whatsappNumber"), { name: "whatsappNumber", value: loadAnswers().whatsappNumber });
 
         function resync() {
@@ -1229,6 +1398,9 @@
             });
             current = index;
             setProgress(index);
+            // The project pill (Vente / Location) from step 2 on: step 1 carries the choice itself (#273, AC 7).
+            // The confirmation's own pill is not [data-project]; applyProject() fills both from the listingType.
+            $("[data-progress-block] [data-project]").hidden = index === 0;
 
             var next = $("[data-next]", slides[index]);
             if (next) next.textContent = state().returning ? "Revenir à la revue" : "Suivant";
@@ -1409,13 +1581,14 @@
             show(index, true);
         });
 
-        /* First render: reloading the confirmation shows it again; otherwise the allowed step. */
+        /* First render: reloading the confirmation shows it again; otherwise the allowed step (?sample= names it). */
         var done = loadJson(KEYS.done);
         if (state().done && done) {
             showConfirmation(done);
         } else {
-            var start = allowed(requestedStep());
-            var returning = start === requestedStep() && !!state().returning;
+            var target = sampleStep != null ? sampleStep : requestedStep();
+            var start = allowed(target);
+            var returning = sampleStep == null && start === requestedStep() && !!state().returning;
             window.history.replaceState({ step: start, returning: returning, depth: state().depth || 0 }, "", urlFor(start));
             show(start, false);
         }
