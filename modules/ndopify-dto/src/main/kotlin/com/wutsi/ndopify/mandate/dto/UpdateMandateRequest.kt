@@ -12,6 +12,12 @@ data class UpdateMandateRequest(
     val propertyCategory: PropertyCategory = PropertyCategory.UNKNOWN,
     val listingType: ListingType = ListingType.UNKNOWN,
 
+    /** How the buyer declares they will pay; null for a rental. */
+    val financingType: FinancingType? = null,
+
+    /** The land documents a buyer requires; optional, land purchases only, empty otherwise. */
+    val titleDocuments: List<TitleDocumentType> = emptyList(),
+
     val cityId: Long = -1,
     val neighbourhoodIds: List<Long> = emptyList(),
 

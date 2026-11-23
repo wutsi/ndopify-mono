@@ -15,6 +15,12 @@ data class CreateMandateRequest(
     val mandateType: MandateType = MandateType.UNKNOWN,
     val listingType: ListingType = ListingType.UNKNOWN,
 
+    /** How the buyer declares they will pay; null for a rental. */
+    val financingType: FinancingType? = null,
+
+    /** The land documents a buyer requires; optional, land purchases only, empty otherwise. */
+    val titleDocuments: List<TitleDocumentType> = emptyList(),
+
     /** The listing the visitor asked about, when the mandate comes from its public page; null otherwise. */
     val originListingId: Long? = null,
 
