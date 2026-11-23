@@ -49,6 +49,7 @@ class MandateAssignedMailet(
                         "agent_full_name" to agent.party.fullName(),
                         "agent_photo_url" to agent.party.photoUrl?.ifBlank { null },
                         "agent_presentation" to agent.biography?.ifBlank { null },
+                        "sale" to MandateMailLabels.sale(mandate),
                     ) + AgentMailContext.of(agent, formatter)
                 )
             )

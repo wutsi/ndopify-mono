@@ -19,10 +19,13 @@
                     <mj-text>
                         Bonjour <strong>{{recipient_name}}</strong>,
                     </mj-text>
-                    <mj-text>
+                    <mj-text>{{^sale}}
                         Merci d'avoir fait confiance à {{tenant_name}} pour la mise en location de votre bien. Je suis
                         votre agent dédié pour ce mandat.
-                    </mj-text>
+                    {{/sale}}{{#sale}}
+                        Merci d'avoir fait confiance à {{tenant_name}} pour la vente de votre bien. Je suis
+                        votre agent dédié pour ce mandat.
+                    {{/sale}}</mj-text>
                     <mj-text>
                         Je me présente :
                     </mj-text>

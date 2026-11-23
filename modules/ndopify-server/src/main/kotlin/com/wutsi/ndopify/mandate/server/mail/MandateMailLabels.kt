@@ -57,6 +57,11 @@ internal object MandateMailLabels {
             else -> "Achat"
         }
 
+    // Whether the mandate is a sale: its e-mail then words the buyer's or the seller's flow. A rental's copy never
+    // changes, so a mailet that doesn't set it keeps the rental wording.
+    fun sale(mandate: MandateEntity): Boolean =
+        mandate.listingType == ListingType.SALE
+
     // A listing's price: its rent, or its sale price
     fun priceLabel(mandate: MandateEntity): String =
         if (mandate.listingType == ListingType.SALE) "Prix" else "Loyer"

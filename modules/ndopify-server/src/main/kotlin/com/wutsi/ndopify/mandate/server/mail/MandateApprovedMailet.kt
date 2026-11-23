@@ -48,6 +48,7 @@ class MandateApprovedMailet(
                         "customer_name" to customer.party.fullName(),
                         "contract_number" to contract.number,
                         "listing_type" to MandateMailLabels.listingType(mandate),
+                        "sale" to MandateMailLabels.sale(mandate),
                         "property_type" to MandateMailLabels.propertyType(mandate),
                         "city" to city,
                         "neighbourhoods" to MandateMailLabels.neighbourhoods(mandate, locationService),
