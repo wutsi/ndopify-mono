@@ -358,7 +358,7 @@ class OfferPropertyController(
             model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS + ListingViews.AMENITY_LABELS)
         }
         if (step == STEP_REVIEW) {
-            model.addAttribute("categoryLabel", MandateLabels.project(answers.propertyCategory))
+            model.addAttribute("categoryLabel", MandateLabels.project(answers.propertyCategory, null))
             model.addAttribute("locationLabel", locationLabel(model))
             model.addAttribute("termsLines", termsLines(answers))
             model.addAttribute("propertyLabel", propertyLabel(answers))

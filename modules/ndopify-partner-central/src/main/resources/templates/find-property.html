@@ -583,6 +583,18 @@
                                         class="visually-hidden"> le bien recherché</span></a>
                             </dd>
                         </div>
+                        <!--/* The land documents a buyer requires: a land purchase only, and "Aucun document exigé" for none. */-->
+                        <div class="review__item" th:if="${titleDocumentsLabel != null}">
+                            <dt class="review__term">Documents exigés</dt>
+                            <dd class="review__value">
+                                <p data-review-value="titleDocuments" th:text="${titleDocumentsLabel}">Aucun document exigé</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/find-property(step='property', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> les documents exigés</span></a>
+                            </dd>
+                        </div>
                         <div class="review__item">
                             <dt class="review__term">Indispensable</dt>
                             <dd class="review__value">
@@ -598,7 +610,7 @@
                             </dd>
                         </div>
                         <div class="review__item">
-                            <dt class="review__term">Budget mensuel</dt>
+                            <dt class="review__term" th:text="${priceTerm}">Budget mensuel</dt>
                             <dd class="review__value">
                                 <p data-review-value="price" th:text="${priceLabel}">150K FCFA par mois</p>
                             </dd>
@@ -609,8 +621,7 @@
                             </dd>
                         </div>
                         <div class="review__item">
-                            <dt class="review__term" data-review-move-in-term
-                                th:text="${commercial} ? 'Date d\'installation' : 'Date d\'emménagement'">Date
+                            <dt class="review__term" data-review-move-in-term th:text="${moveInTerm}">Date
                                 d'emménagement</dt>
                             <dd class="review__value">
                                 <p data-review-value="movingPeriod" th:text="${movingPeriodLabel}">Dans moins d'1 mois</p>
@@ -619,6 +630,18 @@
                                 <a class="link-button review__edit"
                                    th:href="@{/find-property(step='budget', returnTo='review')}">Modifier<span
                                         class="visually-hidden"> votre date d'emménagement</span></a>
+                            </dd>
+                        </div>
+                        <!--/* How a purchase will be paid: a purchase only. */-->
+                        <div class="review__item" th:if="${financingLabel != null}">
+                            <dt class="review__term">Financement</dt>
+                            <dd class="review__value">
+                                <p data-review-value="financing" th:text="${financingLabel}">Comptant</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/find-property(step='budget', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> le financement</span></a>
                             </dd>
                         </div>
                         <div class="review__item">
@@ -686,8 +709,14 @@
             <ol class="next-steps">
                 <li>
                     <div>
-                        <p class="next-steps__title">Un agent vous est attribué</p>
-                        <p>Nous choisissons un Agent Vérifié qui connaît le secteur demandé.</p>
+                        <p class="next-steps__title" th:if="${#strings.equals(listingType.name(), 'SALE')}">Un agent
+                            vente vous est attribué</p>
+                        <p class="next-steps__title" th:unless="${#strings.equals(listingType.name(), 'SALE')}">Un agent
+                            vous est attribué</p>
+                        <p th:if="${#strings.equals(listingType.name(), 'SALE')}">Nous choisissons un Agent Vérifié qui
+                            traite les ventes et connaît le secteur demandé.</p>
+                        <p th:unless="${#strings.equals(listingType.name(), 'SALE')}">Nous choisissons un Agent Vérifié
+                            qui connaît le secteur demandé.</p>
                     </div>
                 </li>
                 <li>
@@ -702,9 +731,15 @@
                 </li>
                 <li>
                     <div>
-                        <p class="next-steps__title">Vous visitez des biens vérifiés</p>
-                        <p>Votre agent vous propose des biens qui correspondent à vos critères et vous accompagne
-                            jusqu'à la signature.</p>
+                        <p class="next-steps__title" th:if="${#strings.equals(listingType.name(), 'SALE')}">Vous visitez
+                            des biens à acheter</p>
+                        <p class="next-steps__title" th:unless="${#strings.equals(listingType.name(), 'SALE')}">Vous
+                            visitez des biens vérifiés</p>
+                        <p th:if="${#strings.equals(listingType.name(), 'SALE')}">Votre agent vous propose des biens à
+                            visiter qui correspondent à vos critères et vous accompagne jusqu'à la signature de la
+                            vente.</p>
+                        <p th:unless="${#strings.equals(listingType.name(), 'SALE')}">Votre agent vous propose des biens
+                            qui correspondent à vos critères et vous accompagne jusqu'à la signature.</p>
                     </div>
                 </li>
             </ol>

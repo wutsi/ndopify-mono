@@ -524,6 +524,63 @@ class FindPropertyTemplateTest {
     }
 
     @Test
+    fun `sale review words a purchase and its answers`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = "LAND",
+                rooms = null,
+                furnitureType = null,
+                parkings = null,
+                area = 400,
+                priceAmount = 10_000_000,
+                financingType = FinancingType.CASH,
+                titleDocuments = emptyList(),
+            ),
+        )
+
+        val page = render(get("/find-property?step=review"))
+
+        assertEquals("Achat, usage commercial", value(page, "project"))
+        assertEquals("10\u00a0000\u00a0000\u00a0FCFA", value(page, "price"))
+        assertEquals("Achat prévu", page.selectFirst("[data-review-move-in-term]")?.text())
+        assertEquals("Comptant", value(page, "financing"))
+        assertEquals("Aucun document exigé", value(page, "titleDocuments"))
+        assertTrue(page.select("dt").any { it.text() == "Budget total" })
+    }
+
+    @Test
+    fun `a rental review has no purchase rows`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
+
+        val page = render(get("/find-property?step=review"))
+
+        assertEquals("Location, usage résidentiel", value(page, "project"))
+        assertTrue(page.select("dt").any { it.text() == "Budget mensuel" })
+        assertNull(page.selectFirst("[data-review-value=financing]"))
+        assertNull(page.selectFirst("[data-review-value=titleDocuments]"))
+    }
+
+    @Test
+    fun `sale confirmation names the sales agent`() {
+        session.setAttribute(
+            SubmittedMandate.SESSION_ATTRIBUTE,
+            SubmittedMandate("ray@gmail.com", "+237670000001", ContactPeriodType.EVENING, ListingType.SALE),
+        )
+
+        val page = render(get("/find-property?step=confirmation"))
+
+        val text = page.text()
+        assertTrue(text.contains("Un agent vente vous est attribué"))
+        assertTrue(text.contains("qui traite les ventes"))
+        assertTrue(text.contains("Vous visitez des biens à acheter"))
+        assertTrue(text.contains("signature de la vente"))
+        assertFalse(text.contains("Un agent vous est attribué"))
+    }
+
+    @Test
     fun confirmation() {
         session.setAttribute(
             SubmittedMandate.SESSION_ATTRIBUTE,

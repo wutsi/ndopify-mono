@@ -1,6 +1,8 @@
 package com.wutsi.ndopify.npc.ui.findproperty
 
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyController.Companion.STEPS
@@ -80,6 +82,7 @@ class FindPropertyController(
             model.addAttribute("maskedEmail", LoginController.maskEmail(submitted.email))
             model.addAttribute("whatsappNumber", submitted.whatsappNumber)
             model.addAttribute("contactPeriodLabel", MandateLabels.CONTACT_PERIOD_LABELS[submitted.preferredContactPeriod])
+            model.addAttribute("listingType", submitted.listingType)
             return VIEW
         }
 
@@ -270,6 +273,7 @@ class FindPropertyController(
                 email = pending.email.orEmpty(),
                 whatsappNumber = pending.whatsappNumber.orEmpty(),
                 preferredContactPeriod = pending.preferredContactPeriod,
+                listingType = pending.listingType ?: ListingType.RENTAL,
             ),
         )
         return redirect(STEP_CONFIRMATION)
@@ -359,10 +363,24 @@ class FindPropertyController(
             model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS)
         }
         if (step == STEP_REVIEW) {
-            model.addAttribute("categoryLabel", MandateLabels.project(answers.propertyCategory))
+            model.addAttribute("categoryLabel", MandateLabels.project(answers.propertyCategory, answers.listingType))
             model.addAttribute("propertyLabel", propertyLabel(answers))
-            model.addAttribute("priceLabel", answers.priceAmount?.let { formatter().money(it) + " par mois" })
+            model.addAttribute("priceTerm", if (answers.isSale()) "Budget total" else "Budget mensuel")
+            model.addAttribute(
+                "priceLabel",
+                answers.priceAmount?.let { formatter().money(it) + if (answers.isSale()) "" else " par mois" },
+            )
+            model.addAttribute("moveInTerm", MandateLabels.moveInTerm(answers.listingType, answers.propertyCategory))
             model.addAttribute("movingPeriodLabel", MandateLabels.MOVE_IN_LABELS[answers.movingPeriod])
+            model.addAttribute("financingLabel", answers.financingType?.let { MandateLabels.FINANCING_LABELS[it] })
+            model.addAttribute(
+                "titleDocumentsLabel",
+                answers.titleDocuments
+                    .takeIf {
+                        answers.isSale() && FindPropertyRules.parsePropertyType(answers.propertyType) == PropertyType.LAND
+                    }
+                    ?.let { MandateLabels.titleDocuments(it) },
+            )
             model.addAttribute("contactPeriodLabel", MandateLabels.CONTACT_PERIOD_LABELS[answers.preferredContactPeriod])
             model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS.filterKeys { answers.has(it) }.values.toList())
         }

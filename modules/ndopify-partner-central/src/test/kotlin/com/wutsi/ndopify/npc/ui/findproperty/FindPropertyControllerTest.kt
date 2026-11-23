@@ -180,6 +180,33 @@ class FindPropertyControllerTest {
     }
 
     @Test
+    fun `sale review labels`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = "LAND",
+                rooms = null,
+                furnitureType = null,
+                parkings = null,
+                area = 400,
+                priceAmount = 10_000_000,
+                financingType = FinancingType.CASH,
+                titleDocuments = emptyList(),
+            ),
+        )
+
+        val result = mvc.perform(get("/find-property?step=review").session(session)).andReturn()
+
+        assertEquals("Achat, usage commercial", model(result)["categoryLabel"])
+        assertEquals("10\u00a0000\u00a0000\u00a0FCFA", model(result)["priceLabel"])
+        assertEquals("Achat prévu", model(result)["moveInTerm"])
+        assertEquals("Comptant", model(result)["financingLabel"])
+        assertEquals("Aucun document exigé", model(result)["titleDocumentsLabel"])
+    }
+
+    @Test
     fun reviewLabelForAnyType() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
@@ -857,6 +884,7 @@ class FindPropertyControllerTest {
         assertEquals("ray@gmail.com", submitted.email)
         assertEquals("+237670000001", submitted.whatsappNumber)
         assertEquals(ContactPeriodType.EVENING, submitted.preferredContactPeriod)
+        assertEquals(ListingType.RENTAL, submitted.listingType)
     }
 
     @Test
@@ -936,6 +964,18 @@ class FindPropertyControllerTest {
         assertEquals("ra•••@gmail.com", model(result)["maskedEmail"])
         assertEquals("+237670000001", model(result)["whatsappNumber"])
         assertEquals("le soir", model(result)["contactPeriodLabel"])
+    }
+
+    @Test
+    fun `confirmation of a sale`() {
+        session.setAttribute(
+            SubmittedMandate.SESSION_ATTRIBUTE,
+            SubmittedMandate("ray@gmail.com", "+237670000001", ContactPeriodType.EVENING, ListingType.SALE),
+        )
+
+        val result = mvc.perform(get("/find-property?step=confirmation").session(session)).andReturn()
+
+        assertEquals(ListingType.SALE, model(result)["listingType"])
     }
 
     @Test

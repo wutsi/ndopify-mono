@@ -128,8 +128,16 @@ object MandateLabels {
 
     fun category(category: PropertyCategory): String? = CATEGORY_LABELS[category]
 
-    /** "Location, usage résidentiel", the wizards' project; null without a category. */
-    fun project(category: PropertyCategory?): String? = PROJECT_LABELS[category]?.let { "Location, $it" }
+    /** "Location, usage résidentiel" or "Achat, usage résidentiel", the wizards' project; null without a category. */
+    fun project(category: PropertyCategory?, listingType: ListingType?): String? =
+        PROJECT_LABELS[category]?.let { (if (FindPropertyRules.isSale(listingType)) "Achat, " else "Location, ") + it }
+
+    /** The review's horizon term: a purchase is planned, a rental is moved into (or installed for an activity). */
+    fun moveInTerm(listingType: ListingType?, category: PropertyCategory?): String = when {
+        FindPropertyRules.isSale(listingType) -> "Achat prévu"
+        category == PropertyCategory.COMMERCIAL -> "Date d'installation"
+        else -> "Date d'emménagement"
+    }
 
     fun propertyType(type: PropertyType?): String = PROPERTY_TYPE_LABELS[type] ?: "Tout type de bien"
 

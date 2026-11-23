@@ -69,6 +69,35 @@ class MandateLabelsTest {
     }
 
     @Test
+    fun `project words a purchase`() {
+        assertEquals("Location, usage résidentiel", MandateLabels.project(PropertyCategory.RESIDENTIAL, null))
+        assertEquals("Location, usage commercial", MandateLabels.project(PropertyCategory.COMMERCIAL, ListingType.RENTAL))
+        assertEquals("Achat, usage résidentiel", MandateLabels.project(PropertyCategory.RESIDENTIAL, ListingType.SALE))
+        assertEquals("Achat, usage commercial", MandateLabels.project(PropertyCategory.COMMERCIAL, ListingType.SALE))
+        assertNull(MandateLabels.project(null, ListingType.SALE))
+    }
+
+    @Test
+    fun `move in term words a purchase`() {
+        assertEquals("Date d'emménagement", MandateLabels.moveInTerm(null, PropertyCategory.RESIDENTIAL))
+        assertEquals("Date d'installation", MandateLabels.moveInTerm(ListingType.RENTAL, PropertyCategory.COMMERCIAL))
+        assertEquals("Achat prévu", MandateLabels.moveInTerm(ListingType.SALE, PropertyCategory.RESIDENTIAL))
+        assertEquals("Achat prévu", MandateLabels.moveInTerm(ListingType.SALE, PropertyCategory.COMMERCIAL))
+    }
+
+    @Test
+    fun `title documents are named or none`() {
+        assertEquals("Titre foncier · Plan de bornage", MandateLabels.titleDocuments(
+            listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+        ))
+        assertEquals("Aucun document exigé", MandateLabels.titleDocuments(emptyList()))
+        assertEquals(
+            "Certificat de propriété",
+            MandateLabels.titleDocuments(listOf(TitleDocumentType.CERTIFICATE_OF_OWNERSHIP)),
+        )
+    }
+
+    @Test
     fun party() {
         assertEquals("Propriétaire", MandateLabels.party(MandateType.LISTING))
         assertEquals("Locataire", MandateLabels.party(MandateType.SEARCH))
