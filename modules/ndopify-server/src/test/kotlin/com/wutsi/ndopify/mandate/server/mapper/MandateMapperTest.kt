@@ -1,7 +1,10 @@
 package com.wutsi.ndopify.mandate.server.mapper
 
+import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.mandate.dto.FinancingType
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -21,6 +24,29 @@ class MandateMapperTest {
     @Test
     fun `no origin listing`() {
         assertNull(mapper.toMandate(MandateEntity(id = 1, customerId = 2, cityId = 3)).originListingId)
+    }
+
+    @Test
+    fun `maps the purchase answers`() {
+        val entity = MandateEntity(
+            id = 1L,
+            listingType = ListingType.SALE,
+            financingType = FinancingType.BANK_LOAN,
+            titleDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+        )
+
+        val mandate = mapper.toMandate(entity)
+
+        assertEquals(FinancingType.BANK_LOAN, mandate.financingType)
+        assertEquals(listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN), mandate.titleDocuments)
+    }
+
+    @Test
+    fun `maps a rental with no purchase answers`() {
+        val mandate = mapper.toMandate(MandateEntity(id = 1L, listingType = ListingType.RENTAL))
+
+        assertNull(mandate.financingType)
+        assertEquals(emptyList(), mandate.titleDocuments)
     }
 
     @Test

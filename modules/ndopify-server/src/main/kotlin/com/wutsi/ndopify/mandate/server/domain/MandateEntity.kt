@@ -6,12 +6,16 @@ import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.mandate.dto.FinancingType
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import com.wutsi.ndopify.util.jpa.TitleDocumentTypeListConverter
 import jakarta.persistence.CollectionTable
 import jakarta.persistence.Column
+import jakarta.persistence.Convert
 import jakarta.persistence.ElementCollection
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
@@ -50,6 +54,13 @@ data class MandateEntity(
     val status: MandateStatus = MandateStatus.UNKNOWN,
     val mandateType: MandateType = MandateType.UNKNOWN,
     val listingType: ListingType = ListingType.UNKNOWN,
+
+    /** How a buyer declares they will pay; null for a rental (a display-only answer). */
+    val financingType: FinancingType? = null,
+
+    /** The land documents a buyer requires: land purchases only, empty otherwise. */
+    @Convert(converter = TitleDocumentTypeListConverter::class)
+    val titleDocuments: List<TitleDocumentType> = emptyList(),
 
     val cityId: Long = -1,
 

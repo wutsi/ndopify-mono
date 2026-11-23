@@ -20,6 +20,8 @@ class MandateMapper {
             status = entity.status,
             mandateType = entity.mandateType,
             listingType = entity.listingType,
+            financingType = entity.financingType,
+            titleDocuments = entity.titleDocuments,
             cityId = entity.cityId,
             neighborhoodIds = entity.neighborhoodIds,
             propertyType = entity.propertyType,

@@ -11,8 +11,10 @@ import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.mandate.dto.FinancingType
 import com.wutsi.ndopify.mandate.dto.GetMandateResponse
 import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.refdata.dto.Money
@@ -236,6 +238,67 @@ class UpdateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.MANDATE_NOT_FOUND, response.body?.error?.code)
+    }
+
+    @Test
+    fun `update keeps the financing and land documents of a land sale`() {
+        val sale = request.copy(
+            propertyType = PropertyType.LAND,
+            financingType = FinancingType.CASH,
+            titleDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.CERTIFICATE_OF_OWNERSHIP),
+        )
+
+        val response = rest.postForEntity("/v1/mandates/1", sale, Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val mandate = rest.getForEntity("/v1/mandates/1", GetMandateResponse::class.java).body!!.mandate
+        assertEquals(FinancingType.CASH, mandate.financingType)
+        assertEquals(
+            listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.CERTIFICATE_OF_OWNERSHIP),
+            mandate.titleDocuments,
+        )
+    }
+
+    @Test
+    fun `update drops the financing of a rental`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/1",
+            request.copy(listingType = ListingType.RENTAL, financingType = FinancingType.CASH),
+            Any::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertNull(rest.getForEntity("/v1/mandates/1", GetMandateResponse::class.java).body!!.mandate.financingType)
+    }
+
+    @Test
+    fun `update drops the documents of a non-land sale`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/1",
+            request.copy(propertyType = PropertyType.VILLA, titleDocuments = listOf(TitleDocumentType.LAND_TITLE)),
+            Any::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(
+            emptyList(),
+            rest.getForEntity("/v1/mandates/1", GetMandateResponse::class.java).body!!.mandate.titleDocuments,
+        )
+    }
+
+    @Test
+    fun `update keeps a land sale with no document`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/1",
+            request.copy(propertyType = PropertyType.LAND, titleDocuments = emptyList()),
+            Any::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(
+            emptyList(),
+            rest.getForEntity("/v1/mandates/1", GetMandateResponse::class.java).body!!.mandate.titleDocuments,
+        )
     }
 
     private fun neighborhoodIds(mandateId: Long): List<Long> {

@@ -1,0 +1,3 @@
+ALTER TABLE T_MANDATE
+    ADD COLUMN financing_type VARCHAR(50) NULL,
+    ADD COLUMN title_documents TEXT NULL;

@@ -44,6 +44,8 @@ class GetMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(MandateStatus.PENDING_ASSIGNMENT, mandate.status)
         assertEquals(MandateType.SEARCH, mandate.mandateType)
         assertEquals(ListingType.RENTAL, mandate.listingType)
+        assertNull(mandate.financingType)
+        assertEquals(emptyList(), mandate.titleDocuments)
         assertEquals(2370201L, mandate.cityId)
         assertEquals(listOf(111L, 222L), mandate.neighborhoodIds.sorted())
         assertEquals(PropertyType.APARTMENT, mandate.propertyType)
