@@ -1567,6 +1567,57 @@
                 advanceRent: 6
             }
         },
+        // #275: rental mandates stored before land stopped being let. Their saved Terrain stays readable and
+        // savable — mandate/edit.html shows it checked and enabled, though a rental no longer offers it — and no
+        // data is rewritten. 208 a renter's search, 209 a landlord's property; neither has a card on index.html,
+        // so they are opened by id (mandate/edit.html?id=208, ?id=209).
+        208: {
+            party: "client",
+            createdAt: -45,
+            initial: { status: "ASSIGNED", acceptedAt: -3 },
+            contact: {
+                firstName: "Bertrand",
+                lastName: "Mvondo",
+                whatsapp: "+237699445577",
+                email: "b.mvondo@example.com",
+                period: "Matin"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Japoma"],
+                propertyCategory: "COMMERCIAL",
+                propertyType: "LAND",
+                area: 600,
+                amenities: ["waterMeter", "roadPaved", "securedFenced"],
+                price: 150000,
+                movingPeriod: "WITHIN_3_MONTHS",
+                comments: "Terrain pour un atelier de menuiserie, clôturé."
+            }
+        },
+        209: {
+            party: "bailleur",
+            createdAt: -52,
+            initial: { status: "ASSIGNED", acceptedAt: -6 },
+            contact: {
+                firstName: "Odile",
+                lastName: "Ngo Bell",
+                whatsapp: "+237677334466",
+                email: "odile.ngobell@example.com",
+                period: "Après-midi"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Logbessou"],
+                propertyCategory: "COMMERCIAL",
+                propertyType: "LAND",
+                area: 800,
+                amenities: ["waterMeter", "electricityMeter", "trackAccessibleByCar", "securedFenced"],
+                price: 200000,
+                movingPeriod: "WITHIN_1_MONTH",
+                securityDeposit: 2,
+                advanceRent: 2
+            }
+        },
         // v2: a seller's villa (LISTING · SALE), signed: its listing is still to create. A sale price, no rental terms.
         301: {
             party: "bailleur",
@@ -4031,11 +4082,20 @@
         }
 
         // The types of the category; rooms for a home, furniture and parking for anything but a plot of land.
+        // #275: a rental offers no plot of land (data-rental-categories="" in the page, a sale its data-categories
+        // ones), except the plot a stored mandate already answered: it stays visible and checked in its saved
+        // category, and is no longer offered once another type is picked (the exception needs it still checked).
+        var savedLand = !sale && f.propertyType === "LAND";
         function syncProperty() {
             var category = checked("propertyCategory");
+            var attribute = sale ? "data-sale-categories" : "data-rental-categories";
             $all('[name="propertyType"]', form).forEach(function (input) {
                 var label = input.closest("label");
-                var fits = label.getAttribute("data-categories").split(" ").indexOf(category) !== -1;
+                var categories = label.hasAttribute(attribute)
+                    ? label.getAttribute(attribute) : label.getAttribute("data-categories");
+                var keep = savedLand && input.value === "LAND" && input.checked &&
+                    category === f.propertyCategory;
+                var fits = categories.split(" ").indexOf(category) !== -1 || keep;
                 label.hidden = !fits;
                 if (!fits) input.checked = false;
             });

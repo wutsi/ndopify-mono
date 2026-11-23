@@ -204,7 +204,10 @@
                         <label class="choice" data-categories="COMMERCIAL"><input name="propertyType"
                                                                                   type="radio" value="BUILDING">
                             Immeuble</label>
-                        <label class="choice" data-categories="COMMERCIAL" data-sale-categories="RESIDENTIAL COMMERCIAL"><input
+                        <!-- data-sale-categories: the categories of the type for a purchase (none: not offered). A
+                             plot of land is bought, never rented (#275): no rental category offers it (empty
+                             data-categories), both categories of a purchase do. "Indifférent" stays for both. -->
+                        <label class="choice" data-categories="" data-sale-categories="RESIDENTIAL COMMERCIAL"><input
                             name="propertyType" type="radio" value="LAND">
                             Terrain</label>
                         <label class="choice" data-categories="RESIDENTIAL COMMERCIAL"><input name="propertyType"
