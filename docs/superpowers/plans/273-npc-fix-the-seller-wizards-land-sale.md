@@ -3,16 +3,15 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Fix *Proposer un bien* so a sale of a *Terrain* skips bedrooms/parking, offers its ownership documents on the
-first render, shows the price per m² on the features step and on the review (formatted like a price), and every step
-after the first says *Vente* or *Location* — all without depending on JavaScript.
+first render, and shows the price per m² on the features step and on the review (formatted like a price) — all
+without depending on JavaScript.
 
 **Architecture:** The controller derives five display flags for the features step from the saved answers
 (`showsRooms`, `requiresRooms`, `showsParking`, `requiresParking`, `asksOwnershipDocuments`) and the template renders
 each question from them; a `requires…` flag is false while the type is unknown, so a sale's first render is optional,
 and a land sale's questions are not rendered. One pure rule, `OfferPropertyRules.pricePerSqm`, gives the rate; the
 review appends its line after the total price, formatted through `TenantFormatter.money` and
-`MandateLabels.formatNumber`. `OfferPropertyRules.projectLabel` feeds a server-rendered *Vente* / *Location* pill on
-every step after the first and on the confirmation. The page script mirrors the flags (hiding, disabling, and
+`MandateLabels.formatNumber`. The page script mirrors the flags (hiding, disabling, and
 `required`) so it enhances the server render instead of replacing it.
 
 **Tech Stack:** Kotlin 2.3, Spring Boot 4, Thymeleaf 3, the esbuild `partner-central` bundle, JUnit 5 + `kotlin.test`,
@@ -31,15 +30,15 @@ Review it at `http://localhost:8899/offer-property.html?sample=sale|land|land-no
 
 ## Global Constraints
 
-- **The prototype is the design.** Tasks 1–4 port its labels, states and behaviour into the production template,
+- **The prototype is the design.** Tasks 1–3 port its labels, states and behaviour into the production template,
   stylesheet and script; they change no wording, order or state it already settled. `src/main/html/` is never edited
-  here.
+  here. The *Vente* / *Location* pill the prototype also shows is #278's: do not port it here.
 - **French UI, English code.** Every label, legend, hint and error message is French; classes, KDoc, comments, logs,
   plan and commits are English.
 - **Amounts are formatted, never raw.** The rate is money: `TenantFormatter.money(rate)` (grouped, tenant currency) and
   `MandateLabels.formatNumber(area)` for the surface. No `toString()`, no hard-coded *FCFA*. The rate is display only:
   never posted, never in `PendingListing`, never stored, sent with the mandate or a criterion.
-- **No JavaScript is required.** The server renders the questions, the documents and the project label from the saved
+- **No JavaScript is required.** The server renders the questions and the documents from the saved
   answers; the script only hides/disables/marks required to enhance the same states.
 - **A rental is unchanged.** Its questions, documents and review are today's; the script keeps its current behaviour.
   The land-sale-only rule (a *Terrain* is never rented) is **out of scope**: do not drop `LAND` from the rental maps,
@@ -57,104 +56,12 @@ Review it at `http://localhost:8899/offer-property.html?sample=sale|land|land-no
   posts without them, while a house still gets the server's *Indiquez le nombre de chambres.* message.
 - **The rate's formatting.** The review line is *≈ 56 300 FCFA/m² pour 800 m²*, grouped and in the tenant's currency,
   never *56300* nor a hard-coded FCFA; a house or a rental has no line.
-- **The project label.** Every step after the first, the review and the confirmation show *Vente* / *Location*; step 1
-  shows only its choice; a land sale reads *Vente*, and the label is server-rendered (no script).
 - **The rate never leaks.** No `pricePerSqm`, rate field or hidden input reaches the form, `PendingListing` or the
   `CreateMandateRequest`; changing the price or the surface changes only the next render's line.
 
 ---
 
-### Task 1: The project label on every later step
-
-**Files:**
-- Modify: `modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/ui/offerproperty/OfferPropertyRules.kt`
-- Modify: `modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/ui/offerproperty/OfferPropertyController.kt`
-- Modify: `modules/ndopify-partner-central/src/main/resources/templates/offer-property.html`
-- Modify: `modules/ndopify-partner-central/src/main/assets/css/offer-property.css`
-- Test: `modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/offerproperty/OfferPropertyRulesTest.kt`
-- Test: `modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/offerproperty/OfferPropertyControllerTest.kt`
-- Test: `modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/offerproperty/OfferPropertyTemplateTest.kt`
-
-**Interfaces:**
-- Produces on `OfferPropertyRules`:
-
-```kotlin
-/** "Vente" / "Location", the wizard's project for every step after the first; rental when unanswered. */
-fun projectLabel(listingType: ListingType?): String =
-    if (listingType == ListingType.SALE) "Vente" else "Location"
-```
-
-- Produces in the `OfferPropertyController.step` model, for every step:
-  `projectLabel = OfferPropertyRules.projectLabel(answers.listingType)`. The confirmation branch
-  (`GET ?step=confirmation`) also adds `projectLabel = OfferPropertyRules.projectLabel(submitted.listingType)`.
-- Produces in `offer-property.html`: the progress block wraps its label in `div.progress__head` and carries
-  `<p class="project-tag" th:if="${step != 'property'}" th:text="${projectLabel}">Vente</p>`; the confirmation's title
-  is wrapped in `div.confirmation__head` with the same `<p class="project-tag" th:text="${projectLabel}">Vente</p>`
-  under the `h2`.
-- Produces in `assets/css/offer-property.css`: `.progress__head` (flex, wraps, space-between), `.project-tag`
-  (read-only pill: inline-flex, `--radius-control`, `--color-border`, `--color-surface-alt`, `--step-hint`, 600,
-  nowrap) and `.confirmation__head` (column, centred, `--space-2`), copied from the prototype.
-
-- [ ] **Step 1: Write the failing rules test**
-
-In `OfferPropertyRulesTest`:
-
-```kotlin
-@Test
-fun projectLabel() {
-    assertEquals("Vente", OfferPropertyRules.projectLabel(ListingType.SALE))
-    assertEquals("Location", OfferPropertyRules.projectLabel(ListingType.RENTAL))
-    assertEquals("Location", OfferPropertyRules.projectLabel(null))
-}
-```
-
-- [ ] **Step 2: Run it and see it fail**
-
-Run: `cd modules/ndopify-partner-central && mvn test -Dtest=OfferPropertyRulesTest#projectLabel`
-Expected: compilation failure, `projectLabel` unresolved.
-
-- [ ] **Step 3: Add `OfferPropertyRules.projectLabel`**
-
-As in *Interfaces*.
-
-- [ ] **Step 4: Write the failing controller and template tests**
-
-`OfferPropertyControllerTest` — the features step as a sale carries `projectLabel = "Vente"`, as a rental
-`"Location"`; the confirmation of a sale carries `"Vente"` (after `POST /offer-property/review` with the complete sale
-session, as the existing confirmation test does).
-
-`OfferPropertyTemplateTest` — render `GET /offer-property?step=features` with `sale` in the session:
-`page.selectFirst(".progress__head .project-tag")` reads `Vente`; with the default rental session it reads `Location`;
-the step-1 page has no `.progress__head .project-tag`; the sale review page (the existing `sale` session) reads
-`Vente` in the progress row; the confirmation page (after the sale review post, as the existing confirmation test) has
-`.confirmation__head .project-tag` reading `Vente`; a land sale features step reads `Vente`.
-
-- [ ] **Step 5: Run them and see them fail**
-
-Run: `mvn test -Dtest='OfferPropertyControllerTest+OfferPropertyTemplateTest'`
-Expected: the new assertions fail (no model attribute / no `.project-tag`).
-
-- [ ] **Step 6: Implement the controller, template and CSS**
-
-Add the attribute in `step()` (right after `step`/`stepNumber`) and in the confirmation branch; port the prototype's
-markup and CSS as in *Interfaces*. The progress block is inside the existing `th:block th:if="${step != 'confirmation'}"`;
-the confirmation's own header is in its `section`.
-
-- [ ] **Step 7: Run the tests and the module**
-
-Run: `mvn test -Dtest='OfferPropertyRulesTest+OfferPropertyControllerTest+OfferPropertyTemplateTest'`
-Expected: PASS.
-
-- [ ] **Step 8: Commit**
-
-```bash
-git add modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/ui/offerproperty modules/ndopify-partner-central/src/main/resources/templates/offer-property.html modules/ndopify-partner-central/src/main/assets/css/offer-property.css modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/offerproperty
-git commit -m "feat(npc): show the project on every step of the offer wizard" -m "Refs #273"
-```
-
----
-
-### Task 2: The features questions and documents
+### Task 1: The features questions and documents
 
 **Files:**
 - Modify: `modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/ui/offerproperty/OfferPropertyController.kt`
@@ -255,7 +162,7 @@ git commit -m "feat(npc): render the land sale questions and documents from the 
 
 ---
 
-### Task 3: The rate, its formatting and the review line
+### Task 2: The rate, its formatting and the review line
 
 **Files:**
 - Modify: `modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/ui/offerproperty/OfferPropertyRules.kt`
@@ -354,11 +261,11 @@ git commit -m "feat(npc): show the land sale rate on the review" -m "Refs #273"
 
 ---
 
-### Task 4: The page script mirrors the server flags
+### Task 3: The page script mirrors the server flags
 
 **Files:**
 - Modify: `modules/ndopify-partner-central/src/main/assets/js/offer-property.js`
-- Test: the manual page check below; the server-rendered hooks are pinned by Task 2/3's `OfferPropertyTemplateTest`.
+- Test: the manual page check below; the server-rendered hooks are pinned by Task 1/2's `OfferPropertyTemplateTest`.
 
 **Interfaces:**
 - Consumes: the same rules as the server (`needsRooms`, `needsParking`, `needsOwnershipDocuments`), `sale` from the
@@ -433,7 +340,7 @@ git commit -m "feat(npc): let the offer script follow the server's land sale fla
 
 ---
 
-### Task 5: Final verification
+### Task 4: Final verification
 
 **Files:** none.
 
@@ -457,18 +364,18 @@ only has the `[data-price-per-sqm]` hook; no DTO, request, entity or hidden inpu
 - [ ] **Step 3: Re-read the approved prototype's states**
 
 Open `?sample=sale`, `?sample=land`, `?sample=land-no-area`, `?sample=house`, `?sample=land-review`,
-`?sample=land-review-none` and `?sample=rental`; confirm the production page matches them (the label, the questions,
+`?sample=land-review-none` and `?sample=rental`; confirm the production page matches them (the questions,
 the documents, the rate line, the review, the confirmation). No commit: this is the reviewer's check.
 
 ## Self-Review
 
-- **Spec coverage:** AC 1 (Task 2), AC 2 (Task 2), AC 3 (Task 2), AC 4 (Tasks 1–4), AC 5 (Task 4's manual check plus
-  the unchanged script), AC 6 (Tasks 2–4), AC 7 (Task 1), AC 8 (Tasks 3–4).
-- **Type consistency:** `projectLabel`, `showsRooms`, `requiresRooms`, `showsParking`, `requiresParking`,
+- **Spec coverage:** AC 1 (Task 1), AC 2 (Task 1), AC 3 (Task 1), AC 4 (Tasks 1–3), AC 5 (Task 3's manual check plus
+  the unchanged script), AC 6 (Tasks 1–3), AC 7 (Tasks 2–3).
+- **Type consistency:** `showsRooms`, `requiresRooms`, `showsParking`, `requiresParking`,
   `asksOwnershipDocuments`, `pricePerSqm` are the names used by the template, the script's equivalents and the tests.
 - **Formatting:** `formatter.money(rate)` and `MandateLabels.formatNumber(area)` are the one formatting path; the
   template/controller tests assert the grouped *56 300 FCFA* and the exact line.
-- **No JS dependency:** the first render, the documents and the project label are server-rendered; the script only
+- **No JS dependency:** the first render and the documents are server-rendered; the script only
   hides/disables/marks required.
 - **Out of scope:** the land-sale-only rule (rental), the listing page, the mandate edit page and the buyer's search are
   not touched.
