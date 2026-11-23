@@ -59,21 +59,23 @@ contracts state a one-month-rent commission, and dispatch doesn't know which age
 
 ### Epic 8 — Site & communications
 18. **Sale copy** — marketing pages, e-mails and Telegram in buyer/seller wording, mandate-first.
-19. **Sale KPIs** — sale mandates created → assigned → visited → under offer → sold, time-to-sale.
+19. **Sale & rental KPIs** — mandates created → assigned → visited → under offer → sold, time-to-sale, for both
+    deal types.
 
 ## Milestones
 
 ```
-M1 ──▶ M2 ──▶ M3
+M1 ──▶ M2 ──▶ M3 ──▶ M5
  └──────────▶ M4   (needs M2's trust for diaspora)
 ```
 
-M3 can run in parallel with M2 if capacity allows; they don't depend on each other.
+M3 can run in parallel with M2 if capacity allows; they don't depend on each other. M4 runs in parallel with M3 and
+M5.
 
 ### M1 — First sale closed
 Goal: a buyer and a seller each get matched with an agent, sign a mandate and close as SOLD.
 
-Stories: **1, 2, 10, 16, 18** (only the copy M1 shows), **19** (basic funnel counts).
+Stories: **1, 2, 10, 16, 18** (only the copy M1 shows).
 
 - Why together: without 10, the contract states a one-month-rent commission; without 16, there is no outcome to
   measure.
@@ -110,6 +112,20 @@ Stories: **3, 9**.
 
 - Why last: both grow a funnel that already works; diaspora buyers need M2's trust since they can't visit in person.
 - Exit signal: share of sale mandates from abroad, share of sales closed in co-brokerage.
+
+### M5 — KPI reporting
+
+Goal: see how both funnels — sale and rental — perform end to end, per tenant and per side.
+
+Stories: **19**.
+
+- Why after M3: the funnel includes "under offer" and time-to-sale, which need M3's offer model, and the sale funnel
+  needs M1's closing step to have an end.
+- Scope: SALE and RENTAL side by side, each step created → assigned → visited → under offer → sold, split by side
+  (buyer / seller).
+- Exit signal: both funnels readable in production by the team.
+- Deferred from M1 on 2026-11-22: M1's exit signal — the first SALE mandate closed with a `finalPrice` — is readable
+  from the data itself, so basic counts do not gate it.
 
 ### Not placed — payments
 Payment and commission collection stays out of scope, as in the MVP. Sale commissions are large, so a payments
