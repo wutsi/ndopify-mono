@@ -102,7 +102,7 @@
                                        th:checked="${answers.propertyCategory != null and answers.propertyCategory.name() == 'COMMERCIAL'}"
                                        type="radio" value="COMMERCIAL">
                                 <span><th:block th:text="${categoryLabels['COMMERCIAL']}">Commercial</th:block> <span
-                                        class="choice__detail"
+                                        class="choice__detail" data-category-commercial-detail
                                         th:text="${sale} ? ${categoryDetailLabels['SALE_COMMERCIAL']} : ${categoryDetailLabels['RENTAL_COMMERCIAL']}">Pour une activité&nbsp;: bureau,
                                     boutique, entrepôt…</span></span></label>
                         </div>

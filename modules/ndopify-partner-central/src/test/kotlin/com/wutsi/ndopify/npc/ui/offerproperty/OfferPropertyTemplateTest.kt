@@ -467,13 +467,17 @@ class OfferPropertyTemplateTest {
     @Test
     fun `the rental commercial description names no land`() {
         val rental = render(get("/offer-property?step=property"))
-        val commercialRental = rental.selectFirst("input[value=COMMERCIAL]")!!.parent()!!.text()
-        assertFalse(commercialRental.contains("terrain"), commercialRental)
+        assertNotNull(rental.selectFirst("[data-category-detail]"))
+        val commercialRental = rental.selectFirst("input[value=COMMERCIAL]")!!.parent()!!
+        assertFalse(commercialRental.text().contains("terrain"), commercialRental.text())
+        // Both descriptions follow the rent / sell choice: the script rewrites each through its own hook.
+        assertNotNull(commercialRental.selectFirst("[data-category-commercial-detail]"))
 
         session.setAttribute(PendingListing.SESSION_ATTRIBUTE, complete.copy(listingType = ListingType.SALE))
         val salePage = render(get("/offer-property?step=property"))
-        val commercialSale = salePage.selectFirst("input[value=COMMERCIAL]")!!.parent()!!.text()
-        assertTrue(commercialSale.contains("terrain"), commercialSale)
+        val commercialSale = salePage.selectFirst("input[value=COMMERCIAL]")!!.parent()!!
+        assertTrue(commercialSale.text().contains("terrain"), commercialSale.text())
+        assertNotNull(commercialSale.selectFirst("[data-category-commercial-detail]"))
     }
 
     @Test
