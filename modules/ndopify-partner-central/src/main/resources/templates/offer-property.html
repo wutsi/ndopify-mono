@@ -37,8 +37,11 @@
                 <h1>Proposer un bien</h1>
             </div>
             <div class="progress" data-progress-block>
-                <p class="progress__label" data-progress-label id="progress-label"
-                   th:text="|Étape ${stepNumber} sur ${stepCount}|">Étape 1 sur 7</p>
+                <div class="progress__head">
+                    <p class="progress__label" data-progress-label id="progress-label"
+                       th:text="|Étape ${stepNumber} sur ${stepCount}|">Étape 1 sur 7</p>
+                    <p class="project-tag" th:if="${step != 'property'}"><span class="visually-hidden">Projet&nbsp;: </span><span data-project-label th:text="${projectLabel}">Vente</span></p>
+                </div>
                 <div aria-labelledby="progress-label" class="progress__track" data-progress role="progressbar"
                      th:attr="aria-valuemin=1, aria-valuemax=${stepCount}, aria-valuenow=${stepNumber},
                               aria-valuetext=|Étape ${stepNumber} sur ${stepCount}|">
@@ -686,7 +689,10 @@
                  th:if="${step == 'confirmation'}"
                  th:with="sale=${listingType != null and listingType.name() == 'SALE'}">
             <span class="confirmation__mark"><svg th:replace="~{fragments/icon :: check('confirmation__icon')}"></svg></span>
-            <h2 id="confirmation-title">Bien enregistré</h2>
+            <div class="confirmation__head">
+                <h2 id="confirmation-title">Bien enregistré</h2>
+                <p class="project-tag"><span class="visually-hidden">Projet&nbsp;: </span><span data-project-label th:text="${projectLabel}">Vente</span></p>
+            </div>
             <p th:unless="${sale}">Félicitations&nbsp;! Votre bien est enregistré. Voici la suite pour le mettre en
                 location&nbsp;:</p>
             <p th:if="${sale}">Félicitations&nbsp;! Votre bien est enregistré. Voici la suite pour le vendre&nbsp;:</p>

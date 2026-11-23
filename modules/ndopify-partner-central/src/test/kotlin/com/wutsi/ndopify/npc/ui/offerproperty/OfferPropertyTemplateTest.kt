@@ -588,6 +588,49 @@ class OfferPropertyTemplateTest {
         assertNull(page.selectFirst("form"))
     }
 
+    @Test
+    fun `every step after the first shows the project pill`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale)
+
+        val page = render(get("/offer-property?step=features"))
+
+        val pill = assertNotNull(page.selectFirst(".progress__head .project-tag"))
+        assertEquals("Vente", pill.selectFirst("[data-project-label]")?.text())
+        assertEquals("p", pill.tagName())
+        assertEquals("", pill.attr("role"))
+        assertEquals("", pill.attr("tabindex"))
+        assertNull(pill.selectFirst("a, button"))
+    }
+
+    @Test
+    fun `a rental step reads Location`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, complete)
+
+        val page = render(get("/offer-property?step=features"))
+
+        assertEquals("Location", page.selectFirst(".progress__head [data-project-label]")?.text())
+    }
+
+    @Test
+    fun `step 1 shows no project pill`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, PendingListing(listingType = ListingType.SALE))
+
+        assertNull(render(get("/offer-property?step=property")).selectFirst(".project-tag"))
+    }
+
+    @Test
+    fun `the confirmation shows the submitted project under the title`() {
+        session.setAttribute(
+            OfferPropertyController.SUBMITTED_ATTRIBUTE,
+            SubmittedMandate("ray@gmail.com", "+237670000001", ContactPeriodType.EVENING, ListingType.SALE),
+        )
+
+        val page = render(get("/offer-property?step=confirmation"))
+
+        assertEquals("Vente", page.selectFirst(".confirmation__head [data-project-label]")?.text())
+        assertEquals("Bien enregistré", page.selectFirst("#confirmation-title")?.text())
+    }
+
     private fun confirmation(): Document {
         session.setAttribute(
             OfferPropertyController.SUBMITTED_ATTRIBUTE,

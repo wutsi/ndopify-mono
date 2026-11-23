@@ -133,6 +133,10 @@ object OfferPropertyRules {
             null
         }
 
+    /** "Vente" / "Location", the owner's project for every step after the first; rental when unanswered. */
+    fun projectLabel(listingType: ListingType?): String =
+        if (listingType == ListingType.SALE) "Vente" else "Location"
+
     // A whole building is let as it is, furnished or not flat by flat; a sale never asks the furnishing.
     fun needsFurniture(category: PropertyCategory?, type: PropertyType?, listingType: ListingType?): Boolean =
         !isSale(listingType) && residential(category) && type != PropertyType.BUILDING

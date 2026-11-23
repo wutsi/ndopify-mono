@@ -93,6 +93,7 @@ class OfferPropertyController(
             model.addAttribute("whatsappNumber", submitted.whatsappNumber)
             model.addAttribute("contactPeriodLabel", MandateLabels.CONTACT_PERIOD_LABELS[submitted.preferredContactPeriod])
             model.addAttribute("listingType", submitted.listingType)
+            model.addAttribute("projectLabel", OfferPropertyRules.projectLabel(submitted.listingType))
             model.addAttribute("exitUrl", exitUrl(submitted.listingType))
             return VIEW
         }
@@ -348,6 +349,7 @@ class OfferPropertyController(
         model.addAttribute("step", step)
         model.addAttribute("stepNumber", STEPS.indexOf(step) + 1)
         model.addAttribute("stepCount", STEPS.size)
+        model.addAttribute("projectLabel", OfferPropertyRules.projectLabel(answers.listingType))
         model.addAttribute("answers", answers)
         model.addAttribute("errors", errors)
         model.addAttribute("exitUrl", exitUrl(answers))
