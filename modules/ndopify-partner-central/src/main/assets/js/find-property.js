@@ -3,9 +3,11 @@
  * The server drives the wizard (FindPropertyController): it renders one step at a time, validates what each step
  * posts and keeps the answers in the HTTP session. This script only enhances the current step's fields, and every
  * step still posts without it:
- * - property: shows only the follow-up questions that apply to the chosen type (rooms, furnished, parking), and
- *   disables the others so they don't post — the server ignores them anyway;
- * - budget and surface: "150 000" as you type (the server reads the digits);
+ * - property: shows only the follow-up questions that apply to the chosen type (rooms, furnished, parking, the land
+ *   documents of a purchase), and disables the others so they don't post — the server ignores them anyway; a plot of
+ *   land bought has a required surface;
+ * - budget and surface: "150 000" as you type (the server reads the digits), and, for a plot of land bought, the
+ *   implied price per m² — display only, never sent nor stored;
  * - city: a slim-select type-ahead over GET /locations?type=CITY&q=…;
  * - neighbourhoods: the chosen city's, loaded from GET /locations?type=NEIGHBORHOOD&parent-id=…, at most 3;
  * - WhatsApp: intl-tel-input formats it and posts E.164 ("+237677123456");
@@ -30,10 +32,20 @@
     };
     var PHONE_INVALID = "Ce numéro n'est pas un numéro mobile valide. Exemple : 6 77 12 34 56";
 
-    // Same rules as FindPropertyRules (needsRooms, needsFurniture, asksParkings).
+    // Same rules as FindPropertyRules (needsRooms, needsFurniture, asksParkings, titleDocumentTypes).
     var WITHOUT_ROOMS = ["STUDIO", "ROOM"];
+    var SALE_WITH_ROOMS = ["APARTMENT", "HOUSE", "VILLA", "DUPLEX"];
     var WITHOUT_FURNITURE = ["LAND", "BUILDING", "INDUSTRIAL"];
     var WITHOUT_PARKINGS = ["LAND", "ROOM"];
+
+    /* The project the page was rendered for (a purchase or a rental): never another step's radio. */
+    function listingTypeOf(form) {
+        return form.getAttribute("data-listing-type") || "RENTAL";
+    }
+
+    function isSale(form) {
+        return listingTypeOf(form) === "SALE";
+    }
 
     /* ---------- Helpers ---------- */
     function $(selector, root) {
@@ -369,12 +381,16 @@
 
     /* ---------- Step: property ---------- */
     function initProperty(form, refresh) {
+        var sale = isSale(form);
         var groups = {
             rooms: $('[data-group="rooms"]', form),
             furnitureType: $('[data-group="furnitureType"]', form),
-            parkings: $('[data-group="parkings"]', form)
+            parkings: $('[data-group="parkings"]', form),
+            titleDocuments: $('[data-group="titleDocuments"]', form)
         };
+        var area = $("#area", form);
         var areaLabel = $("[data-area-label]", form);
+        var areaOptional = $("[data-area-optional]", form);
 
         function checkedType() {
             var input = $('input[name="propertyType"]:checked', form);
@@ -395,10 +411,16 @@
 
         function updateQuestions() {
             var type = checkedType();
-            show("rooms", WITHOUT_ROOMS.indexOf(type) === -1, true);
-            show("furnitureType", WITHOUT_FURNITURE.indexOf(type) === -1, true);
+            var landSale = sale && type === "LAND";
+            show("rooms", sale ? (type === "" || SALE_WITH_ROOMS.indexOf(type) !== -1) : WITHOUT_ROOMS.indexOf(type) === -1, true);
+            show("furnitureType", !sale && WITHOUT_FURNITURE.indexOf(type) === -1, true);
             show("parkings", WITHOUT_PARKINGS.indexOf(type) === -1, false);
-            areaLabel.textContent = type === "LAND" ? "Surface du terrain minimale" : "Surface minimale";
+            // The documents are asked for a plot of land bought only, and are always optional.
+            show("titleDocuments", landSale, false);
+            areaLabel.textContent = landSale ? "Surface du terrain"
+                : type === "LAND" ? "Surface du terrain minimale" : "Surface minimale";
+            if (areaOptional) areaOptional.hidden = landSale;
+            area.required = landSale;
             refresh();
         }
 
@@ -406,6 +428,41 @@
             input.addEventListener("change", updateQuestions);
         });
         updateQuestions();
+    }
+
+    /* ---------- Step: budget ---------- */
+    // The implied price per m² of a plot of land bought: total budget ÷ surface, rounded to the nearest 100. Display
+    // only — never stored, never validated, never posted. Hidden without a budget or a usable surface.
+    function initBudget(form) {
+        var perSqm = $("[data-price-per-sqm]", form);
+        var price = $("#priceAmount", form);
+        if (!perSqm || !price) return;
+
+        var sale = isSale(form);
+        var landSale = sale && form.getAttribute("data-property-type") === "LAND";
+        var area = Number(form.getAttribute("data-area") || 0);
+        var currency = form.getAttribute("data-currency") || "";
+
+        function update() {
+            var budget = Number(digitsOf(price.value) || 0);
+            if (!landSale || !(area >= 5) || !(budget > 0)) {
+                perSqm.hidden = true;
+                perSqm.textContent = "";
+                return;
+            }
+            var rate = Math.round((budget / area) / 100) * 100;
+            if (rate <= 0) {
+                perSqm.hidden = true;
+                perSqm.textContent = "";
+                return;
+            }
+            perSqm.textContent = "Soit ≈ " + formatNumber(rate) + " " + currency + "/m² pour " +
+                formatNumber(area) + " m²";
+            perSqm.hidden = false;
+        }
+
+        price.addEventListener("input", update);
+        update();
     }
 
     /* ---------- Step: contact ---------- */
@@ -451,6 +508,7 @@
 
         if ($("#cityId", form)) initArea(form, refresh);
         if ($('[data-group="propertyType"]', form)) initProperty(form, refresh);
+        if ($("#priceAmount", form)) initBudget(form);
         bindNumber($("#priceAmount", form), 9);
         bindNumber($("#area", form), 7);
         initComments(form);

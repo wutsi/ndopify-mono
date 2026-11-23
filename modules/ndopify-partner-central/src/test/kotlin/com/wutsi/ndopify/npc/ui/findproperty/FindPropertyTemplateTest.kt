@@ -364,6 +364,45 @@ class FindPropertyTemplateTest {
     }
 
     @Test
+    fun `the forms carry the listing type for the script`() {
+        val rental = render(get("/find-property"))
+        assertEquals("RENTAL", form(rental).attr("data-listing-type"))
+
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            PendingMandate(listingType = ListingType.SALE),
+        )
+
+        val sale = render(get("/find-property"))
+
+        assertEquals("SALE", form(sale).attr("data-listing-type"))
+    }
+
+    @Test
+    fun `the sale budget step has the price per square metre hook`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = "LAND",
+                area = 400,
+                priceAmount = 10_000_000,
+                financingType = FinancingType.CASH,
+            ),
+        )
+
+        val page = render(get("/find-property?step=budget"))
+
+        val perSqm = assertNotNull(page.selectFirst("[data-price-per-sqm]"))
+        assertTrue(perSqm.hasAttr("hidden"))
+        assertEquals("", perSqm.text())
+        assertEquals("400", form(page).attr("data-area"))
+        assertEquals("LAND", form(page).attr("data-property-type"))
+        assertEquals("FCFA", form(page).attr("data-currency"))
+    }
+
+    @Test
     fun `a rental budget step is today's and asks no financing`() {
         session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
 
