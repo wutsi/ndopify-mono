@@ -98,13 +98,19 @@ class ListingController(
         val agent = currentAgent.get() ?: throw SignInRequiredException()
         ProfileRules.header(agent, model)
 
-        (model.getAttribute(OUTCOME) as? String)?.let { outcome(it, model) }
-        val result = id.toLongOrNull()?.let { load(it, agent, match?.toLongOrNull(), model) } ?: return locked(model)
+        // Worded after the listing: a sale's terms are "Prix et conditions". A listing that can't be loaded (its page
+        // is locked) keeps the rental label.
+        val flash = model.getAttribute(OUTCOME) as? String
+        val result = id.toLongOrNull()?.let { load(it, agent, match?.toLongOrNull(), model) }
         val listing = when (result) {
             is PublishedListingAccess.Owner -> result.listing
             is PublishedListingAccess.ReadOnly -> result.listing
-            else -> return locked(model)
+            else -> {
+                flash?.let { outcome(it, null, model) }
+                return locked(model)
+            }
         }
+        flash?.let { outcome(it, listing, model) }
         val readOnly = result is PublishedListingAccess.ReadOnly
         val match = (result as? PublishedListingAccess.ReadOnly)?.match
         // The owner's return link stays its mandate: only another agent's page is opened from a back path.
@@ -237,11 +243,11 @@ class ListingController(
             mandate.status == MandateStatus.APPROVED &&
             mandate.mandateType == MandateType.LISTING
 
-    private fun outcome(outcome: String, model: Model) {
+    private fun outcome(outcome: String, listing: Listing?, model: Model) {
         val saved = outcome.removePrefix(ListingSectionController.SAVED_PREFIX)
             .takeIf { outcome.startsWith(ListingSectionController.SAVED_PREFIX) }
             ?.let { ListingRules.section(it) }
-        val text = saved?.let { ListingRules.SAVED.getValue(it) } ?: words(outcome) ?: return
+        val text = saved?.let { ListingRules.saved(listing, it) } ?: words(outcome) ?: return
         model.addAttribute("outcomeText", text)
         model.addAttribute(
             "outcomeStyle",

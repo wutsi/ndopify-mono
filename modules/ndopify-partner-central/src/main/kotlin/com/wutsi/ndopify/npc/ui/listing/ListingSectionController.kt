@@ -5,6 +5,7 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingSection
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
@@ -116,12 +117,12 @@ class ListingSectionController(
         }
 
         ProfileRules.header(agent, model)
-        val errors = ListingRules.errors(section, form, formatter().today(clock), formatter())
+        val errors = ListingRules.errors(section, form, listing, formatter().today(clock), formatter())
             .ifEmpty { neighborhoodErrors(listing, section, form) }
         if (errors.isNotEmpty()) return render(listing, section, form, errors, null, model)
 
         try {
-            listingClient.update(id, ListingRules.request(section, form))
+            listingClient.update(id, ListingRules.request(section, form, listing))
         } catch (ex: HttpClientErrorException) {
             LOGGER.warn("Listing $id not saved (${section.name}): ${ex.statusCode}")
             return when {
@@ -187,6 +188,7 @@ class ListingSectionController(
         model.addAttribute("error", error)
         model.addAttribute("ownerHints", ListingViews.ownerHints(answers, mandate, locations, formatter))
         model.addAttribute("currency", formatter.currency())
+        model.addAttribute("sale", listing.listingType == ListingType.SALE)
         when (section) {
             ListingSection.LOCATION -> {
                 model.addAttribute("city", locations[listing.cityId]?.name)

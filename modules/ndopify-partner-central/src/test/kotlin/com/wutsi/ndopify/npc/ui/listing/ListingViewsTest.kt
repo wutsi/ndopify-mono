@@ -14,6 +14,7 @@ import com.wutsi.ndopify.listing.dto.ListingSectionSummary
 import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
@@ -90,6 +91,20 @@ class ListingViewsTest {
             latitude = 4.0335,
             longitude = 9.6942,
             sections = LISTING.sections.map { it.copy(status = ListingSectionStatus.VERIFIED) },
+        )
+
+        /** A seller's villa: a SALE listing, rental terms left over from an earlier answer. */
+        val SALE = LISTING.copy(
+            listingType = ListingType.SALE,
+            propertyType = PropertyType.VILLA,
+            price = 45_000_000,
+            pricePeriodicityType = PeriodicityType.NONE,
+            furnitureType = FurnitureType.FULLY_FURNISHED,
+            securityDeposit = 3,
+            advanceRent = 2,
+            leaseTerm = 12,
+            noticePeriod = 1,
+            availableFrom = LocalDate.of(2026, 12, 1),
         )
 
         private fun day(day: Int): Date = Date.from(Instant.parse("2026-10-%02dT10:00:00Z".format(day)))
@@ -189,6 +204,25 @@ class ListingViewsTest {
         assertEquals(ListingRules.Tag("À compléter", "warning"), row(view, ListingSection.PHOTOS).state)
         assertEquals("Aucune remarque", row(view, ListingSection.REMARKS).summary)
         assertEquals(ListingRules.Tag("Facultatif", "neutral"), row(view, ListingSection.REMARKS).state)
+    }
+
+    @Test
+    fun `a sale listing's checklist reads the price and conditions`() {
+        val view = of(SALE)
+
+        assertTrue(view.sale)
+        assertEquals("Prix et conditions", row(view, ListingSection.TERMS).label)
+        assertEquals("45M\u00a0FCFA", row(view, ListingSection.TERMS).summary)
+        assertFalse(row(view, ListingSection.TERMS).summary.contains("caution"))
+        assertFalse(view.missing.contains("Loyer"))
+    }
+
+    @Test
+    fun `a rental listing's checklist is unchanged`() {
+        val view = of()
+
+        assertFalse(view.sale)
+        assertEquals("Loyer et conditions", row(view, ListingSection.TERMS).label)
     }
 
     @Test

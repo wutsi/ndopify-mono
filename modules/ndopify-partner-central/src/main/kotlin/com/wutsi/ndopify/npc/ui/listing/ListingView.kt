@@ -16,6 +16,8 @@ data class ListingView(
     val mandateId: Long,
     /** "Annonce · Appartement, Bonapriso". */
     val title: String,
+    /** A SALE listing: its checklist's terms are *Prix et conditions*, and its published sheet too. */
+    val sale: Boolean,
     val tag: ListingRules.Tag,
     val status: ListingStatus,
     val createdAt: String,

@@ -4,6 +4,7 @@ import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.npc.ui.mandate.Amenity
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.refdata.dto.Location
@@ -95,6 +96,21 @@ object PublishedListingViews {
 
     private fun terms(listing: Listing, formatter: TenantFormatter): List<SpecView> {
         val money = { months: Int -> formatter.money(months.toLong() * listing.price, listing.currencyCode) }
+        if (listing.listingType == ListingType.SALE) {
+            // A sale's conditions are its price and its availability: never a rent, a deposit or a lease term
+            return listOfNotNull(
+                listing.price.takeIf { it > 0 }?.let {
+                    SpecView(
+                        MandateLabels.listingPriceTerm(listing.listingType),
+                        MandateLabels.price(
+                            Money(listing.price, listing.currencyCode, listing.pricePeriodicityType),
+                            formatter,
+                        ),
+                    )
+                },
+                listing.availableFrom?.let { SpecView("Disponible", "À partir du ${formatter.date(it)}") },
+            )
+        }
         return listOfNotNull(
             if (listing.price > 0) {
                 SpecView(

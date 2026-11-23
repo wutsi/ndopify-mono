@@ -12,6 +12,7 @@ import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.ImageVariant
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
+import com.wutsi.ndopify.listing.dto.ListingSectionStatus
 import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.mandate.dto.Mandate
@@ -247,6 +248,41 @@ class ListingTemplateTest {
         assertNotNull(page.selectFirst("[data-listing-details]"))
         assertNotNull(page.selectFirst("[data-listing-sheet]"))
         assertEquals("2 chambres", page.selectFirst("[data-listing-facts] li")?.text())
+    }
+
+    @Test
+    fun `published sale - the sheet reads the price and conditions`() {
+        val page = render(
+            ListingViewsTest.SALE.copy(
+                status = ListingStatus.PUBLISHED,
+                publishedAt = SENT,
+                heroImageId = 2,
+                sections = ListingViewsTest.SALE.sections.map { it.copy(status = ListingSectionStatus.VERIFIED) },
+            ),
+        )
+
+        val blocks = page.select("[data-listing-sheet] .listing-sheet__block").map { it.selectFirst("h3")?.text() }
+        assertTrue(blocks.contains("Prix et conditions"), blocks.toString())
+        assertFalse(blocks.contains("Loyer et conditions"))
+        val terms = page.select("[data-listing-sheet] .listing-sheet__block")
+            .first { it.selectFirst("h3")?.text() == "Prix et conditions" }
+        assertEquals(listOf("Prix", "Disponible"), terms.select("dt").map { it.text() })
+        assertFalse(terms.text().contains("Loyer"))
+        assertFalse(terms.text().contains("Caution"))
+    }
+
+    @Test
+    fun `a sale's terms are saved`() {
+        val flash = render(ListingViewsTest.SALE, outcome = "saved-terms").selectFirst("[data-listing-flash]")!!
+
+        assertEquals("Prix et conditions enregistrés.", flash.selectFirst("[data-listing-flash-text]")?.text())
+    }
+
+    @Test
+    fun `a rental's terms are saved`() {
+        val flash = render(outcome = "saved-terms").selectFirst("[data-listing-flash]")!!
+
+        assertEquals("Loyer et conditions enregistrés.", flash.selectFirst("[data-listing-flash-text]")?.text())
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.ui.listing
 
 import com.wutsi.ndopify.listing.dto.Listing
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 
@@ -54,50 +55,53 @@ data class ListingSectionForm(
     val agentRemarks: String? = null,
 ) {
     companion object {
-        /** The listing's current values, as its forms show them. */
-        fun of(listing: Listing, formatter: TenantFormatter) = ListingSectionForm(
-            version = listing.version,
-            neighborhoodId = listing.neighborhoodId?.toString(),
-            landmark = listing.landmark,
-            accessDirections = listing.accessDirections,
-            latitude = listing.latitude?.toString(),
-            longitude = listing.longitude?.toString(),
-            propertyCategory = listing.propertyCategory.takeIf { it != PropertyCategory.UNKNOWN }?.name,
-            propertyType = listing.propertyType?.name,
-            furnitureType = listing.furnitureType?.name,
-            rooms = listing.rooms?.toString(),
-            bathrooms = listing.bathrooms?.toString(),
-            livingRooms = listing.livingRooms?.toString(),
-            kitchens = listing.kitchens?.toString(),
-            parkings = listing.parkings?.toString(),
-            area = listing.area?.toString(),
-            levels = listing.levels?.toString(),
-            floorLevel = listing.floorLevel?.toString(),
-            waterMeter = listing.waterMeter,
-            dedicatedWaterMeter = listing.dedicatedWaterMeter,
-            waterTank = listing.waterTank,
-            waterWell = listing.waterWell,
-            electricityMeter = listing.electricityMeter,
-            dedicatedElectricityMeter = listing.dedicatedElectricityMeter,
-            generatorSet = listing.generatorSet,
-            solarPanel = listing.solarPanel,
-            roadAccess = when {
-                listing.roadPaved -> ListingRules.ROAD_PAVED
-                listing.trackAccessibleByCar -> ListingRules.TRACK_ACCESSIBLE_BY_CAR
-                listing.trackInaccessibleByCar -> ListingRules.TRACK_INACCESSIBLE_BY_CAR
-                else -> null
-            },
-            securedFenced = listing.securedFenced,
-            securityGuard = listing.securityGuard,
-            videoSurveillance = listing.videoSurveillance,
-            price = listing.price.takeIf { it > 0 }?.let { formatter.count(it) },
-            securityDeposit = listing.securityDeposit?.takeIf { it > 0 }?.toString(),
-            advanceRent = listing.advanceRent?.takeIf { it > 0 }?.toString(),
-            leaseTerm = listing.leaseTerm?.toString(),
-            noticePeriod = listing.noticePeriod?.toString(),
-            availableFrom = listing.availableFrom?.toString(),
-            agentRemarks = listing.agentRemarks,
-        )
+        /** The listing's current values, as its forms show them: a sale never shows a rental term it kept. */
+        fun of(listing: Listing, formatter: TenantFormatter): ListingSectionForm {
+            val sale = listing.listingType == ListingType.SALE
+            return ListingSectionForm(
+                version = listing.version,
+                neighborhoodId = listing.neighborhoodId?.toString(),
+                landmark = listing.landmark,
+                accessDirections = listing.accessDirections,
+                latitude = listing.latitude?.toString(),
+                longitude = listing.longitude?.toString(),
+                propertyCategory = listing.propertyCategory.takeIf { it != PropertyCategory.UNKNOWN }?.name,
+                propertyType = listing.propertyType?.name,
+                furnitureType = listing.furnitureType?.name?.takeUnless { sale },
+                rooms = listing.rooms?.toString(),
+                bathrooms = listing.bathrooms?.toString(),
+                livingRooms = listing.livingRooms?.toString(),
+                kitchens = listing.kitchens?.toString(),
+                parkings = listing.parkings?.toString(),
+                area = listing.area?.toString(),
+                levels = listing.levels?.toString(),
+                floorLevel = listing.floorLevel?.toString(),
+                waterMeter = listing.waterMeter,
+                dedicatedWaterMeter = listing.dedicatedWaterMeter,
+                waterTank = listing.waterTank,
+                waterWell = listing.waterWell,
+                electricityMeter = listing.electricityMeter,
+                dedicatedElectricityMeter = listing.dedicatedElectricityMeter,
+                generatorSet = listing.generatorSet,
+                solarPanel = listing.solarPanel,
+                roadAccess = when {
+                    listing.roadPaved -> ListingRules.ROAD_PAVED
+                    listing.trackAccessibleByCar -> ListingRules.TRACK_ACCESSIBLE_BY_CAR
+                    listing.trackInaccessibleByCar -> ListingRules.TRACK_INACCESSIBLE_BY_CAR
+                    else -> null
+                },
+                securedFenced = listing.securedFenced,
+                securityGuard = listing.securityGuard,
+                videoSurveillance = listing.videoSurveillance,
+                price = listing.price.takeIf { it > 0 }?.let { formatter.count(it) },
+                securityDeposit = listing.securityDeposit?.takeIf { it > 0 }?.toString()?.takeUnless { sale },
+                advanceRent = listing.advanceRent?.takeIf { it > 0 }?.toString()?.takeUnless { sale },
+                leaseTerm = listing.leaseTerm?.toString()?.takeUnless { sale },
+                noticePeriod = listing.noticePeriod?.toString()?.takeUnless { sale },
+                availableFrom = listing.availableFrom?.toString(),
+                agentRemarks = listing.agentRemarks,
+            )
+        }
     }
 
     /** The checked amenities, by their `Listing` names (the road access included). */

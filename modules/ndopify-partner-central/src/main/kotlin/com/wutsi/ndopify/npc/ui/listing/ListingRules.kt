@@ -6,6 +6,7 @@ import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingSectionStatus
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.dto.UpdateListingRequest
@@ -116,6 +117,24 @@ object ListingRules {
         ListingSection.TERMS to "Loyer et conditions enregistrés.",
         ListingSection.REMARKS to "Remarques enregistrées.",
     )
+
+    // A sale's terms are its price and the conditions of the sale: no rent, deposit, advance, lease term or notice.
+    private const val SALE_TERMS = "Prix et conditions"
+    private const val SALE_TERMS_SAVED = "Prix et conditions enregistrés."
+
+    /** A seller's property. */
+    private fun sale(listing: Listing): Boolean = listing.listingType == ListingType.SALE
+
+    /** A section's label, as its checklist row and its page's title read it: a sale's TERMS are its price. */
+    fun label(listing: Listing, section: ListingSection): String =
+        if (section == ListingSection.TERMS && sale(listing)) SALE_TERMS else LABELS.getValue(section)
+
+    /**
+     * The checklist's message once a section is saved. A null [listing] (it couldn't be loaded, its page is locked
+     * anyway) keeps the rental label.
+     */
+    fun saved(listing: Listing?, section: ListingSection): String =
+        if (section == ListingSection.TERMS && listing != null && sale(listing)) SALE_TERMS_SAVED else SAVED.getValue(section)
 
     // Sent, and not published yet: the prototype's single "PENDING" step. VERIFIED too: ndopify-server publishes it.
     private val SENT = setOf(
@@ -247,16 +266,18 @@ object ListingRules {
 
     /**
      * The errors of a section's answers, by field: messages of the prototype's `LISTING_RULES`. The questions of
-     * *Le bien* that don't apply to the type are ignored (without JS, the page shows them all). [today] is in the
-     * tenant's time zone.
+     * *Le bien* that don't apply to the type are ignored (without JS, the page shows them all), and a sale asks for its
+     * price only: no rent, deposit, advance, lease term, notice nor furniture. [today] is in the tenant's time zone.
      */
     fun errors(
         section: ListingSection,
         form: ListingSectionForm,
+        listing: Listing,
         today: LocalDate,
         formatter: TenantFormatter,
     ): Map<String, String> {
         val errors = linkedMapOf<String, String>()
+        val sale = sale(listing)
         when (section) {
             ListingSection.LOCATION -> {
                 if (form.neighborhoodId?.trim()?.toLongOrNull() == null) {
@@ -286,7 +307,7 @@ object ListingRules {
                     errors["propertyType"] = "Choisissez le type de bien."
                 }
                 if (type != null) {
-                    if (applies("furniture", category, type) && furniture(form.furnitureType) == null) {
+                    if (!sale && applies("furniture", category, type) && furniture(form.furnitureType) == null) {
                         errors["furnitureType"] = "Indiquez si le bien est meublé."
                     }
                     counts(form).forEach { (field, value) ->
@@ -303,20 +324,26 @@ object ListingRules {
 
             ListingSection.TERMS -> {
                 val price = text(form.price)
-                if (price == null) {
-                    errors["price"] = "Indiquez le loyer mensuel."
-                } else {
-                    val amount = amount(price)
-                    if (amount == null) {
-                        errors["price"] = "Indiquez le loyer en chiffres, en ${formatter.currency()} par mois."
-                    } else if (amount <= 0) {
-                        errors["price"] = "Indiquez le loyer mensuel."
+                val amount = price?.let { amount(it) }
+                if (sale) {
+                    val currency = formatter.currency()
+                    when {
+                        price == null || amount?.let { it <= 0 } == true -> errors["price"] = "Indiquez le prix, en $currency."
+                        amount == null -> errors["price"] = "Indiquez le prix en chiffres, en $currency."
                     }
+                } else if (price == null) {
+                    errors["price"] = "Indiquez le loyer mensuel."
+                } else if (amount == null) {
+                    errors["price"] = "Indiquez le loyer en chiffres, en ${formatter.currency()} par mois."
+                } else if (amount <= 0) {
+                    errors["price"] = "Indiquez le loyer mensuel."
                 }
-                optionalChoiceError(form.securityDeposit, SECURITY_DEPOSITS.toList())?.let { errors["securityDeposit"] = it }
-                optionalChoiceError(form.advanceRent, ADVANCE_RENTS.toList())?.let { errors["advanceRent"] = it }
-                optionalChoiceError(form.leaseTerm, LEASE_TERMS)?.let { errors["leaseTerm"] = it }
-                optionalChoiceError(form.noticePeriod, NOTICE_PERIODS.toList())?.let { errors["noticePeriod"] = it }
+                if (!sale) {
+                    optionalChoiceError(form.securityDeposit, SECURITY_DEPOSITS.toList())?.let { errors["securityDeposit"] = it }
+                    optionalChoiceError(form.advanceRent, ADVANCE_RENTS.toList())?.let { errors["advanceRent"] = it }
+                    optionalChoiceError(form.leaseTerm, LEASE_TERMS)?.let { errors["leaseTerm"] = it }
+                    optionalChoiceError(form.noticePeriod, NOTICE_PERIODS.toList())?.let { errors["noticePeriod"] = it }
+                }
                 val date = date(form.availableFrom)
                 if (date == null) {
                     errors["availableFrom"] = "Indiquez la date à laquelle le bien est libre."
@@ -337,9 +364,11 @@ object ListingRules {
 
     /**
      * The request saving [section] from valid answers ([errors] is empty): only the section's fields, a question that
-     * doesn't apply to the type sent as null, the road access as one of its three booleans.
+     * doesn't apply to the type sent as null, the road access as one of its three booleans. A sale's request never
+     * carries furniture nor a rental term: a stale answer saved before is cleared.
      */
-    fun request(section: ListingSection, form: ListingSectionForm): UpdateListingRequest {
+    fun request(section: ListingSection, form: ListingSectionForm, listing: Listing): UpdateListingRequest {
+        val sale = sale(listing)
         val request = UpdateListingRequest(version = form.version, section = section)
         return when (section) {
             ListingSection.LOCATION -> request.copy(
@@ -361,7 +390,7 @@ object ListingRules {
                 request.copy(
                     propertyCategory = category,
                     propertyType = type,
-                    furnitureType = if (applies("furniture", category, type)) furniture(form.furnitureType) else null,
+                    furnitureType = if (!sale && applies("furniture", category, type)) furniture(form.furnitureType) else null,
                     rooms = count("rooms", form.rooms),
                     livingRooms = count("livingRooms", form.livingRooms),
                     bathrooms = count("bathrooms", form.bathrooms),
@@ -392,10 +421,10 @@ object ListingRules {
 
             ListingSection.TERMS -> request.copy(
                 price = text(form.price)?.let { amount(it) },
-                securityDeposit = choice(form.securityDeposit, SECURITY_DEPOSITS.toList()),
-                advanceRent = choice(form.advanceRent, ADVANCE_RENTS.toList()),
-                leaseTerm = choice(form.leaseTerm, LEASE_TERMS),
-                noticePeriod = choice(form.noticePeriod, NOTICE_PERIODS.toList()),
+                securityDeposit = if (sale) null else choice(form.securityDeposit, SECURITY_DEPOSITS.toList()),
+                advanceRent = if (sale) null else choice(form.advanceRent, ADVANCE_RENTS.toList()),
+                leaseTerm = if (sale) null else choice(form.leaseTerm, LEASE_TERMS),
+                noticePeriod = if (sale) null else choice(form.noticePeriod, NOTICE_PERIODS.toList()),
                 availableFrom = date(form.availableFrom),
             )
 
