@@ -24,6 +24,7 @@ import com.wutsi.ndopify.refdata.server.service.TenantService
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 class MatchInterestBotletTest {
     private val tenantService = mock<TenantService>()
@@ -80,7 +81,7 @@ class MatchInterestBotletTest {
     }
 
     @Test
-    fun `a sale listing's line names its price`() {
+    fun `a sale listing's line names its type and its price`() {
         val sale = listing.copy(listingType = ListingType.SALE, pricePeriodicityType = PeriodicityType.NONE)
 
         botlet.send(agent, customer, mandate.copy(listingType = ListingType.SALE), sale, 1000L)
@@ -88,9 +89,12 @@ class MatchInterestBotletTest {
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(sale), text.capture(), any())
         assertEquals(
-            "👀 Ray Sponsible s'intéresse à : Nice apartment (Bastos) — Prix : 150 000 FCFA",
+            "👀 Ray Sponsible s'intéresse à : Vente — Nice apartment (Bastos) — Prix : 150 000 FCFA",
             text.firstValue,
         )
+        listOf("location", "loyer", "logement").forEach { word ->
+            assertFalse(text.firstValue.lowercase().contains(word), "no '$word' in a sale message")
+        }
     }
 
     @Test

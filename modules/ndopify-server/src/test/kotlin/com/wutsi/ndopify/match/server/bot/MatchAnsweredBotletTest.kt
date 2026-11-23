@@ -108,7 +108,7 @@ class MatchAnsweredBotletTest {
     }
 
     @Test
-    fun `a sale acceptance names a price and never a rental`() {
+    fun `a sale acceptance names the purchase and its price`() {
         val saleListing = listing.copy(listingType = ListingType.SALE, pricePeriodicityType = PeriodicityType.NONE)
         val sale = match.copy(listing = saleListing, mandate = mandate.copy(listingType = ListingType.SALE))
 
@@ -116,12 +116,33 @@ class MatchAnsweredBotletTest {
 
         val message = text(saleListing)
         assertEquals(
-            "✅ Ray Sponsible a accepté la proposition : Small apartment (Bastos) — Prix : 140 000 FCFA",
+            "✅ Ray Sponsible a accepté la proposition : Achat — Small apartment (Bastos) — Prix : 140 000 FCFA",
             message,
         )
         listOf("location", "loyer", "logement").forEach { word ->
             assertFalse(message.lowercase().contains(word), "no '$word' in a sale message")
         }
+    }
+
+    @Test
+    fun `a sale rejection names the purchase and its price`() {
+        val saleListing = listing.copy(listingType = ListingType.SALE, pricePeriodicityType = PeriodicityType.NONE)
+        val sale = match.copy(
+            listing = saleListing,
+            mandate = mandate.copy(listingType = ListingType.SALE),
+            status = MatchStatus.REJECTED,
+            rejectionReasonCode = MatchRejectionReason.PRICE,
+        )
+
+        botlet.send(sale, customer, agent, 1000L)
+
+        assertEquals(
+            """
+            ❌ Ray Sponsible a refusé la proposition : Achat — Small apartment (Bastos) — Prix : 140 000 FCFA
+            Motif : trop cher
+            """.trimIndent(),
+            text(saleListing),
+        )
     }
 
     @Test
