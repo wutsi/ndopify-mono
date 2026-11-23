@@ -446,7 +446,7 @@ class OfferPropertyController(
 
     /**
      * "150 000 FCFA par mois", "Avance de 3 mois", "Caution de 2 mois", "Disponible dès maintenant"; a sale's price
-     * has no "/ mois" and no advance nor deposit line.
+     * has no "/ mois" and no advance nor deposit line, and a sold plot adds its implied rate right after it.
      */
     private fun termsLines(answers: PendingListing): List<String> {
         val formatter = formatter()
@@ -454,7 +454,15 @@ class OfferPropertyController(
             if (it == formatter.today(clock)) "Disponible dès maintenant" else "Disponible dès le " + formatter.date(it)
         }
         if (answers.isSale()) {
-            return listOfNotNull(answers.priceAmount?.let { formatter.money(it) }, availability)
+            val type = FindPropertyRules.parsePropertyType(answers.propertyType)
+            val rate = OfferPropertyRules.pricePerSqm(answers.listingType, type, answers.priceAmount, answers.area)
+            return listOfNotNull(
+                answers.priceAmount?.let { formatter.money(it) },
+                rate?.let {
+                    "≈ " + formatter.money(it) + "/m² pour " + MandateLabels.formatNumber(answers.area!!) + " m²"
+                },
+                availability,
+            )
         }
         return listOfNotNull(
             answers.priceAmount?.let { formatter.money(it) + " par mois" },

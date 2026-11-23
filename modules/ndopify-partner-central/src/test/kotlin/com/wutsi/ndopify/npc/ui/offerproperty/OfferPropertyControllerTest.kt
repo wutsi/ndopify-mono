@@ -22,6 +22,7 @@ import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.npc.ui.findproperty.SubmittedMandate
 import com.wutsi.ndopify.npc.ui.login.LoginController
+import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
@@ -760,6 +761,7 @@ class OfferPropertyControllerTest {
             ),
             model(result)["termsLines"],
         )
+        assertTrue((model(result)["termsLines"] as List<*>).none { it.toString().contains("FCFA/m²") })
         assertEquals("Appartement · Non meublé · 3 chambres · Sans parking", model(result)["propertyLabel"])
         assertEquals("Route bitumée, Compteur d'eau", model(result)["amenitiesLabel"])
         assertEquals(
@@ -801,11 +803,24 @@ class OfferPropertyControllerTest {
         assertEquals(
             listOf(
                 FORMATTER.money(45_000_000),
+                "≈ " + FORMATTER.money(56_300) + "/m² pour " + MandateLabels.formatNumber(800) + " m²",
                 "Disponible dès le " + FORMATTER.date(TODAY.plusDays(10)),
             ),
             model(result)["termsLines"],
         )
         assertEquals("Aucun document déclaré", model(result)["ownershipDocumentsLabel"])
+    }
+
+    @Test
+    fun `a villa sale review has no rate line`() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            sale.copy(propertyType = "HOUSE", area = null, rooms = "3", parkings = "0"),
+        )
+
+        val result = mvc.perform(get("/offer-property?step=review").session(session)).andReturn()
+
+        assertTrue((model(result)["termsLines"] as List<*>).none { it.toString().contains("FCFA/m²") })
     }
 
     @Test

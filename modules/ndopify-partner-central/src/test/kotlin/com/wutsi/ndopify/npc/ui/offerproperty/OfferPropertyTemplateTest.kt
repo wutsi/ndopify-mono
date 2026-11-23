@@ -13,6 +13,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.npc.ui.findproperty.SubmittedMandate
+import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
@@ -587,6 +588,7 @@ class OfferPropertyTemplateTest {
         assertEquals("Bastos, Yaoundé", value(page, "location"))
         assertTrue(value(page, "terms").contains("par mois"))
         assertTrue(value(page, "terms").contains("Caution de 2 mois"))
+        assertFalse(value(page, "terms").contains("FCFA/m²"))
         assertTrue(value(page, "property").startsWith("Appartement"))
         assertEquals("Route bitumée, Compteur d'eau", value(page, "amenities"))
         assertTrue(value(page, "contact").contains("ray@gmail.com"))
@@ -614,9 +616,26 @@ class OfferPropertyTemplateTest {
         assertFalse(value(page, "terms").contains("par mois"))
         assertFalse(value(page, "terms").contains("Avance"))
         assertFalse(value(page, "terms").contains("Caution"))
+        assertTrue(
+            value(page, "terms")
+                .contains("≈ " + FORMATTER.money(56_300) + "/m² pour " + MandateLabels.formatNumber(800) + " m²"),
+        )
+        assertFalse(value(page, "terms").contains("56300"))
         assertEquals("Document de propriété", page.selectFirst("[data-review-ownershipDocuments] .review__term")?.text())
         assertEquals("Aucun document déclaré", value(page, "ownershipDocuments"))
         assertTrue(page.text().contains("Aucun document déclaré"))
+    }
+
+    @Test
+    fun `a villa sale review has no rate line`() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            sale.copy(propertyType = "HOUSE", area = null, rooms = "3", parkings = "0"),
+        )
+
+        val page = render(get("/offer-property?step=review"))
+
+        assertFalse(value(page, "terms").contains("FCFA/m²"))
     }
 
     @Test
