@@ -12,8 +12,11 @@
 
   var KEY = 'ndw.proposition.9001';
   // v2 (#259): ?sale=1 is the buyer's SALE search — its own kept answer, and visit links that stay on the sale variant.
-  var SALE = new URLSearchParams(location.search).get('sale') === '1';
+  // v2 (#274): ?building=1 is a building sold as a whole (a sale too).
+  var BUILDING = new URLSearchParams(location.search).get('building') === '1';
+  var SALE = new URLSearchParams(location.search).get('sale') === '1' || BUILDING;
   if (SALE) KEY += '.sale';
+  if (BUILDING) KEY += '.building';
   var STATES = {
     accepted: 'ACCEPTED', 'accepted-no-visit': 'ACCEPTED_NO_VISIT', 'visit-requested': 'VISIT_REQUESTED', rejected: 'REJECTED', expired: 'EXPIRED',
     unavailable: 'UNAVAILABLE'
@@ -23,7 +26,8 @@
   };
 
   function visitUrl(state, video) {
-    return 'visite.html?state=' + state + (video ? '&type=video' : '') + (SALE ? '&sale=1' : '');
+    return 'visite.html?state=' + state + (video ? '&type=video' : '') + (SALE ? '&sale=1' : '') +
+      (BUILDING ? '&building=1' : '');
   }
 
   var store = {
@@ -162,10 +166,12 @@
   document.addEventListener('DOMContentLoaded', function () {
     render(initialState());
     if (SALE) {
-      document.title = 'Un bien pour vous : villa 4 chambres, Bonapriso — Douala | Ndopify';
+      document.title = BUILDING
+        ? 'Un bien pour vous : immeuble 12 unités, Bonapriso — Douala | Ndopify'
+        : 'Un bien pour vous : villa 4 chambres, Bonapriso — Douala | Ndopify';
       // The page's own visit links (the VISIT_REQUESTED answer) stay on the sale variant.
       document.querySelectorAll('a[href^="visite.html?"]').forEach(function (a) {
-        a.href = a.getAttribute('href') + '&sale=1';
+        a.href = a.getAttribute('href') + '&sale=1' + (BUILDING ? '&building=1' : '');
       });
     }
     if (new URLSearchParams(location.search).get('type') === 'video') {

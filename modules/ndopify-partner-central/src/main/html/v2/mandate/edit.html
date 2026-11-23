@@ -191,6 +191,18 @@
                                         <label class="choice" data-tenant-only><input name="parkings" type="radio" value="ANY"> Indifférent</label>
                                     </div>
                                 </fieldset>
+                                <!-- v2 (#274): a building sold is captured by its levels and its units (whole numbers),
+                                     instead of its rooms and its parking; no other type asks a count of units. -->
+                                <div class="field" data-group="levels" hidden>
+                                    <label class="field__label" for="levels">Étages <span class="field__optional">(1 à 30)</span></label>
+                                    <input class="input" id="levels" name="levels" type="text" inputmode="numeric" autocomplete="off" aria-describedby="levels-error">
+                                    <p class="field__error" id="levels-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                                </div>
+                                <div class="field" data-group="units" hidden>
+                                    <label class="field__label" for="units">Unités <span class="field__optional">(1 à 500)</span></label>
+                                    <input class="input" id="units" name="units" type="text" inputmode="numeric" autocomplete="off" aria-describedby="units-error">
+                                    <p class="field__error" id="units-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                                </div>
                                 <div class="field" data-group="area">
                                     <label class="field__label" for="area"><span data-label-tenant="Surface minimale" data-label-owner="Surface" data-label-sale-tenant="Surface minimale">Surface minimale</span>
                                         <span class="field__optional">(facultatif)</span></label>

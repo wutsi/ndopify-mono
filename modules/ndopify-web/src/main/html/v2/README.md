@@ -33,6 +33,9 @@ The DTOs already carry `listingType` (`SALE` / `RENTAL`) on `Mandate` and `Listi
 | all pages | Nav *Louer · Acheter · Propriétaires · Agents* (the logo goes to the goal picker). |
 | `assets/css/styles.css` | `.goal-switch` (segmented pill of two links), `.goal-groups` / `.goal-card` (home picker), `.callout`. No new JS: every page works without it. |
 | `assets/js/annonce.js` | Only toggles the SALE variant (`[data-sale-only]` / `[data-rental-only]` / `[data-sold-only]` / `[data-sold-hide]`, `?sale=1`), picks the sale photo list, words the interest form's error for a purchase, and on the SOLD page takes its form out of the document (its popup never opens). The sale text itself is in the HTML. |
+| `annonce.html` (#274) | A building sold as a whole, opened with `?building=1` (`?sale=1&building=1` works too): badge *À vendre*, 180M FCFA, the same *Prix et conditions* block and interest form as a sale; *En bref* reads **12 unités · 3 étages · 850 m²**, *Caractéristiques* *Type de bien* Immeuble, *Unités* 12, *Étages* 3, *Surface* 850 m² — no bedrooms, no bathrooms, no parking, no furniture; no *Équipements vérifiés* block (no water, electricity, road, security or access line anywhere); the description names the étages and the units. Its photos are a building set (`#listing-photos-building`). `?building=1&state=sold` is the SOLD page (badge *Vendu*, no conditions block, no form). The villa's `?sale=1` and the rental page are unchanged. |
+| `proposition.html` (#274) | A buyer's proposition of a building, opened with `?building=1` (or `?sale=1&building=1`): a 12-unit, 3-étages, 850 m² building at 240M FCFA for a search of a 12-unit, 3-étages building up to 250M. *Pourquoi ce logement ?* (sale wording: *Pourquoi ce bien ?*) lists the neighbourhood, the budget, "12 unités, comme demandé", "3 étages, comme demandé" — no bedroom, amenity, furniture or parking line; the search summary reads "immeuble de 12 unités sur 3 étages à Bonapriso, jusqu'à 250 000 000 FCFA" and the searched-amenities list is absent; the facts block and *Caractéristiques* read units, étages and surface. Every state stays reachable (`&state=accepted|accepted-no-visit|visit-requested|rejected|expired|unavailable`, `&type=video`). The villa's `?sale=1` and the rental page are unchanged. |
+| `assets/js/annonce.js`, `assets/js/proposition.js` (#274) | The building switch, next to the sale one: `[data-property-only]` (the villa's sale blocks) and `[data-building-only]` (the building's), plus `[data-no-building]` for the blocks a building never has (the *Équipements vérifiés* section, the searched amenities) — the text itself is in the markup, so every variant reads without JavaScript. `?building=1` implies the sale (`isSale`), picks `#listing-photos-building`, words the tab title and the description, and keeps the answer and the visit links on that variant. |
 
 ## Reviewing the sale states
 
@@ -50,6 +53,21 @@ The DTOs already carry `listingType` (`SALE` / `RENTAL`) on `Mandate` and `Listi
   `?sale=1&state=expired`, `?sale=1&type=video` (or `&state=requested&type=video`); a sale's `#cancel` popup names the
   villa.
 - Phones (390 px): the goal cards, the price cards and the conditions tables.
+- A building sold as a whole (#274): `annonce.html?building=1` (badge *À vendre*, 180M FCFA, *12 unités · 3 étages ·
+  850 m²* in *En bref*, *Caractéristiques* with *Unités* and *Étages*, no *Équipements vérifiés* block and no
+  bedroom, bathroom, parking or utility line, the building's photos) and `annonce.html?building=1&state=sold` (badge
+  *Vendu*, the price with its notice only, no conditions block and no form); `annonce.html?sale=1` (the villa) and the
+  rental page are unchanged. `proposition.html?building=1` (a 12-unit, 3-étages building at 240M for a 12-unit,
+  3-étages search up to 250M: *Pourquoi ce bien ?* with "12 unités, comme demandé" and "3 étages, comme demandé", no
+  searched-amenities list, the search summary worded for a building), its states `?building=1&state=accepted`,
+  `&state=accepted-no-visit`, `&state=visit-requested` (add `&type=video`), `&state=rejected`, `&state=expired`,
+  `&state=unavailable`; `proposition.html?sale=1` (the villa) is unchanged. At 390 px the fact chips wrap on two lines
+  and the spec list stacks; at 1024 px they sit on one line. Without JavaScript the page is the rental one until
+  `annonce.js`/`proposition.js` picks a variant, as for the sale (the building's text is in the markup).
+  Assumptions: `?building=1` implies the sale (`?sale=1&building=1` is equivalent); the building's price (180M on the
+  listing, 240M in the proposition) is this prototype's mock data; the building's photos reuse `picsum` seeds like the
+  villa's. Two points settled with the requester: the count reads *étages* (its field stays `levels`), and a building
+  shows no bathroom — neither in *En bref*, *Caractéristiques* nor the manager's *Le bien* — nor any parking.
 
 ## Out of scope, never promised here
 

@@ -56,3 +56,15 @@
 .review__multiline {
     white-space: pre-line;
 }
+
+/* v2 (#274): a building's two counts (levels, units), one per row at every width — they never share a row. Shared
+   by both wizards; the "Indifférent" checkbox of a purchase sits under its input inside the field. */
+.count-fields {
+    display: grid;
+    gap: var(--space-4);
+}
+
+/* A grid display would beat the hidden attribute. */
+.count-fields[hidden] {
+    display: none;
+}

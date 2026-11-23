@@ -22,7 +22,9 @@
   // so every word is right without JavaScript. &state=sold is the SOLD state: badge "Vendu", no interest form, no call
   // to action and no conditions (data-sold-hide), as a sold listing is served today.
   var params = new URLSearchParams(location.search);
-  var isSale = params.get('sale') === '1';
+  // v2 (#274): ?building=1 is a building sold as a whole (a sale); ?sale=1 alone is the villa.
+  var isBuilding = params.get('building') === '1';
+  var isSale = params.get('sale') === '1' || isBuilding;
   var isSold = isSale && params.get('state') === 'sold';
 
   function showAll(selector, shown) {
@@ -34,6 +36,10 @@
   function initListingVariant() {
     showAll('[data-rental-only]', !isSale);
     showAll('[data-sale-only]', isSale);
+    // A sale has one property at a time: the villa's blocks, or the building's.
+    showAll('[data-property-only]', isSale && !isBuilding);
+    showAll('[data-building-only]', isBuilding);
+    showAll('[data-no-building]', !isBuilding);
     showAll('[data-sold-only]', isSold);
     if (isSold) {
       showAll('[data-interest-cta]', false);
@@ -45,17 +51,26 @@
       if (popup) popup.hidden = true;
     }
     if (!isSale) return;
-    // annonce.html only: the villa's tab title, its description and the photo viewer's label
+    // annonce.html only: the property's tab title, its description and the photo viewer's label
     if (document.querySelector('[data-listing-page]')) {
-      document.title = 'Villa 5 chambres à vendre, Bonapriso — Douala | Ndopify';
       var description = document.querySelector('meta[name="description"]');
-      if (description) {
-        description.setAttribute('content', 'Villa 5 chambres à vendre à Bonapriso, Douala. 250M FCFA. ' +
-          'Photos, surface et position vérifiées sur place ; confiez votre recherche à un agent vérifié du secteur.');
+      if (isBuilding) {
+        document.title = 'Immeuble 12 unités à vendre, Bonapriso — Douala | Ndopify';
+        if (description) {
+          description.setAttribute('content', 'Immeuble de 12 unités sur 3 étages à vendre à Bonapriso, Douala. ' +
+            '180M FCFA. 850 m², photos et surface vérifiées sur place ; confiez votre recherche à un agent vérifié ' +
+            'du secteur.');
+        }
+      } else {
+        document.title = 'Villa 5 chambres à vendre, Bonapriso — Douala | Ndopify';
+        if (description) {
+          description.setAttribute('content', 'Villa 5 chambres à vendre à Bonapriso, Douala. 250M FCFA. ' +
+            'Photos, surface et position vérifiées sur place ; confiez votre recherche à un agent vérifié du secteur.');
+        }
       }
     }
     var lightbox = document.querySelector('[data-lightbox]');
-    if (lightbox) lightbox.setAttribute('aria-label', 'Photos du bien');
+    if (lightbox) lightbox.setAttribute('aria-label', isBuilding ? "Photos de l'immeuble" : 'Photos du bien');
   }
 
   // ---------------------------------------------------------------- Popups
@@ -255,7 +270,8 @@
   // swiping scrolls it, the buttons and arrows too.
   function initLightbox() {
     var box = document.querySelector('[data-lightbox]');
-    var data = document.getElementById(isSale ? 'listing-photos-sale' : 'listing-photos');
+    var data = document.getElementById(isBuilding ? 'listing-photos-building'
+      : isSale ? 'listing-photos-sale' : 'listing-photos');
     if (!box || !data) return;
     var photos = JSON.parse(data.textContent);
     var track = box.querySelector('[data-lightbox-track]');

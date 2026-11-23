@@ -1726,6 +1726,64 @@
                 movingPeriod: "WITHIN_1_MONTH",
                 comments: "Prêt bancaire déjà accordé."
             }
+        },
+        // v2 (#274): a building sold as a whole is captured by two counts, levels and units, instead of rooms,
+        // parking and amenities. 305 is a seller's building (LISTING · SALE), signed: its listing is to create; 306 is
+        // a buyer's search for one (SEARCH · SALE), signed, with its matches (see MATCHES). A building is offered
+        // under Commercial for a sale only.
+        305: {
+            party: "bailleur",
+            listingType: "SALE",
+            createdAt: -18,
+            // Accepted, its contract not sent yet: the building sample's edit page is reachable (only an ASSIGNED
+            // or PENDING_APPROVAL mandate is editable), and "Modifier le mandat" opens it.
+            initial: { status: "ASSIGNED", acceptedAt: -18 },
+            contact: {
+                firstName: "Jacqueline",
+                lastName: "Ngo Mback",
+                whatsapp: "+237677889900",
+                email: "j.ngomback@example.com",
+                period: "Matin"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonapriso"],
+                propertyCategory: "COMMERCIAL",
+                propertyType: "BUILDING",
+                levels: 3,
+                units: 12,
+                area: 850,
+                amenities: [],
+                price: 250000000,
+                movingPeriod: "WITHIN_3_MONTHS",
+                comments: "Immeuble loué au mois, vendu avec ses baux en cours."
+            }
+        },
+        306: {
+            party: "client",
+            listingType: "SALE",
+            createdAt: -11,
+            initial: { status: "APPROVED", acceptedAt: -11, requestedAt: -9, approvedAt: -7 },
+            contact: {
+                firstName: "Bertrand",
+                lastName: "Fouda",
+                whatsapp: "+237690334455",
+                email: "b.fouda@example.com",
+                period: "Après-midi"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonapriso"],
+                propertyCategory: "COMMERCIAL",
+                propertyType: "BUILDING",
+                levels: 3,
+                units: 10,
+                area: 800,
+                amenities: [],
+                price: 250000000,
+                movingPeriod: "WITHIN_1_MONTH",
+                comments: "Achat pour investissement locatif, comptant."
+            }
         }
     };
 
@@ -1917,6 +1975,12 @@
         if (f.furnitureType && !sale) rows.push(["Meublé", FURNITURE_LABELS[f.furnitureType]]);
         if (f.rooms) rows.push(["Chambres", f.rooms]);
         if (f.parkings) rows.push(["Parking", PARKING_LABELS[f.parkings] || f.parkings]);
+        // v2 (#274): a building sold is captured by its levels and its units, never by rooms or parking. A buyer
+        // answers "Indifférent" (stored as null); a seller declares them.
+        if (sale && f.propertyType === "BUILDING") {
+            rows.push(["Étages", f.levels == null ? "Indifférent" : String(f.levels)]);
+            rows.push(["Unités", f.units == null ? "Indifférent" : String(f.units)]);
+        }
         if (f.area) rows.push([owner ? "Surface" : "Surface souhaitée", f.area + " m²"]);
         // v2 (#253): a land purchase's required documents (the same TitleDocumentType enum as the seller's ownership
         // documents), after the surface; "Aucun document exigé" when the buyer requires none. The mandate page keeps
@@ -2216,6 +2280,35 @@
                 fit: [[true, "Dans le secteur recherché"], [false, "4 % au-dessus du budget"],
                     [true, "5 chambres, comme souhaité"], [true, "Disponible avant votre achat"]]
             }
+        ],
+        // v2 (#274): a buyer's search for a building (306): its matches are buildings too. Their title and fit lines
+        // word the levels and the units, never the rooms, the amenities nor the furniture; a listing that didn't
+        // declare a count says so ("Nombre d'unités non précisé"). 9305 is the sample listing 701 of mandate 305.
+        306: [
+            {
+                id: "9305", listingId: "701", propertyType: "BUILDING", units: 12, levels: 3,
+                neighbourhood: "Bonapriso", price: 250000000, availableIn: 0, score: 0.93,
+                initial: { status: "ACTIVE" },
+                fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"],
+                    [true, "12 unités, comme demandé"], [true, "3 étages, comme demandé"],
+                    [true, "Disponible avant votre achat"]]
+            },
+            {
+                id: "9306", listingId: "6027", propertyType: "BUILDING", units: 20, levels: 3,
+                neighbourhood: "Bonapriso", price: 240000000, availableIn: 0, score: 0.78,
+                initial: { status: "ACTIVE" },
+                fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"],
+                    [true, "20 unités au lieu de 10"], [true, "3 étages, comme demandé"],
+                    [true, "Disponible avant votre achat"]]
+            },
+            {
+                id: "9307", listingId: "6031", propertyType: "BUILDING", units: null, levels: 3,
+                neighbourhood: "Bonapriso", price: 250000000, availableIn: 20, score: 0.71,
+                initial: { status: "ACTIVE" },
+                fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"],
+                    [false, "Nombre d'unités non précisé"], [true, "3 étages, comme demandé"],
+                    [false, "Pas disponible avant votre achat"]]
+            }
         ]
     };
 
@@ -2465,6 +2558,15 @@
 
     function matchTitle(match) {
         var type = PROPERTY_TYPE_LABELS[match.propertyType];
+        // v2 (#274): a building is described by its units and its levels, where another property has its rooms. A
+        // count the listing didn't declare says so rather than showing nothing.
+        if (match.propertyType === "BUILDING") {
+            var units = match.units == null ? "Nombre d'unités non précisé"
+                : plural(match.units, "unité", "unités");
+            var levels = match.levels == null ? "Nombre d'étages non précisé"
+                : plural(match.levels, "étage", "étages");
+            return type + " · " + units + " · " + levels;
+        }
         // A plot of land has no rooms (a sale's match)
         return type + (match.rooms ? " · " + match.rooms + (match.rooms > 1 ? " chambres" : " chambre") : "");
     }
@@ -3040,10 +3142,16 @@
         var rooms = byTerm["Chambres"];
         var key = rows.slice(0, 3).concat([["Type de bien", byTerm["Type de propriété"] +
             (rooms ? ", " + rooms + (rooms === "1" ? " chambre" : " chambres") : "")]]);
+        // v2 (#274): a building's two counts stay among the visible criteria — they qualify the property as much as
+        // its type, and the agent reads them before any other.
+        ["Étages", "Unités"].forEach(function (term) {
+            if (byTerm[term]) key.push([term, byTerm[term]]);
+        });
         if (byTerm["Autres précisions"]) key.push(["Autres précisions", byTerm["Autres précisions"]]);
         if (byTerm["Documents exigés"]) key.push(["Documents exigés", byTerm["Documents exigés"]]);
         var rest = rows.slice(3).filter(function (row) {
-            return ["Type de propriété", "Chambres", "Autres précisions", "Documents exigés"].indexOf(row[0]) === -1;
+            return ["Type de propriété", "Chambres", "Étages", "Unités", "Autres précisions",
+                "Documents exigés"].indexOf(row[0]) === -1;
         });
         key.forEach(function (row) {
             criterion($("[data-mandate-key-criteria]"), row);
@@ -3960,6 +4068,13 @@
         return /^\d+$/.test(digits) && parseInt(digits, 10) > 0 ? parseInt(digits, 10) : NaN;
     }
 
+    // A count ("12", "3"): null when empty, NaN when not a whole number; 0 is a number here, the bounds judge it.
+    function parseCount(value) {
+        var text = String(value == null ? "" : value).trim();
+        if (!text) return null;
+        return /^\d+$/.test(text) ? parseInt(text, 10) : NaN;
+    }
+
     var MAX_AMOUNT_DIGITS = 12;
 
     function digitsOf(value) {
@@ -4059,6 +4174,9 @@
         check("furnitureType", f.furnitureType);
         check("parkings", f.parkings);
         field("area").value = f.area || "";
+        // v2 (#274): a building's two counts, prefilled; no other type shows nor sends them.
+        field("levels").value = f.levels == null ? "" : String(f.levels);
+        field("units").value = f.units == null ? "" : String(f.units);
         f.amenities.forEach(function (key) {
             field(key).checked = true;
         });
@@ -4101,14 +4219,27 @@
             });
             var type = checked("propertyType");
             var land = type === "LAND";
-            $('[data-group="rooms"]', form).hidden = category !== "RESIDENTIAL" || land;
+            // v2 (#274): a building sold is captured by its levels and its units; it is asked no rooms nor parking,
+            // and its amenities group leaves the page (a building's utilities aren't checked).
+            var building = sale && type === "BUILDING";
+            $('[data-group="rooms"]', form).hidden = category !== "RESIDENTIAL" || land || building;
             // v2: furniture is a rental question only
             $('[data-group="furnitureType"]', form).hidden = land || sale;
-            $('[data-group="parkings"]', form).hidden = land;
+            $('[data-group="parkings"]', form).hidden = land || building;
+            $('[data-group="levels"]', form).hidden = !building;
+            $('[data-group="units"]', form).hidden = !building;
+            $('[data-edit-group="amenities"]', form).hidden = building;
         }
 
         function visible(name) {
-            return !$('[data-group="' + name + '"]', form).hidden;
+            var group = $('[data-group="' + name + '"]', form);
+            return !!group && !group.hidden;
+        }
+
+        // The amenities are a folded page group ([data-edit-group]), not a field group.
+        function amenitiesShown() {
+            var group = $('[data-edit-group="amenities"]', form);
+            return !!group && !group.hidden;
         }
 
         /* Each folded group shows its current value. */
@@ -4123,6 +4254,10 @@
                 var parts = [PROPERTY_TYPE_LABELS[checked("propertyType")] || CATEGORY_LABELS[checked("propertyCategory")]];
                 var rooms = visible("rooms") && checked("rooms");
                 if (rooms) parts.push(rooms + (rooms === "1" ? " chambre" : " chambres"));
+                var levels = visible("levels") && parseCount(field("levels").value);
+                if (levels > 0) parts.push(levels + (levels > 1 ? " étages" : " étage"));
+                var units = visible("units") && parseCount(field("units").value);
+                if (units > 0) parts.push(units + (units > 1 ? " unités" : " unité"));
                 var area = parseAmount(field("area").value);
                 if (area > 0) parts.push(area + " m²");
                 return parts.join(" · ");
@@ -4171,6 +4306,21 @@
             setFieldError(errorTarget(name), $("#" + name + "-error", form), null);
         }
 
+        // A building's counts: absent (empty) and out of bounds have their own words, in the page's tone.
+        var COUNTS = [
+            { name: "levels", noun: "d'étages", max: 30 },
+            { name: "units", noun: "d'unités", max: 500 }
+        ];
+
+        function countError(count) {
+            var value = parseCount(field(count.name).value);
+            if (value == null) return "Indiquez le nombre " + count.noun + ".";
+            if (isNaN(value) || value < 1 || value > count.max) {
+                return "Indiquez un nombre entier, de 1 à " + count.max + ".";
+            }
+            return "";
+        }
+
         function validate() {
             var invalid = [];
             if (!(parseAmount(field("price").value) > 0)) invalid.push("price");
@@ -4182,6 +4332,11 @@
                 setFieldError(errorTarget(name), $("#" + name + "-error", form),
                     invalid.indexOf(name) !== -1 ? ERRORS[name] : null);
             });
+            COUNTS.forEach(function (count) {
+                var message = visible(count.name) ? countError(count) : "";
+                if (message) invalid.push(count.name);
+                setFieldError(errorTarget(count.name), $("#" + count.name + "-error", form), message);
+            });
             return invalid;
         }
 
@@ -4189,12 +4344,14 @@
             var name = event.target.name;
             if (name === "neighbourhoods") syncNeighbourhoods();
             if (name === "propertyCategory" || name === "propertyType") syncProperty();
-            if (ERRORS[name]) clearError(name);
+            if (ERRORS[name] || $("#" + name + "-error", form)) clearError(name);
             syncSummaries();
         });
 
         form.addEventListener("input", function (event) {
-            if (ERRORS[event.target.name]) clearError(event.target.name);
+            if (ERRORS[event.target.name] || $("#" + event.target.name + "-error", form)) {
+                clearError(event.target.name);
+            }
             syncSummaries();
         });
 
@@ -4221,10 +4378,13 @@
                 furnitureType: visible("furnitureType") ? checked("furnitureType") : null,
                 rooms: visible("rooms") ? checked("rooms") : null,
                 parkings: visible("parkings") ? checked("parkings") : null,
+                // v2 (#274): a building keeps its two counts; no other type saves one.
+                levels: visible("levels") ? parseCount(field("levels").value) : null,
+                units: visible("units") ? parseCount(field("units").value) : null,
                 area: area || null,
-                amenities: AMENITY_KEYS.filter(function (key) {
+                amenities: amenitiesShown() ? AMENITY_KEYS.filter(function (key) {
                     return field(key).checked;
-                }),
+                }) : [],
                 price: parseAmount(field("price").value),
                 movingPeriod: checked("movingPeriod"),
                 comments: field("comments").value.trim() || null
@@ -4373,6 +4533,18 @@
         return s.key === "terms" && listingIsSale(listing) ? "Prix et conditions" : s.label;
     }
 
+    // v2 (#274): a building sold is one property, not an inventory: its checklist has no "Eau, électricité, accès"
+    // row, which then isn't required to send it for verification. Every other type keeps the seven sections.
+    function isBuildingListing(listing) {
+        return listingIsSale(listing) && !!listing.fields && listing.fields.propertyType === "BUILDING";
+    }
+
+    function sectionsOf(listing) {
+        return LISTING_SECTIONS.filter(function (s) {
+            return !(s.key === "amenities" && isBuildingListing(listing));
+        });
+    }
+
     // Set by initListingSection: the section page's listing is a sale (ownerText, LISTING_APPLIES).
     var currentListingSale = false;
 
@@ -4443,7 +4615,9 @@
             kitchens: null,
             parkings: countOf(f.parkings),
             area: f.area || null,
-            levels: null,
+            // v2 (#274): a building's two counts pre-fill its "Le bien"; no other type carries a unit count.
+            levels: f.levels || null,
+            units: isSale(mandateId) && f.propertyType === "BUILDING" ? f.units || null : null,
             floorLevel: null,
             amenities: f.amenities.slice(),
             price: f.price,
@@ -4472,6 +4646,21 @@
         return listing;
     }
 
+    /*
+     * v2 (#274): the building sample's listing, 701, created from mandate 305 on first visit (the session then keeps
+     * it, like any DRAFT the agent creates). Its "Le bien" is already filled — Immeuble, 850 m², 3 levels, 12 units,
+     * no bathrooms nor parking — and its other sections start like the other samples' (nothing checked, no photo).
+     * ?id=701 opens it; a session cleared of its listings brings it back.
+     */
+    var BUILDING_LISTING_SAMPLE = { id: "701", mandateId: "305" };
+
+    function ensureBuildingSampleListing(id) {
+        if (String(id) !== BUILDING_LISTING_SAMPLE.id || listings()[id]) return;
+        if (!ownsMandate(BUILDING_LISTING_SAMPLE.mandateId)) return;
+        var listing = createListing(BUILDING_LISTING_SAMPLE.mandateId, BUILDING_LISTING_SAMPLE.id);
+        saveListing(listing);
+    }
+
     function goodPhotos(listing) {
         return listing.photos.filter(function (photo) {
             return photo.status !== "REJECTED";
@@ -4487,7 +4676,7 @@
 
     // What's left before sending: "Emplacement, 2 photos".
     function missingSections(listing) {
-        return LISTING_SECTIONS.filter(function (s) {
+        return sectionsOf(listing).filter(function (s) {
             return !s.optional && !sectionDone(listing, s.key);
         }).map(function (s) {
             if (s.key !== "photos") return sectionLabel(s, listing);
@@ -4530,7 +4719,10 @@
                     ? f.latitude.toFixed(5) + ", " + f.longitude.toFixed(5) + (f.accuracy ? " (± " + f.accuracy + " m)" : "")
                     : "À relever devant l'entrée du bien";
             case "property":
+                // v2 (#274): a building reads its units and levels where a home reads its rooms.
                 return [PROPERTY_TYPE_LABELS[f.propertyType], f.rooms != null ? plural(f.rooms, "chambre", "chambres") : null,
+                    f.units != null ? plural(f.units, "unité", "unités") : null,
+                    f.levels != null ? plural(f.levels, "étage", "étages") : null,
                     f.area ? f.area + " m²" : null].filter(Boolean).join(" · ");
             case "amenities":
                 var road = f.amenities.filter(function (a) {
@@ -4571,6 +4763,8 @@
         var params = new URLSearchParams(window.location.search);
         var id = params.get("id");
         var readOnly = id === String(CO_BROKERAGE_LISTING.id);
+        // v2 (#274): ?id=701 seeds the building sample's DRAFT listing on its first visit.
+        ensureBuildingSampleListing(id);
         var listing = readOnly ? CO_BROKERAGE_LISTING : listings()[id];
         if (!listing || (!readOnly && !ownsMandate(listing.mandateId))) {
             $("[data-listing-locked]").hidden = false;
@@ -4672,16 +4866,16 @@
             stats.hidden = readOnly || listing.status !== "PUBLISHED";
             $("[data-listing-stats-text]", stats).textContent = statsSummary(listing.mandateId);
 
-            var done = LISTING_SECTIONS.filter(function (s) {
+            var done = sectionsOf(listing).filter(function (s) {
                 return !s.optional && sectionDone(listing, s.key);
             }).length;
             $("[data-checklist-progress]").textContent = done + " sections sur " +
-                (LISTING_SECTIONS.length - 1) + " vérifiées";
+                (sectionsOf(listing).length - 1) + " vérifiées";
 
             // Each row opens its section: to edit it while a draft, to view it (read-only) once sent.
             // Another agent's listing has no section pages here: its rows are plain text.
             list.textContent = "";
-            LISTING_SECTIONS.forEach(function (s) {
+            sectionsOf(listing).forEach(function (s) {
                 var item = template.content.firstElementChild.cloneNode(true);
                 var row = document.createElement(readOnly ? "div" : "a");
                 row.className = "checklist__row";
@@ -4784,16 +4978,22 @@
             return a.propertyCategory === "RESIDENTIAL" && ["ROOM", "STUDIO", "BUILDING"].indexOf(a.propertyType) === -1;
         },
         bathrooms: function (a) {
-            return a.propertyType !== "LAND";
+            // v2 (#274): a building sold as a whole asks neither bathrooms nor parking: it is counted by its units.
+            return a.propertyType !== "LAND" && !(currentListingSale && a.propertyType === "BUILDING");
         },
         kitchens: function (a) {
             return a.propertyCategory === "RESIDENTIAL" && ["ROOM", "BUILDING"].indexOf(a.propertyType) === -1;
         },
         parkings: function (a) {
-            return a.propertyType !== "ROOM";
+            // v2 (#274): a building sold as a whole asks no parking (nor parking spaces); a rental building keeps it.
+            return a.propertyType !== "ROOM" && !(currentListingSale && a.propertyType === "BUILDING");
         },
         levels: function (a) {
             return ["HOUSE", "DUPLEX", "BUILDING"].indexOf(a.propertyType) !== -1;
+        },
+        // v2 (#274): a building sold is captured by its units, next to its levels; no other type asks a count of units.
+        units: function (a) {
+            return currentListingSale && a.propertyType === "BUILDING";
         },
         floorLevel: function (a) {
             return ["ROOM", "STUDIO", "APARTMENT", "OFFICE", "RETAIL"].indexOf(a.propertyType) !== -1;
@@ -4902,13 +5102,21 @@
             if (shown("furnitureType") && !v.furnitureType) {
                 errors.push(["furnitureType", "Indiquez si le bien est meublé."]);
             }
-            ["rooms", "bathrooms", "livingRooms", "kitchens", "parkings", "levels", "floorLevel", "area"]
+            ["rooms", "bathrooms", "livingRooms", "kitchens", "parkings", "levels", "units", "floorLevel", "area"]
                 .forEach(function (name) {
                     if (!shown(name)) return;
-                    var required = ["rooms", "bathrooms", "area"].indexOf(name) !== -1;
+                    // v2 (#274): a building sold is counted by its levels and its units, both required and bounded.
+                    var building = currentListingSale && v.propertyType === "BUILDING";
+                    var required = ["rooms", "bathrooms", "area"].indexOf(name) !== -1 ||
+                        (building && (name === "levels" || name === "units"));
                     if (v[name] == null && required) errors.push([name, "Indiquez ce nombre, compté sur place."]);
                     else if (isNaN(v[name])) errors.push([name, "Indiquez un nombre entier."]);
                     else if (name === "area" && !(v.area > 0)) errors.push([name, "Indiquez la surface en m²."]);
+                    else if (name === "levels" && building && (v.levels < 1 || v.levels > 30)) {
+                        errors.push([name, "Indiquez un nombre d'étages, de 1 à 30."]);
+                    } else if (name === "units" && (v.units < 1 || v.units > 500)) {
+                        errors.push([name, "Indiquez un nombre d'unités, de 1 à 500."]);
+                    }
                 });
             return errors;
         },
@@ -4973,6 +5181,9 @@
             $all("[data-applies]", form).forEach(function (el) {
                 el.hidden = !a.propertyType || !LISTING_APPLIES[el.getAttribute("data-applies")](a);
             });
+            // v2 (#274): a building's levels are a required count, every other type keeps them optional.
+            var optional = $("[data-levels-optional]", form);
+            if (optional) optional.hidden = !!a.propertyType && LISTING_APPLIES.units(a);
         }
         $all('[name="propertyCategory"], [name="propertyType"]', form).forEach(function (radio) {
             radio.addEventListener("change", sync);
@@ -5169,6 +5380,7 @@
     function initListingSection() {
         var section = document.body.getAttribute("data-section");
         var id = new URLSearchParams(window.location.search).get("id");
+        ensureBuildingSampleListing(id);
         var listing = listings()[id];
         var back = "../listing.html?id=" + encodeURIComponent(id);
         $all("[data-back-link]").forEach(function (a) {
@@ -5177,6 +5389,12 @@
         var locked = $("[data-section-locked]");
         if (!listing || !ownsMandate(listing.mandateId)) {
             locked.hidden = false;
+            return;
+        }
+        // v2 (#274): a building's checklist has no "Eau, électricité, accès" row, so its section page is not part of
+        // the visit: a hand-typed URL goes back to the checklist, as a section that no longer opens does.
+        if (section === "amenities" && isBuildingListing(listing)) {
+            window.location.replace(back);
             return;
         }
         // v2: a sale's wording and fields (data-sale-text, data-rental-only)

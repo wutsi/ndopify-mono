@@ -36,6 +36,12 @@ rentals and sales (decided 2026-11-22): no mandate is filtered on a specialisati
 | `listing.html`, `listing/conditions.html` | A sale listing's checklist row is *Prix et conditions*, its summary the sale price only. The conditions section is *Prix et conditions*: *Prix* and the date the property is free, the rental-only terms (caution, advance, lease term, notice, furniture) hidden and saved empty; the location and GPS hints say *acheteurs*, not *locataires*. |
 | Match cards (*Biens correspondants*, *Propositions*) | A sale's card reads *Prix* (no "/ mois") and *Disponibilité*, and its fit lines say *Disponible avant votre achat*. |
 | `offline.html` | Its links to the production stylesheet and icon go one level up (`../../resources/…`). |
+| `find-property.html` | A building purchased as a whole is captured by two counts (#274): the *bien* step asks *Nombre d'étages* (1–30) and *Nombre d'unités* (1–500), both required, each with an *Indifférent* checkbox (stored as null), and shows no *Places de parking*; the amenities step leaves the wizard, so that branch reads *Étape X sur 6* (progress track, the steps' legends, *Précédent*/Suivant and `?etape=` follow it) and the review lists *Étages* and *Unités* (*Indifférent* when blank) with no amenity line. A rental building keeps the seven steps and its questions. `?sample=` seeds: `building`, `building-any`, `building-review`, `building-review-any`, `rental-building`. |
+| `offer-property.html` | A building sale (#274): *Immeuble entier* is offered under *Commercial* only (`data-sale-categories="COMMERCIAL"`; a rental keeps *Résidentiel*, whose sale description no longer names it), the *Caractéristiques* step asks no *Parking ou garage* nor *Combien de places ?* and requires *Étages* and *Unités* (as the buyer's counts, without *Indifférent*); the amenities step leaves the wizard (six steps, same progress and `?etape=` handling) and the review shows the two counts with no *Équipements* line. `?sample=building` opens *Caractéristiques* of that branch, `?sample=building-review` its review. |
+| `mandate.html` | A building sale (#274): 305 is a seller's building of 3 étages and 12 units (250M, Bonapriso, *Commercial* · *Immeuble*): its criteria read *Étages* 3 and *Unités* 12 among the visible ones, with no amenity, parking or bedroom row; 306 is a buyer's search for a building of 10 units and 3 étages (250M), whose matches read "12 unités · 3 étages" (and "20 unités au lieu de 10", "Nombre d'unités non précisé") with *Pourquoi ce bien ?* worded in units and étages only. 305 is Assigné, so its edit page is reachable. |
+| `mandate/edit.html` | A building sale (#274): the *Le bien* group shows *Étages* (1–30) and *Unités* (1–500), prefilled from the mandate, and hides *Chambres*, *Places de parking* and the whole *Équipements* group; the group's summary counts them ("Immeuble · 3 étages · 12 unités · 850 m²"), and both fields refuse empty, 0, out-of-bound and non-numeric values. Other types are unchanged. |
+| `listing.html`, `listing/bien.html` | A building's listing (#274): `?id=701` seeds a DRAFT for mandate 305 (Immeuble, 850 m², 3 étages, 12 units, no bathrooms nor parking); its checklist has six rows (no *Eau, électricité, accès*, not required to send it) and *Le bien* asks *Étages* and *Unités*, both required, with neither *Salles de bains* nor *Places de parking*; `listing/equipements.html?id=701` goes back to the checklist. Other types keep the seven sections. |
+| `assets/js/find-property.js`, `offer-property.js`, `partner-central.js` | #274's logic: the branch's own step list (six for a building sale), the counts' fields and messages, the listing's sections and rules, the building samples (305, 306, 701) and their matches. |
 
 To review the type and status badges (#276): `index.html` (offer 104 and card 301 read *Vente*; the rental cards read
 *Location*, their badge hugging its own word) and `mandate.html?id=301` (*Vente* + *Actif*) against `?id=201`
@@ -99,6 +105,38 @@ unchanged keeps it, and picking another type makes it disappear for good. `?id=2
 same saved answer (*Type de propriété : Terrain*, loyer, surface), as before the rule. The `?sample=` shortcuts seed
 the session once, like every other one: reloading one after changing its answers keeps the change. The empty and
 loading states don't apply to this change, and there is no new screen.
+
+A building sold as a whole (#274) is captured by two counts, its étages and its units, instead of its rooms, its
+parking and its amenities. The buyer's wizard: `find-property.html?sample=building` opens *Décrivez le bien idéal* on a
+sale of *Immeuble* with *Nombre d'étages* and *Nombre d'unités* to fill — *Suivant* is inactive, click it for
+*Indiquez le nombre d'étages, ou cochez Indifférent.* (and the same for units; try `0`, `31`, `501` and letters for
+*Indiquez un nombre entier, de 1 à 30* / *… à 500*) — six steps read *Étape 3 sur 6* here and *Étape 6 sur 6* on
+`?sample=building-review`, which lists *Étages* 3 and *Unités* 12 and no *Indispensable* row; `?sample=building-any`
+and `?sample=building-review-any` are the two *Indifférent* states (review rows read *Indifférent*), and
+`?sample=rental-building` keeps seven steps, its parking question and its amenities line. The seller's wizard:
+`offer-property.html?sample=building` opens *Caractéristiques* with *Immeuble entier* under *Commercial* only, no
+*Parking ou garage*, *Étages* and *Unités* empty (*Suivant* answers for them), *Étape 4 sur 6*; `?sample=building-review`
+is its review (*Étape 6 sur 6*, *Immeuble entier · 3 étages · 12 unités · 850 m²*, no *Équipements*); `?type=RENTAL`
+and the #273 land samples are unchanged. The agent's screens: `mandate.html?id=305` (a seller's building, criteria
+*Étages* 3 / *Unités* 12, no amenity row), `?id=306` (a buyer's building search: its three matches read
+"Immeuble · 12 unités · 3 étages", "Immeuble · 20 unités au lieu de 10", "Immeuble · Nombre d'unités non précisé" —
+never rooms or amenities), `?id=301` and `?id=201` unchanged; `mandate/edit.html?id=305` prefills the two counts and
+refuses empty, 0, 31, 501 and letters; `?id=104` and `?id=201` are unchanged. The listing: `listing.html?id=701` (six
+rows, no *Eau, électricité, accès*, progress "sur 5 vérifiées"), `listing/bien.html?id=701` (*Étages* 3 and *Unités*
+12 prefilled, neither *Salles de bains* nor *Places de parking*, both required), `listing/equipements.html?id=701`
+returns to the checklist; `listing.html?id=501` (the rental villa) is unchanged. *Nombre d'étages* and *Nombre
+d'unités* never share a row: they stack at every width (390 px and 1024 px alike), and the six-step header keeps its
+count and project pill on one line. Assumptions: 305 is *Assigné* so that its edit page opens (a signed mandate is no
+longer editable, as 301/302 are); `?id=701` seeds its DRAFT on the first visit and the session then keeps it (its
+edits survive a reload); the
+buyer's *Indifférent* is a checkbox that disables its count (stored as null); the building's checklist has six rows
+because its utilities aren't checked; a building's surface stays optional in the buyer's search and required in the
+seller's *Caractéristiques*, as it is today for their types; the seller wizard has no "N réponses" summary line — the
+counts are in its review rows and in the mandate edit's group summary. Two points settled with the requester: the count
+reads *étages* everywhere (its field stays `levels`), and a building's *Le bien* asks neither *Salles de bains* nor
+*Places de parking* — it is counted by its units. Two points settled with the requester: the count
+reads *étages* everywhere (its field stays `levels`), and a building's *Le bien* asks neither *Salles de bains* nor
+*Places de parking* — it is counted by its units.
 
 The empty and error states: `index.html?assignments=empty` (an agent without offers: no *Mandats proposés* section) and
 `index.html?mandates=empty` (no mandate in progress: the section's empty line). On `mandate/edit.html?id=104`, submit

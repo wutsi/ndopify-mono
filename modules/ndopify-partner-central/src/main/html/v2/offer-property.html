@@ -107,15 +107,17 @@
                             <span>Résidentiel <span class="choice__detail" data-for="RENTAL">Pour y
                                 habiter&nbsp;: chambre, studio, appartement, villa, immeuble…</span><span
                                 class="choice__detail" data-for="SALE" hidden>Pour y habiter&nbsp;: appartement,
-                                villa, immeuble, terrain à bâtir…</span></span></label>
+                                villa, terrain à bâtir…</span></span></label>
                         <!-- A plot of land is sold, never let (#275): the rental's description names no land, the
-                             sale's keeps it. -->
+                             sale's keeps it. A building is sold under Commercial only (#274): the sale's
+                             residential
+                             list no longer names it. -->
                         <label class="choice choice--described">
                             <input name="propertyCategory" required type="radio" value="COMMERCIAL">
                             <span>Commercial <span class="choice__detail" data-for="RENTAL">Pour une
                                 activité&nbsp;: bureau, boutique, entrepôt…</span><span class="choice__detail"
                                 data-for="SALE" hidden>Pour une activité&nbsp;: bureau, boutique, entrepôt,
-                                terrain…</span></span></label>
+                                immeuble, terrain…</span></span></label>
                     </div>
                     <p class="field__error" hidden id="propertyCategory-error">
                         <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
@@ -296,8 +298,10 @@
                         <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" required
                                                                                    type="radio" value="DUPLEX">
                             Duplex</label>
-                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" required
-                                                                                   type="radio" value="BUILDING">
+                        <!-- A building sold as a whole is offered under Commercial only (#274); a rental keeps it
+                             under Résidentiel. -->
+                        <label class="choice" data-categories="RESIDENTIAL" data-sale-categories="COMMERCIAL"><input
+                            name="propertyType" required type="radio" value="BUILDING">
                             Immeuble entier</label>
                         <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" required
                                                                                   type="radio" value="OFFICE">
@@ -393,6 +397,35 @@
                         </svg>
                         <span data-error-text></span></p>
                 </fieldset>
+
+                <!-- v2 (#274): a building sold as a whole is captured by its levels and its units (whole numbers);
+                     both are required, and no other type asks them. A building asks no parking either. -->
+                <div class="count-fields" data-building-counts hidden>
+                    <div class="field">
+                        <label class="field__label" for="levels">Étages <span class="field__optional">(1 à 30)</span></label>
+                        <input aria-describedby="levels-error" autocomplete="off" class="input" id="levels"
+                               inputmode="numeric" name="levels" type="text" data-count="levels">
+                        <p class="field__error" hidden id="levels-error">
+                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                      stroke-width="1.5"/>
+                            </svg>
+                            <span data-error-text></span></p>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="units">Unités <span class="field__optional">(1 à 500)</span></label>
+                        <input aria-describedby="units-error" autocomplete="off" class="input" id="units"
+                               inputmode="numeric" name="units" type="text" data-count="units">
+                        <p class="field__error" hidden id="units-error">
+                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                      stroke-width="1.5"/>
+                            </svg>
+                            <span data-error-text></span></p>
+                    </div>
+                </div>
 
                 <div class="field" data-group="area" hidden>
                     <label class="field__label" for="area" data-area-label>Surface estimée</label>
@@ -707,6 +740,45 @@
                                 Modifier<span class="visually-hidden"> les caractéristiques</span></button>
                         </dd>
                     </div>
+                    <!-- v2 (#274): a building sale's two counts, before its documents and its (absent) equipment line. -->
+                    <div class="review__item" data-review-levels hidden>
+                        <dt class="review__term">Étages</dt>
+                        <dd class="review__value">
+                            <p data-review-value="levels" hidden></p>
+                            <p class="review__missing" data-review-missing="levels" hidden>
+                                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor"
+                                            stroke-width="1.5"/>
+                                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                          stroke-width="1.5"/>
+                                </svg>
+                                Information manquante
+                            </p>
+                        </dd>
+                        <dd class="review__value">
+                            <button class="link-button review__edit" data-edit="caracteristiques" type="button">
+                                Modifier<span class="visually-hidden"> le nombre d'étages</span></button>
+                        </dd>
+                    </div>
+                    <div class="review__item" data-review-units hidden>
+                        <dt class="review__term">Unités</dt>
+                        <dd class="review__value">
+                            <p data-review-value="units" hidden></p>
+                            <p class="review__missing" data-review-missing="units" hidden>
+                                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor"
+                                            stroke-width="1.5"/>
+                                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                          stroke-width="1.5"/>
+                                </svg>
+                                Information manquante
+                            </p>
+                        </dd>
+                        <dd class="review__value">
+                            <button class="link-button review__edit" data-edit="caracteristiques" type="button">
+                                Modifier<span class="visually-hidden"> le nombre d'unités</span></button>
+                        </dd>
+                    </div>
                     <!-- The ownership documents of a sold plot of land, on the review as "Document de propriété" (a
                          sale of a Terrain only; a villa, apartment, … sale or a rental never shows it). -->
                     <div class="review__item" data-review-ownershipDocuments hidden>
@@ -728,7 +800,7 @@
                                 Modifier<span class="visually-hidden"> le document de propriété</span></button>
                         </dd>
                     </div>
-                    <div class="review__item">
+                    <div class="review__item" data-review-amenities>
                         <dt class="review__term">Équipements</dt>
                         <dd class="review__value">
                             <p data-review-value="amenities" hidden></p>

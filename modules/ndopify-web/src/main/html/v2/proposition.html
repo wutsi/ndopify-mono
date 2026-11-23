@@ -82,6 +82,8 @@
     <symbol id="i-area" viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 9h5V4m11 11h-5v5"/></symbol>
     <symbol id="i-sofa" viewBox="0 0 24 24"><path d="M5 11V8a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v3M3 13a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v5H3zM5 18v2m14-2v2"/></symbol>
     <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 16V11l2-5h10l2 5v5M3 16h18v3h-3v-1H6v1H3zM5 11h14M7.5 13.5h.01m9 0h.01"/></symbol>
+    <symbol id="i-building" viewBox="0 0 24 24"><path d="M4 21V5h9v16M13 21V10h7v11M7 8h3M7 12h3M7 16h3M16 13h1m-1 4h1"/></symbol>
+    <symbol id="i-stairs" viewBox="0 0 24 24"><path d="M4 20h4v-4h4v-4h4V8h4V4"/></symbol>
     <symbol id="i-info" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5m0-8h.01"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5 10 17 19 7"/></symbol>
     <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6zM9 12l2 2 4-4"/></symbol>
@@ -109,8 +111,10 @@
                             data-rental-only>logement</span><span data-sale-only hidden>bien</span></h2>
                     <p class="proposal__subtitle" data-rental-only>Pour votre recherche : appartement 3 chambres à
                         Bonapriso, jusqu'à 250K FCFA / mois.</p>
-                    <p class="proposal__subtitle" data-sale-only hidden>Pour votre recherche : villa 4 chambres à
-                        Bonapriso, jusqu'à 250 000 000 FCFA.</p>
+                    <p class="proposal__subtitle" data-sale-only data-property-only hidden>Pour votre recherche : villa
+                        4 chambres à Bonapriso, jusqu'à 250 000 000 FCFA.</p>
+                    <p class="proposal__subtitle" data-building-only hidden>Pour votre recherche : immeuble de 12
+                        unités sur 3 étages à Bonapriso, jusqu'à 250 000 000 FCFA.</p>
                 </div>
             </div>
 
@@ -125,15 +129,23 @@
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>Non meublé, comme demandé</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg><span>Disponible le 1<sup>er</sup> décembre 2026, avant votre emménagement</span></li>
                 </ul>
-                <ul class="check-list proposal__fit" data-sale-only hidden>
+                <ul class="check-list proposal__fit" data-sale-only data-property-only hidden>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>À Bonapriso, le quartier que vous cherchez</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>240M FCFA, dans votre budget</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>4 chambres, comme demandé</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg><span>Disponible avant votre achat</span></li>
                 </ul>
+                <!-- v2 (#274): a building's fit, its units and levels where a home has its rooms — never amenities. -->
+                <ul class="check-list proposal__fit" data-building-only hidden>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>À Bonapriso, le quartier que vous cherchez</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>240M FCFA, dans votre budget</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>12 unités, comme demandé</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>3 étages, comme demandé</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg><span>Disponible avant votre achat</span></li>
+                </ul>
 
                 <!-- The amenities the client searched for, matched or missing -->
-                <div class="proposal__amenities">
+                <div class="proposal__amenities" data-no-building>
                     <h4 class="proposal__amenities-title">Équipements recherchés</h4>
                     <ul class="criteria-list">
                         <li class="criteria-list__item is-matched">
@@ -180,8 +192,10 @@
                     <span class="badge badge--state" data-state-badge hidden></span>
                 </p>
             </div>
-            <h1><span data-rental-only>Appartement 3 chambres à Bonapriso</span><span data-sale-only hidden>Villa
-                4 chambres à Bonapriso</span></h1>
+            <h1><span data-rental-only>Appartement 3 chambres à Bonapriso</span><span data-sale-only
+                                                                                  data-property-only hidden>Villa
+                4 chambres à Bonapriso</span><span data-building-only hidden>Immeuble 12 unités à
+                Bonapriso</span></h1>
             <p class="listing__location">
                 <svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>
                 Bonapriso, Douala · près du rond-point Total Joss
@@ -212,7 +226,7 @@
             <a class="btn btn-outline gallery__all" data-photo="0" href="https://picsum.photos/seed/ndopify-m9001-living/1600/1067">Voir les 6 photos</a>
         </section>
 
-        <section aria-label="Photos du bien" class="gallery" data-sale-only hidden>
+        <section aria-label="Photos du bien" class="gallery" data-sale-only data-property-only hidden>
             <a class="gallery__item gallery__item--hero" data-photo="0" href="https://picsum.photos/seed/ndopify-m9301-living/1600/1067">
                 <img alt="Salon de la villa, ouvert sur la terrasse" height="800"
                      src="https://picsum.photos/seed/ndopify-m9301-living/1200/800" width="1200">
@@ -236,6 +250,31 @@
             <a class="btn btn-outline gallery__all" data-photo="0" href="https://picsum.photos/seed/ndopify-m9301-living/1600/1067">Voir les 6 photos</a>
         </section>
 
+        <!-- v2 (#274): the building's photos, a sale of the whole building. -->
+        <section aria-label="Photos de l'immeuble" class="gallery" data-building-only hidden>
+            <a class="gallery__item gallery__item--hero" data-photo="0" href="https://picsum.photos/seed/ndopify-building-facade/1600/1067">
+                <img alt="Façade de l'immeuble et son portail, rue de Bonapriso" height="800"
+                     src="https://picsum.photos/seed/ndopify-building-facade/1200/800" width="1200">
+            </a>
+            <a class="gallery__item" data-photo="1" href="https://picsum.photos/seed/ndopify-building-hall/1600/1067">
+                <img alt="Hall d'entrée de l'immeuble" height="400" loading="lazy"
+                     src="https://picsum.photos/seed/ndopify-building-hall/600/400" width="600">
+            </a>
+            <a class="gallery__item" data-photo="3" href="https://picsum.photos/seed/ndopify-building-shop/1600/1067">
+                <img alt="Commerce au rez-de-chaussée" height="400" loading="lazy"
+                     src="https://picsum.photos/seed/ndopify-building-shop/600/400" width="600">
+            </a>
+            <a class="gallery__item" data-photo="4" href="https://picsum.photos/seed/ndopify-building-flat/1600/1067">
+                <img alt="Séjour d'un appartement du premier étage" height="400" loading="lazy"
+                     src="https://picsum.photos/seed/ndopify-building-flat/600/400" width="600">
+            </a>
+            <a class="gallery__item" data-photo="5" href="https://picsum.photos/seed/ndopify-building-stairs/1600/1067">
+                <img alt="Escalier et palier du deuxième étage" height="400" loading="lazy"
+                     src="https://picsum.photos/seed/ndopify-building-stairs/600/400" width="600">
+            </a>
+            <a class="btn btn-outline gallery__all" data-photo="0" href="https://picsum.photos/seed/ndopify-building-facade/1600/1067">Voir les 6 photos</a>
+        </section>
+
         <div class="listing__layout">
             <div class="listing__content">
 
@@ -246,11 +285,17 @@
                     <li><svg aria-hidden="true" class="icon"><use href="#i-sofa"/></svg>Non meublé</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-car"/></svg><strong>1</strong> parking</li>
                 </ul>
-                <ul aria-label="En bref" class="key-facts" data-sale-only hidden>
+                <ul aria-label="En bref" class="key-facts" data-sale-only data-property-only hidden>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-bed"/></svg><strong>4</strong> chambres</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-bath"/></svg><strong>3</strong> salles de bains</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-area"/></svg><strong>380</strong> m²</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-car"/></svg><strong>2</strong> parkings</li>
+                </ul>
+                <!-- v2 (#274): a building sold as a whole reads its units and its levels, never its rooms or parking. -->
+                <ul aria-label="En bref" class="key-facts" data-building-only hidden>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-building"/></svg><strong>12</strong> unités</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-stairs"/></svg><strong>3</strong> étages</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-area"/></svg><strong>850</strong> m²</li>
                 </ul>
 
                 <div class="audit-note" data-rental-only>
@@ -279,13 +324,26 @@
                         écoles et commerces de Bonapriso sont à quelques minutes à pied.</p>
                 </section>
 
-                <section aria-labelledby="sale-description-heading" class="listing__section" data-sale-only hidden>
+                <section aria-labelledby="sale-description-heading" class="listing__section" data-sale-only
+                         data-property-only hidden>
                     <h2 id="sale-description-heading">À propos de ce bien</h2>
                     <p>Villa de 380 m² dans une rue calme de Bonapriso : salon double ouvert sur la terrasse, quatre
                         chambres dont une suite parentale, trois salles de bains, cuisine équipée et jardin arboré.
                         Deux places de parking derrière le portail.</p>
                     <p>La maison est vendue vide. Le titre foncier se vérifie chez le notaire, entre l'acheteur et le
                         vendeur : Ndopify ne le contrôle pas.</p>
+                </section>
+
+                <!-- v2 (#274): the building's description, its levels and its units first. -->
+                <section aria-labelledby="building-description-heading" class="listing__section" data-building-only
+                         hidden>
+                    <h2 id="building-description-heading">À propos de ce bien</h2>
+                    <p>Immeuble de 3 étages et 12 unités, 850 m² au total, dans une rue calme de Bonapriso : trois
+                        commerces au rez-de-chaussée et neuf appartements de deux et trois chambres au-dessus, tous
+                        loués à l'année. L'entrée, le hall et l'escalier sont communs ; chaque appartement a son
+                        salon, sa cuisine et sa salle de bains.</p>
+                    <p>L'immeuble est vendu en entier, avec ses baux en cours. Le titre foncier se vérifie chez le
+                        notaire, entre l'acheteur et le vendeur : Ndopify ne le contrôle pas.</p>
                 </section>
 
                 <section aria-labelledby="features-heading" class="listing__section" data-rental-only>
@@ -303,7 +361,8 @@
                     </dl>
                 </section>
 
-                <section aria-labelledby="sale-features-heading" class="listing__section" data-sale-only hidden>
+                <section aria-labelledby="sale-features-heading" class="listing__section" data-sale-only
+                         data-property-only hidden>
                     <h2 id="sale-features-heading">Caractéristiques</h2>
                     <dl class="spec-list">
                         <div><dt>Type de bien</dt><dd>Villa</dd></div>
@@ -312,12 +371,25 @@
                         <div><dt>Salons</dt><dd>2</dd></div>
                         <div><dt>Cuisines</dt><dd>1</dd></div>
                         <div><dt>Surface</dt><dd>380 m²</dd></div>
-                        <div><dt>Niveaux</dt><dd>1</dd></div>
+                        <div><dt>Étages</dt><dd>1</dd></div>
                         <div><dt>Parkings</dt><dd>2</dd></div>
                     </dl>
                 </section>
 
-                <section aria-labelledby="amenities-heading" class="listing__section">
+                <!-- v2 (#274): "Le bien" of a building sold as a whole: its units and its levels, no rooms nor parking. -->
+                <section aria-labelledby="building-features-heading" class="listing__section" data-building-only
+                         hidden>
+                    <h2 id="building-features-heading">Caractéristiques</h2>
+                    <dl class="spec-list">
+                        <div><dt>Type de bien</dt><dd>Immeuble</dd></div>
+                        <div><dt>Unités</dt><dd>12</dd></div>
+                        <div><dt>Étages</dt><dd>3</dd></div>
+                        <div><dt>Surface</dt><dd>850 m²</dd></div>
+                    </dl>
+                </section>
+
+                <!-- v2 (#274): a building sold asks no utility question, so the public page shows none of its blocks. -->
+                <section aria-labelledby="amenities-heading" class="listing__section" data-no-building>
                     <h2 id="amenities-heading">Équipements vérifiés</h2>
                     <div class="amenities">
                         <div>
@@ -530,7 +602,9 @@
                     intéresse&nbsp;?</span><span data-sale-only hidden>Ce bien vous intéresse&nbsp;?</span></h2>
                 <p class="modal__subtitle" data-rental-only>Appartement 3 chambres · Bonapriso<span
                         class="modal__price">&nbsp;· <strong>240K FCFA</strong> / mois</span></p>
-                <p class="modal__subtitle" data-sale-only hidden>Villa 4 chambres · Bonapriso<span
+                <p class="modal__subtitle" data-sale-only data-property-only hidden>Villa 4 chambres · Bonapriso<span
+                        class="modal__price">&nbsp;· <strong>240M FCFA</strong></span></p>
+                <p class="modal__subtitle" data-building-only hidden>Immeuble 12 unités · Bonapriso<span
                         class="modal__price">&nbsp;· <strong>240M FCFA</strong></span></p>
             </div>
             <a class="modal__close" data-modal-close href="#main">
@@ -606,7 +680,9 @@
                 <h2 class="modal__title" id="visit-title">Demander une visite</h2>
                 <p class="modal__subtitle" data-rental-only>Appartement 3 chambres · Bonapriso<span
                         class="modal__price">&nbsp;· <strong>240K FCFA</strong> / mois</span></p>
-                <p class="modal__subtitle" data-sale-only hidden>Villa 4 chambres · Bonapriso<span
+                <p class="modal__subtitle" data-sale-only data-property-only hidden>Villa 4 chambres · Bonapriso<span
+                        class="modal__price">&nbsp;· <strong>240M FCFA</strong></span></p>
+                <p class="modal__subtitle" data-building-only hidden>Immeuble 12 unités · Bonapriso<span
                         class="modal__price">&nbsp;· <strong>240M FCFA</strong></span></p>
             </div>
             <a class="modal__close" data-modal-close href="#main">
@@ -733,6 +809,17 @@
         {"src": "https://picsum.photos/seed/ndopify-m9301-kitchen/1600/1067", "alt": "Cuisine équipée"},
         {"src": "https://picsum.photos/seed/ndopify-m9301-bedroom/1600/1067", "alt": "Chambre principale"},
         {"src": "https://picsum.photos/seed/ndopify-m9301-garden/1600/1067", "alt": "Jardin et portail"}
+    ]
+</script>
+<!-- v2 (#274): the building's photos, in the gallery's order. -->
+<script id="listing-photos-building" type="application/json">
+    [
+        {"src": "https://picsum.photos/seed/ndopify-building-facade/1600/1067", "alt": "Façade de l'immeuble et son portail"},
+        {"src": "https://picsum.photos/seed/ndopify-building-hall/1600/1067", "alt": "Hall d'entrée de l'immeuble"},
+        {"src": "https://picsum.photos/seed/ndopify-building-landing/1600/1067", "alt": "Palier du premier étage"},
+        {"src": "https://picsum.photos/seed/ndopify-building-shop/1600/1067", "alt": "Commerce au rez-de-chaussée"},
+        {"src": "https://picsum.photos/seed/ndopify-building-flat/1600/1067", "alt": "Séjour d'un appartement"},
+        {"src": "https://picsum.photos/seed/ndopify-building-stairs/1600/1067", "alt": "Escalier et palier du deuxième étage"}
     ]
 </script>
 <div aria-label="Photos du logement" aria-modal="true" class="lightbox" data-lightbox hidden role="dialog">

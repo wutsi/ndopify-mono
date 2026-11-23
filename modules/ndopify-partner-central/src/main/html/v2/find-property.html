@@ -275,6 +275,42 @@
                     </div>
                 </fieldset>
 
+                <!-- v2 (#274): a building bought as a whole is captured by its levels and its units (whole numbers).
+                     Required, each with an "Indifférent" answer (stored as null). A building purchase only; a rental
+                     building or any other type never shows them. -->
+                <div class="count-fields" data-building-counts hidden>
+                    <div class="field">
+                        <label class="field__label" for="levels">Nombre d'étages <span class="field__optional">(1 à 30)</span></label>
+                        <input aria-describedby="levels-error" autocomplete="off" class="input" id="levels"
+                               inputmode="numeric" name="levels" type="text" data-count="levels">
+                        <div class="choices__grid">
+                            <label class="choice"><input name="levelsAny" type="checkbox"> Indifférent</label>
+                        </div>
+                        <p class="field__error" hidden id="levels-error">
+                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                      stroke-width="1.5"/>
+                            </svg>
+                            <span data-error-text></span></p>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="units">Nombre d'unités <span class="field__optional">(1 à 500)</span></label>
+                        <input aria-describedby="units-error" autocomplete="off" class="input" id="units"
+                               inputmode="numeric" name="units" type="text" data-count="units">
+                        <div class="choices__grid">
+                            <label class="choice"><input name="unitsAny" type="checkbox"> Indifférent</label>
+                        </div>
+                        <p class="field__error" hidden id="units-error">
+                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                      stroke-width="1.5"/>
+                            </svg>
+                            <span data-error-text></span></p>
+                    </div>
+                </div>
+
                 <div class="field" data-group="area" hidden>
                     <label class="field__label" for="area"><span data-area-label>Surface minimale</span>
                         <span class="field__optional">(facultatif)</span></label>
@@ -645,7 +681,46 @@
                                 class="visually-hidden"> les documents exigés</span></button>
                         </dd>
                     </div>
-                    <div class="review__item">
+                    <!-- v2 (#274): a building purchase's two counts; "Indifférent" when the visitor didn't answer. -->
+                    <div class="review__item" data-review-levels hidden>
+                        <dt class="review__term">Étages</dt>
+                        <dd class="review__value">
+                            <p data-review-value="levels" hidden></p>
+                            <p class="review__missing" data-review-missing="levels" hidden>
+                                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor"
+                                            stroke-width="1.5"/>
+                                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                          stroke-width="1.5"/>
+                                </svg>
+                                Information manquante
+                            </p>
+                        </dd>
+                        <dd class="review__value">
+                            <button class="link-button review__edit" data-edit="bien" type="button">Modifier<span
+                                class="visually-hidden"> le nombre d'étages</span></button>
+                        </dd>
+                    </div>
+                    <div class="review__item" data-review-units hidden>
+                        <dt class="review__term">Unités</dt>
+                        <dd class="review__value">
+                            <p data-review-value="units" hidden></p>
+                            <p class="review__missing" data-review-missing="units" hidden>
+                                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor"
+                                            stroke-width="1.5"/>
+                                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                          stroke-width="1.5"/>
+                                </svg>
+                                Information manquante
+                            </p>
+                        </dd>
+                        <dd class="review__value">
+                            <button class="link-button review__edit" data-edit="bien" type="button">Modifier<span
+                                class="visually-hidden"> le nombre d'unités</span></button>
+                        </dd>
+                    </div>
+                    <div class="review__item" data-review-amenities>
                         <dt class="review__term">Indispensable</dt>
                         <dd class="review__value">
                             <p data-review-value="amenities"></p>

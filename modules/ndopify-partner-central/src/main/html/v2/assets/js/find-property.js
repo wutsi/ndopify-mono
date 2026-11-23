@@ -19,12 +19,15 @@
  * #278 — once step 1 is answered, every later step (the review included) and the confirmation carry the project
  * ("Achat" / "Location") as a read-only pill next to the step count / under "Demande envoyée"; step 1 keeps its
  * choice only. The confirmation's pill is part of the confirmation's data-for pair (applyConfirmation).
+ *
+ * #274 — a building bought as a whole is captured by two counts, its levels and its units (whole numbers), each with
+ * an "Indifférent" answer sent as null; no room nor parking is asked, and the amenities step leaves the wizard: six
+ * steps for that branch (the progress, its labels, the arrows and ?etape= follow it), seven for every other.
  */
 (function () {
     "use strict";
 
     var STEPS = ["besoin", "secteur", "bien", "equipements", "budget", "contact", "revue"];
-    var REVIEW = STEPS.length - 1;
     var MAX_NEIGHBORHOODS = 3;
     var MAX_COMMENTS = 500;
     var CURRENCY = "XAF";
@@ -42,6 +45,12 @@
         return a.listingType === "SALE";
     }
 
+    // A building bought as a whole (#274): its two counts replace the rooms and the parking, and the amenities step
+    // leaves the wizard. A rental building is untouched.
+    function isBuildingSale(a) {
+        return isSale(a) && a.propertyType === "BUILDING";
+    }
+
     function requestedListingType() {
         var type = (new URLSearchParams(window.location.search).get("type") || "").toUpperCase();
         return LISTING_TYPE_LABELS[type] ? type : null;
@@ -49,8 +58,13 @@
 
     var KEYS = {
         answers: "npc.find-property",
-        done: "npc.find-property.done"
+        done: "npc.find-property.done",
+        sample: "npc.find-property.sample"
     };
+
+    // v2 (#274): the bounds of a building's two counts (whole numbers). The BFF must re-check them.
+    var MAX_LEVELS = 30;
+    var MAX_UNITS = 500;
 
     // PROTOTYPE: rows the simulated GET /v1/locations serves, shaped like its Location DTO (ndopify-dto).
     // Same data as rejoindre.js: city ids are the GeoNames ids; neighbourhood ids are placeholders.
@@ -211,7 +225,17 @@
     }
 
     function asksParkings(a) {
-        return ["LAND", "ROOM"].indexOf(a.propertyType) === -1;
+        // v2 (#274): a building bought as a whole has no parking to search for; a rental building keeps the question.
+        return ["LAND", "ROOM"].indexOf(a.propertyType) === -1 && !isBuildingSale(a);
+    }
+
+    // v2 (#274): a building purchase asks its two counts, and no amenities step.
+    function needsBuildingCounts(a) {
+        return isBuildingSale(a);
+    }
+
+    function needsAmenities(a) {
+        return !isBuildingSale(a);
     }
 
     // A plot of land bought (the only property whose surface and documents matter): sale, type LAND.
@@ -275,6 +299,83 @@
         });
         store.set(KEYS.answers, JSON.stringify(answers));
         return answers;
+    }
+
+    /*
+     * PROTOTYPE: ?sample= shortcuts for the states of #274 (README › find-property.html). Each seeds the answers of
+     * the steps before the one it opens; the page then opens there (a step only opens once the earlier ones are
+     * complete). A sample already seeded isn't seeded again, so the reviewer can keep walking the wizard.
+     */
+    var SAMPLES = {
+        // A purchase of a building, its counts still to answer: the step asks Étages and Unités, six steps in all.
+        building: {
+            step: "bien",
+            answers: { propertyType: "BUILDING", area: 850 }
+        },
+        // The same with both "Indifférent" answers: Suivant is active, the counts are sent as null.
+        "building-any": {
+            step: "bien",
+            answers: { propertyType: "BUILDING", area: 850, levelsAny: true, unitsAny: true }
+        },
+        // The review of that purchase: Étages 3, Unités 12, six steps, no amenities line.
+        "building-review": {
+            step: "revue",
+            answers: {
+                propertyType: "BUILDING", levels: 3, units: 12, area: 850,
+                priceAmount: 250000000, movingPeriod: "WITHIN_3_MONTHS", financingType: "CASH"
+            }
+        },
+        // The same with both counts "Indifférent".
+        "building-review-any": {
+            step: "revue",
+            answers: {
+                propertyType: "BUILDING", levelsAny: true, unitsAny: true, area: 850,
+                priceAmount: 250000000, movingPeriod: "WITHIN_3_MONTHS", financingType: "CASH"
+            }
+        },
+        // A rental building is unchanged: seven steps, its parking and amenities questions, no count of units.
+        "rental-building": {
+            step: "revue",
+            answers: {
+                listingType: "RENTAL", propertyType: "BUILDING", parkings: "ANY",
+                priceAmount: 900000, movingPeriod: "WITHIN_3_MONTHS",
+                waterMeter: true, electricityMeter: true
+            }
+        }
+    };
+
+    // The answers a sample starts from: a complete purchase in Bonapriso, Douala, at 250 000 000 FCFA.
+    function sampleAnswers(name) {
+        var chosen = Object.prototype.hasOwnProperty.call(SAMPLES, name) ? SAMPLES[name] : null;
+        if (!chosen) return null;
+        return Object.assign({
+            listingType: "SALE",
+            propertyCategory: "COMMERCIAL",
+            cityId: 2232593,
+            neighborhoodIds: [2007],
+            area: 800,
+            priceAmount: 250000000,
+            movingPeriod: "WITHIN_3_MONTHS",
+            financingType: "CASH",
+            firstName: "Bertrand",
+            lastName: "Fouda",
+            email: "b.fouda@example.com",
+            whatsappNumber: "+237690334455",
+            preferredContactPeriod: "AFTERNOON"
+        }, chosen.answers || {});
+    }
+
+    // Seeds a ?sample= (once), and returns the step it opens in the branch's own list, or null without a sample.
+    function applySample() {
+        var name = new URLSearchParams(window.location.search).get("sample");
+        var answers = sampleAnswers(name);
+        if (!answers) return null;
+        if (store.get(KEYS.sample) !== name || !store.get(KEYS.answers)) {
+            store.set(KEYS.answers, JSON.stringify(answers));
+            store.set(KEYS.sample, name);
+            store.remove(KEYS.done);
+        }
+        return activeSteps(loadAnswers()).indexOf(SAMPLES[name].step);
     }
 
     /* ---------- Helpers ---------- */
@@ -537,6 +638,16 @@
      * Whether a step's saved answers are complete. This is what guards the wizard: a step opens only when
      * every step before it is complete, whatever the URL says. The BFF must re-check all of it server side.
      */
+    function countValid(value, max) {
+        return value != null && Number.isInteger(Number(value)) && Number(value) >= 1 && Number(value) <= max;
+    }
+
+    // A count counts once answered: a whole number within its bounds, or "Indifférent" (stored as null).
+    function countAnswered(a, name) {
+        var max = name === "levels" ? MAX_LEVELS : MAX_UNITS;
+        return !!a[name + "Any"] || countValid(a[name], max);
+    }
+
     function isStepComplete(key, a) {
         switch (key) {
             case "besoin":
@@ -549,6 +660,8 @@
                 return typeFits(a) &&
                     (!needsRooms(a) || !!ROOM_LABELS[a.rooms]) &&
                     (!needsFurniture(a) || !!FURNITURE_LABELS[a.furnitureType]) &&
+                    // v2 (#274): a building's two counts are required, each "Indifférent" included.
+                    (!needsBuildingCounts(a) || (countAnswered(a, "levels") && countAnswered(a, "units"))) &&
                     (needsLandArea(a) ? a.area != null && areaValid(a.area) : areaValid(a.area));
             case "equipements":
                 return true; // every criterion is optional
@@ -564,11 +677,26 @@
         }
     }
 
+    /*
+     * The steps of the branch being answered: a building purchased skips the amenities step (#274), six steps
+     * instead of seven; every other branch keeps the seven. Step 1 has no answer yet, so it reads as seven.
+     */
+    function activeSteps(a) {
+        return needsAmenities(a) ? STEPS.slice() : STEPS.filter(function (key) {
+            return key !== "equipements";
+        });
+    }
+
+    function reviewIndexOf(a) {
+        return activeSteps(a).length - 1;
+    }
+
     function firstIncompleteStep(answers) {
-        for (var i = 0; i < REVIEW; i++) {
-            if (!isStepComplete(STEPS[i], answers)) return i;
+        var keys = activeSteps(answers);
+        for (var i = 0; i < keys.length - 1; i++) {
+            if (!isStepComplete(keys[i], answers)) return i;
         }
-        return REVIEW;
+        return keys.length - 1;
     }
 
     /*
@@ -586,6 +714,9 @@
             furnitureType: needsFurniture(a) && a.furnitureType !== "ANY" ? a.furnitureType : null,
             rooms: needsRooms(a) ? a.rooms : null,
             parkings: asksParkings(a) && a.parkings && a.parkings !== "ANY" ? a.parkings : null,
+            // v2 (#274): a building's two counts; "Indifférent" is sent as null, and no other type sends one.
+            levels: needsBuildingCounts(a) && !a.levelsAny ? a.levels : null,
+            units: needsBuildingCounts(a) && !a.unitsAny ? a.units : null,
             area: a.area || null,
             // A land sale sends the documents the buyer wants (optional); anything else sends none (null).
             titleDocuments: asksTitleDocuments(a) ? (a.titleDocuments || []) : null,
@@ -606,7 +737,8 @@
             comments: a.comments || null
         };
         AMENITIES.forEach(function (amenity) {
-            request[amenity[0]] = !!a[amenity[0]];
+            // v2 (#274): a building purchase never asks nor sends an amenity.
+            request[amenity[0]] = needsAmenities(a) && !!a[amenity[0]];
         });
         return request;
     }
@@ -740,6 +872,11 @@
     function propertyStep(resync) {
         var answers = loadAnswers();
         var area = $("#area");
+        var counts = $("[data-building-counts]");
+        var levelInput = $("#levels");
+        var unitInput = $("#units");
+        var levelAny = $('input[name="levelsAny"]');
+        var unitAny = $('input[name="unitsAny"]');
         var groups = {
             rooms: $('[data-group="rooms"]'),
             furnitureType: $('[data-group="furnitureType"]'),
@@ -755,6 +892,30 @@
         setCheckedAll("titleDocuments", answers.titleDocuments);
         area.value = formatNumber(answers.area);
         bindNumber(area, 7);
+        // v2 (#274): the building's two counts, with their "Indifférent" answers.
+        levelInput.value = answers.levels != null ? String(answers.levels) : "";
+        unitInput.value = answers.units != null ? String(answers.units) : "";
+        levelAny.checked = !!answers.levelsAny;
+        unitAny.checked = !!answers.unitsAny;
+
+        // "Indifférent" takes the count's input away, so an answer is never both a number and a blank.
+        function syncAny(name) {
+            var input = $("#" + name);
+            var any = $('input[name="' + name + 'Any"]');
+            input.disabled = any.checked;
+            if (any.checked) setFieldError(input, $("#" + name + "-error"), "");
+        }
+        ["levels", "units"].forEach(function (name) {
+            $('input[name="' + name + 'Any"]').addEventListener("change", function () {
+                syncAny(name);
+                resync();
+            });
+            $("#" + name).addEventListener("input", function () {
+                if (this.value.trim()) $('input[name="' + name + 'Any"]').checked = false;
+            });
+        });
+        syncAny("levels");
+        syncAny("units");
 
         // The project from step 1 (saved) with the type being chosen now (live).
         function live() {
@@ -768,6 +929,29 @@
 
         function areaValue() {
             return area.value.trim() ? numberValue(area) : null;
+        }
+
+        // A count: a whole number within its bounds, or "Indifférent" (stored as null).
+        function countField(name, noun, max) {
+            var input = $("#" + name);
+            var any = $('input[name="' + name + 'Any"]');
+            return {
+                target: input,
+                error: $("#" + name + "-error"),
+                touched: function () {
+                    return input.value.trim() !== "" || any.checked;
+                },
+                validate: function () {
+                    if (!needsBuildingCounts(live())) return "";
+                    var raw = input.value.trim();
+                    if (any.checked) return "";
+                    if (!raw) return "Indiquez le nombre " + noun + ", ou cochez Indifférent.";
+                    if (!/^\d+$/.test(raw) || Number(raw) < 1 || Number(raw) > max) {
+                        return "Indiquez un nombre entier, de 1 à " + max + ".";
+                    }
+                    return "";
+                }
+            };
         }
 
         // Shows only the follow-up questions that apply to the chosen type; a hidden question is never in error.
@@ -785,6 +969,12 @@
                 groups[key].hidden = !shown[key];
                 if (!shown[key]) setFieldError(groups[key], $("#" + key + "-error"), "");
             });
+            // v2 (#274): a building's levels and units replace the rooms and the parking.
+            counts.hidden = !needsBuildingCounts(a);
+            if (counts.hidden) {
+                setFieldError(levelInput, $("#levels-error"), "");
+                setFieldError(unitInput, $("#units-error"), "");
+            }
             $("[data-area-label]").textContent = a.propertyType === "LAND" ? "Surface du terrain minimale" : "Surface minimale";
         }
 
@@ -820,6 +1010,8 @@
                 radioField("furnitureType", "Indiquez si le bien doit être meublé.", function () {
                     return needsFurniture(live());
                 }),
+                countField("levels", "d'étages", MAX_LEVELS),
+                countField("units", "d'unités", MAX_UNITS),
                 {
                     target: area,
                     error: $("#area-error"),
@@ -844,6 +1036,12 @@
                     rooms: needsRooms(a) ? checkedValue("rooms") : null,
                     furnitureType: needsFurniture(a) ? checkedValue("furnitureType") : null,
                     parkings: asksParkings(a) ? checkedValue("parkings") || null : null,
+                    levels: needsBuildingCounts(a) && !levelAny.checked && levelInput.value.trim()
+                        ? Number(levelInput.value.trim()) : null,
+                    levelsAny: needsBuildingCounts(a) && levelAny.checked,
+                    units: needsBuildingCounts(a) && !unitAny.checked && unitInput.value.trim()
+                        ? Number(unitInput.value.trim()) : null,
+                    unitsAny: needsBuildingCounts(a) && unitAny.checked,
                     area: areaValue(),
                     titleDocuments: asksTitleDocuments(a) ? checkedValues("titleDocuments") : null
                 };
@@ -1022,6 +1220,11 @@
                         : "tous les quartiers")
                     : "",
                 property: describeProperty(a),
+                // v2 (#274): a building's two counts; "Indifférent" when the visitor left it blank, never a missing line.
+                levels: needsBuildingCounts(a)
+                    ? (a.levelsAny ? "Indifférent" : a.levels != null ? String(a.levels) : "") : "",
+                units: needsBuildingCounts(a)
+                    ? (a.unitsAny ? "Indifférent" : a.units != null ? String(a.units) : "") : "",
                 titleDocuments: asksTitleDocuments(a)
                     ? ((a.titleDocuments || []).map(function (id) {
                         return TITLE_DOCUMENT_LABELS[id];
@@ -1036,12 +1239,16 @@
                         "Contact " + PERIOD_LABELS[a.preferredContactPeriod]].join("\n")
                     : ""
             };
-            var complete = firstIncompleteStep(a) === REVIEW;
+            var complete = firstIncompleteStep(a) === reviewIndexOf(a);
             $("[data-review-move-in-term]").textContent = isSale(a) ? "Achat prévu"
                 : a.propertyCategory === "COMMERCIAL" ? "Date d'installation" : "Date d'emménagement";
             $("[data-review-price-term]").textContent = isSale(a) ? "Budget total" : "Budget mensuel";
             $("[data-review-titleDocuments]").hidden = !asksTitleDocuments(a);
             $("[data-review-financing]").hidden = !isSale(a);
+            // v2 (#274): a building purchase shows its two counts and no amenities line.
+            $("[data-review-levels]").hidden = !needsBuildingCounts(a);
+            $("[data-review-units]").hidden = !needsBuildingCounts(a);
+            $("[data-review-amenities]").hidden = !needsAmenities(a);
             Object.keys(values).forEach(function (key) {
                 var valueEl = $('[data-review-value="' + key + '"]');
                 var missing = $('[data-review-missing="' + key + '"]');
@@ -1050,11 +1257,12 @@
                 missing.hidden = !!values[key];
             });
             // Optional answers are never "missing", only empty.
-            $('[data-review-value="amenities"]').textContent = AMENITIES.filter(function (amenity) {
-                return a[amenity[0]];
-            }).map(function (amenity) {
-                return amenity[1];
-            }).join(", ") || "Aucun critère";
+            $('[data-review-value="amenities"]').textContent = !needsAmenities(a) ? "" :
+                AMENITIES.filter(function (amenity) {
+                    return a[amenity[0]];
+                }).map(function (amenity) {
+                    return amenity[1];
+                }).join(", ") || "Aucun critère";
             $('[data-review-value="comments"]').textContent = a.comments || "Aucune";
             setActive(submit, complete);
             $("[data-incomplete]").hidden = complete;
@@ -1082,13 +1290,25 @@
     }
 
     /* ---------- Wizard ---------- */
-    function setProgress(index) {
+    // v2 (#274): the count and the track follow the branch's own steps — six for a building purchase, seven otherwise.
+    function setProgress(index, keys) {
         var bar = $("[data-progress]");
-        var text = "Étape " + (index + 1) + " sur " + STEPS.length;
+        var text = "Étape " + (index + 1) + " sur " + keys.length;
+        bar.setAttribute("aria-valuemax", String(keys.length));
         bar.setAttribute("aria-valuenow", String(index + 1));
         bar.setAttribute("aria-valuetext", text);
         $("[data-progress-label]").textContent = text;
-        $("[data-progress-bar]").style.transform = "scaleX(" + (index + 1) / STEPS.length + ")";
+        $("[data-progress-bar]").style.transform = "scaleX(" + (index + 1) / keys.length + ")";
+        // Each step's legend is its accessible name: it carries the same count.
+        $all("[data-step]").forEach(function (slide) {
+            var legend = $("legend", slide);
+            if (!legend) return;
+            var name = legend.getAttribute("data-step-name") ||
+                legend.textContent.replace(/^Étape \d+ sur \d+\s*:\s*/, "");
+            legend.setAttribute("data-step-name", name);
+            var i = keys.indexOf(slide.getAttribute("data-step"));
+            if (i !== -1) legend.textContent = "Étape " + (i + 1) + " sur " + keys.length + " : " + name;
+        });
     }
 
     /*
@@ -1105,36 +1325,52 @@
 
     function initFindProperty() {
         var form = $("[data-find-form]");
-        var slides = STEPS.map(function (key) {
-            return $('[data-step="' + key + '"]', form);
+        var slideOf = {};
+        STEPS.forEach(function (key) {
+            slideOf[key] = $('[data-step="' + key + '"]', form);
         });
         var confirmation = $("[data-confirmation]");
         var formParts = [$("[data-progress-block]"), $("[data-steps-title]"), form];
         var current = 0;
+        // A ?sample= seeds the session before the steps read their answers, and names the step it opens.
+        var sampleStep = applySample();
         var whatsapp = lazyPhone($("#whatsappNumber"), { name: "whatsappNumber", value: loadAnswers().whatsappNumber });
 
         function resync() {
             sync(current);
         }
 
-        var steps = [
-            needStep(),
-            sectorStep(resync),
-            propertyStep(resync),
-            amenitiesStep(),
-            budgetStep(),
-            contactStep(whatsapp),
-            reviewStep()
-        ];
+        var stepOf = {
+            besoin: needStep(),
+            secteur: sectorStep(resync),
+            bien: propertyStep(resync),
+            equipements: amenitiesStep(),
+            budget: budgetStep(),
+            contact: contactStep(whatsapp),
+            revue: reviewStep()
+        };
+
+        // The branch's steps (a building purchase skips the amenities step, #274): an index always reads in them.
+        function active() {
+            return activeSteps(loadAnswers());
+        }
+
+        function slideAt(index) {
+            return slideOf[active()[index]];
+        }
+
+        function stepAt(index) {
+            return stepOf[active()[index]];
+        }
 
         function stepValid(index) {
-            return steps[index].fields.every(function (field) {
+            return stepAt(index).fields.every(function (field) {
                 return field.validate() === "";
             });
         }
 
         function sync(index) {
-            var next = $("[data-next]", slides[index]);
+            var next = $("[data-next]", slideAt(index));
             if (next) setActive(next, stepValid(index));
         }
 
@@ -1144,12 +1380,12 @@
         }
 
         function urlFor(index) {
-            return window.location.pathname + (index > 0 ? "?etape=" + STEPS[index] : "");
+            return window.location.pathname + (index > 0 ? "?etape=" + active()[index] : "");
         }
 
         function requestedStep() {
             if (typeof state().step === "number") return state().step;
-            var index = STEPS.indexOf(new URLSearchParams(window.location.search).get("etape"));
+            var index = active().indexOf(new URLSearchParams(window.location.search).get("etape"));
             return index === -1 ? 0 : index;
         }
 
@@ -1163,22 +1399,24 @@
             formParts.forEach(function (el) {
                 el.hidden = false;
             });
-            slides.forEach(function (slide, i) {
-                slide.hidden = i !== index;
+            var keys = active();
+            STEPS.forEach(function (key) {
+                slideOf[key].hidden = key !== keys[index];
             });
             current = index;
-            setProgress(index);
+            setProgress(index, keys);
             // The project pill (Achat / Location) from step 2 on: step 1 carries the choice itself (#278, AC 2).
             $("[data-progress-block] [data-project]").hidden = index === 0;
             applyProjectPill(loadAnswers().listingType);
 
-            var next = $("[data-next]", slides[index]);
+            var slide = slideAt(index);
+            var next = $("[data-next]", slide);
             if (next) next.textContent = state().returning ? "Revenir à la revue" : "Suivant";
-            if (steps[index].onShow) steps[index].onShow();
+            if (stepAt(index).onShow) stepAt(index).onShow();
             sync(index);
 
             if (moveFocus) {
-                slides[index].focus({ preventScroll: true });
+                slide.focus({ preventScroll: true });
                 $("[data-progress-block]").scrollIntoView({ block: "start" });
             }
         }
@@ -1204,7 +1442,7 @@
 
         function validateStep(index) {
             var firstInvalid = null;
-            steps[index].fields.forEach(function (field) {
+            stepAt(index).fields.forEach(function (field) {
                 var message = field.validate();
                 setFieldError(field.target, field.error, message);
                 if (message && !firstInvalid) firstInvalid = field;
@@ -1221,7 +1459,7 @@
 
         function next(index) {
             if (!validateStep(index)) return;
-            saveAnswers(steps[index].collect());
+            saveAnswers(stepAt(index).collect());
             if (!state().returning) {
                 go(index + 1);
                 return;
@@ -1229,9 +1467,10 @@
             // Editing from the review goes back to it — unless the change left a later step incomplete (e.g. a new
             // category, whose property type isn't chosen yet). That step replaces this entry, so Back still
             // leads to the review.
-            var gap = firstIncompleteStep(loadAnswers());
-            if (gap === REVIEW) {
-                back(REVIEW);
+            var saved = loadAnswers();
+            var gap = firstIncompleteStep(saved);
+            if (gap === reviewIndexOf(saved)) {
+                back(gap);
             } else {
                 window.history.replaceState({ step: gap, returning: true, depth: state().depth || 0 }, "", urlFor(gap));
                 show(gap, true);
@@ -1262,7 +1501,7 @@
         function submitRequest() {
             var submit = $("[data-submit]");
             var saved = loadAnswers();
-            if (!isActive(submit) || firstIncompleteStep(saved) !== REVIEW) return;
+            if (!isActive(submit) || firstIncompleteStep(saved) !== reviewIndexOf(saved)) return;
             setActive(submit, false);
             submit.textContent = "Envoi en cours…";
             announce($("[data-sending]"), "Envoi de votre demande en cours.");
@@ -1285,13 +1524,21 @@
         }
 
         /* Field listeners: errors appear on blur / next, not while typing; Next turns active once valid. */
-        steps.forEach(function (step, index) {
+        STEPS.forEach(function (key) {
+            var step = stepOf[key];
+            var slide = slideOf[key];
+            // The branch's index is read when it fires: the step list changes with the answers (#274).
+            function indexNow() {
+                return active().indexOf(key);
+            }
+
             step.fields.forEach(function (field) {
                 var refresh = function () {
                     if (field.target.getAttribute("aria-invalid") === "true") {
                         setFieldError(field.target, field.error, field.validate());
                     }
-                    sync(index);
+                    var index = indexNow();
+                    if (index !== -1) sync(index);
                 };
                 // A slim-select field shows its errors on the combobox but listens to the native <select>.
                 var source = field.source || field.target;
@@ -1304,21 +1551,21 @@
                 });
             });
 
-            var nextButton = $("[data-next]", slides[index]);
+            var nextButton = $("[data-next]", slide);
             if (nextButton) {
                 nextButton.addEventListener("click", function () {
-                    next(index);
+                    next(current);
                 });
             }
             // Step 1 has no "Précédent": the wizard is the start of the page. From the review, Next returns to it.
-            var prevControl = $("[data-prev]", slides[index]);
+            var prevControl = $("[data-prev]", slide);
             if (prevControl) {
                 prevControl.addEventListener("click", function (event) {
                     if (state().returning) {
                         event.preventDefault();
-                        back(REVIEW);
+                        back(reviewIndexOf(loadAnswers()));
                     } else if (prevControl.tagName === "BUTTON") {
-                        back(index - 1);
+                        back(current - 1);
                     }
                 });
             }
@@ -1326,14 +1573,15 @@
 
         $all("[data-edit]").forEach(function (button) {
             button.addEventListener("click", function () {
-                go(STEPS.indexOf(button.getAttribute("data-edit")), true);
+                var index = active().indexOf(button.getAttribute("data-edit"));
+                if (index !== -1) go(index, true);
             });
         });
 
         // Enter in a field moves to the next step; on the review step the form submits the request.
         form.addEventListener("submit", function (event) {
             event.preventDefault();
-            if (current === REVIEW) submitRequest();
+            if (current === reviewIndexOf(loadAnswers())) submitRequest();
             else next(current);
         });
         form.addEventListener("keydown", function (event) {
@@ -1341,7 +1589,7 @@
             if (event.key !== "Enter" || !target.matches("input:not([type=checkbox]):not([type=radio])")) return;
             if (target.closest(".iti__dropdown-content")) return; // intl-tel-input's country search
             event.preventDefault();
-            if (current === REVIEW) submitRequest();
+            if (current === reviewIndexOf(loadAnswers())) submitRequest();
             else next(current);
         });
 
@@ -1358,13 +1606,14 @@
             show(index, true);
         });
 
-        /* First render: reloading the confirmation shows it again; otherwise the allowed step. */
+        /* First render: reloading the confirmation shows it again; otherwise the allowed step (?sample= names it). */
         var done = loadJson(KEYS.done);
         if (state().done && done) {
             showConfirmation(done);
         } else {
-            var start = allowed(requestedStep());
-            var returning = start === requestedStep() && !!state().returning;
+            var target = sampleStep != null ? sampleStep : requestedStep();
+            var start = allowed(target);
+            var returning = sampleStep == null && start === requestedStep() && !!state().returning;
             window.history.replaceState({ step: start, returning: returning, depth: state().depth || 0 }, "", urlFor(start));
             show(start, false);
         }

@@ -335,6 +335,12 @@ a.checklist__row:focus-visible {
     display: none;
 }
 
+/* v2 (#274): a building's two counts (levels, units) never share a row: each takes the whole width, at every width. */
+.count-grid [data-applies="levels"],
+.count-grid [data-applies="units"] {
+    grid-column: 1 / -1;
+}
+
 /* ---------- Photos (listing/photos.html) ---------- */
 .photo-actions {
     display: flex;

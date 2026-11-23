@@ -155,11 +155,19 @@
                             <p class="field__error" id="parkings-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
                         </div>
                         <div class="field" data-applies="levels">
-                            <label class="field__label" for="levels">Niveaux <span class="field__optional">(facultatif)</span></label>
+                            <label class="field__label" for="levels">Étages <span class="field__optional" data-levels-optional>(facultatif)</span></label>
                             <input class="input" id="levels" name="levels" type="text" inputmode="numeric" autocomplete="off"
                                    data-kind="int" aria-describedby="levels-error">
-                            
+                            <p class="owner-value" hidden data-owner-for="levels"></p>
                             <p class="field__error" id="levels-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                        </div>
+                        <!-- v2 (#274): a building sold is counted by its units, next to its levels; no other type asks. -->
+                        <div class="field" data-applies="units">
+                            <label class="field__label" for="units">Unités</label>
+                            <input class="input" id="units" name="units" type="text" inputmode="numeric" autocomplete="off"
+                                   data-kind="int" aria-describedby="units-error">
+                            <p class="owner-value" hidden data-owner-for="units"></p>
+                            <p class="field__error" id="units-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
                         </div>
                         <div class="field" data-applies="floorLevel">
                             <label class="field__label" for="floorLevel">Étage <span class="field__optional">(0&nbsp;: rez-de-chaussée)</span></label>
