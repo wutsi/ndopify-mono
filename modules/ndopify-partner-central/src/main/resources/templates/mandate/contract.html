@@ -4,14 +4,14 @@
 <!--/*
     Sending a mandate's contract (MandateContractController), on its own page reached from the mandate page's
     "Envoyer au client" (ASSIGNED) or "Renvoyer" (PENDING_APPROVAL). The agent confirms the terms the customer accepts
-    by signing: the duration, and the visit fee the visitors pay the agent for each visit, offline, Ndopify
-    collecting nothing. The form posts without any script: mandate.js only formats the fee, and the rules are
-    re-checked server-side.
+    by signing: the duration, a sale's commission in % of the sale price, and the visit fee the visitors pay the agent
+    for each visit, offline, Ndopify collecting nothing. The form posts without any script: the rules are re-checked
+    server-side.
 
-    "mandate" is the mandate, "form" (MandateContractForm) the two answers, "errors" its errors per field, "resend"
-    true for PENDING_APPROVAL (the button reads "Renvoyer"), "email" the address the contract goes to (may be null),
-    "signatureTtlDays" the days given to sign (null before the first send), "months" 1..12 and "currency" the
-    tenant's currency.
+    "mandate" is the mandate, "form" (MandateContractForm) the answers, "errors" its errors per field, "resend"
+    true for PENDING_APPROVAL (the button reads "Renvoyer"), "sale" true for a SALE mandate (the commission field),
+    "email" the address the contract goes to (may be null), "signatureTtlDays" the days given to sign (null before the
+    first send), "months" 1..12 and "currency" the tenant's currency.
 */-->
 <body data-page="mandate-contract">
     <th:block th:replace="~{fragments/site-header :: header(@{/}, true)}"></th:block>
@@ -28,7 +28,7 @@
 
             <form class="form" method="post" novalidate
                   th:action="@{/mandates/{id}/contract(id=${mandate.id})}" data-contract-form>
-                <!-- The two terms: one per line on phones, on one line from 640px. -->
+                <!-- The terms, one per line at every width: the duration, a sale's commission, the visit fee. -->
                 <div class="mandate-terms__fields">
                     <div class="field">
                         <label class="field__label" for="contractDuration">Durée</label>
@@ -41,6 +41,24 @@
                         <p class="field__hint" id="contractDuration-hint">À compter de la signature du contrat.</p>
                         <p class="field__error" th:if="${errors['durationMonths']}" th:text="${errors['durationMonths']}"
                            data-duration-error></p>
+                    </div>
+
+                    <!-- A sale's commission, in % of the sale price its own party owes the agent (the buyer's SEARCH
+                         contract says the buyer owes it, the seller's LISTING contract the seller). A rental keeps the
+                         contract's 1 month of rent, with no field. -->
+                    <div class="field" th:if="${sale}">
+                        <label class="field__label" for="commissionRate">Commission</label>
+                        <div class="input-unit input-unit--percent">
+                            <input class="input" id="commissionRate" name="commissionRate" type="text"
+                                   inputmode="numeric" autocomplete="off" required
+                                   aria-describedby="commissionRate-hint" th:value="${form.commissionRate}"
+                                   th:attr="aria-invalid=${errors['commissionRate'] != null ? 'true' : null}">
+                            <span aria-hidden="true" class="input-unit__suffix">% du prix</span>
+                        </div>
+                        <p class="field__hint" id="commissionRate-hint">Du prix de vente final, due seulement si la
+                            vente se conclut grâce à vous. Réglée directement à vous.</p>
+                        <p class="field__error" th:if="${errors['commissionRate']}" th:text="${errors['commissionRate']}"
+                           data-commission-error></p>
                     </div>
 
                     <div class="field">

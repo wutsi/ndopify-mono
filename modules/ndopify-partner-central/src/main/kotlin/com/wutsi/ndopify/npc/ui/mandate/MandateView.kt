@@ -59,6 +59,9 @@ data class MandateView(
     val hasContract: Boolean,
     val contractDuration: String?, // "6 mois"; null without a contract
     val visitFee: String?, // "5 000 FCFA"; null when there's none
+
+    /** A sale contract's commission: "7 % du prix de vente"; null without a contract or for a rental. */
+    val commission: String?,
 )
 
 data class StepView(

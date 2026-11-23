@@ -273,6 +273,33 @@ class MandateTemplateTest {
     }
 
     @Test
+    fun `a sale's terms show its commission`() {
+        doReturn(APPROVED.copy(listingType = ListingType.SALE)).whenever(mandateClient).get(201)
+        doReturn(CONTRACT.copy(durationMonths = 6, commissionRate = 7)).whenever(contractClient).get("c-201")
+
+        val page = render(get("/mandates/201"))
+
+        val section = page.selectFirst("[data-terms-section]")!!
+        assertTrue(section.text().contains("Commission"))
+        assertTrue(section.text().contains("7 % du prix de vente"))
+        // After the duration, before the visit fee
+        assertEquals(
+            listOf("Durée", "Commission", "Frais de visite"),
+            section.select(".review__term").map { it.text() }.take(3),
+        )
+        assertTrue(section.text().contains("Aucun frais de visite"))
+    }
+
+    @Test
+    fun `a rental's terms have no commission`() {
+        doReturn(CONTRACT.copy(durationMonths = 6, commissionRate = 7)).whenever(contractClient).get("c-201")
+
+        val page = render(get("/mandates/201"))
+
+        assertFalse(page.selectFirst("[data-terms-section]")!!.text().contains("Commission"))
+    }
+
+    @Test
     fun assigned() {
         val page = render(MANDATE)
 

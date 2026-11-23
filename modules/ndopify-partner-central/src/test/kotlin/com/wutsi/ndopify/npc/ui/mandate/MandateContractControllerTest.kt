@@ -10,6 +10,7 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.RequestMandateApprovalRequest
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
@@ -97,9 +98,64 @@ class MandateContractControllerTest {
         val result = mvc.perform(get("/mandates/201/contract")).andReturn()
 
         assertEquals("mandate/contract", result.modelAndView?.viewName)
-        assertEquals(MandateContractForm("3", "5000"), model(result)["form"])
+        assertEquals(MandateContractForm("3", "5000", "5"), model(result)["form"])
         assertEquals(true, model(result)["resend"])
         assertEquals("ray@gmail.com", model(result)["email"])
+    }
+
+    @Test
+    fun `the send page of a sale shows the commission pre-filled`() {
+        doReturn(MANDATE.copy(listingType = ListingType.SALE)).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(get("/mandates/201/contract")).andReturn()
+
+        assertEquals("mandate/contract", result.modelAndView?.viewName)
+        assertEquals("5", (model(result)["form"] as MandateContractForm).commissionRate)
+        assertEquals(true, model(result)["sale"])
+    }
+
+    @Test
+    fun `the send page of a rental has no sale terms`() {
+        val result = mvc.perform(get("/mandates/201/contract")).andReturn()
+
+        assertEquals(false, model(result)["sale"])
+    }
+
+    @Test
+    fun `a sale without a commission is a field error`() {
+        doReturn(MANDATE.copy(listingType = ListingType.SALE)).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(form("durationMonths" to "6", "visitFee" to "0", "commissionRate" to ""))
+            .andReturn()
+
+        assertEquals("mandate/contract", result.modelAndView?.viewName)
+        assertEquals(
+            "Indiquez un pourcentage entier, de 1 à 20 (par exemple 5).",
+            errors(result)["commissionRate"],
+        )
+        verify(mandateClient, never()).requestApproval(any(), any())
+    }
+
+    @Test
+    fun `a sale at 7 percent sends the rate`() {
+        doReturn(MANDATE.copy(listingType = ListingType.SALE)).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(form("durationMonths" to "6", "visitFee" to "0", "commissionRate" to "7"))
+            .andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        verify(mandateClient).requestApproval(201, RequestMandateApprovalRequest(6, Money(0, "XAF"), 7))
+    }
+
+    @Test
+    fun `a rental ignores a commission`() {
+        doReturn(MANDATE.copy(listingType = ListingType.RENTAL)).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(form("durationMonths" to "6", "visitFee" to "0", "commissionRate" to "7"))
+            .andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        verify(mandateClient).requestApproval(201, RequestMandateApprovalRequest(6, Money(0, "XAF"), null))
     }
 
     @Test
@@ -107,7 +163,7 @@ class MandateContractControllerTest {
         val result = mvc.perform(get("/mandates/201/contract")).andReturn()
 
         assertEquals("mandate/contract", result.modelAndView?.viewName)
-        assertEquals(MandateContractForm("6", "0"), model(result)["form"])
+        assertEquals(MandateContractForm("6", "0", "5"), model(result)["form"])
         assertEquals(false, model(result)["resend"])
         assertNull(model(result)["signatureTtlDays"])
     }
@@ -119,7 +175,7 @@ class MandateContractControllerTest {
 
         val result = mvc.perform(get("/mandates/201/contract")).andReturn()
 
-        assertEquals(MandateContractForm("6", "0"), model(result)["form"])
+        assertEquals(MandateContractForm("6", "0", "5"), model(result)["form"])
     }
 
     @Test

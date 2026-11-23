@@ -204,8 +204,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   in the transaction (ids / `contractId` read through projections first): Hibernate doesn't refresh an entity it
   already has when `findByIdForUpdate` locks it, so a check would run on stale values.
   `POST /{id}/request-approval` (ASSIGNED or PENDING_APPROVAL, else 409 `MANDATE_CANNOT_BE_APPROVED`) takes an
-  optional `RequestMandateApprovalRequest` (`durationMonths` 1..36, else 400 `HTTP_INVALID_PARAMETER`; `visitFee`),
-  applies those terms to the mandate's contract, and moves it to `PENDING_APPROVAL`, its content generated and stored,
+  optional `RequestMandateApprovalRequest` (`durationMonths` 1..36 and a sale's `commissionRate` 1..20, else 400
+  `HTTP_INVALID_PARAMETER`; `visitFee`), applies those terms to the mandate's contract, and moves it to
+  `PENDING_APPROVAL`, its content generated and stored,
   and its signature requested, in 3 transactions so that no lock (the tenant's contract sequence, the mandate) is held
   during the upload: (1) under the contract's lock then the mandate's, reuse its contract or create one (none, EXPIRED
   or CANCELLED, with the terms) and link it, so concurrent requests share one contract; (2) generate (read-only) from an
@@ -279,6 +280,13 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   the tenant's currency (a blank request currency means it, any other is 400), exposed as `Contract.visitFee`;
   `ContractService.setTerms` applies a mandate's duration (1..36) and fee to a DRAFT / PENDING_SIGNATURE contract
   (409 `CONTRACT_EXPIRED` / `CONTRACT_CANCELLED` / `CONTRACT_ALREADY_SIGNED` otherwise), under the contract's lock.
+  `commissionRate` (`T_CONTRACT`, `V17_0`) is a sale contract's success commission, a whole percentage of its sale
+  price (1..20): required for `SALE_SEARCH` / `SALE_LISTING` and normalised to null for the other types on create,
+  applied with the terms by `setTerms` on those two types only, exposed as `Contract.commissionRate`; a sale mandate
+  sent without one gets `ndopify.mandate.contract.sale-commission-rate` (5). `MandateContractGenerator` picks the
+  document from the mandate's `listingType`: `SALE` gets `mandate/contract/search_sale.mjml` / `listing_sale.mjml`
+  (the buyer's, or the seller's, own party owes the commission; only the seller's is exclusive), a rental and a
+  legacy `UNKNOWN` keep `search.mjml` / `listing.mjml`.
   `content` (`SetContractRequest.url`) sets the
   document's `contentUrl` of a DRAFT or PENDING_SIGNATURE contract, locked like a signature (409 `CONTRACT_EXPIRED` /
   `CONTRACT_CANCELLED` / `CONTRACT_ALREADY_SIGNED` otherwise). `contentHash` (SHA-256 of the uploaded bytes, set by

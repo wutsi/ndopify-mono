@@ -1,0 +1,226 @@
+<mjml>
+    <!--
+        Mandat de recherche immobilière (achat). Every value is a ready-to-print string (labels, amounts and dates
+        already formatted in French); optional criteria are mustache sections, left out when the mandate doesn't set them:
+        - contract: contract_number, contract_date, duration_months, visit_fee, has_visit_fee, commission
+        - parties: client_name, client_phone, client_email, tenant_name, tenant_logo_url, agent_name
+        - property (MandateEntity): property_category, property_type, rooms, parkings, area
+        - location: city, neighbourhoods
+        - amenities, by group (comma-separated labels): water, electricity, road_access, security
+        - terms: budget (the buyer's maximum)
+        - contact: preferred_contact_period, comments
+    -->
+    <mj-head>
+        <mj-style inline="inline">
+            {{__css__}}
+        </mj-style>
+    </mj-head>
+    <mj-body css-class="body">
+        <mj-section css-class="main-content">
+            <mj-column>
+                <!-- Logo -->
+                {{#tenant_logo_url}}
+                <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
+                {{/tenant_logo_url}}
+
+                <!-- Title -->
+                <mj-text>
+                    <h2 style="text-align:center">MANDAT DE RECHERCHE IMMOBILIÈRE (ACHAT)</h2>
+                </mj-text>
+                <mj-text align="center">
+                    Référence du contrat : <strong>{{contract_number}}</strong>
+                    <br/>
+                    Date : {{contract_date}}
+                </mj-text>
+
+                <!-- Divider with class for CSS injection -->
+                <mj-divider css-class="divider"/>
+
+                <!-- Parties -->
+                <mj-text font-weight="bold">
+                    <h3>ENTRE LES SOUSSIGNÉS</h3>
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>Le Mandant (Client)</b> : {{client_name}}{{#client_phone}}, Tél : {{client_phone}}{{/client_phone}}{{#client_email}},
+                            Email : {{client_email}}{{/client_email}}
+                        </li>
+                        <li>
+                            <b>Le Mandataire</b> : {{tenant_name}}{{#agent_name}}, représenté par {{agent_name}}{{/agent_name}}
+                        </li>
+                    </ul>
+                </mj-text>
+
+                <!-- 1. Object -->
+                <mj-text font-weight="bold">
+                    <h3>1. OBJET DU MANDAT</h3>
+                </mj-text>
+                <mj-text>
+                    Le Mandant confie au Mandataire la mission de rechercher un bien immobilier à acheter répondant aux
+                    critères suivants :
+                </mj-text>
+
+                <!-- The property -->
+                <mj-text font-weight="bold">
+                    <h4>Le bien</h4>
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        {{#property_category}}
+                        <li>
+                            <b>Catégorie</b> : {{property_category}}
+                        </li>
+                        {{/property_category}}
+                        <li>
+                            <b>Type de bien</b> : {{property_type}}
+                        </li>
+                        {{#rooms}}
+                        <li>
+                            <b>Chambres</b> : {{rooms}}
+                        </li>
+                        {{/rooms}}
+                        {{#parkings}}
+                        <li>
+                            <b>Parking</b> : {{parkings}}
+                        </li>
+                        {{/parkings}}
+                        {{#area}}
+                        <li>
+                            <b>Surface</b> : {{area}} m²
+                        </li>
+                        {{/area}}
+                    </ul>
+                </mj-text>
+
+                <!-- Location -->
+                <mj-text font-weight="bold">
+                    <h4>La localisation</h4>
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>Ville</b> : {{city}}
+                        </li>
+                        {{#neighbourhoods}}
+                        <li>
+                            <b>Quartiers ciblés</b> : {{neighbourhoods}}
+                        </li>
+                        {{/neighbourhoods}}
+                    </ul>
+                </mj-text>
+
+                <!-- Amenities: only the groups the mandate asks for -->
+                {{#has_amenities}}
+                <mj-text font-weight="bold">
+                    <h4>Les équipements souhaités</h4>
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        {{#water}}
+                        <li>
+                            <b>Accès à l'eau</b> : {{water}}
+                        </li>
+                        {{/water}}
+                        {{#electricity}}
+                        <li>
+                            <b>Accès à l'électricité</b> : {{electricity}}
+                        </li>
+                        {{/electricity}}
+                        {{#road_access}}
+                        <li>
+                            <b>Accès routier</b> : {{road_access}}
+                        </li>
+                        {{/road_access}}
+                        {{#security}}
+                        <li>
+                            <b>Sécurité</b> : {{security}}
+                        </li>
+                        {{/security}}
+                    </ul>
+                </mj-text>
+                {{/has_amenities}}
+
+                <!-- Purchase terms -->
+                <mj-text font-weight="bold">
+                    <h4>Les conditions d'achat</h4>
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>Budget maximum</b> : {{budget}}
+                        </li>
+                    </ul>
+                </mj-text>
+
+                <!-- Contact and comments -->
+                {{#has_contact}}
+                <mj-text font-weight="bold">
+                    <h4>Informations complémentaires</h4>
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        {{#preferred_contact_period}}
+                        <li>
+                            <b>Disponibilité pour être contacté</b> : {{preferred_contact_period}}
+                        </li>
+                        {{/preferred_contact_period}}
+                        {{#comments}}
+                        <li>
+                            <b>Commentaires</b> : {{comments}}
+                        </li>
+                        {{/comments}}
+                    </ul>
+                </mj-text>
+                {{/has_contact}}
+
+                <!-- 2. Duration -->
+                <mj-text font-weight="bold">
+                    <h3>2. DURÉE</h3>
+                </mj-text>
+                <mj-text>
+                    Le présent mandat est conclu pour une durée de {{duration_months}} mois, à compter de la date de sa
+                    signature.
+                </mj-text>
+
+                <!-- 3. Fees -->
+                <mj-text font-weight="bold">
+                    <h3>3. HONORAIRES ET FRAIS</h3>
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>Frais de dossiers</b> : Gratuit.
+                        </li>
+                        <li>
+                            <b>Frais de visite</b> : {{#has_visit_fee}}{{visit_fee}} par visite, à régler directement à l'Agent{{#agent_name}} ({{agent_name}}){{/agent_name}} avant chaque visite. Aucun paiement n'est effectué via Ndopify. Aucun frais n'est dû pour une visite annulée par l'Agent.{{/has_visit_fee}}{{^has_visit_fee}}Aucun frais de visite.{{/has_visit_fee}}
+                        </li>
+                        <li>
+                            <b>Commission de succès</b> : {{commission}} du prix de vente, exigible uniquement à la
+                            signature de l'acte de vente du bien acheté par l'intermédiaire du Mandataire. Aucun
+                            paiement n'est effectué via Ndopify.
+                        </li>
+                    </ul>
+                </mj-text>
+
+                <!-- 4. Commitments -->
+                <mj-text font-weight="bold">
+                    <h3>4. ENGAGEMENTS DES PARTIES</h3>
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        <li>
+                            Le Mandataire s'engage à proposer des biens conformes aux critères du Mandant, à vérifier
+                            les documents de propriété des biens proposés et à accompagner le Mandant lors des visites et
+                            jusqu'à la signature de l'acte de vente.
+                        </li>
+                        <li>
+                            Le Mandant s'engage à verser la commission convenue si l'achat est conclu sur un bien
+                            présenté par {{tenant_name}}.
+                        </li>
+                    </ul>
+                </mj-text>
+            </mj-column>
+        </mj-section>
+    </mj-body>
+</mjml>

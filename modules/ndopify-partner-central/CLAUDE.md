@@ -248,13 +248,15 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   errors. Sending the contract has its own page too (`GET|POST /mandates/{id}/contract`,
   `MandateContractController`, `templates/mandate/contract.html`, `MandateContractForm` / `MandateContractRules`),
   reached from *Envoyer au client* (ASSIGNED) / *Renvoyer* (PENDING_APPROVAL): the agent confirms *Durée* (1–12,
-  default 6; a contract set through the API outside that range keeps its own value as an extra option) and *Frais de
+  default 6; a contract set through the API outside that range keeps its own value as an extra option), a sale's
+  *Commission* (1–20 % of the sale price, default 5; the field renders only for a `SALE` mandate) and *Frais de
   visite* (0 = none, in the tenant's currency), pre-filled from the current contract — never the defaults when the
   contract exists but can't be read — then submits `RequestMandateApprovalRequest`; its outcomes are `sent` /
   `resent`, `changed` (403/404/409), `email-conflict` for the 409 `CONTRACT_PARTY_MEMBERSHIP_CONFLICT` (the customer's
   e-mail is another account's) and `error`, and a mandate that isn't ASSIGNED / PENDING_APPROVAL redirects to its page.
-  It works without JS. The mandate page's *Termes du contrat* section (once a contract exists) shows the duration and
-  the fee (`Aucun frais de visite` when 0), then *Signé le* / *Valable jusqu'au* once signed. "Envoyé le" is the
+  It works without JS. The mandate page's *Termes du contrat* section (once a contract exists) shows the duration, a
+  sale's commission (`7 % du prix de vente`) and the fee (`Aucun frais de visite` when 0), then *Signé le* /
+  *Valable jusqu'au* once signed. "Envoyé le" is the
   contract's `signatureRequestedAt` (`MandateRules.requestedAt`), and the
   days given to sign are its deadline less that date (`MandateRules.signatureTtlDays`): partner-central has no TTL
   setting of its own, so it can't drift from ndopify-server's `ndopify.contract.signature.ttl-days`. The edit page (`GET|POST /mandates/{id}/edit`, `templates/mandate/edit.html`,

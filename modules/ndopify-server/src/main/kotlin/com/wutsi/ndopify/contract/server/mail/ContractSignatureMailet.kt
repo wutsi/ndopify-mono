@@ -26,6 +26,8 @@ class ContractSignatureMailet(
         private val TYPES = mapOf(
             ContractType.SEARCH to "Mandat de recherche",
             ContractType.LISTING to "Mandat de mise en location",
+            ContractType.SALE_SEARCH to "Mandat de recherche (achat)",
+            ContractType.SALE_LISTING to "Mandat de vente",
             ContractType.LEASE_AGREEMENT to "Contrat de bail",
         )
     }

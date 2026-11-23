@@ -116,6 +116,24 @@ class ContractSignatureMailetTest {
     }
 
     @Test
+    fun `a sale search is a purchase search`() {
+        mailet.send(contract.copy(type = ContractType.SALE_SEARCH), party)
+
+        val context = argumentCaptor<Map<String, Any?>>()
+        verify(mailBodyResolver).resolve(any(), context.capture())
+        assertEquals("Mandat de recherche (achat)", context.firstValue["contract_type"])
+    }
+
+    @Test
+    fun `a sale listing is a sale mandate`() {
+        mailet.send(contract.copy(type = ContractType.SALE_LISTING), party)
+
+        val context = argumentCaptor<Map<String, Any?>>()
+        verify(mailBodyResolver).resolve(any(), context.capture())
+        assertEquals("Mandat de vente", context.firstValue["contract_type"])
+    }
+
+    @Test
     fun `other contract type`() {
         mailet.send(contract.copy(type = ContractType.UNKNOWN), party)
 

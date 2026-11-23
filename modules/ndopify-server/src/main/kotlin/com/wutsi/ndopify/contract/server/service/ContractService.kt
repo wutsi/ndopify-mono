@@ -64,6 +64,11 @@ class ContractService(
     companion object {
         private val LOGGER = LoggerFactory.getLogger(ContractService::class.java)
         const val BATCH_SIZE = 100
+
+        // A sale mandate's contract (the buyer's SEARCH, the seller's LISTING): it states a commission
+        private val SALE_TYPES = setOf(ContractType.SALE_SEARCH, ContractType.SALE_LISTING)
+        private const val MIN_COMMISSION = 1
+        private const val MAX_COMMISSION = 20
     }
 
     // Newest first. By party: the contracts the party is one of the parties of
@@ -144,6 +149,7 @@ class ContractService(
             }
             partyService.findById(party.partyId) // 404 PARTY_NOT_FOUND, also for a party of another tenant
         }
+        val commissionRate = normalizeCommission(request.type, request.commissionRate)
         if (request.parties.none { party -> party.signatureRequired }) {
             throw invalidParameter("parties.signatureRequired", "false") // Nobody could make it SIGNED
         }
@@ -168,6 +174,7 @@ class ContractService(
                 durationMonths = request.durationMonths,
                 visitFeeAmount = visitFeeAmount,
                 visitFeeCurrency = visitFeeCurrency,
+                commissionRate = commissionRate,
                 createdAt = now,
             )
         )
@@ -201,11 +208,17 @@ class ContractService(
 
     /**
      * Sets the terms of a contract that can still be signed (DRAFT, PENDING_SIGNATURE). A null value keeps the current
-     * one. The duration is 1..36 months; the fee is in the tenant's currency (blank means it) and can't be negative.
-     * Locked like every contract write, so a signature can't interleave.
+     * one. The duration is 1..36 months; the fee is in the tenant's currency (blank means it) and can't be negative; a
+     * sale contract's commission is 1..20 % of the sale price (a rental ignores it). Locked like every contract write,
+     * so a signature can't interleave.
      */
     @Transactional
-    fun setTerms(id: String, durationMonths: Int? = null, visitFee: Money? = null): ContractEntity {
+    fun setTerms(
+        id: String,
+        durationMonths: Int? = null,
+        visitFee: Money? = null,
+        commissionRate: Int? = null,
+    ): ContractEntity {
         val contract = findByIdForUpdate(id)
         ensureNotClosed(contract)
 
@@ -217,6 +230,12 @@ class ContractService(
         if (visitFee != null) {
             val (amount, currency) = normalizeVisitFee(visitFee, tenantService.findById(TenantContext.get()!!).currencyCode)
             updated = updated.copy(visitFeeAmount = amount, visitFeeCurrency = currency)
+        }
+        if (commissionRate != null && contract.type in SALE_TYPES) {
+            if (commissionRate !in MIN_COMMISSION..MAX_COMMISSION) {
+                throw invalidParameter("commissionRate", commissionRate.toString())
+            }
+            updated = updated.copy(commissionRate = commissionRate)
         }
         return if (updated === contract) contract else dao.save(updated)
     }
@@ -463,6 +482,16 @@ class ContractService(
             throw invalidParameter("visitFee.currency", money.currency)
         }
         return money.amount to tenantCurrency
+    }
+
+    // A sale contract states a whole percentage of the sale price, 1..20; every other type stores none
+    private fun normalizeCommission(type: ContractType, commissionRate: Int?): Int? {
+        if (type !in SALE_TYPES) return null
+        if (commissionRate == null) throw invalidParameter("commissionRate", "null")
+        if (commissionRate !in MIN_COMMISSION..MAX_COMMISSION) {
+            throw invalidParameter("commissionRate", commissionRate.toString())
+        }
+        return commissionRate
     }
 
     private fun invalidParameter(name: String, value: String): BadRequestException {

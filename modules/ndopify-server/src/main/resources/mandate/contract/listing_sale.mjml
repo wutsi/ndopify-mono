@@ -1,0 +1,293 @@
+<mjml>
+    <!--
+        Mandat exclusif de vente. The property's description is the owner's declaration: the audit visit can correct it
+        (article 5), its financial terms only change with the owner's written agreement. Every value is a ready-to-print
+        string (labels, amounts and dates already formatted in French); optional fields are mustache sections, left out
+        when the mandate doesn't set them:
+        - contract: contract_number, contract_date, duration_months, visit_fee, has_visit_fee, commission
+        - parties: client_name (the owner), client_phone, client_email, tenant_name, tenant_logo_url, agent_name
+        - property (MandateEntity): property_category, property_type, rooms, parkings, area
+        - location: city, neighbourhoods
+        - amenities, by group (comma-separated labels): water, electricity, road_access, security
+        - terms: budget (the price asked)
+        - contact: preferred_contact_period, comments
+    -->
+    <mj-head>
+        <mj-style inline="inline">
+            {{__css__}}
+        </mj-style>
+    </mj-head>
+    <mj-body css-class="body">
+        <mj-section css-class="main-content">
+            <mj-column>
+                <!-- Logo -->
+                {{#tenant_logo_url}}
+                <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
+                {{/tenant_logo_url}}
+
+                <!-- Title -->
+                <mj-text>
+                    <h2 style="text-align:center">MANDAT EXCLUSIF DE VENTE</h2>
+                </mj-text>
+                <mj-text align="center">
+                    Référence du contrat : <strong>{{contract_number}}</strong>
+                    <br/>
+                    Date : {{contract_date}}
+                </mj-text>
+
+                <!-- Divider with class for CSS injection -->
+                <mj-divider css-class="divider"/>
+
+                <!-- Parties -->
+                <mj-text font-weight="bold">
+                    <h3>ENTRE LES SOUSSIGNÉS</h3>
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>Le Mandant (Propriétaire)</b> : {{client_name}}{{#client_phone}}, Tél : {{client_phone}}{{/client_phone}}{{#client_email}},
+                            Email : {{client_email}}{{/client_email}}
+                        </li>
+                        <li>
+                            <b>Le Mandataire</b> : {{tenant_name}}{{#agent_name}}, représenté par {{agent_name}}{{/agent_name}}
+                        </li>
+                    </ul>
+                </mj-text>
+
+                <!-- 1. Object -->
+                <mj-text font-weight="bold">
+                    <h3>1. OBJET DU MANDAT</h3>
+                </mj-text>
+                <mj-text>
+                    Le Mandant confie au Mandataire, à titre exclusif, la mission de rechercher un acquéreur pour le
+                    bien immobilier décrit ci-dessous, et de le présenter au Mandant en vue de la signature de l'acte
+                    de vente.
+                </mj-text>
+
+                <!-- The property -->
+                <mj-text font-weight="bold">
+                    <h4>Le bien</h4>
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        {{#property_category}}
+                        <li>
+                            <b>Catégorie</b> : {{property_category}}
+                        </li>
+                        {{/property_category}}
+                        <li>
+                            <b>Type de bien</b> : {{property_type}}
+                        </li>
+                        {{#rooms}}
+                        <li>
+                            <b>Chambres</b> : {{rooms}}
+                        </li>
+                        {{/rooms}}
+                        {{#parkings}}
+                        <li>
+                            <b>Parking</b> : {{parkings}}
+                        </li>
+                        {{/parkings}}
+                        {{#area}}
+                        <li>
+                            <b>Surface</b> : {{area}} m²
+                        </li>
+                        {{/area}}
+                    </ul>
+                </mj-text>
+
+                <!-- Location -->
+                <mj-text font-weight="bold">
+                    <h4>La localisation</h4>
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>Ville</b> : {{city}}
+                        </li>
+                        {{#neighbourhoods}}
+                        <li>
+                            <b>Quartier</b> : {{neighbourhoods}}
+                        </li>
+                        {{/neighbourhoods}}
+                    </ul>
+                </mj-text>
+
+                <!-- Amenities: only the groups the property has -->
+                {{#has_amenities}}
+                <mj-text font-weight="bold">
+                    <h4>Les équipements du bien</h4>
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        {{#water}}
+                        <li>
+                            <b>Accès à l'eau</b> : {{water}}
+                        </li>
+                        {{/water}}
+                        {{#electricity}}
+                        <li>
+                            <b>Accès à l'électricité</b> : {{electricity}}
+                        </li>
+                        {{/electricity}}
+                        {{#road_access}}
+                        <li>
+                            <b>Accès routier</b> : {{road_access}}
+                        </li>
+                        {{/road_access}}
+                        {{#security}}
+                        <li>
+                            <b>Sécurité</b> : {{security}}
+                        </li>
+                        {{/security}}
+                    </ul>
+                </mj-text>
+                {{/has_amenities}}
+
+                <!-- Sale terms -->
+                <mj-text font-weight="bold">
+                    <h4>Les conditions de vente</h4>
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>Prix de vente demandé</b> : {{budget}}
+                        </li>
+                    </ul>
+                </mj-text>
+
+                <!-- Contact and comments -->
+                {{#has_contact}}
+                <mj-text font-weight="bold">
+                    <h4>Informations complémentaires</h4>
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        {{#preferred_contact_period}}
+                        <li>
+                            <b>Disponibilité pour être contacté</b> : {{preferred_contact_period}}
+                        </li>
+                        {{/preferred_contact_period}}
+                        {{#comments}}
+                        <li>
+                            <b>Commentaires</b> : {{comments}}
+                        </li>
+                        {{/comments}}
+                    </ul>
+                </mj-text>
+                {{/has_contact}}
+
+                <!-- The description above is declared by the owner: the audit visit can change it (see 5) -->
+                <mj-text>
+                    <i>
+                        Les informations ci-dessus sont celles déclarées par le Mandant à la signature du présent mandat.
+                        Elles sont données à titre indicatif et peuvent être corrigées ou complétées à l'issue de la
+                        visite d'évaluation (article 5).
+                    </i>
+                </mj-text>
+
+                <!-- 2. Duration -->
+                <mj-text font-weight="bold">
+                    <h3>2. DURÉE</h3>
+                </mj-text>
+                <mj-text>
+                    Le présent mandat est conclu pour une durée de {{duration_months}} mois, à compter de la date de sa
+                    signature.
+                </mj-text>
+
+                <!-- 3. Exclusivity -->
+                <mj-text font-weight="bold">
+                    <h3>3. EXCLUSIVITÉ</h3>
+                </mj-text>
+                <mj-text>
+                    Pendant toute la durée du mandat, le Mandant s'interdit de vendre le bien, directement ou par
+                    l'intermédiaire d'une autre agence ou d'un autre intermédiaire. Il transmet au Mandataire toute
+                    demande d'achat qu'il reçoit.
+                </mj-text>
+
+                <!-- 4. Fees -->
+                <mj-text font-weight="bold">
+                    <h3>4. HONORAIRES ET FRAIS</h3>
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>Frais de dossier</b> : Gratuit.
+                        </li>
+                        <li>
+                            <b>Frais de visite</b> : {{#has_visit_fee}}{{visit_fee}} par visite, à régler par les visiteurs directement à l'Agent{{#agent_name}} ({{agent_name}}){{/agent_name}} avant chaque visite. Aucun paiement n'est effectué via Ndopify. Aucun frais n'est dû pour une visite annulée par l'Agent.{{/has_visit_fee}}{{^has_visit_fee}}Aucun frais de visite.{{/has_visit_fee}}
+                        </li>
+                        <li>
+                            <b>Commission de succès</b> : {{commission}} du prix de vente, exigible uniquement à la
+                            signature de l'acte de vente avec un acquéreur présenté par le Mandataire.
+                        </li>
+                    </ul>
+                </mj-text>
+
+                <!-- 5. Audit visit, photographs and online publication -->
+                <mj-text font-weight="bold">
+                    <h3>5. VISITE D'ÉVALUATION ET PUBLICATION</h3>
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>Visite d'évaluation</b> : le Mandant autorise le Mandataire à visiter le bien, à une date
+                            convenue entre les parties, afin d'en vérifier les caractéristiques et l'état avant sa
+                            mise en vente.
+                        </li>
+                        <li>
+                            <b>Mise à jour des informations</b> : à l'issue de cette visite, le Mandataire peut corriger
+                            ou compléter la description du bien (caractéristiques, équipements, état, adresse et
+                            localisation), sans qu'il soit nécessaire de signer un nouveau mandat. L'annonce est établie
+                            à partir des informations ainsi vérifiées, que le Mandant peut consulter et dont il peut
+                            demander la rectification.
+                        </li>
+                        <li>
+                            <b>Conditions financières</b> : toute modification du prix de vente ou des conditions de
+                            vente requiert l'accord écrit du Mandant, donné par tout moyen écrit (e-mail, message). Elle
+                            ne modifie pas les autres termes du présent mandat.
+                        </li>
+                        <li>
+                            <b>Photographies</b> : le Mandant autorise le Mandataire à photographier l'intérieur et
+                            l'extérieur du bien. Le Mandataire veille à ce qu'aucune personne, ni aucun document ou
+                            effet personnel, n'y soit reconnaissable.
+                        </li>
+                        <li>
+                            <b>Publication en ligne</b> : le Mandant autorise le Mandataire à publier une annonce du bien
+                            sur le site de {{tenant_name}} et ses supports de diffusion : description, photographies,
+                            conditions de vente et localisation approximative (ville et quartier). L'adresse exacte
+                            n'est pas publiée ; elle n'est communiquée qu'aux acquéreurs, pour les visites.
+                        </li>
+                        <li>
+                            <b>Durée de l'autorisation</b> : cette autorisation vaut pour la durée du mandat. L'annonce
+                            est retirée dès la vente du bien ou à la fin du mandat.
+                        </li>
+                    </ul>
+                </mj-text>
+
+                <!-- 6. Commitments -->
+                <mj-text font-weight="bold">
+                    <h3>6. ENGAGEMENTS DES PARTIES</h3>
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        <li>
+                            Le Mandataire s'engage à faire connaître le bien, à organiser et accompagner les visites,
+                            et à présenter au Mandant des acquéreurs sérieux, que le Mandant reste libre d'accepter ou
+                            de refuser.
+                        </li>
+                        <li>
+                            Le Mandant déclare être propriétaire du bien, ou habilité à le vendre, garantit
+                            l'exactitude des informations qu'il fournit, et informe le Mandataire de tout changement
+                            les concernant pendant la durée du mandat.
+                        </li>
+                        <li>
+                            Le Mandant s'engage à permettre les visites du bien et à verser la commission convenue si
+                            la vente est conclue avec un acquéreur présenté par {{tenant_name}}.
+                        </li>
+                    </ul>
+                </mj-text>
+            </mj-column>
+        </mj-section>
+    </mj-body>
+</mjml>

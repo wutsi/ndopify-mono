@@ -23,6 +23,7 @@ class ContractMapper {
             createdAt = entity.createdAt,
             durationMonths = entity.durationMonths,
             visitFee = Money(entity.visitFeeAmount, entity.visitFeeCurrency),
+            commissionRate = entity.commissionRate,
             signatureRequestedAt = entity.signatureRequestedAt,
             signatureDeadline = entity.signatureDeadline,
             validFrom = entity.validFrom,

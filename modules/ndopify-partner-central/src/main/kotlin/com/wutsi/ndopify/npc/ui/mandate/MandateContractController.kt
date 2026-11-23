@@ -5,6 +5,7 @@ import com.wutsi.ndopify.contract.dto.Contract
 import com.wutsi.ndopify.contract.dto.ContractPartyRole
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
@@ -29,12 +30,13 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
 /**
  * Sending a mandate's contract to the customer (`mandate/contract.html`), on its own page rather than a form inline
- * on the mandate page: the agent confirms the terms the customer accepts by signing, the mandate's duration and the
- * visit fee the visitors pay the agent for each visit (offline, Ndopify collecting nothing). Reached from the mandate
- * page's *Envoyer au client* (ASSIGNED) or *Renvoyer* (PENDING_APPROVAL).
+ * on the mandate page: the agent confirms the terms the customer accepts by signing, the mandate's duration, a sale's
+ * commission in % of the sale price, and the visit fee the visitors pay the agent for each visit (offline, Ndopify
+ * collecting nothing). Reached from the mandate page's *Envoyer au client* (ASSIGNED) or *Renvoyer* (PENDING_APPROVAL).
  *
  * `GET /mandates/{id}/contract` pre-fills the form from the mandate's current contract (a cancelled one included),
- * else 6 months and no fee; a mandate that isn't ASSIGNED / PENDING_APPROVAL redirects to its page. `POST` validates
+ * else 6 months, no fee and the default commission; a mandate that isn't ASSIGNED / PENDING_APPROVAL redirects to its
+ * page. A rental has no commission field, whatever was sent. `POST` validates
  * the answers ([MandateContractRules]), then sends them with the approval request: the mandate page's `sent` /
  * `resent` outcome, `changed` for a 403 / 404 / 409 (the mandate moved on), `email-conflict` when the customer's
  * address is another account's, `error` for a 5xx.
@@ -89,11 +91,12 @@ class MandateContractController(
         val agent = currentAgent.get() ?: throw SignInRequiredException()
 
         val mandate = load(id)
+        val sale = mandate?.listingType == ListingType.SALE
         // A contract set through the API may be outside the UI's range: keeping it is valid, choosing another isn't
         val currentDuration = form.durationMonths.trim().toIntOrNull()
             ?.takeIf { it !in MandateContractRules.MIN_MONTHS..MandateContractRules.MAX_MONTHS }
             ?.let { mandate?.let { contract(it)?.durationMonths } }
-        val errors = MandateContractRules.errors(form, currentDuration)
+        val errors = MandateContractRules.errors(form, currentDuration, sale)
         if (errors.isNotEmpty()) {
             if (mandate == null || mandate.status !in SENDABLE) {
                 redirect.addFlashAttribute(MandateController.OUTCOME, MandateController.CHANGED)
@@ -105,7 +108,7 @@ class MandateContractController(
         val again = mandate?.status == MandateStatus.PENDING_APPROVAL
         val currency = tenantContext.getTenant().currencyCode
         return act(id, if (again) MandateController.RESENT else MandateController.SENT, redirect) {
-            mandateClient.requestApproval(id, MandateContractRules.request(form, currency))
+            mandateClient.requestApproval(id, MandateContractRules.request(form, currency, sale))
         }
     }
 
@@ -122,6 +125,7 @@ class MandateContractController(
         model.addAttribute("form", form)
         model.addAttribute("errors", errors)
         model.addAttribute("resend", mandate.status == MandateStatus.PENDING_APPROVAL)
+        model.addAttribute("sale", mandate.listingType == ListingType.SALE)
         model.addAttribute("email", email(mandate, contract))
         model.addAttribute("signatureTtlDays", MandateRules.signatureTtlDays(contract))
         model.addAttribute("months", MandateContractRules.months(contract))

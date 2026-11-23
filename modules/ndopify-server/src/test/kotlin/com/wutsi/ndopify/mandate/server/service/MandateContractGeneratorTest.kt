@@ -12,6 +12,7 @@ import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.FurnitureType
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
@@ -270,6 +271,65 @@ class MandateContractGeneratorTest {
 
         assertTrue(html.contains("à régler par les visiteurs directement à l'Agent"))
         assertFalse(html.contains("à régler directement à l'Agent (Kim Possible) avant chaque visite"))
+    }
+
+    @Test
+    fun `a sale search uses the sale template and its commission`() {
+        val html = generator.generate(
+            mandate.copy(listingType = ListingType.SALE, pricePeriodicityType = PeriodicityType.UNKNOWN),
+            contract.copy(commissionRate = 7),
+        )
+
+        listOf(
+            "MANDAT DE RECHERCHE IMMOBILIÈRE (ACHAT)",
+            "rechercher un bien immobilier à acheter",
+            "7 % du prix de vente",
+            "Les conditions d'achat",
+            "<b>Budget maximum</b> : 150 000 XAF",
+        ).forEach { text -> assertTrue(html.contains(text), "missing: $text") }
+        listOf(
+            "LOCATION",
+            "1 mois de loyer",
+            "Caution",
+            "Durée du bail",
+            "EXCLUSIVITÉ",
+            "/ mois",
+        ).forEach { text -> assertFalse(html.contains(text), "unexpected: $text") }
+    }
+
+    @Test
+    fun `a sale listing uses the sale template`() {
+        val listing = mandate.copy(
+            mandateType = MandateType.LISTING,
+            listingType = ListingType.SALE,
+            pricePeriodicityType = PeriodicityType.UNKNOWN,
+        )
+
+        val html = generator.generate(listing, contract.copy(commissionRate = 5))
+
+        listOf(
+            "MANDAT EXCLUSIF DE VENTE",
+            "rechercher un acquéreur",
+            "<b>Prix de vente demandé</b> : 150 000 XAF",
+            "5 % du prix de vente",
+            "EXCLUSIVITÉ",
+        ).forEach { text -> assertTrue(html.contains(text), "missing: $text") }
+        listOf(
+            "MISE EN LOCATION",
+            "1 mois du loyer stipulé dans le bail",
+            "Loyer demandé",
+            "Caution",
+            "Disponible à partir du",
+        ).forEach { text -> assertFalse(html.contains(text), "unexpected: $text") }
+    }
+
+    @Test
+    fun `an unknown listing type keeps the rental template`() {
+        val html = generator.generate(mandate.copy(listingType = ListingType.UNKNOWN), contract.copy(commissionRate = 7))
+
+        assertTrue(html.contains("MANDAT DE RECHERCHE IMMOBILIÈRE (LOCATION)"))
+        assertTrue(html.contains("1 mois de loyer"))
+        assertFalse(html.contains("7 % du prix de vente"))
     }
 
     @Test

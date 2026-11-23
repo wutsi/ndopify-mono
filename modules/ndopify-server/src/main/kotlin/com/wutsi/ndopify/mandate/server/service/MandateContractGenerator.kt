@@ -5,6 +5,7 @@ import com.wutsi.ndopify.contract.server.domain.ContractEntity
 import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.FurnitureType
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
@@ -34,6 +35,11 @@ class MandateContractGenerator(
         private val TEMPLATES = mapOf(
             MandateType.SEARCH to "/mandate/contract/search.mjml",
             MandateType.LISTING to "/mandate/contract/listing.mjml",
+        )
+
+        private val SALE_TEMPLATES = mapOf(
+            MandateType.SEARCH to "/mandate/contract/search_sale.mjml",
+            MandateType.LISTING to "/mandate/contract/listing_sale.mjml",
         )
 
         private val CATEGORIES = mapOf(
@@ -98,7 +104,9 @@ class MandateContractGenerator(
     }
 
     fun generate(mandate: MandateEntity, contract: ContractEntity): String {
-        val path = TEMPLATES[mandate.mandateType]
+        // A sale mandate has its own document; a rental, and a legacy mandate whose listing type is unknown, keep theirs
+        val templates = if (mandate.listingType == ListingType.SALE) SALE_TEMPLATES else TEMPLATES
+        val path = templates[mandate.mandateType]
             ?: throw IllegalArgumentException("No contract template for the mandates ${mandate.mandateType}")
         return bodyResolver.resolve(path, context(mandate, contract))
     }
@@ -144,6 +152,8 @@ class MandateContractGenerator(
                 .takeIf { amount -> amount > 0 }
                 ?.let { amount -> formatter.money(amount, contract.visitFeeCurrency.ifBlank { tenant.currencyCode }) },
             "has_visit_fee" to (contract.visitFeeAmount > 0),
+            // "5 %": a sale contract states a rate, never an amount; the rental templates don't reference it
+            "commission" to contract.commissionRate?.takeIf { rate -> rate > 0 }?.let { rate -> "$rate %" },
 
             // Parties
             "tenant_name" to tenant.name,
