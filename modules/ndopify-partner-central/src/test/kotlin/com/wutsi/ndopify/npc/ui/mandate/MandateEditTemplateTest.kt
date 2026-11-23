@@ -5,6 +5,7 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
@@ -29,6 +30,8 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AKWA
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BONAPRISO
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
+import com.wutsi.ndopify.refdata.dto.Money
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -175,6 +178,7 @@ class MandateEditTemplateTest {
 
         assertEquals("Budget et emménagement", form.selectFirst("[data-edit-group=budget] .edit-group__title")?.text())
         assertEquals("Budget mensuel", form.selectFirst("label[for=priceAmount]")?.text())
+        assertEquals("FCFA / mois", form.selectFirst("input[name=priceAmount] + .input-unit__suffix")?.text())
         assertEquals("250 000", form.selectFirst("input[name=priceAmount]")?.attr("value")?.replace('\u00a0', ' '))
         assertTrue(form.selectFirst("input[name=movingPeriod][value=WITHIN_3_MONTHS]")!!.hasAttr("checked"))
         assertEquals("Près d'une école", form.selectFirst("textarea[name=comments]")?.text())
@@ -246,6 +250,62 @@ class MandateEditTemplateTest {
             "Enregistrement impossible pour le moment. Réessayez dans quelques instants.",
             page.selectFirst("[data-edit-error]")?.text(),
         )
+    }
+
+    @Test
+    fun `a sale search's edit page reads budget and purchase`() {
+        val page = render(
+            MandateCardsTest.MANDATE.copy(
+                listingType = ListingType.SALE,
+                price = Money(15_000_000, "XAF", PeriodicityType.NONE),
+            ),
+        )
+
+        val form = page.selectFirst("form[data-edit-form]")!!
+        assertEquals("Budget et achat", form.selectFirst("[data-edit-group=budget] .edit-group__title")?.text())
+        assertEquals("Budget", form.selectFirst("label[for=priceAmount]")?.text())
+        assertEquals("FCFA", form.selectFirst("input[name=priceAmount] + .input-unit__suffix")?.text())
+        assertEquals("Quand souhaitez-vous acheter ?", form.selectFirst("fieldset[data-group=movingPeriod] legend")?.text())
+        assertNull(form.selectFirst("[data-group=furnitureType]"))
+        assertFalse(page.text().contains("Budget mensuel"))
+        assertFalse(page.text().contains("/ mois"))
+
+        val budget = form.selectFirst("[data-edit-group=budget] [data-group-value]")?.text()
+        assertTrue(budget!!.startsWith("15 000 000") || budget.startsWith("15\u00a0000\u00a0000"), budget)
+        assertFalse(budget.contains("/ mois"))
+    }
+
+    @Test
+    fun `a sale listing's edit page reads price and availability`() {
+        val page = render(
+            MandateCardsTest.MANDATE.copy(
+                mandateType = MandateType.LISTING,
+                listingType = ListingType.SALE,
+                price = Money(45_000_000, "XAF", PeriodicityType.NONE),
+            ),
+        )
+
+        val form = page.selectFirst("form[data-edit-form]")!!
+        assertEquals("Prix et disponibilité", form.selectFirst("[data-edit-group=budget] .edit-group__title")?.text())
+        assertEquals("Prix", form.selectFirst("label[for=priceAmount]")?.text())
+        assertEquals("Disponibilité du bien", form.selectFirst("fieldset[data-group=movingPeriod] legend")?.text())
+        assertNull(form.selectFirst("[data-group=furnitureType]"))
+        assertFalse(page.text().contains("/ mois"))
+    }
+
+    @Test
+    fun `a sale's price error names the budget`() {
+        doReturn(MandateCardsTest.MANDATE.copy(listingType = ListingType.SALE)).whenever(mandateClient).get(201)
+
+        val page = render(
+            post("/mandates/201/edit")
+                .param("propertyCategory", "RESIDENTIAL")
+                .param("propertyType", "HOUSE")
+                .param("rooms", "3")
+                .param("movingPeriod", "WITHIN_1_MONTH"),
+        )
+
+        assertEquals("Indiquez le budget, en FCFA.", page.selectFirst("#priceAmount-error")?.text()?.replace('\u00a0', ' '))
     }
 
     @Test

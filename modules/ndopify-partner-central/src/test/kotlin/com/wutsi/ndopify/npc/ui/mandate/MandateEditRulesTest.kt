@@ -18,6 +18,7 @@ import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 class MandateEditRulesTest {
     companion object {
@@ -34,6 +35,89 @@ class MandateEditRulesTest {
             priceAmount = "150 000",
             movingPeriod = MovingPeriod.WITHIN_1_MONTH,
             comments = "  Près d'une école  ",
+        )
+
+        /** An approved buyer's search for a house: a one-off budget, no furniture. */
+        val SALE_SEARCH = MANDATE.copy(
+            id = 204,
+            listingType = ListingType.SALE,
+            price = Money(15_000_000, "XAF", PeriodicityType.NONE),
+            furnitureType = FurnitureType.UNFURNISHED,
+        )
+
+        /** A seller's villa: a one-off price, no furniture. */
+        val SALE_LISTING = SALE_SEARCH.copy(mandateType = MandateType.LISTING)
+    }
+
+    private fun text(value: String?): String = value!!.replace('\u00a0', ' ').replace('\u202f', ' ')
+
+    @Test
+    fun `a sale search's budget has no monthly period`() {
+        assertEquals(
+            "Indiquez le budget, en FCFA.",
+            MandateEditRules.errors(FORM.copy(priceAmount = ""), SALE_SEARCH, FORMATTER)["priceAmount"],
+        )
+        assertEquals(
+            "Indiquez le budget, en FCFA.",
+            MandateEditRules.errors(FORM.copy(priceAmount = "0"), SALE_SEARCH, FORMATTER)["priceAmount"],
+        )
+        assertEquals(
+            "Indiquez quand vous souhaitez acheter.",
+            MandateEditRules.errors(FORM.copy(movingPeriod = null), SALE_SEARCH, FORMATTER)["movingPeriod"],
+        )
+    }
+
+    @Test
+    fun `a sale listing's price is asked, not its rent`() {
+        assertEquals(
+            "Indiquez le prix, en FCFA.",
+            MandateEditRules.errors(FORM.copy(priceAmount = ""), SALE_LISTING, FORMATTER)["priceAmount"],
+        )
+        assertEquals(
+            "Indiquez quand le bien est disponible.",
+            MandateEditRules.errors(FORM.copy(movingPeriod = null), SALE_LISTING, FORMATTER)["movingPeriod"],
+        )
+    }
+
+    @Test
+    fun `a sale asks no furniture and no rental term`() {
+        val form = FORM.copy(priceAmount = "15 000 000", furnitureType = null)
+
+        assertEquals(emptyMap(), MandateEditRules.errors(form, SALE_SEARCH, FORMATTER))
+        assertEquals(emptyMap(), MandateEditRules.errors(form, SALE_LISTING, FORMATTER))
+
+        assertEquals(
+            "15 000 000 FCFA · Dans moins d'1 mois",
+            text(MandateEditRules.summaries(form, SALE_SEARCH, listOf("Bonapriso"), FORMATTER)["budget"]),
+        )
+        assertFalse(MandateEditRules.summaries(form, SALE_SEARCH, listOf("Bonapriso"), FORMATTER)["budget"]!!.contains("/ mois"))
+    }
+
+    @Test
+    fun `the moving legend words a purchase`() {
+        assertEquals("Date d'emménagement souhaitée", MandateEditRules.movingLegend(MANDATE))
+        assertEquals("Disponibilité du bien", MandateEditRules.movingLegend(MANDATE.copy(mandateType = MandateType.LISTING)))
+        assertEquals("Quand souhaitez-vous acheter ?", MandateEditRules.movingLegend(SALE_SEARCH))
+        assertEquals("Disponibilité du bien", MandateEditRules.movingLegend(SALE_LISTING))
+    }
+
+    @Test
+    fun `a rental's edit rules are unchanged`() {
+        assertEquals(
+            "Indiquez le budget, en FCFA par mois.",
+            MandateEditRules.errors(FORM.copy(priceAmount = ""), MANDATE, FORMATTER)["priceAmount"],
+        )
+        assertEquals(
+            "Indiquez le loyer, en FCFA par mois.",
+            MandateEditRules.errors(FORM.copy(priceAmount = ""), MANDATE.copy(mandateType = MandateType.LISTING), FORMATTER)["priceAmount"],
+        )
+        assertEquals(
+            "Indiquez la date d'emménagement.",
+            MandateEditRules.errors(FORM.copy(movingPeriod = null), MANDATE, FORMATTER)["movingPeriod"],
+        )
+        assertEquals(
+            "150 000 FCFA / mois · Dans moins d'1 mois",
+            text(MandateEditRules.summaries(FORM, MANDATE, listOf("Bonapriso"), FORMATTER)["budget"]),
         )
     }
 
@@ -94,8 +178,8 @@ class MandateEditRulesTest {
 
     @Test
     fun `errors - valid`() {
-        assertEquals(emptyMap(), MandateEditRules.errors(FORM, owner = false, FORMATTER))
-        assertEquals(emptyMap(), MandateEditRules.errors(FORM.copy(propertyType = "ANY"), owner = false, FORMATTER))
+        assertEquals(emptyMap(), MandateEditRules.errors(FORM, MANDATE, FORMATTER))
+        assertEquals(emptyMap(), MandateEditRules.errors(FORM.copy(propertyType = "ANY"), MANDATE, FORMATTER))
     }
 
     @Test
@@ -108,23 +192,27 @@ class MandateEditRulesTest {
                 "furnitureType" to "Indiquez si le bien est meublé.",
                 "parkings" to "Choisissez un nombre de places proposé.",
             ),
-            MandateEditRules.errors(form, owner = true, FORMATTER),
+            MandateEditRules.errors(form, MANDATE.copy(mandateType = MandateType.LISTING), FORMATTER),
         )
-        assertEquals("Choisissez un type de bien proposé.", MandateEditRules.errors(form.copy(propertyType = null), owner = true, FORMATTER)["propertyType"])
+        assertEquals(
+            "Choisissez un type de bien proposé.",
+            MandateEditRules.errors(form.copy(propertyType = null), MANDATE.copy(mandateType = MandateType.LISTING), FORMATTER)["propertyType"],
+        )
     }
 
     @Test
     fun `errors - landlord`() {
         val form = FORM.copy(furnitureType = "UNFURNISHED")
+        val landlord = MANDATE.copy(mandateType = MandateType.LISTING)
 
-        assertEquals(emptyMap(), MandateEditRules.errors(form, owner = true, FORMATTER))
+        assertEquals(emptyMap(), MandateEditRules.errors(form, landlord, FORMATTER))
         assertEquals(
             "Indiquez le loyer, en FCFA par mois.",
-            MandateEditRules.errors(form.copy(priceAmount = ""), owner = true, FORMATTER)["priceAmount"],
+            MandateEditRules.errors(form.copy(priceAmount = ""), landlord, FORMATTER)["priceAmount"],
         )
         assertEquals(
             "Indiquez quand le bien est disponible.",
-            MandateEditRules.errors(form.copy(movingPeriod = null), owner = true, FORMATTER)["movingPeriod"],
+            MandateEditRules.errors(form.copy(movingPeriod = null), landlord, FORMATTER)["movingPeriod"],
         )
     }
 
@@ -132,16 +220,16 @@ class MandateEditRulesTest {
     fun `errors - rooms required for a home only`() {
         assertEquals(
             "Indiquez le nombre de chambres.",
-            MandateEditRules.errors(FORM.copy(rooms = null), owner = false, FORMATTER)["rooms"],
+            MandateEditRules.errors(FORM.copy(rooms = null), MANDATE, FORMATTER)["rooms"],
         )
         assertEquals(
             "Indiquez le nombre de chambres.",
-            MandateEditRules.errors(FORM.copy(propertyType = "ANY", rooms = null), owner = false, FORMATTER)["rooms"],
+            MandateEditRules.errors(FORM.copy(propertyType = "ANY", rooms = null), MANDATE, FORMATTER)["rooms"],
         )
-        assertEquals(emptyMap(), MandateEditRules.errors(FORM.copy(propertyType = "STUDIO", rooms = null), owner = false, FORMATTER))
+        assertEquals(emptyMap(), MandateEditRules.errors(FORM.copy(propertyType = "STUDIO", rooms = null), MANDATE, FORMATTER))
         assertEquals(
             emptyMap(),
-            MandateEditRules.errors(FORM.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = "LAND", rooms = null, furnitureType = null), owner = false, FORMATTER),
+            MandateEditRules.errors(FORM.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = "LAND", rooms = null, furnitureType = null), MANDATE, FORMATTER),
         )
     }
 
@@ -171,7 +259,7 @@ class MandateEditRulesTest {
                 "movingPeriod" to "Indiquez la date d'emménagement.",
                 "comments" to "Votre message ne doit pas dépasser 500 caractères.",
             ),
-            MandateEditRules.errors(form, owner = false, FORMATTER),
+            MandateEditRules.errors(form, MANDATE, FORMATTER),
         )
     }
 
@@ -179,7 +267,7 @@ class MandateEditRulesTest {
     fun `errors - type of the other category`() {
         assertEquals(
             "Choisissez un type de bien proposé.",
-            MandateEditRules.errors(FORM.copy(propertyCategory = PropertyCategory.COMMERCIAL), owner = false, FORMATTER)["propertyType"],
+            MandateEditRules.errors(FORM.copy(propertyCategory = PropertyCategory.COMMERCIAL), MANDATE, FORMATTER)["propertyType"],
         )
     }
 
@@ -187,13 +275,13 @@ class MandateEditRulesTest {
     fun `errors - amounts`() {
         assertEquals(
             "Indiquez un loyer d'au moins 5\u00a0000\u00a0FCFA par mois.",
-            MandateEditRules.errors(FORM.copy(priceAmount = "1 000"), owner = false, FORMATTER)["priceAmount"],
+            MandateEditRules.errors(FORM.copy(priceAmount = "1 000"), MANDATE, FORMATTER)["priceAmount"],
         )
         assertEquals(
             "Indiquez la surface en m², ou laissez le champ vide.",
-            MandateEditRules.errors(FORM.copy(area = "2"), owner = false, FORMATTER)["area"],
+            MandateEditRules.errors(FORM.copy(area = "2"), MANDATE, FORMATTER)["area"],
         )
-        assertEquals(emptyMap(), MandateEditRules.errors(FORM.copy(area = "  "), owner = false, FORMATTER))
+        assertEquals(emptyMap(), MandateEditRules.errors(FORM.copy(area = "  "), MANDATE, FORMATTER))
     }
 
     @Test

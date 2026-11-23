@@ -8,6 +8,7 @@ import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
 import com.wutsi.ndopify.mandate.dto.Mandate
@@ -250,10 +251,9 @@ class MandateController(
         val mandate = current(id, redirect) { it.status in MandateRules.EDITABLE } ?: return back(id)
 
         val answers = form.copy(neighborhoodIds = form.neighborhoodIds.distinct())
-        val owner = mandate.mandateType == MandateType.LISTING
         ProfileRules.header(agent, model)
         try {
-            val errors = MandateEditRules.errors(answers, owner, formatter()).ifEmpty { neighborhoodErrors(mandate, answers) }
+            val errors = MandateEditRules.errors(answers, mandate, formatter()).ifEmpty { neighborhoodErrors(mandate, answers) }
             if (errors.isNotEmpty()) return edit(mandate, answers, errors, null, model)
 
             mandateClient.update(id, MandateEditRules.request(answers, mandate))
@@ -317,6 +317,7 @@ class MandateController(
             ),
         )
         model.addAttribute("owner", mandate.mandateType == MandateType.LISTING)
+        model.addAttribute("sale", mandate.listingType == ListingType.SALE)
         model.addAttribute("mandateId", mandate.id.toString())
         model.addAttribute("city", names[mandate.cityId])
         model.addAttribute("cityId", mandate.cityId)
@@ -330,7 +331,8 @@ class MandateController(
         model.addAttribute("furnitureLabels", MandateLabels.byName(MandateLabels.FURNITURE_TYPE_LABELS))
         model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS)
         model.addAttribute("movingPeriodLabels", MandateLabels.byName(MandateLabels.MOVE_IN_LABELS))
-        model.addAttribute("summaries", MandateEditRules.summaries(answers, neighborhoods.map { it.name }, formatter()))
+        model.addAttribute("movingLegend", MandateEditRules.movingLegend(mandate))
+        model.addAttribute("summaries", MandateEditRules.summaries(answers, mandate, neighborhoods.map { it.name }, formatter()))
         model.addAttribute(
             "openGroups",
             MandateEditRules.GROUPS.filterValues { fields -> fields.any { it in errors } }.keys,
