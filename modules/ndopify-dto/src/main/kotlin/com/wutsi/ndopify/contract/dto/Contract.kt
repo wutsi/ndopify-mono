@@ -14,6 +14,9 @@ data class Contract(
     val createdAt: Date = Date(),
     val durationMonths: Int = 0,
     val visitFee: Money = Money(), // Per visit, paid to the agent offline; 0 = none
+
+    // The success commission in % of the sale price (1..20); a sale mandate only, null otherwise
+    val commissionRate: Int? = null,
     val signatureRequestedAt: Date? = null, // When the signature was last requested
     val signatureDeadline: Date? = null,
     val validFrom: Date? = null,

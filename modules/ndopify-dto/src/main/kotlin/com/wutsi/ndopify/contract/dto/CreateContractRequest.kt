@@ -14,6 +14,9 @@ data class CreateContractRequest(
 
     // Null = none; the currency is the tenant's, or blank to mean it
     val visitFee: Money? = null,
+
+    // A sale contract's commission in % of the sale price (1..20); ignored by the other types
+    val commissionRate: Int? = null,
 )
 
 data class CreateContractParty(
