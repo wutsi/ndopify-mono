@@ -95,14 +95,33 @@ class MatchAnsweredBotletTest {
     fun `an acceptance is one line naming the customer and the property`() {
         botlet.send(match, customer, agent, 1000L)
 
+        val message = text()
         assertEquals(
             "✅ Ray Sponsible a accepté la proposition : Small apartment (Bastos) — 140 000 FCFA / mois",
-            text(),
+            message,
         )
+        assertFalse(message.contains("Prix :"), "a rental's line keeps its bare amount")
         assertEquals(
             listOf(TelegramButton("Voir le mandat", url = "https://partner.ndopify.com/mandates/1")),
             buttons(),
         )
+    }
+
+    @Test
+    fun `a sale acceptance names a price and never a rental`() {
+        val saleListing = listing.copy(listingType = ListingType.SALE, pricePeriodicityType = PeriodicityType.NONE)
+        val sale = match.copy(listing = saleListing, mandate = mandate.copy(listingType = ListingType.SALE))
+
+        botlet.send(sale, customer, agent, 1000L)
+
+        val message = text(saleListing)
+        assertEquals(
+            "✅ Ray Sponsible a accepté la proposition : Small apartment (Bastos) — Prix : 140 000 FCFA",
+            message,
+        )
+        listOf("location", "loyer", "logement").forEach { word ->
+            assertFalse(message.lowercase().contains(word), "no '$word' in a sale message")
+        }
     }
 
     @Test

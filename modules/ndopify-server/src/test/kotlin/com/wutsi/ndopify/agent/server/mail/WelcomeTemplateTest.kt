@@ -24,7 +24,6 @@ class WelcomeTemplateTest {
     )
 
     // The agent handles rentals and sales: the mail names both, with no condition
-    // The agent handles rentals and sales: the mail names both, with no condition
     @Test
     fun `the welcome mail names buyers and sellers`() {
         val html = resolver.resolve("/mail/agent/welcome.mjml", context)
