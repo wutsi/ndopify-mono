@@ -80,6 +80,19 @@ class MandateEditRulesTest {
     }
 
     @Test
+    fun `a sale listing's floor is a price, a sale search's a budget`() {
+        assertEquals(
+            "Indiquez un prix d'au moins 1 000 000 FCFA.",
+            text(MandateEditRules.errors(FORM.copy(priceAmount = "1 000"), SALE_LISTING, FORMATTER)["priceAmount"]),
+        )
+        assertEquals(
+            "Indiquez un budget d'au moins 1 000 000 FCFA.",
+            text(MandateEditRules.errors(FORM.copy(priceAmount = "1 000"), SALE_SEARCH, FORMATTER)["priceAmount"]),
+        )
+        assertEquals(emptyMap(), MandateEditRules.errors(FORM.copy(priceAmount = "15 000 000"), SALE_LISTING, FORMATTER))
+    }
+
+    @Test
     fun `a sale asks no furniture and no rental term`() {
         val form = FORM.copy(priceAmount = "15 000 000", furnitureType = null)
 

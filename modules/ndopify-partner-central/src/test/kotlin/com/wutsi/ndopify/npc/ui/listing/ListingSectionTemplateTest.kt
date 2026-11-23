@@ -114,6 +114,16 @@ class ListingSectionTemplateTest {
         return render(get("/listings/501/$slug"))
     }
 
+    /**
+     * The page as served, non-breaking spaces decoded (Jsoup's `text()` would normalise them): the copy's exact
+     * characters, whichever way the template writes the space.
+     */
+    private fun raw(slug: String, listing: Listing? = null): String {
+        listing?.let { doReturn(it).whenever(listingClient).get(501) }
+        return mvc.perform(get("/listings/501/$slug")).andReturn().response.contentAsString
+            .replace("&nbsp;", "\u00a0")
+    }
+
     private fun form(page: Document) = page.selectFirst("form[data-section-form]")!!
 
     @Test
@@ -321,6 +331,7 @@ class ListingSectionTemplateTest {
             "Indiquez le prix et les conditions convenus avec le vendeur : ils peuvent différer du mandat.",
             page.selectFirst("[data-section-instruction]")?.text(),
         )
+        assertTrue(raw("terms", ListingViewsTest.SALE).contains("vendeur\u00a0: ils"))
         assertEquals("Prix", form.selectFirst("label[for=price]")?.text())
         assertEquals("FCFA", form.selectFirst("input[name=price] + .input-unit__suffix")?.text())
         assertNull(form.selectFirst("select[name=securityDeposit]"))
@@ -357,9 +368,28 @@ class ListingSectionTemplateTest {
         assertEquals(
             "Les acheteurs et les visiteurs s'en serviront pour trouver le bien : vérifiez-la sur la carte avant " +
                 "d'enregistrer.",
-            gps.selectFirst("[data-gps-hint]")?.text()?.replace('\u00a0', ' '),
+            gps.selectFirst("[data-gps-hint]")?.text(),
         )
+        assertTrue(raw("gps", ListingViewsTest.SALE).contains("bien\u00a0: vérifiez-la"))
         assertFalse(gps.text().contains("locataires"))
+    }
+
+    @Test
+    fun `a rental's hints are unchanged`() {
+        val terms = render("terms")
+        assertEquals(
+            "Indiquez les conditions convenues avec le propriétaire : elles peuvent différer du mandat.",
+            terms.selectFirst("[data-section-instruction]")?.text(),
+        )
+        assertTrue(raw("terms").contains("propriétaire\u00a0: elles"))
+
+        val gps = render("gps")
+        assertEquals(
+            "Les locataires et les visiteurs s'en serviront pour trouver le bien : vérifiez-la sur la carte avant " +
+                "d'enregistrer.",
+            gps.selectFirst("[data-gps-hint]")?.text(),
+        )
+        assertTrue(raw("gps").contains("bien\u00a0: vérifiez-la"))
     }
 
     @Test

@@ -71,9 +71,9 @@ class ListingRulesTest {
         )
 
         assertEquals(setOf("price"), errors.keys)
-        assertEquals("Indiquez le prix, en FCFA.", errors["price"])
+        assertEquals("Indiquez le prix de vente.", errors["price"])
         assertEquals(
-            "Indiquez le prix en chiffres, en FCFA.",
+            "Indiquez le prix de vente en chiffres, en FCFA.",
             errors(ListingSection.TERMS, ListingSectionForm(price = "45M", availableFrom = "2026-11-15"))["price"],
         )
     }

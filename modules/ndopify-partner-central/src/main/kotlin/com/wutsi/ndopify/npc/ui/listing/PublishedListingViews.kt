@@ -70,17 +70,21 @@ object PublishedListingViews {
         }
     }
 
+    // A sale's sheet shows no furniture: it is a rental question (the seller's answers carry none either).
+    private fun furniture(listing: Listing): FurnitureType? =
+        listing.furnitureType?.takeUnless { listing.listingType == ListingType.SALE }
+
     private fun facts(listing: Listing, formatter: TenantFormatter): List<FactView> = listOfNotNull(
         listing.rooms?.let { FactView("bed", plural(it, "chambre", "chambres")) },
         listing.bathrooms?.let { FactView("bath", plural(it, "salle de bains", "salles de bains")) },
         listing.area?.let { FactView("area", "${formatter.count(it.toLong())} m²") },
-        if (listing.furnitureType == FurnitureType.FULLY_FURNISHED) FactView("furnished", "Meublé") else null,
+        if (furniture(listing) == FurnitureType.FULLY_FURNISHED) FactView("furnished", "Meublé") else null,
         listing.parkings?.let { FactView("parking", plural(it, "parking", "parkings")) },
     )
 
     private fun property(listing: Listing, formatter: TenantFormatter): List<SpecView> = listOfNotNull(
         listing.propertyType?.let { type -> MandateLabels.PROPERTY_TYPE_LABELS[type]?.let { SpecView("Type de bien", it) } },
-        listing.furnitureType?.let { type -> MandateLabels.FURNITURE_TYPE_LABELS[type]?.let { SpecView("Ameublement", it) } },
+        furniture(listing)?.let { type -> MandateLabels.FURNITURE_TYPE_LABELS[type]?.let { SpecView("Ameublement", it) } },
         listing.rooms?.let { SpecView("Chambres", it.toString()) },
         listing.bathrooms?.let { SpecView("Salles de bains", it.toString()) },
         listing.livingRooms?.let { SpecView("Salons", it.toString()) },

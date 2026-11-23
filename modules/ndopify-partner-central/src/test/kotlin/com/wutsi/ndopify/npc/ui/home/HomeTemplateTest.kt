@@ -389,7 +389,7 @@ class HomeTemplateTest {
         val page = render(get("/"))
 
         val offer = page.selectFirst("[data-assignment-id=104]")!!
-        assertEquals("Acheteur", offer.selectFirst(".mandate-title > span:nth-child(2)")?.text())
+        assertEquals("Acheteur", offer.selectFirst("[data-deal-tag]")?.previousElementSibling()?.text())
         assertEquals("Vente", offer.selectFirst("[data-deal-tag]")?.text())
         assertEquals("status-tag status-tag--info", offer.selectFirst("[data-deal-tag]")?.className())
 

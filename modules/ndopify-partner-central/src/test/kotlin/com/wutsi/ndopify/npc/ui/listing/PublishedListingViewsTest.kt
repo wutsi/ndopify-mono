@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.listing
 
+import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.ImageVariant
 import com.wutsi.ndopify.listing.dto.ListingImage
@@ -81,6 +82,25 @@ class PublishedListingViewsTest {
             ),
             view.terms,
         )
+    }
+
+    @Test
+    fun `a sale's sheet never shows furniture`() {
+        val furnished = listing.copy(furnitureType = FurnitureType.FULLY_FURNISHED)
+
+        val rental = PublishedListingViews.of(furnished, ListingViewsTest.IMAGES, locations, formatter, owner = true)
+        assertTrue(rental.facts.any { it.icon == "furnished" })
+        assertTrue(rental.property.any { it.label == "Ameublement" })
+
+        val sale = PublishedListingViews.of(
+            furnished.copy(listingType = ListingType.SALE),
+            ListingViewsTest.IMAGES,
+            locations,
+            formatter,
+            owner = true,
+        )
+        assertTrue(sale.facts.none { it.icon == "furnished" })
+        assertTrue(sale.property.none { it.label == "Ameublement" })
     }
 
     @Test

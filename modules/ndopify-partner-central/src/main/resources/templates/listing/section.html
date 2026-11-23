@@ -45,7 +45,7 @@
                         <th:block th:case="'gps'">Placez-vous devant l'entrée du bien, à l'extérieur, puis relevez sa position.</th:block>
                         <th:block th:case="'property'">Comptez les pièces sur place et corrigez ce qui ne correspond pas aux réponses du propriétaire.</th:block>
                         <th:block th:case="'amenities'">Cochez ce que vous constatez sur place, pas seulement ce qu'annonce le propriétaire.</th:block>
-                        <th:block th:case="'terms'" th:text="${sale} ? 'Indiquez le prix et les conditions convenus avec le vendeur : ils peuvent différer du mandat.' : 'Indiquez les conditions convenues avec le propriétaire : elles peuvent différer du mandat.'">Indiquez les conditions convenues avec le propriétaire&nbsp;: elles peuvent différer du mandat.</th:block>
+                        <th:block th:case="'terms'"><th:block th:if="${sale}">Indiquez le prix et les conditions convenus avec le vendeur&nbsp;: ils peuvent différer du mandat.</th:block><th:block th:unless="${sale}">Indiquez les conditions convenues avec le propriétaire&nbsp;: elles peuvent différer du mandat.</th:block></th:block>
                         <th:block th:case="'remarks'">Ce que le formulaire ne demande pas, et qui aide à mieux décrire le bien.</th:block>
                     </p>
                 </div>
@@ -107,9 +107,7 @@
                     */-->
                     <th:block th:if="${s.slug == 'gps'}">
                         <div class="field gps">
-                            <p class="field__optional" id="gps-hint" th:if="${e}" data-gps-hint
-                               th:text="${sale} ? 'Les acheteurs et les visiteurs s\'en serviront pour trouver le bien : vérifiez-la sur la carte avant d\'enregistrer.' : 'Les locataires et les visiteurs s\'en serviront pour trouver le bien : vérifiez-la sur la carte avant d\'enregistrer.'">Les locataires et les visiteurs s'en serviront pour trouver le
-                                bien&nbsp;: vérifiez-la sur la carte avant d'enregistrer.</p>
+                            <p class="field__optional" id="gps-hint" th:if="${e}" data-gps-hint><th:block th:if="${sale}">Les acheteurs et les visiteurs s'en serviront pour trouver le bien&nbsp;: vérifiez-la sur la carte avant d'enregistrer.</th:block><th:block th:unless="${sale}">Les locataires et les visiteurs s'en serviront pour trouver le bien&nbsp;: vérifiez-la sur la carte avant d'enregistrer.</th:block></p>
                             <div class="count-grid" data-gps-manual>
                                 <div class="field">
                                     <label class="field__label" for="latitude">Latitude</label>

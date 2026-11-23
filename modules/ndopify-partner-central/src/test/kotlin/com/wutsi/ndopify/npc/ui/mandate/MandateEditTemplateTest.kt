@@ -271,8 +271,9 @@ class MandateEditTemplateTest {
         assertFalse(page.text().contains("/ mois"))
 
         val budget = form.selectFirst("[data-edit-group=budget] [data-group-value]")?.text()
-        assertTrue(budget!!.startsWith("15 000 000") || budget.startsWith("15\u00a0000\u00a0000"), budget)
-        assertFalse(budget.contains("/ mois"))
+            ?.replace('\u00a0', ' ')
+            ?.replace('\u202f', ' ')
+        assertEquals("15 000 000 FCFA · Dans 1 à 3 mois", budget)
     }
 
     @Test

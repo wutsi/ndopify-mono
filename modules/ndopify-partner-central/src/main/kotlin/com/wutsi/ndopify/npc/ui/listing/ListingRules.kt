@@ -326,10 +326,10 @@ object ListingRules {
                 val price = text(form.price)
                 val amount = price?.let { amount(it) }
                 if (sale) {
-                    val currency = formatter.currency()
+                    // The prototype's wording (listing/conditions.html, LISTING_RULES): a sale has a sale price.
                     when {
-                        price == null || amount?.let { it <= 0 } == true -> errors["price"] = "Indiquez le prix, en $currency."
-                        amount == null -> errors["price"] = "Indiquez le prix en chiffres, en $currency."
+                        price == null || amount?.let { it <= 0 } == true -> errors["price"] = "Indiquez le prix de vente."
+                        amount == null -> errors["price"] = "Indiquez le prix de vente en chiffres, en ${formatter.currency()}."
                     }
                 } else if (price == null) {
                     errors["price"] = "Indiquez le loyer mensuel."

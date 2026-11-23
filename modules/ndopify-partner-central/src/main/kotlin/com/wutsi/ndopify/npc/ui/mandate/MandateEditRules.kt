@@ -185,15 +185,20 @@ object MandateEditRules {
         val currency = formatter.currency()
         val owner = mandate.mandateType == MandateType.LISTING
         val sale = FindPropertyRules.isSale(mandate.listingType)
-        return if (amount == null || amount <= 0) {
-            when {
+        return when {
+            amount == null || amount <= 0 -> when {
                 sale && owner -> "Indiquez le prix, en $currency."
                 sale -> "Indiquez le budget, en $currency."
                 owner -> "Indiquez le loyer, en $currency par mois."
                 else -> "Indiquez le budget, en $currency par mois."
             }
-        } else {
-            FindPropertyRules.priceAmount(amount, formatter, mandate.listingType)
+            // A seller's floor, worded as the offer wizard's (OfferPropertyRules): a sale price, not a budget.
+            sale && owner -> if (amount < FindPropertyRules.MIN_SALE_PRICE) {
+                "Indiquez un prix d'au moins ${formatter.money(FindPropertyRules.MIN_SALE_PRICE)}."
+            } else {
+                null
+            }
+            else -> FindPropertyRules.priceAmount(amount, formatter, mandate.listingType)
         }
     }
 
