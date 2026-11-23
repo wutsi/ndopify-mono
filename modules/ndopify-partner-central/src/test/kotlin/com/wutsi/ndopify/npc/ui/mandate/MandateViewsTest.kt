@@ -128,6 +128,23 @@ class MandateViewsTest {
     }
 
     @Test
+    fun `a sale contract shows its commission`() {
+        val view = view(
+            MANDATE.copy(listingType = ListingType.SALE),
+            contract = CONTRACT.copy(durationMonths = 6, commissionRate = 7),
+        )
+
+        assertEquals("7 % du prix de vente", view.commission)
+    }
+
+    @Test
+    fun `a rental has no commission row`() {
+        val view = view(MANDATE.copy(listingType = ListingType.RENTAL), contract = CONTRACT.copy(commissionRate = null))
+
+        assertNull(view.commission)
+    }
+
+    @Test
     fun `pending approval - deadline passed`() {
         val view = view(PENDING, now = date("2026-10-23T10:00:00Z").time)
 

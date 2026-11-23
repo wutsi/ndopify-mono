@@ -495,6 +495,11 @@
                             <dt class="review__term">Durée</dt>
                             <dd class="review__value" th:text="${m.contractDuration}">6 mois</dd>
                         </div>
+                        <!-- A sale states its commission, in % of the sale price; a rental has none. -->
+                        <div class="review__item" th:if="${m.commission}">
+                            <dt class="review__term">Commission</dt>
+                            <dd class="review__value" th:text="${m.commission}">7 % du prix de vente</dd>
+                        </div>
                         <div class="review__item">
                             <dt class="review__term">Frais de visite</dt>
                             <dd class="review__value" th:text="${m.visitFee} ?: 'Aucun frais de visite'">Aucun frais de visite</dd>

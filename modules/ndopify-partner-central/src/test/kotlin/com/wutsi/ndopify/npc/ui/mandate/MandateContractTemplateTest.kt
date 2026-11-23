@@ -3,6 +3,7 @@ package com.wutsi.ndopify.npc.ui.mandate
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
@@ -32,6 +33,7 @@ import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -169,5 +171,58 @@ class MandateContractTemplateTest {
         )
         // The agent's answers are kept
         assertEquals("abc", page.selectFirst("input[name=visitFee]")?.attr("value"))
+    }
+
+    @Test
+    fun `a sale asks for its commission`() {
+        doReturn(MANDATE.copy(listingType = ListingType.SALE)).whenever(mandateClient).get(201)
+
+        val page = render("/mandates/201/contract")
+
+        val input = page.selectFirst("input[name=commissionRate]")!!
+        assertEquals("5", input.attr("value"))
+        assertTrue(input.hasAttr("required"))
+        assertFalse(input.hasAttr("disabled"))
+        assertEquals("Commission", page.selectFirst("label[for=commissionRate]")?.text())
+        assertEquals("% du prix", text(page.selectFirst(".input-unit--percent .input-unit__suffix")))
+        assertTrue(text(page.selectFirst("#commissionRate-hint"))!!.contains("Du prix de vente final"))
+    }
+
+    @Test
+    fun `a sale re-opens on its contract's rate`() {
+        doReturn(PENDING.copy(listingType = ListingType.SALE)).whenever(mandateClient).get(201)
+        doReturn(CONTRACT.copy(durationMonths = 6, commissionRate = 7)).whenever(contractClient).get("c-201")
+
+        val page = render("/mandates/201/contract")
+
+        assertEquals("7", page.selectFirst("input[name=commissionRate]")?.attr("value"))
+    }
+
+    @Test
+    fun `a rental has no commission field`() {
+        doReturn(MANDATE.copy(listingType = ListingType.RENTAL)).whenever(mandateClient).get(201)
+
+        val page = render("/mandates/201/contract")
+
+        assertNull(page.selectFirst("input[name=commissionRate]"))
+        assertNull(page.selectFirst(".input-unit--percent"))
+    }
+
+    @Test
+    fun `a sale's commission error shows under its field`() {
+        doReturn(MANDATE.copy(listingType = ListingType.SALE)).whenever(mandateClient).get(201)
+
+        val page = render(
+            post("/mandates/201/contract")
+                .param("durationMonths", "6")
+                .param("visitFee", "0")
+                .param("commissionRate", "21"),
+        )
+
+        assertEquals(
+            "Indiquez un pourcentage entier, de 1 à 20 (par exemple 5).",
+            text(page.selectFirst("[data-commission-error]")),
+        )
+        assertEquals("21", page.selectFirst("input[name=commissionRate]")?.attr("value"))
     }
 }

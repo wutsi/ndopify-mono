@@ -866,6 +866,11 @@ h1.alert__title {
     padding-right: 4.5rem;
 }
 
+/* A sale's commission is written "% du prix": a longer suffix, so that field keeps more room for the number. */
+.mandate-terms__fields .input-unit--percent .input {
+    padding-right: 7rem;
+}
+
 /* "Modifier le mandat" first in the markup, the send last (right from 640px); on phones the send stays on top,
    where the step's main action belongs. */
 @media (max-width: 639.98px) {
