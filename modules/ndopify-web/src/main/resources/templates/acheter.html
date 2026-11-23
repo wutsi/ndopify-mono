@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(
+    |Ndopify — Confiez votre projet d'achat à un agent vérifié|,
+    |Maison, appartement ou terrain : décrivez votre projet d'achat, un agent vérifié de votre secteur le prend en charge, vous propose des biens et visite avec vous, sur place ou en vidéo.|,
+    ${#strings.isEmpty(tenant.publicPortalUrl) ? null : tenant.publicPortalUrl + '/acheter'},
+    'Ndopify — Un agent vérifié pour votre achat immobilier',
+    |Un agent vérifié de votre secteur cherche pour vous, vous propose des biens et organise vos visites, même depuis l'étranger.|,
+    null,
+    null,
+    null,
+    false,
+    true,
+    ~{fragments/structured-data :: organization})}"></head>
+<!--/*
+  The buyer landing page (BuyerController), ported from the prototype src/main/html/v2/acheter.html. A SEARCH mandate
+  with listingType = SALE: the page sells the agent, not properties (nothing to browse). Every call to action opens
+  Partner Central's "Trouver un bien" wizard in its sale branch (findPropertyUrl), and is left out without it. Never
+  promised here: a title-deed check, a notary, a payment through Ndopify, an offer between buyer and seller, off-market
+  inventory, an agent specialisation.
+*/-->
+<body data-page="buyer">
+<th:block th:replace="~{fragments/site-header :: header('acheter', 'Menu', true)}"></th:block>
+
+<main id="main">
+    <section class="section section--default">
+        <div class="container hero">
+            <nav aria-label="Votre projet" class="goal-switch">
+                <a th:href="@{/louer}">Louer</a>
+                <a aria-current="page" th:href="@{/acheter}">Acheter</a>
+            </nav>
+            <span class="hero__eyebrow">Un agent vérifié, dans votre secteur</span>
+            <h1>Confiez votre projet d'achat à un agent vérifié</h1>
+            <p class="hero__sub">Maison, appartement ou terrain : décrivez votre projet en quelques minutes. Un agent
+                de votre secteur cherche pour vous, vous propose des biens et visite avec vous.</p>
+            <ul class="proof-stats">
+                <li><strong>100 %</strong>des agents vérifiés</li>
+                <li><strong>0 FCFA</strong>pour lancer votre recherche</li>
+                <li><strong>Sur place</strong>ou en vidéo, vos visites</li>
+            </ul>
+            <div class="cta-row" th:if="${findPropertyUrl}">
+                <a class="btn btn-primary" th:href="${findPropertyUrl}">Lancer ma recherche</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="agent-heading" class="section section--secondary">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="agent-heading">Ce que fait votre agent pour vous</h2>
+                <p>Un achat se prépare. Votre agent est votre interlocuteur sur le terrain, du premier bien proposé
+                    jusqu'à votre décision.</p>
+            </div>
+            <ul class="card-grid">
+                <li class="card">
+                    <h3 class="card-title">Il cherche pour vous</h3>
+                    <p>Il connaît les quartiers que vous visez et les biens à vendre de son secteur.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Il vous propose des biens choisis</h3>
+                    <p>Chaque proposition explique pourquoi le bien vous correspond. Vous répondez en un clic : « Ça
+                        m'intéresse » ou « Pas pour moi ».</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Il visite avec vous</h3>
+                    <p>Sur place, ou en vidéo WhatsApp si vous êtes loin : vous voyez le bien et ses abords avant de
+                        vous déplacer.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Il vous met en relation avec le vendeur</h3>
+                    <p>Quand un bien vous plaît, votre agent organise la discussion avec le vendeur ou son agent.</p>
+                </li>
+            </ul>
+        </div>
+    </section>
+
+    <section aria-labelledby="choix-heading" class="section section--default">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="choix-heading">Le bon agent pour votre projet</h2>
+                <p>Votre recherche n'est pas confiée au hasard.</p>
+            </div>
+            <ul class="card-grid">
+                <li class="card">
+                    <h3 class="card-title">Un agent vérifié</h3>
+                    <p>Sa pièce d'identité et son compte Mobile Money ont été vérifiés avant son premier mandat.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Un agent de votre secteur</h3>
+                    <p>Votre recherche est proposée aux agents vérifiés de vos quartiers, quel que soit le type de
+                        bien : un même agent traite les locations et les ventes.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Un agent disponible et bien noté</h3>
+                    <p>Il travaille dans les quartiers que vous avez choisis, et il est choisi selon sa disponibilité,
+                        sa réactivité et les avis de ses clients.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Un mandat de recherche signé</h3>
+                    <p>Vos critères, ce que fait votre agent et sa commission, un pourcentage du prix de vente, sont
+                        écrits dans un mandat que vous signez en ligne.</p>
+                </li>
+            </ul>
+            <div class="callout">
+                <h3>Vous achetez depuis l'étranger ?</h3>
+                <p>Votre agent est vos yeux sur place : il vous envoie ses propositions par e-mail, visite les biens
+                    avec vous en vidéo WhatsApp et vous tient informé sans que vous ayez à vous déplacer.</p>
+            </div>
+            <div class="cta-row" th:if="${findPropertyUrl}">
+                <a class="btn btn-primary" th:href="${findPropertyUrl}">Lancer ma recherche</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="comment-heading" class="section section--secondary">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="comment-heading">Comment ça marche</h2>
+            </div>
+            <ol class="steps">
+                <li><h3>Décrivez votre projet</h3>
+                    <p>Ville, quartiers, type de bien (maison, appartement, terrain…), budget et horizon d'achat.</p>
+                </li>
+                <li><h3>Un agent vérifié l'accepte</h3>
+                    <p>Un agent vérifié de votre secteur prend votre recherche. Vous recevez un e-mail, puis le mandat
+                        à signer en ligne.</p></li>
+                <li><h3>Recevez des propositions</h3>
+                    <p>Votre agent vous envoie les biens qui correspondent à votre projet. Vous dites ce qui vous
+                        intéresse.</p></li>
+                <li><h3>Visitez, sur place ou en vidéo</h3>
+                    <p>Choisissez un créneau, votre agent le confirme et vous recevez votre code de visite. Après la
+                        visite, donnez votre avis.</p></li>
+            </ol>
+            <div class="cta-row" th:if="${findPropertyUrl}">
+                <a class="btn btn-primary" th:href="${findPropertyUrl}">Lancer ma recherche</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="faq-heading" class="section section--default">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="faq-heading">Questions fréquentes</h2>
+            </div>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-1" aria-expanded="false" class="faq-trigger">Comment est choisi
+                            l'agent qui prend ma recherche ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-1"><p>Votre recherche est proposée, un agent à la fois, aux
+                        agents vérifiés de vos quartiers, selon leur disponibilité, leur réactivité et les avis de
+                        leurs clients. Le premier qui l'accepte devient votre agent.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-2" aria-expanded="false" class="faq-trigger">Je cherche un terrain :
+                            est-ce possible ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-2"><p>Oui. Choisissez « Terrain » comme type de bien : votre
+                        recherche est confiée à un agent vérifié de votre secteur.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-3" aria-expanded="false" class="faq-trigger">Combien ça coûte
+                            ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-3"><p>Rien pour lancer votre recherche ni pour recevoir des
+                        propositions. La commission de votre agent, un pourcentage du prix de vente, est écrite dans
+                        votre mandat ; elle n'est due que si vous achetez un bien qu'il vous a trouvé. Ndopify ne
+                        perçoit aucun paiement.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-4" aria-expanded="false" class="faq-trigger">Je vis à l'étranger :
+                            comment se passent les visites ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-4"><p>Demandez une visite en vidéo WhatsApp depuis une
+                        proposition qui vous intéresse. Votre agent la confirme et vous fait visiter le bien en
+                        direct, à l'heure du créneau choisi.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-5" aria-expanded="false" class="faq-trigger">Ndopify vérifie-t-il le
+                            titre foncier ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-5"><p>Non. Ndopify vérifie l'agent, pas les documents du
+                        bien. Avant d'acheter, faites vérifier le titre foncier auprès des services des domaines et
+                        signez l'acte de vente chez un notaire de votre choix.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-6" aria-expanded="false" class="faq-trigger">Pourquoi signer un
+                            mandat de recherche ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-6"><p>Le mandat écrit ce que vous cherchez, ce que fait votre
+                        agent et sa commission, un pourcentage du prix de vente. Vous le recevez par e-mail et le signez
+                        en ligne. Votre agent ne vous propose des visites qu'une fois le mandat signé.</p></div>
+                </div>
+            </div>
+            <div class="cta-row" th:if="${findPropertyUrl}">
+                <a class="btn btn-primary" th:href="${findPropertyUrl}">Lancer ma recherche</a>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/site-footer :: footer('© 2026 Ndopify. Des agents vérifiés, à votre service.', true)}"></footer>
+
+</body>
+</html>

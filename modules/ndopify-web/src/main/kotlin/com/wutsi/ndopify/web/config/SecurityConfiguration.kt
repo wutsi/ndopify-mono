@@ -31,7 +31,7 @@ class SecurityConfiguration(
         return http
             .authorizeHttpRequests { customizer ->
                 customizer
-                    .requestMatchers("/", "/louer", "/agent", "/owner").permitAll()
+                    .requestMatchers("/", "/louer", "/acheter", "/agent", "/owner").permitAll()
                     // A listing's page (ListingController), and its "Être contacté par un agent" form
                     .requestMatchers(HttpMethod.GET, "/*/listing/*", "/*/listing/*/*", "/*/*/listing/*", "/*/*/listing/*/*")
                     .permitAll()
