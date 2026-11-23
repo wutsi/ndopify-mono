@@ -32,8 +32,9 @@
     var PHONE_INVALID = "Ce numéro n'est pas un numéro mobile valide. Exemple : 6 77 12 34 56";
 
     // Same rules as OfferPropertyRules (needsFurniture, needsRooms, needsParking, needsArea). The server renders
-    // only the chosen category's types, so a residential form has the residential questions and a commercial one
-    // the surface (always asked): only the type narrows the residential questions down.
+    // only the chosen category's types, and a sale renders its residential questions until its type is saved (not
+    // required), then only those its type needs: a saved plot of land gets no rooms nor parking. A commercial
+    // property asks the surface; only the type narrows the residential questions down.
     var WITHOUT_ROOMS = ["ROOM", "STUDIO", "BUILDING"];
     var WITHOUT_FURNITURE = ["BUILDING"];
     var WITHOUT_PARKING = ["ROOM"];
@@ -427,8 +428,9 @@
             return areaInput && areaInput.value.trim() ? Number(digitsOf(areaInput.value)) : 0;
         }
 
-        // A sold plot's implied rate, asking price ÷ surface rounded to the nearest 100: display only, never sent,
-        // never stored, never on the review. Hidden without a valid price or surface, for another type or a rental.
+        // A sold plot's implied rate, asking price ÷ surface rounded to the nearest 100: display only on the features
+        // step, never sent nor stored; the review computes its own line server-side. Hidden without a valid price or
+        // surface, for another type or a rental.
         function updatePricePerSqm(type) {
             if (!perSqm) return;
             var surface = areaValue();
