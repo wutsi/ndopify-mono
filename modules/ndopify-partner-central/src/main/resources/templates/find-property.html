@@ -57,9 +57,29 @@
                 <fieldset class="step" data-step="need" tabindex="-1">
                     <legend class="visually-hidden" th:text="|Étape ${stepNumber} sur ${stepCount} : votre projet|">
                         Étape 1 sur 7 : votre projet</legend>
-                    <h3 aria-hidden="true">Que souhaitez-vous louer&nbsp;?</h3>
-                    <p>Décrivez le bien que vous cherchez à louer&nbsp;: un Agent Vérifié de votre secteur vous
-                        accompagne jusqu'à la signature. Comptez 3 à 5&nbsp;minutes, aucun document n'est demandé.</p>
+                    <h3 aria-hidden="true">Quel est votre projet&nbsp;?</h3>
+                    <p>Décrivez le bien que vous cherchez&nbsp;: un Agent Vérifié de votre secteur, qui traite ce type de
+                        projet, vous accompagne jusqu'à la signature. Comptez 3 à 5&nbsp;minutes, aucun document n'est
+                        demandé.</p>
+                    <fieldset aria-describedby="listingType-error" class="choices" data-group="listingType"
+                              th:attr="aria-invalid=${errors['listingType'] != null ? 'true' : null}">
+                        <legend class="choices__legend">Vous souhaitez&nbsp;:</legend>
+                        <div class="choices__grid">
+                            <label class="choice choice--described">
+                                <input name="listingType" required
+                                       th:checked="${#strings.equals(answers.listingType, 'RENTAL')}"
+                                       type="radio" value="RENTAL">
+                                <span><th:block th:text="${listingTypeLabels['RENTAL']}">Louer</th:block> <span class="choice__detail">Un agent cherche pour vous et organise vos
+                                    visites.</span></span></label>
+                            <label class="choice choice--described">
+                                <input name="listingType" required
+                                       th:checked="${#strings.equals(answers.listingType, 'SALE')}"
+                                       type="radio" value="SALE">
+                                <span><th:block th:text="${listingTypeLabels['SALE']}">Acheter</th:block> <span class="choice__detail">Maison, appartement, terrain… Un agent qui
+                                    traite les ventes cherche et visite avec vous.</span></span></label>
+                        </div>
+                        <p th:replace="~{:: error('listingType')}"></p>
+                    </fieldset>
                     <fieldset aria-describedby="propertyCategory-error" class="choices" data-group="propertyCategory"
                               th:attr="aria-invalid=${errors['propertyCategory'] != null ? 'true' : null}">
                         <legend class="choices__legend">Pour quel usage&nbsp;?</legend>

@@ -6,6 +6,7 @@ import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
@@ -128,11 +129,31 @@ class FindPropertyTemplateTest {
     }
 
     @Test
+    fun `the need step asks to rent or buy`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, PendingMandate(listingType = ListingType.SALE))
+
+        val page = render(get("/find-property"))
+
+        assertEquals(
+            listOf("RENTAL", "SALE"),
+            page.select("input[name=listingType]").map { it.attr("value") },
+        )
+        assertTrue(page.selectFirst("input[name=listingType][value=SALE]")!!.hasAttr("checked"))
+        assertFalse(page.selectFirst("input[name=listingType][value=RENTAL]")!!.hasAttr("checked"))
+        val fieldset = page.selectFirst("[data-group=listingType]")!!.text()
+        assertTrue(fieldset.contains("Louer"))
+        assertTrue(fieldset.contains("Acheter"))
+        assertTrue(fieldset.contains("Maison, appartement, terrain"))
+        assertNotNull(page.selectFirst("#listingType-error"))
+    }
+
+    @Test
     fun needPrefilled() {
         session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
 
         val page = render(get("/find-property"))
 
+        assertTrue(page.selectFirst("input[name=listingType][value=RENTAL]")!!.hasAttr("checked"))
         assertTrue(page.selectFirst("input[name=propertyCategory][value=RESIDENTIAL]")!!.hasAttr("checked"))
         assertFalse(page.selectFirst("input[name=propertyCategory][value=COMMERCIAL]")!!.hasAttr("checked"))
     }

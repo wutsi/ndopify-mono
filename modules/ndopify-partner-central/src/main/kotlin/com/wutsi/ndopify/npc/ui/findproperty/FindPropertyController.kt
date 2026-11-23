@@ -68,6 +68,7 @@ class FindPropertyController(
     @GetMapping
     fun show(
         @RequestParam(name = "step", required = false) requestedStep: String?,
+        @RequestParam(name = "type", required = false) type: String?,
         @RequestParam(required = false) returnTo: String?,
         session: HttpSession,
         model: Model,
@@ -81,7 +82,11 @@ class FindPropertyController(
             return VIEW
         }
 
-        val pending = pending(session)
+        // The public site's links preselect the project (?type=SALE|RENTAL), never over a saved answer: the copy is
+        // for display only, and the session keeps what the visitor posted.
+        val pending = pending(session).let { saved ->
+            if (saved.listingType != null) saved else saved.copy(listingType = FindPropertyRules.parseListingType(type))
+        }
         val requested = STEPS.indexOf(requestedStep).coerceAtLeast(0)
         val allowed = STEPS.indexOf(pending.firstIncompleteStep())
         return step(STEPS[minOf(requested, allowed)], pending, returnTo, emptyMap(), model)
@@ -94,8 +99,14 @@ class FindPropertyController(
         session: HttpSession,
         model: Model,
     ): String {
-        val answers = pending(session).copy(propertyCategory = form.propertyCategory)
-        val errors = errors("propertyCategory" to FindPropertyRules.propertyCategory(answers.propertyCategory))
+        val answers = pending(session).copy(
+            listingType = form.listingType,
+            propertyCategory = form.propertyCategory,
+        )
+        val errors = errors(
+            "listingType" to FindPropertyRules.listingType(answers.listingType),
+            "propertyCategory" to FindPropertyRules.propertyCategory(answers.propertyCategory),
+        )
         return save(STEP_NEED, answers, errors, returnTo, session, model)
     }
 
@@ -285,7 +296,10 @@ class FindPropertyController(
         )
 
         when (step) {
-            STEP_NEED -> model.addAttribute("categoryLabels", MandateLabels.byName(MandateLabels.CATEGORY_LABELS))
+            STEP_NEED -> {
+                model.addAttribute("categoryLabels", MandateLabels.byName(MandateLabels.CATEGORY_LABELS))
+                model.addAttribute("listingTypeLabels", MandateLabels.byName(MandateLabels.LISTING_TYPE_LABELS))
+            }
             STEP_AREA, STEP_REVIEW -> {
                 // Names of the chosen city and neighbourhoods: the selects' initial options, and the review.
                 // Capped: a step shown again with its errors may carry whatever ids were posted.

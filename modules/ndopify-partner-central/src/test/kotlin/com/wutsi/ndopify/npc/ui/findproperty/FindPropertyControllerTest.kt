@@ -10,6 +10,7 @@ import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
@@ -194,21 +195,71 @@ class FindPropertyControllerTest {
         assertEquals("Tout type de bien · 2 chambres · Non meublé", model(result)["propertyLabel"])
     }
 
+    @Test
+    fun `the need step stores the project`() {
+        val result = mvc.perform(
+            post("/find-property/need").session(session)
+                .param("listingType", "SALE")
+                .param("propertyCategory", "RESIDENTIAL"),
+        ).andReturn()
+
+        assertEquals("redirect:/find-property?step=area", result.modelAndView?.viewName)
+        assertEquals(ListingType.SALE, pending()?.listingType)
+        assertEquals(PropertyCategory.RESIDENTIAL, pending()?.propertyCategory)
+    }
+
+    @Test
+    fun `the need step requires the project`() {
+        val result = mvc.perform(post("/find-property/need").session(session)).andReturn()
+
+        assertEquals("need", model(result)["step"])
+        assertEquals("Indiquez si vous souhaitez louer ou acheter.", errors(result)["listingType"])
+        assertEquals("Indiquez si le bien est pour y habiter ou pour une activité.", errors(result)["propertyCategory"])
+        assertNull(pending())
+    }
+
+    @Test
+    fun `the type parameter preselects the project`() {
+        val result = mvc.perform(get("/find-property").param("type", "SALE").session(session)).andReturn()
+
+        assertEquals(ListingType.SALE, (model(result)["answers"] as PendingMandate).listingType)
+        assertNull(pending())
+    }
+
+    @Test
+    fun `the type parameter never overwrites a saved project`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, PendingMandate(listingType = ListingType.RENTAL))
+
+        val result = mvc.perform(get("/find-property").param("type", "SALE").session(session)).andReturn()
+
+        assertEquals(ListingType.RENTAL, (model(result)["answers"] as PendingMandate).listingType)
+    }
+
+    @Test
+    fun `an unknown type parameter is ignored`() {
+        val result = mvc.perform(get("/find-property").param("type", "ANY").session(session)).andReturn()
+
+        assertNull((model(result)["answers"] as PendingMandate).listingType)
+    }
+
     // POST /find-property/need
 
     @Test
     fun need() {
         val result = mvc.perform(
-            post("/find-property/need").session(session).param("propertyCategory", "RESIDENTIAL"),
+            post("/find-property/need").session(session)
+                .param("listingType", "RENTAL")
+                .param("propertyCategory", "RESIDENTIAL"),
         ).andReturn()
 
         assertEquals("redirect:/find-property?step=area", result.modelAndView?.viewName)
+        assertEquals(ListingType.RENTAL, pending()?.listingType)
         assertEquals(PropertyCategory.RESIDENTIAL, pending()?.propertyCategory)
     }
 
     @Test
     fun needMissing() {
-        val result = mvc.perform(post("/find-property/need").session(session)).andReturn()
+        val result = mvc.perform(post("/find-property/need").session(session).param("listingType", "RENTAL")).andReturn()
 
         assertEquals("need", model(result)["step"])
         assertEquals("Indiquez si le bien est pour y habiter ou pour une activité.", errors(result)["propertyCategory"])
@@ -222,7 +273,11 @@ class FindPropertyControllerTest {
             SubmittedMandate("ray@gmail.com", "+237670000001", null)
         )
 
-        mvc.perform(post("/find-property/need").session(session).param("propertyCategory", "COMMERCIAL")).andReturn()
+        mvc.perform(
+            post("/find-property/need").session(session)
+                .param("listingType", "RENTAL")
+                .param("propertyCategory", "COMMERCIAL"),
+        ).andReturn()
 
         assertNull(session.getAttribute(SubmittedMandate.SESSION_ATTRIBUTE))
     }
@@ -233,7 +288,7 @@ class FindPropertyControllerTest {
     fun area() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
-            PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL)
+            PendingMandate(listingType = ListingType.RENTAL, propertyCategory = PropertyCategory.RESIDENTIAL)
         )
 
         val result = mvc.perform(
@@ -251,7 +306,7 @@ class FindPropertyControllerTest {
     fun areaWithoutNeighborhoods() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
-            PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL)
+            PendingMandate(listingType = ListingType.RENTAL, propertyCategory = PropertyCategory.RESIDENTIAL)
         )
 
         val result = mvc.perform(post("/find-property/area").session(session).param("cityId", "$YAOUNDE")).andReturn()
@@ -275,7 +330,7 @@ class FindPropertyControllerTest {
     fun areaRejectsForeignCity() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
-            PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL)
+            PendingMandate(listingType = ListingType.RENTAL, propertyCategory = PropertyCategory.RESIDENTIAL)
         )
 
         val result = mvc.perform(
@@ -291,7 +346,7 @@ class FindPropertyControllerTest {
     fun areaRejectsNeighbourhoodOfOtherCity() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
-            PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL)
+            PendingMandate(listingType = ListingType.RENTAL, propertyCategory = PropertyCategory.RESIDENTIAL)
         )
 
         val result = mvc.perform(
@@ -306,7 +361,7 @@ class FindPropertyControllerTest {
     fun areaRejectsTooManyNeighbourhoods() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
-            PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL)
+            PendingMandate(listingType = ListingType.RENTAL, propertyCategory = PropertyCategory.RESIDENTIAL)
         )
 
         val result = mvc.perform(
@@ -323,7 +378,7 @@ class FindPropertyControllerTest {
     fun areaMissingCity() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
-            PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL)
+            PendingMandate(listingType = ListingType.RENTAL, propertyCategory = PropertyCategory.RESIDENTIAL)
         )
 
         val result = mvc.perform(post("/find-property/area").session(session)).andReturn()
