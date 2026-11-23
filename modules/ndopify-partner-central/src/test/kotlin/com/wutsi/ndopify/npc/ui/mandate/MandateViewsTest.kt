@@ -3,11 +3,13 @@ package com.wutsi.ndopify.npc.ui.mandate
 import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.CONTRACT
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.MANDATE
@@ -15,6 +17,7 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.NAMES
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.NOW
 import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.Money
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import java.time.Instant
 import java.util.Date
 import kotlin.test.Test
@@ -48,6 +51,14 @@ class MandateViewsTest {
         )
 
         val APPROVED = PENDING.copy(status = MandateStatus.APPROVED, approvedAt = date("2026-10-20T10:00:00Z"))
+
+        // An approved land purchase requiring two documents.
+        val LAND_SALE = APPROVED.copy(
+            listingType = ListingType.SALE,
+            propertyType = PropertyType.LAND,
+            titleDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+            price = Money(15_000_000, "XAF", PeriodicityType.NONE),
+        )
 
         fun date(iso: String): Date = Date.from(Instant.parse(iso))
     }
@@ -306,5 +317,45 @@ class MandateViewsTest {
         val view = view(MANDATE.copy(rooms = "1", comments = null))
 
         assertEquals("Type de bien" to "Maison, 1 chambre", view.keyCriteria.last())
+    }
+
+    @Test
+    fun `a land purchase keeps the documents visible and shows the note`() {
+        val view = view(LAND_SALE)
+
+        assertTrue(view.titleDocumentsRequired)
+        assertTrue(view.keyCriteria.contains("Documents exigés" to "Titre foncier · Plan de bornage"))
+        assertFalse(view.moreCriteria.any { it.first == "Documents exigés" })
+    }
+
+    @Test
+    fun `a land purchase without documents shows the row, not the note`() {
+        val view = view(LAND_SALE.copy(titleDocuments = emptyList()))
+
+        assertFalse(view.titleDocumentsRequired)
+        assertTrue(view.keyCriteria.contains("Documents exigés" to "Aucun document exigé"))
+    }
+
+    @Test
+    fun `a rental has no documents row nor note`() {
+        val view = view(MANDATE)
+
+        assertFalse(view.titleDocumentsRequired)
+        assertFalse((view.keyCriteria + view.moreCriteria).any { it.first == "Documents exigés" })
+    }
+
+    @Test
+    fun `a seller's land mandate has no documents exigés row nor note`() {
+        val view = view(
+            MANDATE.copy(
+                mandateType = MandateType.LISTING,
+                listingType = ListingType.SALE,
+                propertyType = PropertyType.LAND,
+                ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE),
+            ),
+        )
+
+        assertFalse(view.titleDocumentsRequired)
+        assertFalse((view.keyCriteria + view.moreCriteria).any { it.first == "Documents exigés" })
     }
 }
