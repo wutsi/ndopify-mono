@@ -104,7 +104,7 @@
                             </fieldset>
                             <fieldset class="choices" aria-describedby="propertyType-error" data-group="propertyType" th:attr="aria-invalid=${errors['propertyType'] != null ? 'true' : null}">
                                 <legend class="choices__legend">Type de bien <span class="field__optional" th:unless="${owner}">(facultatif)</span></legend>
-                                <div class="choices__grid choices__grid--2">
+                                <div class="choices__grid">
                                         <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="ROOM"
                                                                      th:checked="${#strings.equals(answers.propertyType, 'ROOM')}"> <th:block th:text="${propertyTypeLabels['ROOM']}">Chambre</th:block></label>
                                         <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="STUDIO"
@@ -125,7 +125,8 @@
                                                                      th:checked="${#strings.equals(answers.propertyType, 'INDUSTRIAL')}"> <th:block th:text="${propertyTypeLabels['INDUSTRIAL']}">Entrepôt, local industriel</th:block></label>
                                         <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="BUILDING"
                                                                      th:checked="${#strings.equals(answers.propertyType, 'BUILDING')}"> <th:block th:text="${propertyTypeLabels['BUILDING']}">Immeuble</th:block></label>
-                                        <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="LAND"
+                                        <label class="choice" data-categories="COMMERCIAL"
+                                               th:if="${sale or answers.propertyType == 'LAND'}"><input name="propertyType" type="radio" value="LAND"
                                                                      th:checked="${#strings.equals(answers.propertyType, 'LAND')}"> <th:block th:text="${propertyTypeLabels['LAND']}">Terrain</th:block></label>
                                         <label class="choice" data-categories="RESIDENTIAL COMMERCIAL" th:unless="${owner}"><input name="propertyType" type="radio" value="ANY"
                                                                      th:checked="${#strings.equals(answers.propertyType, 'ANY')}"> Indifférent</label>
