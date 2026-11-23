@@ -146,8 +146,8 @@
                             <div class="assignment__head">
                                 <h3 th:id="|assignment-${a.id}-title|" class="assignment__type mandate-title"><span
                                         th:replace="~{fragments/mandate-kind :: icon(${a.owner})}"></span><span
-                                        th:text="${a.title}">Locataire</span><span class="status-tag status-tag--info"
-                                        th:if="${a.sale}" data-deal-tag>Vente</span></h3>
+                                        th:text="${a.title}">Locataire</span><span class="status-tag status-tag--type"
+                                        data-deal-tag th:text="${a.sale} ? 'Vente' : 'Location'">Vente</span></h3>
                                 <p class="assignment__timer" data-timer>
                                     <svg th:replace="~{fragments/icon :: clock}"></svg>
                                     <span>Il reste <strong data-timer-value th:text="${a.remaining}">52 min</strong></span>
