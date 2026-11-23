@@ -218,6 +218,7 @@ class MandateOfferMailetTest {
                 "price" to "150 000 XAF / mois",
                 "area" to 85,
                 "available_from" to "01/11/2026",
+                "ownership_documents" to null,
             ),
             context,
         )
@@ -236,6 +237,36 @@ class MandateOfferMailetTest {
         assertEquals("Vente", context["listing_type"])
         assertEquals("Prix", context["price_label"])
         assertEquals("1 500 000 XAF", context["price"])
+    }
+
+    @Test
+    fun `offer the ownership documents of a land sale`() {
+        val listing = mandate.copy(
+            mandateType = MandateType.LISTING,
+            listingType = ListingType.SALE,
+            propertyType = PropertyType.LAND,
+            pricePeriodicityType = PeriodicityType.NONE,
+            ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+        )
+
+        val context = context(assignment.copy(mandate = listing), "/mail/mandate/offer_listing.mjml")
+
+        assertEquals("Titre foncier · Plan de bornage", context["ownership_documents"])
+    }
+
+    @Test
+    fun `say no ownership document for a villa sale`() {
+        val listing = mandate.copy(
+            mandateType = MandateType.LISTING,
+            listingType = ListingType.SALE,
+            propertyType = PropertyType.VILLA,
+            pricePeriodicityType = PeriodicityType.NONE,
+            ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE),
+        )
+
+        val context = context(assignment.copy(mandate = listing), "/mail/mandate/offer_listing.mjml")
+
+        assertEquals(null, context["ownership_documents"])
     }
 
     @Test

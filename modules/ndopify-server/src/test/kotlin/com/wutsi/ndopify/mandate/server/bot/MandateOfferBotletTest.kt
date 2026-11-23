@@ -131,6 +131,54 @@ class MandateOfferBotletTest {
     }
 
     @Test
+    fun `a land sale listing offer carries its ownership documents`() {
+        val assignment = AssignmentEntity(
+            id = 99L,
+            mandate = MandateEntity(
+                id = 2L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
+                listingType = ListingType.SALE, propertyType = PropertyType.LAND,
+                price = 45_000_000, currencyCode = "XAF", area = 800,
+                availableFrom = LocalDate.of(2026, 12, 1), mandateType = MandateType.LISTING,
+                ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+            ),
+            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
+        )
+
+        botlet.send(assignment, agent, 1000L)
+
+        val text = argumentCaptor<String>()
+        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        assertEquals(
+            """
+            📋 Nouveau mandat : Vente - Terrain (Bastos) — 45 000 000 XAF
+            800 m² · disponible le 01/12/2026 · document de propriété : Titre foncier · Plan de bornage
+            Expire le 15/01/2027 à 09:00.
+            """.trimIndent(),
+            text.firstValue,
+        )
+    }
+
+    @Test
+    fun `a villa sale has no ownership document line`() {
+        val assignment = AssignmentEntity(
+            id = 99L,
+            mandate = MandateEntity(
+                id = 2L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
+                listingType = ListingType.SALE, propertyType = PropertyType.VILLA,
+                price = 25_000_000, currencyCode = "XAF", mandateType = MandateType.LISTING,
+                ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE),
+            ),
+            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
+        )
+
+        botlet.send(assignment, agent, 1000L)
+
+        val text = argumentCaptor<String>()
+        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        assertFalse(text.firstValue.contains("document de propriété"))
+    }
+
+    @Test
     fun `a 5+ rooms listing keeps its rooms in the details line`() {
         val assignment = AssignmentEntity(
             id = 99L,

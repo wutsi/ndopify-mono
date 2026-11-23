@@ -49,6 +49,11 @@
                         <li>
                             <b>{{price_label}}</b>: {{price}}
                         </li>
+                        {{#ownership_documents}}
+                        <li>
+                            <b>Document de propriété</b>: {{ownership_documents}}
+                        </li>
+                        {{/ownership_documents}}
                         {{#available_from}}
                         <li>
                             <b>Disponible à partir du</b>: {{available_from}}
