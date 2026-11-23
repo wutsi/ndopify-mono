@@ -2,6 +2,7 @@ package com.wutsi.ndopify.npc.ui.match
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.wutsi.ndopify.listing.dto.FurnitureType
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -105,6 +106,32 @@ class MatchRulesTest {
         assertEquals("1 chambre au lieu de 3", fit[2])
         assertEquals("Disponible plus d'un mois après la date d'emménagement", fit[5])
         assertEquals("Meublé : le client le veut non meublé", fit[6])
+    }
+
+    @Test
+    fun `a sale match's availability is worded for a purchase`() {
+        val search = MANDATE.copy(listingType = ListingType.SALE)
+
+        assertEquals(
+            "Disponible avant votre achat",
+            MatchRules.fit(MATCH_A, search, LISTING_A).first { it.text.contains("votre achat") }.text,
+        )
+        assertEquals(
+            "Disponible moins d'un mois après votre achat",
+            MatchRules.fit(MATCH_C, search, LISTING_C).first { it.text.contains("votre achat") }.text,
+        )
+        assertEquals(
+            "Disponible plus d'un mois après votre achat",
+            MatchRules.fit(MATCH_A.copy(availabilityScore = 0.0), search, LISTING_A).first { it.text.contains("votre achat") }.text,
+        )
+    }
+
+    @Test
+    fun `fit - a rental's availability is unchanged`() {
+        assertEquals(
+            "Disponible avant la date d'emménagement",
+            MatchRules.fit(MATCH_A, MANDATE, LISTING_A).first { it.text.contains("emménagement") }.text,
+        )
     }
 
     @Test

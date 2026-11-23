@@ -149,7 +149,8 @@
                                 </div>
                                 <p class="field__error" id="rooms-error" th:hidden="${errors['rooms'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['rooms']}"></span></p>
                             </fieldset>
-                            <fieldset class="choices" aria-describedby="furnitureType-error" data-group="furnitureType" th:attr="aria-invalid=${errors['furnitureType'] != null ? 'true' : null}">
+                            <fieldset class="choices" aria-describedby="furnitureType-error" data-group="furnitureType" th:unless="${sale}"
+                                      th:attr="aria-invalid=${errors['furnitureType'] != null ? 'true' : null}">
                                 <legend class="choices__legend">Meublé&nbsp;?</legend>
                                 <div class="choices__grid">
                                         <label class="choice"><input name="furnitureType" type="radio" value="FULLY_FURNISHED"
@@ -236,21 +237,21 @@
 
                     <details class="edit-group" data-edit-group="budget" th:attr="open=${#sets.contains(openGroups, 'budget')} ? 'open' : null">
                         <summary>
-                            <span class="edit-group__title"><span th:text="${owner} ? 'Loyer et disponibilité' : 'Budget et emménagement'">Budget et emménagement</span></span>
+                            <span class="edit-group__title"><span th:text="${sale ? (owner ? 'Prix et disponibilité' : 'Budget et achat') : (owner ? 'Loyer et disponibilité' : 'Budget et emménagement')}">Budget et emménagement</span></span>
                             <span class="edit-group__value" data-group-value th:text="${summaries['budget']}"></span>
                         </summary>
                         <div class="edit-group__body">
                             <div class="field">
-                                <label class="field__label" for="priceAmount" th:text="${owner} ? 'Loyer mensuel' : 'Budget mensuel'">Budget mensuel</label>
+                                <label class="field__label" for="priceAmount" th:text="${sale ? (owner ? 'Prix' : 'Budget') : (owner ? 'Loyer mensuel' : 'Budget mensuel')}">Budget mensuel</label>
                                 <div class="input-unit">
                                     <input class="input" id="priceAmount" name="priceAmount" type="text" inputmode="numeric" required
                                            aria-describedby="priceAmount-error" th:value="${answers.priceAmount}" th:attr="aria-invalid=${errors['priceAmount'] != null ? 'true' : null}">
-                                    <span aria-hidden="true" class="input-unit__suffix" th:text="${currency} + ' / mois'">FCFA / mois</span>
+                                    <span aria-hidden="true" class="input-unit__suffix" th:text="${sale ? currency : currency + ' / mois'}">FCFA / mois</span>
                                 </div>
                                 <p class="field__error" id="priceAmount-error" th:hidden="${errors['priceAmount'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['priceAmount']}"></span></p>
                             </div>
                             <fieldset class="choices" aria-describedby="movingPeriod-error" data-group="movingPeriod" th:attr="aria-invalid=${errors['movingPeriod'] != null ? 'true' : null}">
-                                <legend class="choices__legend" th:text="${owner} ? 'Disponibilité du bien' : 'Date d\'emménagement souhaitée'">Date d'emménagement souhaitée</legend>
+                                <legend class="choices__legend" th:text="${movingLegend}">Date d'emménagement souhaitée</legend>
                                 <div class="choices__grid">
                                     <label class="choice"><input name="movingPeriod" type="radio" value="WITHIN_1_MONTH" required
                                                                  th:checked="${answers.movingPeriod?.name() == 'WITHIN_1_MONTH'}"> <th:block th:text="${movingPeriodLabels['WITHIN_1_MONTH']}">Dans moins d'1&nbsp;mois</th:block></label>

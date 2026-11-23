@@ -97,6 +97,28 @@ class ListingTemplateTest {
 
     private val images = (1..8).map { ListingImage(id = it.toLong(), url = "https://cdn/$it.jpg", title = "Photo $it") }
 
+    /** A sale in Bonapriso, 250M FCFA, available on 1 December 2026. */
+    private val saleListing = listing.copy(
+        listingType = ListingType.SALE,
+        status = ListingStatus.PUBLISHED,
+        propertyType = PropertyType.VILLA,
+        rooms = 5,
+        price = 250_000_000,
+        pricePeriodicityType = PeriodicityType.NONE,
+        availableFrom = LocalDate.of(2026, 12, 1),
+        title = "Villa 5 chambres à Bonapriso",
+        summary = "250M FCFA. Bien audité par Ndopify.",
+        url = "/douala/bonapriso/listing/123/villa",
+    )
+
+    /** The same sale, with a deposit, an advance, a lease term and a notice period saved before this story. */
+    private val staleSaleListing = saleListing.copy(
+        securityDeposit = 2,
+        advanceRent = 3,
+        leaseTerm = 12,
+        noticePeriod = 1,
+    )
+
     private fun page(listing: Listing = this.listing, images: List<ListingImage> = this.images) = ListingPages.of(
         listing,
         images,
@@ -349,5 +371,97 @@ class ListingTemplateTest {
         val doc = render()
 
         assertTrue(doc.select("[href$=.html], [src$=.html]").isEmpty())
+    }
+
+    @Test
+    fun `a sale listing page speaks of a bien`() {
+        val doc = render(page(listing = saleListing))
+
+        assertEquals("À vendre", doc.selectFirst(".listing__badges .badge")?.text())
+        assertEquals("Bien audité", doc.selectFirst(".listing__badges .badge--success")?.text())
+        assertEquals("250M FCFA", doc.selectFirst(".price-card__price")?.text())
+        assertEquals("250M FCFA", doc.selectFirst(".cta-bar__price")?.text())
+        assertEquals(listOf("Disponible le 01 déc. 2026"), doc.select(".price-card__terms li").map { it.text() })
+        assertEquals("Prix et conditions", doc.selectFirst("#terms-heading")?.text())
+        assertEquals(listOf("Prix", "Disponible"), doc.select(".terms-table th").map { it.text() })
+        assertEquals("À propos de ce bien", doc.selectFirst("#description-heading")?.text())
+        assertEquals("Photos du bien", doc.selectFirst(".gallery")?.attr("aria-label"))
+        assertEquals("Photos du bien", doc.selectFirst(".lightbox")?.attr("aria-label"))
+        assertTrue(doc.selectFirst(".audit-note")!!.text().contains("Bien audité par Ndopify le "))
+        assertTrue(doc.selectFirst(".audit-note")!!.text().contains("Ndopify vérifie l'agent, pas les documents du bien"))
+        assertEquals("Quand souhaitez-vous acheter ?", doc.selectFirst("#moving-period-label")?.text())
+        // The #ask drawer is still the prototype's: out of this story's scope
+        assertFalse(doc.selectFirst(".listing__content")!!.text().contains("logement"))
+    }
+
+    @Test
+    fun `a sale listing with a stored rental term renders none of it`() {
+        val doc = render(page(listing = staleSaleListing))
+
+        assertEquals(listOf("Prix", "Disponible"), doc.select(".terms-table th").map { it.text() })
+        assertEquals(listOf("250M FCFA", "À partir du 01 déc. 2026"), doc.select(".terms-table td").map { it.text() })
+        assertEquals(listOf("Disponible le 01 déc. 2026"), doc.select(".price-card__terms li").map { it.text() })
+        listOf("Loyer", "Caution", "Avance sur loyer", "Durée du bail", "Préavis").forEach { term ->
+            assertFalse(doc.selectFirst(".listing__content")!!.text().contains(term), term)
+            assertFalse(doc.selectFirst(".price-card")!!.text().contains(term), term)
+            assertFalse(doc.selectFirst("#visit")!!.text().contains(term), term)
+        }
+    }
+
+    @Test
+    fun `a sale listing with a stored furniture type shows none`() {
+        val sale = render(page(listing = staleSaleListing))
+
+        assertFalse(sale.text().contains("Meublé"))
+        assertFalse(sale.text().contains("Ameublement"))
+
+        val rental = render()
+        assertTrue(rental.select(".key-facts li").any { it.text() == "Meublé" })
+        assertTrue(rental.select("dt").any { it.text() == "Ameublement" })
+    }
+
+    @Test
+    fun `a sold sale listing offers no interest form`() {
+        val doc = render(
+            page(
+                listing = saleListing.copy(
+                    status = ListingStatus.SOLD,
+                    closedAt = Date.from(LocalDate.of(2026, 10, 12).atStartOfDay(ZoneId.of("Africa/Douala")).toInstant()),
+                ),
+            ),
+        )
+
+        assertEquals("Vendu le 12 oct. 2026", doc.selectFirst(".listing__badges .badge")?.text())
+        assertNull(doc.selectFirst("#visit"))
+        assertNull(doc.selectFirst("form[data-listing-interest-form]"))
+        assertNull(doc.selectFirst(".price-card__cta"))
+        assertNull(doc.selectFirst(".cta-bar__actions"))
+        assertNull(doc.selectFirst("#moving-period-label"))
+    }
+
+    @Test
+    fun `a sold rental listing keeps the interest form markup`() {
+        val doc = render(
+            page(
+                listing = listing.copy(
+                    status = ListingStatus.RENTED,
+                    closedAt = Date.from(LocalDate.of(2026, 10, 12).atStartOfDay(ZoneId.of("Africa/Douala")).toInstant()),
+                ),
+            ),
+        )
+
+        assertEquals("Loué le 12 oct. 2026", doc.selectFirst(".listing__badges .badge")?.text())
+        assertNotNull(doc.selectFirst("#visit"))
+        assertNotNull(doc.selectFirst("form[data-listing-interest-form]"))
+    }
+
+    @Test
+    fun `a published sale listing keeps its interest form`() {
+        val doc = render(page(listing = saleListing))
+
+        assertNotNull(doc.selectFirst("#visit"))
+        assertNotNull(doc.selectFirst("form[data-listing-interest-form]"))
+        assertEquals("Quand souhaitez-vous acheter ?", doc.selectFirst("#moving-period-label")?.text())
+        assertEquals("Envoyer ma demande", doc.selectFirst("form[data-listing-interest-form] button[type=submit]")?.text())
     }
 }

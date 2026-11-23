@@ -4,6 +4,7 @@ import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
+import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.web.core.service.TenantFormatter
@@ -29,18 +30,23 @@ object MandateEditRules {
         "comments" to listOf("comments"),
     )
 
-    fun errors(form: MandateEditForm, owner: Boolean, formatter: TenantFormatter): Map<String, String> {
+    fun errors(form: MandateEditForm, mandate: Mandate, formatter: TenantFormatter): Map<String, String> {
         val type = type(form)
         val area = area(form.area)
+        val owner = mandate.mandateType == MandateType.LISTING
+        val sale = FindPropertyRules.isSale(mandate.listingType)
         return listOfNotNull(
             FindPropertyRules.neighborhoodIds(form.neighborhoodIds)?.let { "neighborhoodIds" to it },
             FindPropertyRules.propertyCategory(form.propertyCategory)?.let { "propertyCategory" to it },
             typeError(form, owner)?.let { "propertyType" to it },
             ("rooms" to "Indiquez le nombre de chambres.")
-                .takeIf { FindPropertyRules.needsRooms(form.propertyCategory, type, null) && FindPropertyRules.rooms(form.rooms) != null },
+                .takeIf {
+                    FindPropertyRules.needsRooms(form.propertyCategory, type, mandate.listingType) &&
+                        FindPropertyRules.rooms(form.rooms) != null
+                },
             ("furnitureType" to "Indiquez si le bien est meublé.")
                 .takeIf {
-                    FindPropertyRules.needsFurniture(type, null) &&
+                    FindPropertyRules.needsFurniture(type, mandate.listingType) &&
                         (FindPropertyRules.furnitureType(form.furnitureType) != null || (owner && form.furnitureType == ANY))
                 },
             ("parkings" to "Choisissez un nombre de places proposé.")
@@ -50,8 +56,12 @@ object MandateEditRules {
                 },
             ("area" to "Indiquez la surface en m², ou laissez le champ vide.")
                 .takeIf { area.isFailure || FindPropertyRules.area(area.getOrNull(), false) != null },
-            priceError(form.priceAmount, owner, formatter)?.let { "priceAmount" to it },
-            ("movingPeriod" to if (owner) "Indiquez quand le bien est disponible." else "Indiquez la date d'emménagement.")
+            priceError(form.priceAmount, mandate, formatter)?.let { "priceAmount" to it },
+            ("movingPeriod" to when {
+                owner -> "Indiquez quand le bien est disponible."
+                sale -> "Indiquez quand vous souhaitez acheter."
+                else -> "Indiquez la date d'emménagement."
+            })
                 .takeIf { FindPropertyRules.movingPeriod(form.movingPeriod, null) != null },
             FindPropertyRules.comments(form.comments?.trim())?.let { "comments" to it },
         ).toMap()
@@ -75,9 +85,9 @@ object MandateEditRules {
             neighbourhoodIds = form.neighborhoodIds.distinct(),
             propertyType = type,
             furnitureType = form.furnitureType
-                ?.takeIf { FindPropertyRules.needsFurniture(type, null) && it != ANY }
+                ?.takeIf { FindPropertyRules.needsFurniture(type, mandate.listingType) && it != ANY }
                 ?.let { FurnitureType.valueOf(it) },
-            rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(form.propertyCategory, type, null) },
+            rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(form.propertyCategory, type, mandate.listingType) },
             parkings = form.parkings?.ifEmpty { null }?.takeIf { FindPropertyRules.asksParkings(type) && it != ANY },
             area = area(form.area).getOrNull(),
             waterMeter = "waterMeter" in amenities,
@@ -107,13 +117,22 @@ object MandateEditRules {
     }
 
     /** Each folded group's current value, as the prototype's `SUMMARIES`; [neighborhoods] are the chosen names. */
-    fun summaries(form: MandateEditForm, neighborhoods: List<String>, formatter: TenantFormatter): Map<String, String> {
+    fun summaries(
+        form: MandateEditForm,
+        mandate: Mandate,
+        neighborhoods: List<String>,
+        formatter: TenantFormatter,
+    ): Map<String, String> {
         val type = type(form)
-        val rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(form.propertyCategory, type, null) && FindPropertyRules.rooms(it) == null }
+        val rooms = form.rooms?.takeIf {
+            FindPropertyRules.needsRooms(form.propertyCategory, type, mandate.listingType) && FindPropertyRules.rooms(it) == null
+        }
         val area = area(form.area).getOrNull()
         val amenities = form.amenities.distinct().size
         val price = FindPropertyRules.parseAmount(form.priceAmount)?.takeIf { it > 0 }
         val comments = form.comments?.trim().orEmpty()
+        // A sale's amount is a one-off price or budget: no " / mois".
+        val sale = FindPropertyRules.isSale(mandate.listingType)
         return mapOf(
             "sector" to neighborhoods.joinToString(", ").ifEmpty { "Toute la ville" },
             "property" to listOfNotNull(
@@ -131,7 +150,7 @@ object MandateEditRules {
                 else -> "$amenities critères"
             },
             "budget" to listOfNotNull(
-                price?.let { formatter.money(it) + " / mois" } ?: "Montant à indiquer",
+                price?.let { formatter.money(it) + if (sale) "" else " / mois" } ?: "Montant à indiquer",
                 MandateLabels.MOVE_IN_LABELS[form.movingPeriod],
             ).joinToString(" · "),
             "comments" to when {
@@ -140,6 +159,13 @@ object MandateEditRules {
                 else -> comments
             },
         )
+    }
+
+    /** The moving-period group's legend: a landlord's availability, a buyer's purchase date, a renter's move. */
+    fun movingLegend(mandate: Mandate): String = when {
+        mandate.mandateType == MandateType.LISTING -> "Disponibilité du bien"
+        FindPropertyRules.isSale(mandate.listingType) -> "Quand souhaitez-vous acheter ?"
+        else -> "Date d'emménagement souhaitée"
     }
 
     /** The type; null for "Indifférent", no answer, or a value that isn't a type ([typeError] rejects it). */
@@ -154,13 +180,25 @@ object MandateEditRules {
         }
     }
 
-    private fun priceError(value: String?, owner: Boolean, formatter: TenantFormatter): String? {
+    private fun priceError(value: String?, mandate: Mandate, formatter: TenantFormatter): String? {
         val amount = FindPropertyRules.parseAmount(value)
         val currency = formatter.currency()
-        return if (amount == null || amount <= 0) {
-            if (owner) "Indiquez le loyer, en $currency par mois." else "Indiquez le budget, en $currency par mois."
-        } else {
-            FindPropertyRules.priceAmount(amount, formatter, null)
+        val owner = mandate.mandateType == MandateType.LISTING
+        val sale = FindPropertyRules.isSale(mandate.listingType)
+        return when {
+            amount == null || amount <= 0 -> when {
+                sale && owner -> "Indiquez le prix, en $currency."
+                sale -> "Indiquez le budget, en $currency."
+                owner -> "Indiquez le loyer, en $currency par mois."
+                else -> "Indiquez le budget, en $currency par mois."
+            }
+            // A seller's floor, worded as the offer wizard's (OfferPropertyRules): a sale price, not a budget.
+            sale && owner -> if (amount < FindPropertyRules.MIN_SALE_PRICE) {
+                "Indiquez un prix d'au moins ${formatter.money(FindPropertyRules.MIN_SALE_PRICE)}."
+            } else {
+                null
+            }
+            else -> FindPropertyRules.priceAmount(amount, formatter, mandate.listingType)
         }
     }
 

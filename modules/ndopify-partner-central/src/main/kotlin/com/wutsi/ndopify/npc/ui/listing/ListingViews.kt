@@ -10,6 +10,7 @@ import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
@@ -83,7 +84,7 @@ object ListingViews {
         val editable = ListingRules.editable(listing) && !readOnly
         val required = ListingRules.SECTIONS.filter { ListingRules.required(listing, it) }
         val done = required.count { ListingRules.done(listing, it) }
-        val left = required.filter { !ListingRules.done(listing, it) }.map { missing(it, images) }
+        val left = required.filter { !ListingRules.done(listing, it) }.map { missing(listing, it, images) }
         val published = listing.status == ListingStatus.PUBLISHED
         val rejections = ListingRules.rejections(listing)
         val toFix = rejections.mapNotNull { it.section }.toSet()
@@ -94,6 +95,7 @@ object ListingViews {
             id = listing.id,
             mandateId = listing.mandateId,
             title = if (readOnly) title.removePrefix(TITLE_PREFIX) else title,
+            sale = listing.listingType == ListingType.SALE,
             tag = ListingRules.tag(listing),
             status = listing.status,
             createdAt = formatter.date(listing.createdAt),
@@ -116,7 +118,7 @@ object ListingViews {
                 ListingRules.SECTIONS.map { section ->
                     ChecklistRow(
                         section = section,
-                        label = ListingRules.LABELS.getValue(section),
+                        label = ListingRules.label(listing, section),
                         url = "/listings/${listing.id}/${ListingRules.slug(section)}",
                         summary = summary(listing, section, neighborhood, images, formatter),
                         state = if (section in toFix) TO_FIX else state(listing, section),
@@ -248,7 +250,7 @@ object ListingViews {
     ): SectionView {
         val title =
             title(listing, listing.neighborhoodId?.let { locations[it]?.name } ?: locations[listing.cityId]?.name)
-        val heading = ListingRules.LABELS.getValue(section)
+        val heading = ListingRules.label(listing, section)
         val editable = ListingRules.editable(listing)
         val since = when {
             editable -> null
@@ -491,7 +493,7 @@ object ListingViews {
             draft -> {
                 val left = ListingRules.SECTIONS
                     .filter { ListingRules.required(listing, it) && !ListingRules.done(listing, it) }
-                    .map { ListingRules.LABELS.getValue(it) }
+                    .map { ListingRules.label(listing, it) }
                 "Annonce en brouillon : " +
                     if (left.isEmpty()) "prête à être envoyée." else "encore à faire, ${left.joinToString(", ")}."
             }
@@ -561,8 +563,9 @@ object ListingViews {
     }
 
     // "Emplacement", or what the photos lack: "la photo refusée, 3 photos"
-    private fun missing(section: ListingSection, images: List<ListingImage>?): String {
-        if (section != ListingSection.PHOTOS || images == null) return ListingRules.LABELS.getValue(section)
+    private fun missing(listing: Listing, section: ListingSection, images: List<ListingImage>?): String {
+        val label = ListingRules.label(listing, section)
+        if (section != ListingSection.PHOTOS || images == null) return label
 
         val good = good(images)
         val refused = images.size - good
@@ -574,7 +577,7 @@ object ListingViews {
                 else -> null
             },
             if (short > 0) plural(short, "photo", "photos") else null,
-        ).joinToString(", ").ifEmpty { ListingRules.LABELS.getValue(section) }
+        ).joinToString(", ").ifEmpty { label }
     }
 
     private fun summary(
@@ -611,12 +614,21 @@ object ListingViews {
         }
 
         ListingSection.TERMS -> {
-            val rent = MandateLabels.price(
-                Money(listing.price, listing.currencyCode, PeriodicityType.MONTHLY),
-                formatter,
-                compact = true,
-            )
-            rent + (listing.securityDeposit?.let { if (it > 0) " · caution $it mois" else " · sans caution" } ?: "")
+            if (listing.listingType == ListingType.SALE) {
+                // A seller's asking price only: no rent, no deposit (rental terms saved before are never shown)
+                MandateLabels.price(
+                    Money(listing.price, listing.currencyCode, listing.pricePeriodicityType),
+                    formatter,
+                    compact = true,
+                )
+            } else {
+                val rent = MandateLabels.price(
+                    Money(listing.price, listing.currencyCode, PeriodicityType.MONTHLY),
+                    formatter,
+                    compact = true,
+                )
+                rent + (listing.securityDeposit?.let { if (it > 0) " · caution $it mois" else " · sans caution" } ?: "")
+            }
         }
 
         ListingSection.PHOTOS -> images?.let {

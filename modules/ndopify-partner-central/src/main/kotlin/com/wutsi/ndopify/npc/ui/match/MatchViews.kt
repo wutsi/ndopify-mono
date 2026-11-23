@@ -114,7 +114,7 @@ object MatchViews {
                         ?: locations[listing.cityId]?.name
                         ?: "—"
                     ),
-                "Loyer" to MandateLabels.price(
+                MandateLabels.listingPriceTerm(mandate.listingType) to MandateLabels.price(
                     Money(listing.price, listing.currencyCode, listing.pricePeriodicityType),
                     formatter,
                     compact = true,

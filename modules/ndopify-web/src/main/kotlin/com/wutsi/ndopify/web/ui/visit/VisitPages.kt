@@ -4,6 +4,7 @@ import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Tenant
 import com.wutsi.ndopify.visit.dto.Visit
@@ -92,6 +93,7 @@ object VisitPages {
             status = visit.status,
             statusLabel = statusLabel,
             statusTone = statusTone,
+            sale = listing?.listingType == ListingType.SALE,
             type = visit.type,
             typeLabel = typeLabel,
             requestedSlot = VisitSlots.label(typeLabel, visit.requestedAt, tenant, formatter),

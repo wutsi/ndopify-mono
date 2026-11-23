@@ -5,6 +5,7 @@ import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
@@ -23,10 +24,13 @@ import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import java.time.Instant
+import java.time.LocalDate
 import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class MandateCardsTest {
     companion object {
@@ -82,6 +86,52 @@ class MandateCardsTest {
             ),
             card.facts,
         )
+    }
+
+    @Test
+    fun `a sale listing's card reads the price and the availability`() {
+        val card = card(
+            mandate = MANDATE.copy(
+                mandateType = MandateType.LISTING,
+                listingType = ListingType.SALE,
+                propertyType = PropertyType.LAND,
+                rooms = null,
+                comments = null,
+                price = Money(45_000_000, "XAF", PeriodicityType.NONE),
+                availableFrom = LocalDate.of(2026, 12, 1),
+            ),
+        )
+
+        assertTrue(card.sale)
+        assertEquals("Vendeur · Terrain", card.title)
+        assertEquals(
+            listOf(
+                "Secteurs" to "Bonapriso, Akwa",
+                "Prix" to "45M\u00a0FCFA",
+                "Disponibilité" to "Dès le 01 déc. 2026",
+            ),
+            card.facts,
+        )
+    }
+
+    @Test
+    fun `a sale search's card words the buyer`() {
+        val card = card(
+            mandate = MANDATE.copy(
+                listingType = ListingType.SALE,
+                price = Money(15_000_000, "XAF", PeriodicityType.NONE),
+            ),
+        )
+
+        assertTrue(card.sale)
+        assertEquals("Acheteur · Maison", card.title)
+        assertEquals(listOf("Secteurs", "Budget", "Achat prévu"), card.facts.map { it.first })
+        assertEquals("15M\u00a0FCFA", card.facts[1].second)
+    }
+
+    @Test
+    fun `a rental card is unchanged`() {
+        assertFalse(card().sale)
     }
 
     @Test

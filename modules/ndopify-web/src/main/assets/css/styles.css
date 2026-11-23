@@ -590,3 +590,97 @@ fieldset.step h3 { margin-bottom: var(--space-xl); }
   .wizard-actions { flex-direction: column-reverse; }
   .wizard-actions .btn { width: 100%; }
 }
+
+/* v2 — goal switch (Louer / Acheter, Mettre en location / Vendre): two links styled as a segmented pill.
+   Plain links, so it works without JavaScript. */
+.goal-switch {
+  display: inline-flex;
+  justify-self: start;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-full);
+  background: var(--surface-low);
+}
+.goal-switch a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-full);
+  color: var(--color-text-default);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+.goal-switch a:hover { color: var(--color-text-info); }
+.goal-switch a[aria-current="page"] {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+.goal-switch a:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* v2 — home goal picker: four cards, each a link to its landing page */
+.goal-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: var(--space-xl);
+}
+.goal-group h2 {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-lg);
+}
+.goal-list {
+  display: grid;
+  gap: var(--space-lg);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.goal-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-sm) var(--space-xl);
+  padding: var(--space-xl);
+  border: 1px solid var(--color-border-strong);
+  border-radius: calc(var(--radius-control) / 2);
+  background: var(--color-bg-default);
+  color: var(--color-text-default);
+  text-decoration: none;
+  transition: border-color 200ms ease-out, background-color 200ms ease-out;
+}
+.goal-card:hover { border-color: var(--color-primary); background: var(--color-bg-secondary); }
+.goal-card:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.goal-card__title {
+  font-family: var(--font-heading);
+  font-size: var(--h3-size);
+  font-weight: 700;
+  line-height: 1.3;
+}
+.goal-card__text { grid-column: 1; }
+.goal-card__arrow {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  font-size: 1.5rem;
+  color: var(--color-text-info);
+}
+
+/* v2 — a callout inside a section (buyers abroad, what Ndopify doesn't do) */
+.callout {
+  max-width: 48rem;
+  margin-top: var(--space-xl);
+  padding: var(--space-xl);
+  border: 1px solid var(--color-border-info);
+  background: var(--color-bg-info);
+  color: var(--color-text-info);
+}
+.callout h3 { font-size: 1.125rem; }
+.callout p:last-child { margin-bottom: 0; }
+
+/* v2 — in the hero grid, the eyebrow keeps its own width instead of stretching */
+.hero > .hero__eyebrow { justify-self: start; margin-bottom: 0; }

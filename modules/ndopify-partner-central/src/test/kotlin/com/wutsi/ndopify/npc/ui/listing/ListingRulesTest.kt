@@ -1,17 +1,148 @@
 package com.wutsi.ndopify.npc.ui.listing
 
 import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingSectionStatus
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import org.junit.jupiter.api.Test
+import java.time.LocalDate
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ListingRulesTest {
+    private val today = LocalDate.of(2026, 10, 26)
+
+    /** A seller's villa: a SALE listing, with rental terms left over from an earlier answer. */
+    private val sale = ListingViewsTest.LISTING.copy(
+        listingType = ListingType.SALE,
+        price = 45_000_000,
+        furnitureType = FurnitureType.FULLY_FURNISHED,
+        securityDeposit = 3,
+        advanceRent = 2,
+        leaseTerm = 12,
+        noticePeriod = 1,
+    )
+
+    private fun request(section: ListingSection, form: ListingSectionForm) = ListingRules.request(section, form, sale)
+
+    private fun errors(section: ListingSection, form: ListingSectionForm) =
+        ListingRules.errors(section, form, sale, today, FORMATTER)
+
+    @Test
+    fun `a sale's form shows no rental term`() {
+        val form = ListingSectionForm.of(sale, FORMATTER)
+
+        assertEquals("45 000 000", form.price!!.replace('\u00a0', ' ').replace('\u202f', ' '))
+        assertNull(form.furnitureType)
+        assertNull(form.securityDeposit)
+        assertNull(form.advanceRent)
+        assertNull(form.leaseTerm)
+        assertNull(form.noticePeriod)
+        assertEquals("2", form.rooms)
+    }
+
+    @Test
+    fun `a sale's terms section is the price and conditions`() {
+        assertEquals("Prix et conditions", ListingRules.label(sale, ListingSection.TERMS))
+        assertEquals("Prix et conditions enregistrés.", ListingRules.saved(sale, ListingSection.TERMS))
+        assertEquals("Loyer et conditions", ListingRules.label(ListingViewsTest.LISTING, ListingSection.TERMS))
+        assertEquals("Loyer et conditions enregistrés.", ListingRules.saved(ListingViewsTest.LISTING, ListingSection.TERMS))
+        assertEquals("Emplacement", ListingRules.label(sale, ListingSection.LOCATION))
+    }
+
+    @Test
+    fun `a sale's terms ask for the price only`() {
+        val errors = errors(
+            ListingSection.TERMS,
+            ListingSectionForm(
+                price = "",
+                securityDeposit = "2",
+                advanceRent = "3",
+                leaseTerm = "12",
+                noticePeriod = "1",
+                availableFrom = "2026-11-15",
+            ),
+        )
+
+        assertEquals(setOf("price"), errors.keys)
+        assertEquals("Indiquez le prix de vente.", errors["price"])
+        assertEquals(
+            "Indiquez le prix de vente en chiffres, en FCFA.",
+            errors(ListingSection.TERMS, ListingSectionForm(price = "45M", availableFrom = "2026-11-15"))["price"],
+        )
+    }
+
+    @Test
+    fun `a sale's terms request clears the rental-only terms`() {
+        val request = request(
+            ListingSection.TERMS,
+            ListingSectionForm(
+                price = "250 000 000",
+                securityDeposit = "2",
+                advanceRent = "3",
+                leaseTerm = "12",
+                noticePeriod = "1",
+                availableFrom = "2026-12-01",
+            ),
+        )
+
+        assertEquals(250_000_000L, request.price)
+        assertNull(request.securityDeposit)
+        assertNull(request.advanceRent)
+        assertNull(request.leaseTerm)
+        assertNull(request.noticePeriod)
+        assertEquals(LocalDate.of(2026, 12, 1), request.availableFrom)
+    }
+
+    @Test
+    fun `a sale listing's furniture is never asked`() {
+        val form = ListingSectionForm(
+            propertyCategory = "RESIDENTIAL",
+            propertyType = "VILLA",
+            rooms = "3",
+            bathrooms = "2",
+            area = "200",
+        )
+
+        assertFalse("furnitureType" in errors(ListingSection.PROPERTY, form).keys)
+        assertNull(request(ListingSection.PROPERTY, form.copy(furnitureType = "FULLY_FURNISHED")).furnitureType)
+    }
+
+    @Test
+    fun `a rental's terms are unchanged`() {
+        val rental = ListingViewsTest.LISTING
+        val form = ListingSectionForm(price = "", availableFrom = "2026-11-15")
+
+        assertEquals(
+            "Indiquez le loyer mensuel.",
+            ListingRules.errors(ListingSection.TERMS, form, rental, today, FORMATTER)["price"],
+        )
+        assertEquals(
+            "Indiquez le loyer en chiffres, en FCFA par mois.",
+            ListingRules.errors(ListingSection.TERMS, form.copy(price = "45M"), rental, today, FORMATTER)["price"],
+        )
+        assertEquals(
+            3,
+            ListingRules.request(ListingSection.TERMS, ListingSectionForm(price = "150 000", securityDeposit = "3"), rental)
+                .securityDeposit,
+        )
+        assertTrue(
+            "furnitureType" in ListingRules.errors(
+                ListingSection.PROPERTY,
+                ListingSectionForm(propertyCategory = "RESIDENTIAL", propertyType = "VILLA", rooms = "3", bathrooms = "2", area = "200"),
+                rental,
+                today,
+                FORMATTER,
+            ).keys,
+        )
+    }
+
     @Test
     fun sections() {
         assertEquals(

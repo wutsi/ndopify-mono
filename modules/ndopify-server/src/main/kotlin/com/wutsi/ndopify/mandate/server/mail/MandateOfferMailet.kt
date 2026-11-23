@@ -49,6 +49,7 @@ class MandateOfferMailet(
                         "tenant_name" to tenant.name,
                         "recipient_name" to fullName,
                         "listing_type" to MandateMailLabels.listingType(mandate),
+                        "sale" to MandateMailLabels.sale(mandate),
                         "property_type" to MandateMailLabels.propertyType(mandate),
                         "rooms" to mandate.rooms?.ifBlank { null },
                         "city" to city,

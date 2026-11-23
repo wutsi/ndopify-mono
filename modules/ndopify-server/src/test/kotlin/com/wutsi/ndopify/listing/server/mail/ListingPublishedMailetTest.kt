@@ -10,6 +10,7 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
@@ -109,9 +110,17 @@ class ListingPublishedMailetTest {
                 "listing_url" to "https://www.ndopify.com/yaounde/bastos/listing/1/appartement-a-louer-3-chambres-yaounde-bastos",
                 "image_url" to "https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg",
                 "recipient_name" to "Kim Possible",
+                "sale" to false,
             ),
             context(ListingPublishedMailet.TEMPLATE_AGENT),
         )
+    }
+
+    @Test
+    fun `a sale listing is flagged at sale`() {
+        val sale = listing.copy(listingType = ListingType.SALE)
+
+        assertEquals(true, context(ListingPublishedMailet.TEMPLATE_AGENT, sale)["sale"])
     }
 
     @Test

@@ -14,6 +14,8 @@ enum class AnswerState { PENDING, ACCEPTED, REJECTED, EXPIRED, UNAVAILABLE }
 data class MatchPage(
     val id: Long,
     val state: AnswerState,
+    /** True for a SALE search, whose proposal speaks of a *bien* and a purchase, never of a *logement*. */
+    val sale: Boolean,
     /** "Serge vous propose ce logement". */
     val title: String,
     /** "Pour votre recherche : appartement 3 chambres à Bonapriso, jusqu'à 250K FCFA / mois." */

@@ -141,4 +141,24 @@ class ContractSignatureMailetTest {
         verify(mailBodyResolver).resolve(any(), context.capture())
         assertEquals("Contrat", context.firstValue["contract_type"])
     }
+
+    @Test
+    fun `a sale listing contract is a mandate to sell`() {
+        mailet.send(contract.copy(type = ContractType.SALE_LISTING), party)
+
+        assertEquals("Mandat de vente", contractType())
+    }
+
+    @Test
+    fun `a rental listing contract is a mandate to let`() {
+        mailet.send(contract.copy(type = ContractType.LISTING), party)
+
+        assertEquals("Mandat de mise en location", contractType())
+    }
+
+    private fun contractType(): Any? {
+        val context = argumentCaptor<Map<String, Any?>>()
+        verify(mailBodyResolver).resolve(eq("/mail/contract/signature_request.mjml"), context.capture())
+        return context.firstValue["contract_type"]
+    }
 }

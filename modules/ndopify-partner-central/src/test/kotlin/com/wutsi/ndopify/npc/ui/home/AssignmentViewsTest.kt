@@ -77,6 +77,45 @@ class AssignmentViewsTest {
         assertEquals(NOW + 52 * MINUTE, view.expiresAt)
         assertEquals("52 min", view.remaining)
         assertFalse(view.urgent)
+        assertFalse(view.sale)
+    }
+
+    @Test
+    fun `a sale search's offer words the buyer`() {
+        val view = AssignmentViews.of(
+            ASSIGNMENT,
+            MANDATE.copy(listingType = ListingType.SALE, price = Money(15_000_000, "XAF", PeriodicityType.NONE)),
+            NAMES,
+            NOW,
+            FORMATTER,
+        )
+
+        assertTrue(view.sale)
+        assertEquals("Acheteur", view.title)
+        assertEquals("Budget", view.priceTerm)
+        assertEquals("15M\u00a0FCFA", view.price)
+        assertEquals("Achat prévu", view.movingTerm)
+    }
+
+    @Test
+    fun `a sale listing's offer words the seller`() {
+        val view = AssignmentViews.of(
+            ASSIGNMENT,
+            MANDATE.copy(
+                mandateType = MandateType.LISTING,
+                listingType = ListingType.SALE,
+                price = Money(45_000_000, "XAF", PeriodicityType.NONE),
+            ),
+            NAMES,
+            NOW,
+            FORMATTER,
+        )
+
+        assertTrue(view.sale)
+        assertEquals("Vendeur", view.title)
+        assertEquals("Prix", view.priceTerm)
+        assertEquals("45M\u00a0FCFA", view.price)
+        assertEquals("Disponibilité", view.movingTerm)
     }
 
     @Test

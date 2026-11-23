@@ -12,13 +12,14 @@
         <th:block th:if="${brand}">
             <nav aria-label="Navigation du pied de page">
                 <ul>
-                    <li><a th:href="@{/}">Locataires</a></li>
+                    <li><a th:href="@{/louer}">Louer</a></li>
+                    <li><a th:href="@{/acheter}">Acheter</a></li>
                     <li><a th:href="@{/owner}">Propriétaires</a></li>
                     <li><a th:href="@{/agent}">Agents</a></li>
                 </ul>
             </nav>
         </th:block>
-        <small th:text="${tagline}">© 2026 Ndopify. Logements vérifiés. Locations fiables.</small>
+        <small th:text="${tagline}">© 2026 Ndopify. Des agents vérifiés, à votre service.</small>
     </div>
 </footer>
 </body>

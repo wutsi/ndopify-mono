@@ -20,7 +20,7 @@
   prototype's: listing.js answers from canned replies, nothing on the server handles its form.
 */-->
 <body class="listing-page">
-<th:block th:replace="~{fragments/site-header :: header('home', 'Menu', true)}"></th:block>
+<th:block th:replace="~{fragments/site-header :: header(null, 'Menu', true)}"></th:block>
 
 <th:block th:replace="~{fragments/icon-sprite :: sprite}"></th:block>
 
@@ -75,9 +75,12 @@
   the fields' errors (the popup then has `is-open`). listing.js makes it a modal dialog and binds the WhatsApp number
   (E.164 in a hidden whatsappNumber); it never posts, nor fakes an answer. Hidden field: website, the honeypot;
   movingPeriod, one of the three periods. Everything else — city, type, budget — comes from the listing.
+  A closed SALE listing renders neither this popup nor its form (nothing can be asked for a property that is sold); a
+  closed RENTAL listing keeps them, as today.
 */-->
 <div aria-labelledby="visit-title" class="modal" id="visit"
-     th:classappend="${errors != null && !errors.isEmpty()} ? ' is-open'">
+     th:classappend="${errors != null && !errors.isEmpty()} ? ' is-open'"
+     th:if="${page.closedNotice == null or not page.sale}">
     <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
     <div class="modal__panel">
         <header class="modal__header">
@@ -121,7 +124,8 @@
                 <span aria-live="polite" class="field-error" th:text="${errors?.get('whatsappNumber')}"></span>
             </div>
             <div class="field">
-                <label id="moving-period-label">Date d'emménagement souhaitée</label>
+                <label id="moving-period-label"><th:block th:if="${page.sale}">Quand souhaitez-vous acheter ?</th:block><th:block
+                        th:unless="${page.sale}">Date d'emménagement souhaitée</th:block></label>
                 <div aria-labelledby="moving-period-label" class="option-grid" role="radiogroup">
                     <label><input name="movingPeriod" required type="radio" value="WITHIN_1_MONTH"
                                   th:checked="${interestForm?.movingPeriod == 'WITHIN_1_MONTH'}">Dans moins
@@ -217,7 +221,8 @@
 <script id="listing-photos" type="application/json" th:inline="javascript">
     /*[[${page.photos}]]*/ []
 </script>
-<div aria-label="Photos du logement" aria-modal="true" class="lightbox" data-lightbox hidden role="dialog">
+<div aria-modal="true" class="lightbox" data-lightbox hidden role="dialog"
+     th:attr="aria-label=${page.sale} ? 'Photos du bien' : 'Photos du logement'">
     <div class="lightbox__bar">
         <p aria-live="polite" class="lightbox__counter" data-lightbox-counter></p>
         <button class="lightbox__btn" data-lightbox-close type="button">
@@ -236,7 +241,7 @@
     </button>
 </div>
 
-<footer th:replace="~{fragments/site-footer :: footer('© 2026 Ndopify. Logements vérifiés. Locations fiables.', true)}"></footer>
+<footer th:replace="~{fragments/site-footer :: footer('© 2026 Ndopify. Des agents vérifiés, à votre service.', true)}"></footer>
 
 <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/js/intlTelInput.min.js"></script>
 </body>

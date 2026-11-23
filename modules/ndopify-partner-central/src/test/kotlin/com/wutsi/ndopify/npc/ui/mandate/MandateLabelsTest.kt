@@ -126,6 +126,81 @@ class MandateLabelsTest {
     }
 
     @Test
+    fun `a sale's parties are the seller and the buyer`() {
+        assertEquals("Vendeur", MandateLabels.party(MandateType.LISTING, ListingType.SALE))
+        assertEquals("Acheteur", MandateLabels.party(MandateType.SEARCH, ListingType.SALE))
+        assertEquals("Propriétaire", MandateLabels.party(MandateType.LISTING, ListingType.RENTAL))
+        assertEquals("Locataire", MandateLabels.party(MandateType.SEARCH, ListingType.RENTAL))
+
+        assertEquals(
+            "Vendeur · Terrain",
+            MandateLabels.title(
+                Mandate(mandateType = MandateType.LISTING, listingType = ListingType.SALE, propertyType = PropertyType.LAND),
+            ),
+        )
+        assertEquals(
+            "Acheteur · Maison",
+            MandateLabels.title(
+                Mandate(mandateType = MandateType.SEARCH, listingType = ListingType.SALE, propertyType = PropertyType.HOUSE),
+            ),
+        )
+    }
+
+    @Test
+    fun `the amount and date terms follow the listing type`() {
+        assertEquals("Loyer", MandateLabels.amountTerm(owner = true, listingType = ListingType.RENTAL))
+        assertEquals("Prix", MandateLabels.amountTerm(owner = true, listingType = ListingType.SALE))
+        assertEquals("Budget", MandateLabels.amountTerm(owner = false, listingType = ListingType.RENTAL))
+        assertEquals("Budget", MandateLabels.amountTerm(owner = false, listingType = ListingType.SALE))
+
+        assertEquals("Loyer", MandateLabels.listingPriceTerm(ListingType.RENTAL))
+        assertEquals("Prix", MandateLabels.listingPriceTerm(ListingType.SALE))
+        assertEquals("Loyer", MandateLabels.listingPriceTerm(null))
+
+        assertEquals("Disponibilité", MandateLabels.dateTerm(owner = true, listingType = ListingType.SALE))
+        assertEquals("Disponibilité", MandateLabels.dateTerm(owner = true, listingType = ListingType.RENTAL))
+        assertEquals("Achat prévu", MandateLabels.dateTerm(owner = false, listingType = ListingType.SALE))
+        assertEquals("Emménagement", MandateLabels.dateTerm(owner = false, listingType = ListingType.RENTAL))
+    }
+
+    @Test
+    fun `a sale's criteria read its price and its purchase date`() {
+        val listing = Mandate(
+            mandateType = MandateType.LISTING,
+            listingType = ListingType.SALE,
+            propertyType = PropertyType.LAND,
+            cityId = 1,
+            price = Money(45_000_000, "XAF", PeriodicityType.NONE),
+            availableFrom = LocalDate.of(2026, 12, 1),
+        )
+        val search = Mandate(
+            mandateType = MandateType.SEARCH,
+            listingType = ListingType.SALE,
+            propertyType = PropertyType.HOUSE,
+            cityId = 1,
+            price = Money(45_000_000, "XAF", PeriodicityType.NONE),
+            movingPeriod = MovingPeriod.WITHIN_3_MONTHS,
+        )
+
+        assertEquals(
+            "Prix" to "45\u00a0000\u00a0000\u00a0FCFA",
+            MandateLabels.criteria(listing, LOCATIONS, FORMATTER).first { it.first == "Prix" },
+        )
+        assertEquals(
+            "Disponibilité" to "Dès le 01 déc. 2026",
+            MandateLabels.criteria(listing, LOCATIONS, FORMATTER).first { it.first == "Disponibilité" },
+        )
+        assertEquals(
+            "Budget" to "45\u00a0000\u00a0000\u00a0FCFA",
+            MandateLabels.criteria(search, LOCATIONS, FORMATTER).first { it.first == "Budget" },
+        )
+        assertEquals(
+            "Achat prévu" to "Dans 1 à 3\u00a0mois",
+            MandateLabels.criteria(search, LOCATIONS, FORMATTER).first { it.first == "Achat prévu" },
+        )
+    }
+
+    @Test
     fun shortPropertyType() {
         assertEquals("Boutique", MandateLabels.shortPropertyType(PropertyType.RETAIL))
         assertEquals("Entrepôt", MandateLabels.shortPropertyType(PropertyType.INDUSTRIAL))

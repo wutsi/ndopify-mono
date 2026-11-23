@@ -16,7 +16,8 @@
             <span class="badge" th:classappend="${listing.closedNotice} ? 'badge--warning' : 'badge--info'"
                   th:text="${listing.typeBadge}">À louer</span>
             <span class="badge badge--success" th:if="${listing.verifiedAt}">
-                <svg aria-hidden="true" class="icon"><use href="#i-shield"/></svg>Logement audité
+                <svg aria-hidden="true" class="icon"><use href="#i-shield"/></svg><th:block
+                    th:text="${listing.sale} ? 'Bien audité' : 'Logement audité'">Logement audité</th:block>
             </span>
             <span class="badge badge--state" data-state-badge th:if="${state}" th:text="${state}">Vous intéresse</span>
         </p>
@@ -32,7 +33,8 @@
 </div>
 
 <!--/* Gallery: the hero and the 4 next photos; the viewer (#listing-photos) has them all. */-->
-<section aria-label="Photos du logement" class="gallery" th:fragment="gallery(listing)" th:unless="${#lists.isEmpty(listing.photos)}">
+<section class="gallery" th:fragment="gallery(listing)" th:unless="${#lists.isEmpty(listing.photos)}"
+         th:attr="aria-label=${listing.sale} ? 'Photos du bien' : 'Photos du logement'">
     <a th:each="photo, it : ${listing.photos}" th:if="${it.index < 5}"
        class="gallery__item" th:classappend="${it.first} ? 'gallery__item--hero'"
        th:data-photo="${it.index}" th:href="${photo.fullSrc}">
@@ -57,14 +59,20 @@
     <div class="audit-note" th:if="${listing.verifiedAt}">
         <svg aria-hidden="true" class="icon icon--lg"><use href="#i-shield"/></svg>
         <div>
-            <p><strong th:text="'Logement audité par Ndopify le ' + ${listing.verifiedAt} + '.'">Logement audité par Ndopify le 12 octobre 2026.</strong></p>
-            <p>Un agent vérifié a visité ce logement : compteurs, photos et position GPS ont été contrôlés
-                sur place.</p>
+            <p th:if="${listing.sale}"><strong th:text="'Bien audité par Ndopify le ' + ${listing.verifiedAt} + '.'">Bien
+                audité par Ndopify le 12 octobre 2026.</strong></p>
+            <p th:unless="${listing.sale}"><strong th:text="'Logement audité par Ndopify le ' + ${listing.verifiedAt} + '.'">Logement
+                audité par Ndopify le 12 octobre 2026.</strong></p>
+            <p th:if="${listing.sale}">Un agent vérifié a visité ce bien : photos, surface et position GPS ont été
+                contrôlés sur place. Ndopify vérifie l'agent, pas les documents du bien.</p>
+            <p th:unless="${listing.sale}">Un agent vérifié a visité ce logement : compteurs, photos et position GPS ont
+                été contrôlés sur place.</p>
         </div>
     </div>
 
     <section aria-labelledby="description-heading" class="listing__section" th:unless="${#lists.isEmpty(listing.description)}">
-        <h2 id="description-heading">À propos de ce logement</h2>
+        <h2 id="description-heading" th:text="${listing.sale} ? 'À propos de ce bien' : 'À propos de ce logement'">À propos
+            de ce logement</h2>
         <p th:each="paragraph : ${listing.description}" th:text="${paragraph}">Au 2e étage d'un petit immeuble calme.</p>
     </section>
 
@@ -88,9 +96,11 @@
     </section>
 
     <section aria-labelledby="terms-heading" class="listing__section" th:unless="${#lists.isEmpty(listing.terms)}">
-        <h2 id="terms-heading">Conditions de location</h2>
+        <h2 id="terms-heading" th:text="${listing.conditionsTitle}">Conditions de location</h2>
         <table class="terms-table">
-            <caption class="visually-hidden">Conditions de location du logement</caption>
+            <caption class="visually-hidden"
+                     th:text="${listing.sale} ? 'Prix et conditions du bien' : 'Conditions de location du logement'">Conditions
+                de location du logement</caption>
             <tbody>
             <tr th:each="term : ${listing.terms}"><th scope="row" th:text="${term.first}">Loyer</th><td th:text="${term.second}">175K FCFA / mois</td></tr>
             </tbody>

@@ -57,6 +57,23 @@ class ListingInterestRulesTest {
     }
 
     @Test
+    fun `a sale words the missing purchase horizon`() {
+        assertEquals(
+            mapOf("movingPeriod" to "Choisissez quand vous souhaitez acheter."),
+            ListingInterestRules.validate(valid.copy(movingPeriod = null), sale = true),
+        )
+        assertEquals(
+            "Choisissez quand vous souhaitez acheter.",
+            ListingInterestRules.validate(ListingInterestForm(), sale = true)["movingPeriod"],
+        )
+        // A rental keeps today's wording
+        assertEquals(
+            "Choisissez votre date d'emménagement.",
+            ListingInterestRules.validate(ListingInterestForm())["movingPeriod"],
+        )
+    }
+
+    @Test
     fun `the three moving periods are accepted`() {
         listOf(
             MovingPeriod.WITHIN_1_MONTH,

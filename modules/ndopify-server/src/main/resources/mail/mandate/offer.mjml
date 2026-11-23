@@ -17,10 +17,13 @@
                 <mj-text>
                     Bonjour <strong>{{recipient_name}}</strong>,
                 </mj-text>
-                <mj-text>
+                <mj-text>{{^sale}}
                     Un client recherche un bien à <strong>{{city}}</strong>, et nous vous proposons son mandat en
                     exclusivité.
-                </mj-text>
+                {{/sale}}{{#sale}}
+                    Un client cherche à acheter un bien à <strong>{{city}}</strong>, et nous vous proposons son mandat en
+                    exclusivité.
+                {{/sale}}</mj-text>
 
                 <!-- In an mj-text: MJML drops raw HTML outside of it -->
                 <mj-text>

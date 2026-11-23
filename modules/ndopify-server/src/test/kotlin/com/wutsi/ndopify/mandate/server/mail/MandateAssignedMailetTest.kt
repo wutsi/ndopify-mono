@@ -9,6 +9,7 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
@@ -86,6 +87,7 @@ class MandateAssignedMailetTest {
                 "agent_presentation" to "Agent immobilier à Yaoundé",
                 "agent_whatsapp" to "+237 6 70 00 00 20",
                 "agent_whatsapp_url" to "https://wa.me/237670000020",
+                "sale" to false,
             ),
             context.firstValue,
         )
@@ -124,6 +126,19 @@ class MandateAssignedMailetTest {
         mailet.send(mandate.copy(mandateType = MandateType.LISTING), customer, agent)
 
         verify(mailBodyResolver).resolve(eq("/mail/mandate/assigned_listing.mjml"), any())
+    }
+
+    @Test
+    fun `a sale listing mandate is flagged at sale`() {
+        mailet.send(
+            mandate.copy(mandateType = MandateType.LISTING, listingType = ListingType.SALE),
+            customer,
+            agent,
+        )
+
+        val context = argumentCaptor<Map<String, Any?>>()
+        verify(mailBodyResolver).resolve(eq("/mail/mandate/assigned_listing.mjml"), context.capture())
+        assertEquals(true, context.firstValue["sale"])
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.wutsi.ndopify.listing.server.mail
 
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.party.server.domain.PartyEntity
@@ -54,6 +55,7 @@ class ListingPublishedMailet(
             "neighbourhood" to listing.neighborhoodId?.let { id -> locationService.findByIdOrNull(id)?.name },
             "listing_url" to ListingUrls.publicUrl(tenant, listing),
             "image_url" to MailImages.imageUrl(listingImageService.cover(listing)?.url, imageService, MailImages.COVER),
+            "sale" to (listing.listingType == ListingType.SALE),
         )
 
         send(tenant, agent.party, SUBJECT_AGENT, TEMPLATE_AGENT, city, context)

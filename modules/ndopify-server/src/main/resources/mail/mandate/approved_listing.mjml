@@ -17,11 +17,15 @@
                 <mj-text>
                     Bonjour <strong>{{recipient_name}}</strong>,
                 </mj-text>
-                <mj-text>
+                <mj-text>{{^sale}}
                     Bonne nouvelle : <strong>{{customer_name}}</strong> a signé le mandat de mise en location
                     n° <strong>{{contract_number}}</strong>. Votre mandat est désormais
                     <span class="text-primary"><strong>approuvé</strong></span>.
-                </mj-text>
+                {{/sale}}{{#sale}}
+                    Bonne nouvelle : <strong>{{customer_name}}</strong> a signé le mandat de vente
+                    n° <strong>{{contract_number}}</strong>. Votre mandat est désormais
+                    <span class="text-primary"><strong>approuvé</strong></span>.
+                {{/sale}}</mj-text>
 
                 <!-- In an mj-text: MJML drops raw HTML outside of it -->
                 <mj-text>
@@ -51,10 +55,13 @@
                 <mj-text font-weight="bold" font-size="18px">
                     Prochaine étape :
                 </mj-text>
-                <mj-text>
+                <mj-text>{{^sale}}
                     Vous pouvez maintenant commercialiser le bien et organiser les visites avec les candidats.
                     Une fois l'affaire conclue, clôturez le mandat dans votre Espace agent en indiquant le prix final.
-                </mj-text>
+                {{/sale}}{{#sale}}
+                    Vous pouvez maintenant commercialiser le bien et organiser les visites avec les acheteurs.
+                    Une fois l'affaire conclue, clôturez le mandat dans votre Espace agent en indiquant le prix final.
+                {{/sale}}</mj-text>
 
                 {{#mandate_url}}
                 <!-- Button with class for CSS injection -->

@@ -6,11 +6,13 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
+import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -38,6 +40,7 @@ import java.time.ZoneOffset
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class ListingControllerTest {
     private val listing = Listing(
@@ -180,9 +183,60 @@ class ListingControllerTest {
         val errors = result.modelAndView?.model?.get("errors") as Map<*, *>
         assertEquals("Indiquez votre prénom.", errors["firstName"])
         assertEquals("Saisissez une adresse email valide.", errors["email"])
+        assertEquals("Choisissez votre date d'emménagement.", errors["movingPeriod"])
         assertEquals(false, result.modelAndView?.model?.get("done"))
         assertNotNull(result.modelAndView?.model?.get("interestForm"))
         verify(mandateClient, never()).create(any())
+    }
+
+    @Test
+    fun `a sale listing asks when the buyer wants to buy`() {
+        doReturn(listing.copy(listingType = ListingType.SALE)).whenever(listingClient).get(123)
+
+        val result = interest("firstName" to "Awa", "lastName" to "Ndiaye", "email" to "awa.ndiaye@gmail.com", "whatsappNumber" to "+237650000001")
+
+        val page = result.modelAndView?.model?.get("page") as ListingPage
+        assertTrue(page.sale)
+        val errors = result.modelAndView?.model?.get("errors") as Map<*, *>
+        assertEquals("Choisissez quand vous souhaitez acheter.", errors["movingPeriod"])
+        verify(mandateClient, never()).create(any())
+    }
+
+    @Test
+    fun `a rental listing keeps the moving date message`() {
+        val result = interest("firstName" to "Awa", "lastName" to "Ndiaye", "email" to "awa.ndiaye@gmail.com", "whatsappNumber" to "+237650000001")
+
+        val errors = result.modelAndView?.model?.get("errors") as Map<*, *>
+        assertEquals("Choisissez votre date d'emménagement.", errors["movingPeriod"])
+    }
+
+    @Test
+    fun `the listing is read once more to word a missing horizon`() {
+        interest("firstName" to "Awa", "lastName" to "Ndiaye", "email" to "awa.ndiaye@gmail.com", "whatsappNumber" to "+237650000001")
+
+        // The type lookup, then the page's own read
+        verify(listingClient, times(2)).get(123)
+    }
+
+    @Test
+    fun `no extra read of the listing when another field is invalid`() {
+        interest("lastName" to "Ndiaye", "email" to "awa.ndiaye@gmail.com", "whatsappNumber" to "+237650000001", "movingPeriod" to "WITHIN_1_MONTH")
+
+        verify(listingClient, times(1)).get(123)
+    }
+
+    @Test
+    fun `no extra read of the listing on a valid submission`() {
+        interest(
+            "firstName" to "Awa",
+            "lastName" to "Ndiaye",
+            "email" to "awa.ndiaye@gmail.com",
+            "whatsappNumber" to "+237650000001",
+            "movingPeriod" to "WITHIN_1_MONTH",
+        )
+
+        // Only the confirmation's own read to know where to redirect
+        verify(listingClient, times(1)).get(123)
     }
 
     @Test

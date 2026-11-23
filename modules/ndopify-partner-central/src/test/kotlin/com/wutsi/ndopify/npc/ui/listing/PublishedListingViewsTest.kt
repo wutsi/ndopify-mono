@@ -1,10 +1,13 @@
 package com.wutsi.ndopify.npc.ui.listing
 
+import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.ImageVariant
 import com.wutsi.ndopify.listing.dto.ListingImage
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
@@ -56,6 +59,48 @@ class PublishedListingViewsTest {
             PrivateLocationView("4.03350, 9.69420", "https://maps.google.com/?q=4.0335,9.6942", "Immeuble bleu, 3e porte."),
             view.privateLocation,
         )
+    }
+
+    @Test
+    fun `a sale's terms are its price and its availability`() {
+        val sale = listing.copy(
+            listingType = ListingType.SALE,
+            price = 45_000_000,
+            pricePeriodicityType = PeriodicityType.NONE,
+            securityDeposit = 3,
+            advanceRent = 2,
+            leaseTerm = 12,
+            noticePeriod = 1,
+        )
+
+        val view = PublishedListingViews.of(sale, ListingViewsTest.IMAGES, locations, formatter, owner = true)
+
+        assertEquals(
+            listOf(
+                SpecView("Prix", "45\u00a0000\u00a0000\u00a0FCFA"),
+                SpecView("Disponible", "À partir du 01 nov. 2026"),
+            ),
+            view.terms,
+        )
+    }
+
+    @Test
+    fun `a sale's sheet never shows furniture`() {
+        val furnished = listing.copy(furnitureType = FurnitureType.FULLY_FURNISHED)
+
+        val rental = PublishedListingViews.of(furnished, ListingViewsTest.IMAGES, locations, formatter, owner = true)
+        assertTrue(rental.facts.any { it.icon == "furnished" })
+        assertTrue(rental.property.any { it.label == "Ameublement" })
+
+        val sale = PublishedListingViews.of(
+            furnished.copy(listingType = ListingType.SALE),
+            ListingViewsTest.IMAGES,
+            locations,
+            formatter,
+            owner = true,
+        )
+        assertTrue(sale.facts.none { it.icon == "furnished" })
+        assertTrue(sale.property.none { it.label == "Ameublement" })
     }
 
     @Test

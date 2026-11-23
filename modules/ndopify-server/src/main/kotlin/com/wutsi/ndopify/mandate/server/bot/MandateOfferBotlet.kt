@@ -52,7 +52,7 @@ class MandateOfferBotlet(
         val lines = mutableListOf(
             "📋 Nouveau mandat : " + criteria(mandate) +
                 (MandateMailLabels.neighbourhoods(mandate, locationService)?.let { " ($it)" } ?: "") +
-                " — ${MandateMailLabels.budget(mandate, formatter)}" + purchase(mandate),
+                MandateMailLabels.amount(mandate, formatter) + purchase(mandate),
         )
         if (mandate.mandateType == MandateType.LISTING) {
             details(mandate, formatter)?.let { lines.add(it) }

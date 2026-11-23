@@ -41,11 +41,11 @@
                     <p class="mandate__meta" th:text="${s.meta}" data-section-meta>Annonce · Appartement, Bonapriso · mandat n° 203</p>
                     <!-- The instruction is for the visit: not once sent. -->
                     <p th:if="${e}" th:switch="${s.slug}" data-section-instruction>
-                        <th:block th:case="'location'">Vérifiez le quartier, et notez ce qui aidera les locataires à trouver le bien.</th:block>
+                        <th:block th:case="'location'" th:text="${sale} ? 'Vérifiez le quartier, et notez ce qui aidera les acheteurs à trouver le bien.' : 'Vérifiez le quartier, et notez ce qui aidera les locataires à trouver le bien.'">Vérifiez le quartier, et notez ce qui aidera les locataires à trouver le bien.</th:block>
                         <th:block th:case="'gps'">Placez-vous devant l'entrée du bien, à l'extérieur, puis relevez sa position.</th:block>
                         <th:block th:case="'property'">Comptez les pièces sur place et corrigez ce qui ne correspond pas aux réponses du propriétaire.</th:block>
                         <th:block th:case="'amenities'">Cochez ce que vous constatez sur place, pas seulement ce qu'annonce le propriétaire.</th:block>
-                        <th:block th:case="'terms'">Indiquez les conditions convenues avec le propriétaire&nbsp;: elles peuvent différer du mandat.</th:block>
+                        <th:block th:case="'terms'"><th:block th:if="${sale}">Indiquez le prix et les conditions convenus avec le vendeur&nbsp;: ils peuvent différer du mandat.</th:block><th:block th:unless="${sale}">Indiquez les conditions convenues avec le propriétaire&nbsp;: elles peuvent différer du mandat.</th:block></th:block>
                         <th:block th:case="'remarks'">Ce que le formulaire ne demande pas, et qui aide à mieux décrire le bien.</th:block>
                     </p>
                 </div>
@@ -107,8 +107,7 @@
                     */-->
                     <th:block th:if="${s.slug == 'gps'}">
                         <div class="field gps">
-                            <p class="field__optional" id="gps-hint" th:if="${e}" data-gps-hint>Les locataires et les visiteurs s'en serviront pour trouver le
-                                bien&nbsp;: vérifiez-la sur la carte avant d'enregistrer.</p>
+                            <p class="field__optional" id="gps-hint" th:if="${e}" data-gps-hint><th:block th:if="${sale}">Les acheteurs et les visiteurs s'en serviront pour trouver le bien&nbsp;: vérifiez-la sur la carte avant d'enregistrer.</th:block><th:block th:unless="${sale}">Les locataires et les visiteurs s'en serviront pour trouver le bien&nbsp;: vérifiez-la sur la carte avant d'enregistrer.</th:block></p>
                             <div class="count-grid" data-gps-manual>
                                 <div class="field">
                                     <label class="field__label" for="latitude">Latitude</label>
@@ -159,7 +158,7 @@
                             <p class="owner-value" th:if="${ownerHints['propertyType']}" th:text="${ownerHints['propertyType']}" data-owner-for="propertyType"></p>
                             <p th:replace="~{:: error('propertyType')}"></p>
                         </fieldset>
-                        <fieldset class="choices" aria-describedby="furnitureType-error" data-applies="furniture" th:if="${e or !#strings.isEmpty(a.furnitureType)}">
+                        <fieldset class="choices" aria-describedby="furnitureType-error" data-applies="furniture" th:if="${!sale and (e or !#strings.isEmpty(a.furnitureType))}">
                             <legend class="choices__legend">Ameublement</legend>
                             <div class="choices__grid choices__grid--2">
                                 <label class="choice" th:if="${e or a.furnitureType == 'UNFURNISHED'}"><input name="furnitureType" type="radio" value="UNFURNISHED"
@@ -263,20 +262,20 @@
                         <p class="owner-value" th:if="${ownerHints['amenities']}" th:text="${ownerHints['amenities']}" data-owner-for="amenities"></p>
                     </th:block>
 
-                    <!--/* ---------- Loyer et conditions ---------- */-->
+                    <!--/* ---------- Loyer et conditions (a sale: prix et conditions) ---------- */-->
                     <th:block th:if="${s.slug == 'terms'}">
                         <div class="field" th:if="${e or !#strings.isEmpty(a.price)}">
-                            <label class="field__label" for="price">Loyer mensuel</label>
+                            <label class="field__label" for="price" th:text="${sale} ? 'Prix' : 'Loyer mensuel'">Loyer mensuel</label>
                             <div class="input-unit">
                                 <input class="input" id="price" name="price" type="text" inputmode="numeric" autocomplete="off"
                                        data-kind="amount" aria-describedby="price-error" th:value="${a.price}" th:disabled="${!e}"
                                        th:attr="aria-invalid=${errors['price'] != null} ? 'true' : null"><span aria-hidden="true" class="input-unit__suffix"
-                                      th:text="|${currency} / mois|">FCFA / mois</span>
+                                      th:text="${sale ? currency : currency + ' / mois'}">FCFA / mois</span>
                             </div>
                             <p class="owner-value" th:if="${ownerHints['price']}" th:text="${ownerHints['price']}" data-owner-for="price"></p>
                             <p th:replace="~{:: error('price')}"></p>
                         </div>
-                        <div class="field" th:if="${e or !#strings.isEmpty(a.securityDeposit)}">
+                        <div class="field" th:if="${!sale and (e or !#strings.isEmpty(a.securityDeposit))}">
                             <label class="field__label" for="securityDeposit">Caution</label>
                             <select class="input select" id="securityDeposit" name="securityDeposit" aria-describedby="securityDeposit-error"
                                     th:disabled="${!e}" th:attr="aria-invalid=${errors['securityDeposit'] != null} ? 'true' : null">
@@ -287,7 +286,7 @@
                             <p class="owner-value" th:if="${ownerHints['securityDeposit']}" th:text="${ownerHints['securityDeposit']}" data-owner-for="securityDeposit"></p>
                             <p th:replace="~{:: error('securityDeposit')}"></p>
                         </div>
-                        <div class="field" th:if="${e or !#strings.isEmpty(a.advanceRent)}">
+                        <div class="field" th:if="${!sale and (e or !#strings.isEmpty(a.advanceRent))}">
                             <label class="field__label" for="advanceRent">Avance de loyer <span class="field__optional">(si applicable)</span></label>
                             <select class="input select" id="advanceRent" name="advanceRent" aria-describedby="advanceRent-error" th:disabled="${!e}">
                                 <option value="">Aucune avance</option>
@@ -297,7 +296,7 @@
                             <p class="owner-value" th:if="${ownerHints['advanceRent']}" th:text="${ownerHints['advanceRent']}" data-owner-for="advanceRent"></p>
                             <p th:replace="~{:: error('advanceRent')}"></p>
                         </div>
-                        <div class="field" th:if="${e or !#strings.isEmpty(a.leaseTerm)}">
+                        <div class="field" th:if="${!sale and (e or !#strings.isEmpty(a.leaseTerm))}">
                             <label class="field__label" for="leaseTerm">Durée du bail <span class="field__optional">(facultatif)</span></label>
                             <select class="input select" id="leaseTerm" name="leaseTerm" aria-describedby="leaseTerm-error" th:disabled="${!e}">
                                 <option value="">Non précisée</option>
@@ -306,7 +305,7 @@
                             </select>
                             <p th:replace="~{:: error('leaseTerm')}"></p>
                         </div>
-                        <div class="field" th:if="${e or !#strings.isEmpty(a.noticePeriod)}">
+                        <div class="field" th:if="${!sale and (e or !#strings.isEmpty(a.noticePeriod))}">
                             <label class="field__label" for="noticePeriod">Préavis de départ <span class="field__optional">(facultatif)</span></label>
                             <select class="input select" id="noticePeriod" name="noticePeriod" aria-describedby="noticePeriod-error" th:disabled="${!e}">
                                 <option value="">Non précisé</option>

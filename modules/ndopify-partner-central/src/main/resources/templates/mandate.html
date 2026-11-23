@@ -54,7 +54,8 @@
                 <div class="page-intro mandate-intro">
                     <div class="mandate-intro__head">
                         <h1 class="mandate-title"><span th:replace="~{fragments/mandate-kind :: icon(${m.owner})}"></span><span
-                                th:text="${m.title}">Locataire · Maison</span></h1>
+                                data-mandate-title th:text="${m.title}">Locataire · Maison</span><span class="status-tag status-tag--info"
+                                th:if="${m.sale}" data-deal-tag>Vente</span></h1>
                         <p th:class="|status-tag status-tag--${m.tag.style}|" th:text="${m.tag.label}">Assigné</p>
                     </div>
                     <p class="mandate__meta">Mandat n° <span th:text="${m.id}">201</span><th:block th:if="${m.acceptedAt}">
@@ -223,8 +224,7 @@
                         <details class="assignment__details">
                             <summary>Et ensuite&nbsp;?</summary>
                             <div class="assignment__details-body">
-                                <p><span th:text="${m.owner} ? 'Présentez le bien aux locataires et organisez les visites.' : 'Proposez des biens au client et organisez les visites.'">Proposez
-                                    des biens au client et organisez les visites.</span> <span
+                                <p><span th:text="${m.nextStepHint}">Proposez des biens au client et organisez les visites.</span> <span
                                     th:text="${m.sale} ? 'Une fois l\'acte de vente signé, fermez le mandat (en bas de page) en indiquant le prix de vente final.' : 'Une fois le bail signé, fermez le mandat (en bas de page) en indiquant le loyer convenu.'">Une fois le bail signé, fermez le
                                     mandat (en bas de page) en indiquant le loyer convenu.</span></p>
                             </div>
@@ -396,7 +396,7 @@
                                             <dl class="match__facts" data-match-facts>
                                                 <div th:each="fact : ${match.facts}">
                                                     <dt class="visually-hidden" th:text="${fact.first}">Quartier</dt>
-                                                    <dd th:text="${fact.second}" th:classappend="${fact.first == 'Loyer'} ? 'match__rent'">Bonapriso</dd>
+                                                    <dd th:text="${fact.second}" th:classappend="${fact.first == 'Loyer' or fact.first == 'Prix'} ? 'match__rent'">Bonapriso</dd>
                                                 </div>
                                             </dl>
                                             <!-- Sent: one meta line. A sent, unanswered match (or one the client is interested in

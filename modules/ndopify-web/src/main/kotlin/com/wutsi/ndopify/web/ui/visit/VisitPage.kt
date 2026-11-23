@@ -19,6 +19,8 @@ data class VisitPage(
     val statusLabel: String,
     /** "info", "success" or "neutral": the badge's tone, matching `visite.js`. */
     val statusTone: String,
+    /** True for a SALE listing: the page speaks of the *bien* and of the purchase, never of a *logement*, a *dossier* or a *bail*. */
+    val sale: Boolean,
     val type: VisitType,
     /** "Sur place" / "Visite vidéo" ("Visite" when unknown). */
     val typeLabel: String,

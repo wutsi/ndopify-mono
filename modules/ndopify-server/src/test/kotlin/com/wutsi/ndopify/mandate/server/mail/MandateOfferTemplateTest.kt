@@ -89,6 +89,22 @@ class MandateOfferTemplateTest {
     }
 
     @Test
+    fun `a sale search asks the agent to help a buyer`() {
+        val html = resolver.resolve(MandateOfferMailet.TEMPLATE, context + mapOf("sale" to true))
+
+        assertTrue(html.contains("Un client cherche à acheter un bien"))
+        assertFalse(html.contains("Un client recherche un bien à"))
+    }
+
+    @Test
+    fun `a rental search keeps its rental wording`() {
+        val html = resolver.resolve(MandateOfferMailet.TEMPLATE, context + mapOf("sale" to false))
+
+        assertTrue(html.contains("Un client recherche un bien à"))
+        assertFalse(html.contains("cherche à acheter"))
+    }
+
+    @Test
     fun `a rental says no purchase answer`() {
         val html = resolver.resolve(
             MandateOfferMailet.TEMPLATE,

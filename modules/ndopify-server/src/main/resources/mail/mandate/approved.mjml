@@ -22,6 +22,12 @@
                     n° <strong>{{contract_number}}</strong>. Votre mandat est désormais
                     <span class="text-primary"><strong>approuvé</strong></span>.
                 </mj-text>
+                {{#sale}}
+                <mj-text>
+                    Votre client <strong>{{customer_name}}</strong> cherche à acheter un bien à
+                    <strong>{{city}}</strong>.
+                </mj-text>
+                {{/sale}}
 
                 <!-- In an mj-text: MJML drops raw HTML outside of it -->
                 <mj-text>

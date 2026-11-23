@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.contract.dto.Contract
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -52,6 +53,33 @@ class MandateRulesTest {
         assertEquals("sa recherche", client.search)
         assertEquals("Sa recherche", client.searchUpper)
         assertEquals("au client", client.to)
+    }
+
+    @Test
+    fun `a sale's customer is the seller or the buyer`() {
+        val seller = MandateRules.words(MandateType.LISTING, ListingType.SALE)
+        assertEquals("Vendeur", seller.role)
+        assertEquals("le vendeur", seller.the)
+        assertEquals("Le vendeur", seller.theUpper)
+        assertEquals("du vendeur", seller.of)
+        assertEquals("son bien", seller.search)
+        assertEquals("Son bien", seller.searchUpper)
+        assertEquals("au vendeur", seller.to)
+
+        val buyer = MandateRules.words(MandateType.SEARCH, ListingType.SALE)
+        assertEquals("Acheteur", buyer.role)
+        assertEquals("l'acheteur", buyer.the)
+        assertEquals("L'acheteur", buyer.theUpper)
+        assertEquals("de l'acheteur", buyer.of)
+        assertEquals("sa recherche", buyer.search)
+        assertEquals("Sa recherche", buyer.searchUpper)
+        assertEquals("à l'acheteur", buyer.to)
+
+        // A rental keeps the landlord's and the client's words.
+        assertEquals("au bailleur", MandateRules.words(MandateType.LISTING, ListingType.RENTAL).to)
+        assertEquals("au client", MandateRules.words(MandateType.SEARCH, ListingType.RENTAL).to)
+        assertEquals("Bailleur", MandateRules.words(MandateType.LISTING, ListingType.RENTAL).role)
+        assertEquals("Client", MandateRules.words(MandateType.SEARCH, ListingType.RENTAL).role)
     }
 
     @Test

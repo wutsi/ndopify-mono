@@ -107,6 +107,16 @@ class OwnerTemplateTest {
     }
 
     @Test
+    fun `the switch offers the sale page and keeps the rental wording`() {
+        val page = render("tenant" to tenant, "offerPropertyUrl" to "https://partner.ndopify.cm/offer-property")
+
+        assertEquals(listOf("/owner", "/owner/sell"), page.select("nav.goal-switch a").map { it.attr("href") })
+        assertEquals("Mettre en location", page.selectFirst("nav.goal-switch a[aria-current=page]")?.text())
+        assertTrue(page.text().contains("1 mois"))
+        assertTrue(page.text().contains("à la signature du bail"))
+    }
+
+    @Test
     fun `no pre-MVP promise`() {
         val text = render("tenant" to tenant, "offerPropertyUrl" to "https://partner.ndopify.cm/offer-property").text()
 

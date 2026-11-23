@@ -228,7 +228,7 @@
                         </section>
 
                         <section class="listing-sheet__block" th:if="${!#lists.isEmpty(l.published.terms)}">
-                            <h3>Loyer et conditions</h3>
+                            <h3 th:text="${l.sale} ? 'Prix et conditions' : 'Loyer et conditions'">Loyer et conditions</h3>
                             <dl class="listing-specs">
                                 <div th:each="spec : ${l.published.terms}">
                                     <dt th:text="${spec.label}">Loyer</dt>

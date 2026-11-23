@@ -48,6 +48,7 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
 import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.refdata.dto.Money
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
@@ -347,6 +348,7 @@ class MandateTemplateTest {
         assertEquals("listing", page.selectFirst("h1 [data-mandate-kind]")?.attr("data-mandate-kind"))
         assertEquals("Le bailleur", page.selectFirst("#contact-title")?.text())
         assertEquals("Bailleur", page.selectFirst("[data-contact-role]")?.text())
+        assertEquals("Modifier les coordonnées du bailleur", page.selectFirst("[data-contact-edit]")?.attr("aria-label"))
         assertEquals("Son bien", page.selectFirst("#search-title")?.text())
         assertTrue(page.text().contains("Présentez le bien aux locataires et organisez les visites."))
     }
@@ -669,6 +671,37 @@ class MandateTemplateTest {
         val page = render(APPROVED)
 
         assertTrue(page.text().contains("Une fois le bail signé, fermez le mandat (en bas de page) en indiquant le loyer convenu."))
+        assertNull(page.selectFirst("[data-deal-tag]"))
+    }
+
+    @Test
+    fun `a sale search's page words the buyer`() {
+        val page = render(APPROVED.copy(listingType = ListingType.SALE))
+
+        assertEquals("Acheteur · Maison", page.selectFirst("[data-mandate-title]")?.text())
+        assertEquals("Vente", page.selectFirst("h1 [data-deal-tag]")?.text())
+        assertEquals("status-tag status-tag--info", page.selectFirst("h1 [data-deal-tag]")?.className())
+        assertEquals("Acheteur", page.selectFirst("[data-contact-role]")?.text())
+        assertEquals("L'acheteur", page.selectFirst("#contact-title")?.text())
+        assertEquals("Modifier les coordonnées de l'acheteur", page.selectFirst("[data-contact-edit]")?.attr("aria-label"))
+        assertTrue(page.text().contains("Proposez des biens à l'acheteur et organisez les visites."))
+        assertFalse(page.text().contains("Proposez des biens au client"))
+        assertFalse(page.text().contains("au loyer de"))
+        assertFalse(page.text().contains("locataire"))
+    }
+
+    @Test
+    fun `a sale listing's page words the seller`() {
+        val page = render(APPROVED.copy(mandateType = MandateType.LISTING, listingType = ListingType.SALE))
+
+        assertEquals("Vendeur · Maison", page.selectFirst("[data-mandate-title]")?.text())
+        assertEquals("Vente", page.selectFirst("h1 [data-deal-tag]")?.text())
+        assertEquals("Vendeur", page.selectFirst("[data-contact-role]")?.text())
+        assertEquals("Le vendeur", page.selectFirst("#contact-title")?.text())
+        assertEquals("Modifier les coordonnées du vendeur", page.selectFirst("[data-contact-edit]")?.attr("aria-label"))
+        assertTrue(page.text().contains("Présentez le bien aux acheteurs et organisez les visites."))
+        assertFalse(page.text().contains("Présentez le bien aux locataires"))
+        assertFalse(page.text().contains("bailleur"))
     }
 
     @Test
@@ -1041,6 +1074,52 @@ class MandateTemplateTest {
     // Biens correspondants
 
     private val proposedAt = date("2026-10-28T10:00:00Z")
+
+    @Test
+    fun `a sale search's match cards read the price and a purchase`() {
+        doReturn(listOf(MatchFixtures.MATCH_A.copy(mandateId = 201))).whenever(matchClient).search(any(), any(), any())
+        doReturn(
+            listOf(
+                MatchFixtures.LISTING_A.copy(
+                    cityId = DOUALA,
+                    neighborhoodId = BONAPRISO,
+                    listingType = ListingType.SALE,
+                    price = 240_000_000,
+                    pricePeriodicityType = PeriodicityType.NONE,
+                ),
+            ),
+        ).whenever(listingClient).searchByIds(any())
+
+        val page = render(APPROVED.copy(listingType = ListingType.SALE))
+
+        val card = page.selectFirst("[data-match-id=9001]")!!
+        assertEquals(
+            listOf("Correspondance", "Quartier", "Prix", "Disponibilité"),
+            card.select("[data-match-facts] dt").map { it.text() },
+        )
+        val values = card.select("[data-match-facts] dd")
+        assertEquals("240M FCFA", values[2].text().replace('\u00a0', ' '))
+        assertTrue(values[2].hasClass("match__rent"))
+        assertEquals("Dès le 01 déc. 2026", values[3].text())
+        assertTrue(card.select("[data-match-fit] li").any { it.text().contains("Disponible avant votre achat") })
+
+        val section = page.selectFirst("[data-matches-section]")!!
+        assertFalse(section.text().contains("Loyer"))
+        assertFalse(section.text().contains("/ mois"))
+    }
+
+    @Test
+    fun `a rental search's match cards are unchanged`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201))
+
+        val card = render(APPROVED).selectFirst("[data-match-id=9001]")!!
+
+        assertEquals(
+            listOf("Correspondance", "Quartier", "Loyer", "Disponibilité"),
+            card.select("[data-match-facts] dt").map { it.text() },
+        )
+        assertTrue(card.select("[data-match-fit] li").any { it.text().contains("Disponible avant la date d'emménagement") })
+    }
 
     private fun withMatches(vararg matches: com.wutsi.ndopify.match.dto.Match) {
         doReturn(matches.toList()).whenever(matchClient).search(any(), any(), any())

@@ -20,7 +20,7 @@ class ListingFormRulesTest {
     private val today = LocalDate.of(2026, 10, 26)
 
     private fun errors(section: ListingSection, form: ListingSectionForm) =
-        ListingRules.errors(section, form, today, formatter)
+        ListingRules.errors(section, form, LISTING, today, formatter)
 
     // A valid answer for each section
     private val location = ListingSectionForm(neighborhoodId = "3001", landmark = "Derrière l'école")
@@ -113,7 +113,7 @@ class ListingFormRulesTest {
         val studio = property.copy(propertyType = "STUDIO", rooms = "abc", livingRooms = "abc", levels = "abc")
 
         assertEquals(emptyMap(), errors(ListingSection.PROPERTY, studio))
-        val request = ListingRules.request(ListingSection.PROPERTY, studio.copy(floorLevel = "2"))
+        val request = ListingRules.request(ListingSection.PROPERTY, studio.copy(floorLevel = "2"), LISTING)
         assertNull(request.rooms)
         assertNull(request.livingRooms)
         assertNull(request.levels)
@@ -122,7 +122,7 @@ class ListingFormRulesTest {
 
     @Test
     fun `property - request`() {
-        val request = ListingRules.request(ListingSection.PROPERTY, property.copy(version = 4, parkings = "1", kitchens = ""))
+        val request = ListingRules.request(ListingSection.PROPERTY, property.copy(version = 4, parkings = "1", kitchens = ""), LISTING)
 
         assertEquals(4L, request.version)
         assertEquals(ListingSection.PROPERTY, request.section)
@@ -172,7 +172,7 @@ class ListingFormRulesTest {
             errors(ListingSection.AMENITIES, ListingSectionForm(roadAccess = "helicopter")),
         )
 
-        val request = ListingRules.request(ListingSection.AMENITIES, ListingSectionForm(roadAccess = "trackAccessibleByCar", solarPanel = true))
+        val request = ListingRules.request(ListingSection.AMENITIES, ListingSectionForm(roadAccess = "trackAccessibleByCar", solarPanel = true), LISTING)
         assertEquals(false, request.roadPaved)
         assertEquals(true, request.trackAccessibleByCar)
         assertEquals(false, request.trackInaccessibleByCar)
@@ -221,7 +221,8 @@ class ListingFormRulesTest {
     fun `terms - request`() {
         val request = ListingRules.request(
             ListingSection.TERMS,
-            terms.copy(price = "150 000", advanceRent = "2", leaseTerm = "", noticePeriod = "1"),
+            terms.copy(price = "150 000", advanceRent = "2", leaseTerm = "", noticePeriod = "1"),
+            LISTING,
         )
 
         assertEquals(150_000L, request.price)
@@ -230,24 +231,24 @@ class ListingFormRulesTest {
         assertNull(request.leaseTerm)
         assertEquals(1, request.noticePeriod)
         assertEquals(LocalDate.of(2026, 11, 15), request.availableFrom)
-        assertNull(ListingRules.request(ListingSection.TERMS, terms.copy(securityDeposit = "")).securityDeposit)
+        assertNull(ListingRules.request(ListingSection.TERMS, terms.copy(securityDeposit = ""), LISTING).securityDeposit)
     }
 
     @Test
     fun remarks() {
         assertEquals(setOf("agentRemarks"), errors(ListingSection.REMARKS, ListingSectionForm(agentRemarks = "x".repeat(1001))).keys)
-        assertNull(ListingRules.request(ListingSection.REMARKS, ListingSectionForm(agentRemarks = "  ")).agentRemarks)
-        assertEquals("À revoir", ListingRules.request(ListingSection.REMARKS, ListingSectionForm(agentRemarks = " À revoir ")).agentRemarks)
+        assertNull(ListingRules.request(ListingSection.REMARKS, ListingSectionForm(agentRemarks = "  "), LISTING).agentRemarks)
+        assertEquals("À revoir", ListingRules.request(ListingSection.REMARKS, ListingSectionForm(agentRemarks = " À revoir "), LISTING).agentRemarks)
     }
 
     @Test
     fun `location and gps - request`() {
-        val request = ListingRules.request(ListingSection.LOCATION, location.copy(accessDirections = " "))
+        val request = ListingRules.request(ListingSection.LOCATION, location.copy(accessDirections = " "), LISTING)
         assertEquals(3001L, request.neighborhoodId)
         assertEquals("Derrière l'école", request.landmark)
         assertNull(request.accessDirections)
 
-        val position = ListingRules.request(ListingSection.GPS, ListingSectionForm(latitude = "4,0335", longitude = "9.6942"))
+        val position = ListingRules.request(ListingSection.GPS, ListingSectionForm(latitude = "4,0335", longitude = "9.6942"), LISTING)
         assertEquals(4.0335, position.latitude)
         assertEquals(9.6942, position.longitude)
     }

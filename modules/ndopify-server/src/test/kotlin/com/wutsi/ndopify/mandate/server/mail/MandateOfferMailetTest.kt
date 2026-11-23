@@ -102,6 +102,7 @@ class MandateOfferMailetTest {
                 "city" to "Yaounde",
                 "neighbourhoods" to "Bastos, Mvan",
                 "budget" to "1 500 000 XAF / mois",
+                "sale" to false,
                 "financing_type" to null,
                 "title_documents" to null,
                 "deadline_date" to "15/10/2026",
@@ -167,6 +168,31 @@ class MandateOfferMailetTest {
     }
 
     @Test
+    fun `a sale search is flagged at sale`() {
+        val sale = mandate.copy(listingType = ListingType.SALE, pricePeriodicityType = PeriodicityType.NONE)
+
+        assertEquals(true, context(assignment.copy(mandate = sale))["sale"])
+    }
+
+    @Test
+    fun `a sale listing is flagged at sale`() {
+        val sale = mandate.copy(
+            mandateType = MandateType.LISTING,
+            listingType = ListingType.SALE,
+            pricePeriodicityType = PeriodicityType.NONE,
+        )
+
+        val context = context(assignment.copy(mandate = sale), "/mail/mandate/offer_listing.mjml")
+
+        assertEquals(true, context["sale"])
+    }
+
+    @Test
+    fun `a rental is not flagged at sale`() {
+        assertEquals(false, context()["sale"])
+    }
+
+    @Test
     fun `offer the financing and the land documents of a sale search`() {
         val sale = mandate.copy(
             listingType = ListingType.SALE,
@@ -216,6 +242,7 @@ class MandateOfferMailetTest {
                 "offer_url" to "https://partner.ndopify.com",
                 "price_label" to "Loyer",
                 "price" to "150 000 XAF / mois",
+                "sale" to false,
                 "area" to 85,
                 "available_from" to "01/11/2026",
                 "ownership_documents" to null,

@@ -16,6 +16,8 @@ data class MandateView(
     val owner: Boolean,
     /** A sale mandate (a listing's sale, or a buyer's search): its closing screens say price, never rent. */
     val sale: Boolean,
+    /** "Proposez des biens à l'acheteur et organisez les visites.": what the agent does next, after the contract. */
+    val nextStepHint: String,
     val acceptedAt: String?,
     /** Assigné > En approbation > Actif > Fermé (or Annulé). */
     val steps: List<StepView>,

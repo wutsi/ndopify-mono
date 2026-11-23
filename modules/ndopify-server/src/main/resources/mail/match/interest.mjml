@@ -23,7 +23,7 @@
                     Bonjour <strong>{{recipient_name}}</strong>,
                 </mj-text>
                 <mj-text>
-                    <strong>{{customer_name}}</strong> s'intéresse à un logement.
+                    <strong>{{customer_name}}</strong> s'intéresse à {{asset}}.
                 </mj-text>
 
                 <!-- In an mj-text: MJML drops raw HTML outside of it -->
@@ -33,7 +33,7 @@
                             <b>Bien</b>&#160;: {{listing_title}}
                         </li>
                         <li>
-                            <b>Loyer</b>&#160;: {{price}}
+                            <b>{{price_label}}</b>&#160;: {{price}}
                         </li>
                         <li>
                             <b>Quartier</b>&#160;: {{place}}

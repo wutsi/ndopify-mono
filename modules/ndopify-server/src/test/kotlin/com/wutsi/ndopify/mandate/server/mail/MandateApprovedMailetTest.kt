@@ -113,6 +113,7 @@ class MandateApprovedMailetTest {
                 "city" to "Yaounde",
                 "neighbourhoods" to "Bastos, Mvan",
                 "budget" to "1 500 000 XAF / mois",
+                "sale" to false,
                 "valid_from" to "15/10/2026",
                 "valid_until" to "15/04/2027",
                 "mandate_url" to "https://partner.ndopify.com/mandates/1",
@@ -137,7 +138,29 @@ class MandateApprovedMailetTest {
         assertEquals("Location", context["listing_type"])
         assertEquals("Loyer", context["price_label"])
         assertEquals("150 000 XAF / mois", context["price"])
+        assertEquals(false, context["sale"])
         assertNull(context["budget"])
+    }
+
+    @Test
+    fun `a sale search approval is flagged at sale`() {
+        val sale = mandate.copy(listingType = ListingType.SALE, pricePeriodicityType = PeriodicityType.NONE)
+
+        assertEquals(true, context(sale)["sale"])
+    }
+
+    @Test
+    fun `a sale listing approval is flagged at sale`() {
+        val sale = mandate.copy(
+            mandateType = MandateType.LISTING,
+            listingType = ListingType.SALE,
+            pricePeriodicityType = PeriodicityType.NONE,
+        )
+
+        val context = context(sale, template = "/mail/mandate/approved_listing.mjml")
+
+        assertEquals(true, context["sale"])
+        assertEquals("Prix", context["price_label"])
     }
 
     @Test

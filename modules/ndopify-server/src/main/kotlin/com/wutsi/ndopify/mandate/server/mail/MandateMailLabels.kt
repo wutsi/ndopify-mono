@@ -57,9 +57,29 @@ internal object MandateMailLabels {
             else -> "Achat"
         }
 
-    // A listing's price: its rent, or its sale price
+    // Whether the mandate is a sale: its e-mail then words the buyer's or the seller's flow. A rental's copy never
+    // changes, so a mailet that doesn't set it keeps the rental wording.
+    fun sale(mandate: MandateEntity): Boolean =
+        mandate.listingType == ListingType.SALE
+
+    // The label of a property's amount in an e-mail (the `price_label` context key, a listing's amount): "Prix" for a
+    // sale, "Loyer" for a rental. Not to be confused with [amountLabel]: this one words a property, that one names a
+    // sale *mandate's* amount to its agent, so a SALE SEARCH is a "Budget" where this one would say "Prix".
     fun priceLabel(mandate: MandateEntity): String =
         if (mandate.listingType == ListingType.SALE) "Prix" else "Loyer"
+
+    // The amount's label in a sale mandate's Telegram message: the seller's listing is a "Prix", the buyer's search a
+    // "Budget" (see [priceLabel] for the e-mail's property label). Used by [amount], only on a sale: a rental's
+    // message keeps its bare amount.
+    fun amountLabel(mandate: MandateEntity): String =
+        if (mandate.mandateType == MandateType.LISTING) "Prix" else "Budget"
+
+    // What ends a bot message's property line: " — 150 000 XAF / mois" for a rental, and
+    // " — Budget : 250 000 000 XAF" (a search) / " — Prix : …" (a listing) for a sale.
+    fun amount(mandate: MandateEntity, formatter: TenantFormatter): String {
+        val budget = budget(mandate, formatter)
+        return if (sale(mandate)) " — ${amountLabel(mandate)} : $budget" else " — $budget"
+    }
 
     fun propertyType(mandate: MandateEntity): String? =
         mandate.propertyType?.let { PROPERTY_TYPES[it] }

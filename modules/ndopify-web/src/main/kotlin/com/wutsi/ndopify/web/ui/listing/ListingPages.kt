@@ -20,6 +20,9 @@ import java.time.LocalDate
  * left out. The amounts next to the deposit and the advance are only given for a monthly price, which they're months
  * of. The visit popup's days go from tomorrow to tomorrow + 7 days in the tenant's time zone ([today] is its date),
  * its times from 10:00 to 21:00 every 30 minutes.
+ *
+ * A SALE listing's conditions are the price and the availability only, whatever rental terms were saved before: never a
+ * rent, a deposit, an advance, a lease term, a notice period nor the furniture.
  */
 object ListingPages {
     internal val PROPERTY_TYPE_LABELS: Map<PropertyType, String> = mapOf(
@@ -101,6 +104,7 @@ object ListingPages {
         val pricePeriod = PERIODS[listing.pricePeriodicityType]
         val price = listOfNotNull(priceAmount, pricePeriod).joinToString(" ")
         val available = listing.availableFrom?.takeIf { it.isAfter(today) }?.let { formatter.date(it) }
+        val sale = listing.listingType == ListingType.SALE
 
         return ListingPage(
             id = listing.id,
@@ -108,13 +112,15 @@ object ListingPages {
             metaDescription = closedNotice?.let { "$it $title" } ?: (listing.summary?.ifBlank { null } ?: title),
             canonicalUrl = canonicalUrl(tenant, listing),
             typeBadge = closedBadge ?: if (listing.listingType == ListingType.SALE) "À vendre" else "À louer",
+            sale = sale,
+            conditionsTitle = if (sale) "Prix et conditions" else "Conditions de location",
             place = listOfNotNull(neighborhood, city).joinToString(", "),
             landmark = listing.landmark?.ifBlank { null }?.let { "près de $it" },
             verifiedAt = listing.verifiedAt?.let { formatter.date(it) },
             photos = photos(listing, images, title),
-            keyFacts = keyFacts(listing, formatter),
+            keyFacts = keyFacts(listing, formatter, sale),
             description = paragraphs(listing.description),
-            specs = specs(listing, formatter),
+            specs = specs(listing, formatter, sale),
             amenities = AMENITIES.mapNotNull { (group, items) ->
                 items.filter { (_, has) -> has(listing) }
                     .map { (label, _) -> label }
@@ -126,6 +132,11 @@ object ListingPages {
             pricePeriod = pricePeriod,
             terms = if (closed) {
                 emptyList()
+            } else if (sale) {
+                listOf(
+                    "Prix" to price,
+                    "Disponible" to (available?.let { "À partir du $it" } ?: "Immédiatement"),
+                )
             } else {
                 listOfNotNull(
                     "Loyer" to price,
@@ -139,6 +150,8 @@ object ListingPages {
             termsNote = "Les visites sont organisées par votre agent.",
             asideTerms = if (closed) {
                 emptyList()
+            } else if (sale) {
+                listOf(available?.let { "Disponible le $it" } ?: "Disponible immédiatement")
             } else {
                 listOfNotNull(
                     listing.securityDeposit?.let { if (it > 0) "Caution : $it mois" else "Sans caution" },
@@ -201,17 +214,18 @@ object ListingPages {
         }
     }
 
-    private fun keyFacts(listing: Listing, formatter: TenantFormatter): List<Fact> = listOfNotNull(
+    private fun keyFacts(listing: Listing, formatter: TenantFormatter, sale: Boolean): List<Fact> = listOfNotNull(
         listing.rooms?.let { Fact("bed", it.toString(), plural(it, "chambre", "chambres")) },
         listing.bathrooms?.let { Fact("bath", it.toString(), plural(it, "salle de bains", "salles de bains")) },
         listing.area?.let { Fact("area", formatter.count(it.toLong()), "m²") },
-        FURNITURE_LABELS[listing.furnitureType]?.let { Fact("sofa", null, it) },
+        // A sale shows no furniture: it is a rental question, whatever value was saved before.
+        if (sale) null else FURNITURE_LABELS[listing.furnitureType]?.let { Fact("sofa", null, it) },
         listing.parkings?.let { Fact("car", it.toString(), plural(it, "parking", "parkings")) },
     )
 
-    private fun specs(listing: Listing, formatter: TenantFormatter): List<Pair<String, String>> = listOfNotNull(
+    private fun specs(listing: Listing, formatter: TenantFormatter, sale: Boolean): List<Pair<String, String>> = listOfNotNull(
         PROPERTY_TYPE_LABELS[listing.propertyType]?.let { "Type de bien" to it },
-        FURNITURE_LABELS[listing.furnitureType]?.let { "Ameublement" to it },
+        if (sale) null else FURNITURE_LABELS[listing.furnitureType]?.let { "Ameublement" to it },
         listing.rooms?.let { "Chambres" to it.toString() },
         listing.bathrooms?.let { "Salles de bains" to it.toString() },
         listing.livingRooms?.let { "Salons" to it.toString() },

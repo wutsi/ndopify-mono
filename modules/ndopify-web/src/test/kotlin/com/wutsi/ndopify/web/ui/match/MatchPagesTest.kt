@@ -6,6 +6,7 @@ import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
@@ -26,6 +27,7 @@ import java.time.LocalDate
 import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -92,6 +94,25 @@ class MatchPagesTest {
     )
 
     private val images = listOf(ListingImage(id = 1, url = "https://cdn/1.jpg"))
+
+    /** A SALE SEARCH: a villa for a buyer, 250M FCFA, no periodicity. */
+    private val saleMandate = mandate.copy(
+        listingType = ListingType.SALE,
+        propertyType = PropertyType.VILLA,
+        rooms = "4",
+        price = Money(250_000_000, "XAF", PeriodicityType.NONE),
+    )
+
+    /** The villa proposed to that buyer: 240M FCFA, available on 1 December 2026. */
+    private val saleListing = listing.copy(
+        listingType = ListingType.SALE,
+        propertyType = PropertyType.VILLA,
+        rooms = 4,
+        price = 240_000_000,
+        pricePeriodicityType = PeriodicityType.NONE,
+        availableFrom = LocalDate.of(2026, 12, 1),
+        title = "Villa 4 chambres à Bonapriso",
+    )
 
     private fun date(iso: String) = Date.from(Instant.parse(iso))
 
@@ -366,5 +387,56 @@ class MatchPagesTest {
         assertEquals("Ce créneau n'est plus disponible. Choisissez-en un autre.", page(visit = "invalid-slot").visitFlash)
         assertEquals("La visite n'a pas pu être demandée. Rechargez la page ou contactez votre agent.", page(visit = "conflict").visitFlash)
         assertNull(page(visit = "requested").visitFlash) // no open visit: nothing happened
+    }
+
+    @Test
+    fun `a sale search's proposal is worded for a buyer`() {
+        val page = page(mandate = saleMandate, listing = saleListing)
+
+        assertTrue(page.sale)
+        assertEquals("Serge vous propose ce bien", page.title)
+        assertFalse(page.searchSummary.contains("/ mois"))
+        assertEquals(
+            "Pour votre recherche : villa 4 chambres à Bonapriso, jusqu'à 250M\u00A0FCFA.",
+            page.searchSummary,
+        )
+        assertEquals("Disponible le 01 déc. 2026, avant votre achat", page.reasons.last().text)
+        assertTrue(page.reasons.map { it.text }.contains("240M\u00A0FCFA, dans votre budget"))
+        assertTrue(page.reasons.none { it.text.contains("/ mois") })
+    }
+
+    @Test
+    fun `a sale search's answers speak of a bien`() {
+        assertEquals(
+            "C'est noté : ce bien vous intéresse, votre agent est prévenu.",
+            page(match = match.copy(status = MatchStatus.ACCEPTED), mandate = saleMandate, listing = saleListing, answer = "accepted").flash,
+        )
+        assertEquals(
+            "C'est noté : vous avez écarté ce bien, votre agent est prévenu.",
+            page(match = match.copy(status = MatchStatus.REJECTED), mandate = saleMandate, listing = saleListing, answer = "rejected").flash,
+        )
+    }
+
+    @Test
+    fun `a sale search's search summary falls back to bien`() {
+        val page = page(mandate = saleMandate.copy(propertyType = null), listing = saleListing)
+
+        assertEquals("Pour votre recherche : bien 4 chambres à Bonapriso, jusqu'à 250M\u00A0FCFA.", page.searchSummary)
+    }
+
+    @Test
+    fun `a sale search with no date is available before the purchase`() {
+        val page = page(mandate = saleMandate, listing = saleListing.copy(availableFrom = null))
+
+        assertEquals("Disponible avant votre achat", page.reasons.last().text)
+    }
+
+    @Test
+    fun `a rental search keeps its rental wording`() {
+        val page = page()
+
+        assertFalse(page.sale)
+        assertEquals("Serge vous propose ce logement", page.title)
+        assertEquals("Disponible le 01 déc. 2026, avant votre emménagement", page.reasons.last().text)
     }
 }

@@ -2,9 +2,10 @@
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
 <body>
 <!--/*
-  The page shell's skip link and header. "active" marks the current section; "menuLabel" is the nav toggle's label
-  (it is "Menu" on the listing, match and visit pages, not the section's name); "brand" replaces the tenant logo with
-  Ndopify's own on the 404, which renders without a tenant.
+  The page shell's skip link and header. "active" marks the current section (louer, acheter, owner, agent; null when
+  none is); "menuLabel" is the nav toggle's label (it is "Menu" on the listing, match and visit pages, not the section's
+  name) and renders the nav whenever it isn't null; "brand" replaces the tenant logo with Ndopify's own on the 404,
+  which renders without a tenant.
 */-->
 <th:block th:fragment="header(active, menuLabel, brand)">
     <a class="skip-link" href="#main">Aller au contenu principal</a>
@@ -14,14 +15,15 @@
                  th:alt="${!brand or #strings.isEmpty(tenant?.name)} ? 'Ndopify' : ${tenant.name}"
                  th:src="${!brand or #strings.isEmpty(tenant?.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
         </a>
-        <th:block th:if="${active != null}">
+        <th:block th:if="${menuLabel != null}">
             <nav aria-label="Navigation principale" class="site-nav">
                 <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle"><span aria-hidden="true"
                                                                                                         class="nav-toggle__icon">☰</span>
                     <th:block th:text="${menuLabel}">Menu</th:block>
                 </button>
                 <ul class="site-nav__list" id="primary-nav-list">
-                    <li><a th:attr="aria-current=${active == 'home' ? 'page' : null}" th:href="@{/}">Locataires</a></li>
+                    <li><a th:attr="aria-current=${active == 'louer' ? 'page' : null}" th:href="@{/louer}">Louer</a></li>
+                    <li><a th:attr="aria-current=${active == 'acheter' ? 'page' : null}" th:href="@{/acheter}">Acheter</a></li>
                     <li><a th:attr="aria-current=${active == 'owner' ? 'page' : null}" th:href="@{/owner}">Propriétaires</a></li>
                     <li><a th:attr="aria-current=${active == 'agent' ? 'page' : null}" th:href="@{/agent}">Agents</a></li>
                 </ul>
