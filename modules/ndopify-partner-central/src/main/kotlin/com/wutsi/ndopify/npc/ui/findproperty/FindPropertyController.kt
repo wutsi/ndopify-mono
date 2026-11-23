@@ -372,7 +372,10 @@ class FindPropertyController(
             )
             model.addAttribute("moveInTerm", MandateLabels.moveInTerm(answers.listingType, answers.propertyCategory))
             model.addAttribute("movingPeriodLabel", MandateLabels.MOVE_IN_LABELS[answers.movingPeriod])
-            model.addAttribute("financingLabel", answers.financingType?.let { MandateLabels.FINANCING_LABELS[it] })
+            model.addAttribute(
+                "financingLabel",
+                answers.financingType?.takeIf { answers.isSale() }?.let { MandateLabels.FINANCING_LABELS[it] },
+            )
             model.addAttribute(
                 "titleDocumentsLabel",
                 answers.titleDocuments

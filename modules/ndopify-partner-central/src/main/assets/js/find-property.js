@@ -412,7 +412,13 @@
         function updateQuestions() {
             var type = checkedType();
             var landSale = sale && type === "LAND";
-            show("rooms", sale ? (type === "" || SALE_WITH_ROOMS.indexOf(type) !== -1) : WITHOUT_ROOMS.indexOf(type) === -1, true);
+            // "Indifférent" (value "ANY") parses to no type server-side, which asks the bedrooms of a sale too.
+            show(
+                "rooms",
+                sale ? (type === "" || type === "ANY" || SALE_WITH_ROOMS.indexOf(type) !== -1)
+                    : WITHOUT_ROOMS.indexOf(type) === -1,
+                true,
+            );
             show("furnitureType", !sale && WITHOUT_FURNITURE.indexOf(type) === -1, true);
             show("parkings", WITHOUT_PARKINGS.indexOf(type) === -1, false);
             // The documents are asked for a plot of land bought only, and are always optional.

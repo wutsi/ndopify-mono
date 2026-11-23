@@ -265,7 +265,9 @@
                                 class="field__optional">(facultatif)</span></legend>
                         <div class="choices__grid">
                             <label class="choice" th:each="document : ${titleDocumentLabels}"><input
-                                    name="titleDocuments" type="checkbox" th:value="${document.key}"> <th:block
+                                    name="titleDocuments" type="checkbox"
+                                    th:checked="${answers.titleDocuments.![name].contains(document.key)}"
+                                    th:value="${document.key}"> <th:block
                                     th:text="${document.value}">Titre foncier</th:block></label>
                         </div>
                         <p class="hint">Facultatif. Ces documents guident votre agent&nbsp;; ils ne filtrent pas les

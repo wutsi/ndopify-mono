@@ -177,7 +177,11 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   *match*). Otherwise, at most 3 new SEARCH mandates per customer per 24 h (409 `MANDATE_RATE_LIMITED`); attaching to an
   existing search is never capped. `availableFrom` (`V7_0`) is a LISTING's
   availability date (the date from which the property can be let): stored and returned, not checked by the server.
-  Tenant-scoped.
+  A buyer's purchase answers are stored on the mandate (`V16_0`): `financingType` (`FinancingType`, nullable) and
+  `titleDocuments` (`TitleDocumentType` list, comma-separated, empty when none). `MandateService.create`/`update`
+  normalize them — financing kept only for a `SALE` listing type, documents only for a `SALE` land purchase, `UNKNOWN`
+  dropped, distinct, and an empty list preserved — since they are the buyer's brief and never validated nor used to
+  filter in M1; the delivered price per m² is display-only and never stored. Tenant-scoped.
   **Access** (`MandateAccessService`): every endpoint but create (public) needs a JWT (401
   `AUTH_UNAUTHORIZED`), and the caller must be an admin (`CallerService.isAdmin`: `admin-console` token with the
   `admin` role, `RoleCode`) or the mandate's agent (JWT user → membership → party → agent), else 403

@@ -207,6 +207,20 @@ class FindPropertyControllerTest {
     }
 
     @Test
+    fun `a rental review hides a leftover financing`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(listingType = ListingType.RENTAL, financingType = FinancingType.CASH),
+        )
+
+        val result = mvc.perform(get("/find-property?step=review").session(session)).andReturn()
+
+        assertEquals("review", model(result)["step"])
+        assertNull(model(result)["financingLabel"])
+        assertEquals("Budget mensuel", model(result)["priceTerm"])
+    }
+
+    @Test
     fun reviewLabelForAnyType() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,

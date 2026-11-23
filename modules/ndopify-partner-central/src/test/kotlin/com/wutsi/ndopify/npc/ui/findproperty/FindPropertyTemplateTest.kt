@@ -10,6 +10,7 @@ import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.mandate.dto.FinancingType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
@@ -291,6 +292,30 @@ class FindPropertyTemplateTest {
 
         assertTrue(villa.selectFirst("[data-group=titleDocuments]")!!.hasAttr("hidden"))
         assertEquals("Surface minimale", villa.selectFirst("[data-area-label]")?.text())
+    }
+
+    @Test
+    fun `a land purchase shows its saved documents ticked`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = "LAND",
+                rooms = null,
+                furnitureType = null,
+                parkings = null,
+                area = 400,
+                financingType = FinancingType.CASH,
+                titleDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+            ),
+        )
+
+        val page = render(get("/find-property?step=property"))
+
+        assertTrue(page.selectFirst("input[name=titleDocuments][value=LAND_TITLE]")!!.hasAttr("checked"))
+        assertTrue(page.selectFirst("input[name=titleDocuments][value=SURVEY_PLAN]")!!.hasAttr("checked"))
+        assertFalse(page.selectFirst("input[name=titleDocuments][value=CERTIFICATE_OF_OWNERSHIP]")!!.hasAttr("checked"))
     }
 
     @Test

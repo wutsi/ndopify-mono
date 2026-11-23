@@ -134,15 +134,23 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   dropdowns (slim-select): same query parameters, but only `CITY`/`NEIGHBORHOOD`, country forced to the tenant's,
   `limit` capped. Used by `join.js` and `find-property.js` on the wizards' area steps.
 - *Trouver un bien* is `FindPropertyController` (`ui/findproperty/`), a **public** wizard for people looking for a
-  rental, built like the join wizard: one page (`templates/find-property.html`), seven steps (`need` → `area` →
-  `property` → `amenities` → `budget` → `contact` → `review`), `POST /find-property/{step}` validates
-  (`FindPropertyRules`) into the session's `PendingMandate`, and the review submits the session as a SEARCH/RENTAL
-  mandate (`NdMandateClient` → `POST /v1/mandates`, price in the tenant's currency), then shows the confirmation while
-  a `SubmittedMandate` is in the session. Since ndopify-server doesn't validate mandates yet, these rules and the
-  city/neighbourhood checks are the only validation a mandate gets. "Indifférent" (`ANY`) is a UI-only answer, sent
-  as `null`. Without JS the property step shows every follow-up question of the category and the server ignores
-  those that don't apply to the type; `src/main/assets/js/find-property.js` hides them. Prototype:
-  `src/main/html/find-property.html`.
+  property to rent or to buy, built like the join wizard: one page (`templates/find-property.html`), seven steps
+  (`need` → `area` → `property` → `amenities` → `budget` → `contact` → `review`), `POST /find-property/{step}`
+  validates (`FindPropertyRules`) into the session's `PendingMandate`, and the review submits the session as a
+  SEARCH mandate (`NdMandateClient` → `POST /v1/mandates`, price in the tenant's currency) whose `listingType` is
+  `SALE` or `RENTAL`, then shows the confirmation while a `SubmittedMandate` is in the session. The need step asks
+  *Louer / Acheter*; `?type=SALE|RENTAL` preselects it when the session has no answer yet, and never overwrites one.
+  A purchase drops the *Chambre* type, offers *Terrain* under both uses with a required surface, asks no furniture,
+  reads *Budget total* (floor 1 000 000 FCFA, `PeriodicityType.NONE`), the buying horizon and a required financing
+  answer, asks the title documents (*Titre foncier*, *Plan de bornage*, *Certificat de propriété*) for a *Terrain*
+  only, and shows the implied price per m² as the budget is typed — display only, never sent nor stored. The session
+  keeps `financingType` and `titleDocuments`; ndopify-server normalizes them on create/update (no financing for a
+  rental, documents only for a land purchase, `UNKNOWN` dropped, an empty list is a valid answer). Since
+  ndopify-server doesn't validate mandates yet, these rules and the city/neighbourhood checks are the only
+  validation a mandate gets. "Indifférent" (`ANY`) is a UI-only answer, sent as `null`. Without JS the property step
+  shows every follow-up question of the category and the server ignores those that don't apply to the type;
+  `src/main/assets/js/find-property.js` hides them and computes the price per m². Prototype:
+  `src/main/html/v2/find-property.html` (approved 2026-11-22).
 - *Proposer un bien* is `OfferPropertyController` (`ui/offerproperty/`), a **public** wizard for owners offering a
   property for rent, built like *Trouver un bien*: one page (`templates/offer-property.html`), seven steps
   (`property` → `address` → `terms` → `features` → `amenities` → `contact` → `review`), `POST /offer-property/{step}`
