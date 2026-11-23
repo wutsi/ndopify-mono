@@ -4,6 +4,7 @@ import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -123,7 +124,7 @@ class MandateCloseController(
             return redirectStep(mandate.id, draft.copy(matchId = null).firstIncompleteStep(counterpartApplicable))
         }
 
-        val steps = MandateCloseViews.steps(counterpartApplicable, mandate.mandateType == MandateType.LISTING)
+        val steps = MandateCloseViews.steps(counterpartApplicable, mandate.mandateType == MandateType.LISTING, sale(mandate))
         val names = steps.map { it.name }
         val allowed = names.indexOf(draft.firstIncompleteStep(counterpartApplicable))
 
@@ -164,7 +165,7 @@ class MandateCloseController(
             session.setAttribute(PendingMandateClose.SESSION_ATTRIBUTE, draft.copy(matchId = matchId, outside = false))
             return redirectStep(id, PendingMandateClose.STEP_PRICE)
         }
-        val steps = MandateCloseViews.steps(counterpartApplicable, mandate.mandateType == MandateType.LISTING)
+        val steps = MandateCloseViews.steps(counterpartApplicable, mandate.mandateType == MandateType.LISTING, sale(mandate))
         return render(mandate, read, steps, PendingMandateClose.STEP_COUNTERPART, form, mapOf("counterpart" to COUNTERPART_ERROR), draft, model)
     }
 
@@ -185,7 +186,7 @@ class MandateCloseController(
 
         val amount = MandateCloseRules.amount(form.finalPrice)
         if (amount == null) {
-            val steps = MandateCloseViews.steps(counterpartApplicable, mandate.mandateType == MandateType.LISTING)
+            val steps = MandateCloseViews.steps(counterpartApplicable, mandate.mandateType == MandateType.LISTING, sale(mandate))
             return render(
                 mandate,
                 read,
@@ -207,12 +208,14 @@ class MandateCloseController(
 
         val draft = pending(session)
         val currency = tenantContext.getTenant().currencyCode
+        // A sale's price is one-off, a rental's monthly: the request says so, even though the server stores the amount.
+        val sale = lookup("mandate $id") { mandateClient.get(id) }?.let { sale(it) } ?: false
         val outcome =
             try {
                 if (draft.matchId != null) {
-                    matchClient.close(draft.matchId, MandateCloseRules.closeMatch(draft, currency))
+                    matchClient.close(draft.matchId, MandateCloseRules.closeMatch(draft, currency, sale))
                 } else {
-                    mandateClient.close(id, MandateCloseRules.closeMandate(draft, currency))
+                    mandateClient.close(id, MandateCloseRules.closeMandate(draft, currency, sale))
                 }
                 MandateController.CLOSED
             } catch (ex: HttpClientErrorException) {
@@ -395,6 +398,9 @@ class MandateCloseController(
         model.addAttribute("locked", true)
         return VIEW
     }
+
+    /** A sale mandate closes on its sale price; a rental, and a legacy mandate without a type, on a monthly rent. */
+    private fun sale(mandate: Mandate): Boolean = mandate.listingType == ListingType.SALE
 
     private fun pending(session: HttpSession): PendingMandateClose =
         session.getAttribute(PendingMandateClose.SESSION_ATTRIBUTE) as PendingMandateClose? ?: PendingMandateClose()
