@@ -439,6 +439,19 @@ class ListingPagesTest {
     }
 
     @Test
+    fun `a sale listing never renders a stored furniture type`() {
+        val page = page(sale)
+
+        // The fixture carries a furniture type saved before the sale: no key fact nor spec row shows it
+        assertFalse(page.keyFacts.any { it.label == "Meublé" }, "no furniture fact on a sale")
+        assertFalse(page.specs.any { it.first == "Ameublement" }, "no furniture row on a sale")
+
+        // A rental keeps both
+        assertTrue(page().keyFacts.any { it.label == "Meublé" })
+        assertTrue(page().specs.contains("Ameublement" to "Meublé"))
+    }
+
+    @Test
     fun `a sale listing available immediately`() {
         val page = page(sale.copy(availableFrom = null))
 

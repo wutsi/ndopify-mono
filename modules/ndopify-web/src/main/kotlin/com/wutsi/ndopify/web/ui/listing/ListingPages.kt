@@ -118,9 +118,9 @@ object ListingPages {
             landmark = listing.landmark?.ifBlank { null }?.let { "près de $it" },
             verifiedAt = listing.verifiedAt?.let { formatter.date(it) },
             photos = photos(listing, images, title),
-            keyFacts = keyFacts(listing, formatter),
+            keyFacts = keyFacts(listing, formatter, sale),
             description = paragraphs(listing.description),
-            specs = specs(listing, formatter),
+            specs = specs(listing, formatter, sale),
             amenities = AMENITIES.mapNotNull { (group, items) ->
                 items.filter { (_, has) -> has(listing) }
                     .map { (label, _) -> label }
@@ -214,17 +214,18 @@ object ListingPages {
         }
     }
 
-    private fun keyFacts(listing: Listing, formatter: TenantFormatter): List<Fact> = listOfNotNull(
+    private fun keyFacts(listing: Listing, formatter: TenantFormatter, sale: Boolean): List<Fact> = listOfNotNull(
         listing.rooms?.let { Fact("bed", it.toString(), plural(it, "chambre", "chambres")) },
         listing.bathrooms?.let { Fact("bath", it.toString(), plural(it, "salle de bains", "salles de bains")) },
         listing.area?.let { Fact("area", formatter.count(it.toLong()), "m²") },
-        FURNITURE_LABELS[listing.furnitureType]?.let { Fact("sofa", null, it) },
+        // A sale shows no furniture: it is a rental question, whatever value was saved before.
+        if (sale) null else FURNITURE_LABELS[listing.furnitureType]?.let { Fact("sofa", null, it) },
         listing.parkings?.let { Fact("car", it.toString(), plural(it, "parking", "parkings")) },
     )
 
-    private fun specs(listing: Listing, formatter: TenantFormatter): List<Pair<String, String>> = listOfNotNull(
+    private fun specs(listing: Listing, formatter: TenantFormatter, sale: Boolean): List<Pair<String, String>> = listOfNotNull(
         PROPERTY_TYPE_LABELS[listing.propertyType]?.let { "Type de bien" to it },
-        FURNITURE_LABELS[listing.furnitureType]?.let { "Ameublement" to it },
+        if (sale) null else FURNITURE_LABELS[listing.furnitureType]?.let { "Ameublement" to it },
         listing.rooms?.let { "Chambres" to it.toString() },
         listing.bathrooms?.let { "Salles de bains" to it.toString() },
         listing.livingRooms?.let { "Salons" to it.toString() },

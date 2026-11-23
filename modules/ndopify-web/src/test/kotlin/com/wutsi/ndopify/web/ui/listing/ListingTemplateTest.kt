@@ -409,6 +409,18 @@ class ListingTemplateTest {
     }
 
     @Test
+    fun `a sale listing with a stored furniture type shows none`() {
+        val sale = render(page(listing = staleSaleListing))
+
+        assertFalse(sale.text().contains("Meublé"))
+        assertFalse(sale.text().contains("Ameublement"))
+
+        val rental = render()
+        assertTrue(rental.select(".key-facts li").any { it.text() == "Meublé" })
+        assertTrue(rental.select("dt").any { it.text() == "Ameublement" })
+    }
+
+    @Test
     fun `a sold sale listing offers no interest form`() {
         val doc = render(
             page(
