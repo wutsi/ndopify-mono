@@ -16,6 +16,7 @@ import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -1419,6 +1420,32 @@ class MandateControllerTest {
         assertEquals(PropertyCategory.RESIDENTIAL, request.firstValue.propertyCategory)
         assertEquals(true, request.firstValue.waterWell)
         assertEquals(null, request.firstValue.furnitureType)
+    }
+
+    @Test
+    fun `save - a stored rental land is kept`() {
+        doReturn(MANDATE.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = PropertyType.LAND))
+            .whenever(mandateClient).get(201)
+
+        val result = mvc.perform(
+            edit("propertyCategory" to "COMMERCIAL", "propertyType" to "LAND", "rooms" to "", "furnitureType" to "", "parkings" to ""),
+        ).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        val request = argumentCaptor<UpdateMandateRequest>()
+        verify(mandateClient).update(com.nhaarman.mockitokotlin2.eq(201L), request.capture())
+        assertEquals(PropertyType.LAND, request.firstValue.propertyType)
+    }
+
+    @Test
+    fun `save - a rental land that isn't stored is refused`() {
+        val result = mvc.perform(
+            edit("propertyCategory" to "COMMERCIAL", "propertyType" to "LAND", "rooms" to "", "furnitureType" to "", "parkings" to ""),
+        ).andReturn()
+
+        assertEquals("mandate/edit", result.modelAndView?.viewName)
+        assertEquals("Choisissez un type de bien proposé.", errors(result)["propertyType"])
+        verify(mandateClient, never()).update(any(), any())
     }
 
     @Test

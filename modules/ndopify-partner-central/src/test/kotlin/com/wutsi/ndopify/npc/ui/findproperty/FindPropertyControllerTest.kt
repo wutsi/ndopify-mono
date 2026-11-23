@@ -144,8 +144,7 @@ class FindPropertyControllerTest {
                 PropertyType.RETAIL,
                 PropertyType.OFFICE,
                 PropertyType.INDUSTRIAL,
-                PropertyType.BUILDING,
-                PropertyType.LAND
+                PropertyType.BUILDING
             ),
             model(result)["propertyTypes"],
         )
@@ -514,7 +513,7 @@ class FindPropertyControllerTest {
     }
 
     @Test
-    fun `a land rental drops the documents`() {
+    fun `a rental refuses land`() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
             complete.copy(
@@ -533,9 +532,10 @@ class FindPropertyControllerTest {
                 .param("titleDocuments", "LAND_TITLE"),
         ).andReturn()
 
-        assertEquals("redirect:/find-property?step=amenities", result.modelAndView?.viewName)
-        assertEquals(emptyList(), pending()?.titleDocuments)
-        assertNull(pending()?.area)
+        assertEquals("find-property", result.modelAndView?.viewName)
+        assertEquals("property", model(result)["step"])
+        assertEquals("Choisissez un type de bien proposé.", errors(result)["propertyType"])
+        assertNull(pending()?.propertyType)
     }
 
     @Test
@@ -583,15 +583,23 @@ class FindPropertyControllerTest {
     }
 
     @Test
-    fun propertyLandIgnoresFurnitureAndParkings() {
+    fun `a land purchase ignores furniture and parkings`() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
-            complete.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = null, rooms = null),
+            complete.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = null,
+                rooms = null,
+                furnitureType = null,
+                area = null,
+            ),
         )
 
         mvc.perform(
             post("/find-property/property").session(session)
                 .param("propertyType", "LAND")
+                .param("area", "400")
                 .param("furnitureType", "FULLY_FURNISHED")
                 .param("parkings", "2"),
         ).andReturn()

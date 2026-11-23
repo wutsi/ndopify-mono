@@ -85,7 +85,20 @@ class PendingMandateTest {
     @Test
     fun furnitureRequiredOnlyWhenTheTypeHasFurniture() {
         assertFalse(COMPLETE.copy(furnitureType = null).isComplete("property"))
-        assertTrue(COMPLETE.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = "LAND", rooms = null, furnitureType = null).isComplete("property"))
+        assertTrue(
+            COMPLETE.copy(
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = "BUILDING",
+                rooms = null,
+                furnitureType = null,
+            ).isComplete("property"),
+        )
+    }
+
+    @Test
+    fun `a rental land never completes the property step`() {
+        val land = COMPLETE.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = "LAND", rooms = null, furnitureType = null)
+        assertFalse(land.isComplete("property"))
     }
 
     @Test
@@ -224,8 +237,15 @@ class PendingMandateTest {
 
     @Test
     fun furnitureAndParkingsNotSentForLand() {
-        val request = COMPLETE.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = "LAND", rooms = null, furnitureType = "FULLY_FURNISHED")
-            .toCreateMandateRequest("XAF")
+        val request = COMPLETE.copy(
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = "LAND",
+            area = 400,
+            priceAmount = 10_000_000,
+            rooms = null,
+            furnitureType = "FULLY_FURNISHED",
+        ).toCreateMandateRequest("XAF")
         assertNull(request.furnitureType)
         assertNull(request.parkings)
     }
