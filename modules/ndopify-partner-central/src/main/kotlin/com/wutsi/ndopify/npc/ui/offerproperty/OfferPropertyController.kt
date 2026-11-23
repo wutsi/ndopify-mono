@@ -42,6 +42,9 @@ import java.time.LocalDate
  *
  * The URL is never trusted: a step is only shown once every step before it is complete, otherwise the first
  * incomplete one is. Completeness depends on the day (the availability date), hence the [Clock].
+ *
+ * No `step` is the entry point ([show]), and always starts a new run: the answers of a previous one (abandoned, or
+ * already submitted) are dropped, never shown. Every in-run URL carries its step.
  */
 @Controller
 @RequestMapping("/offer-property")
@@ -98,9 +101,16 @@ class OfferPropertyController(
             return VIEW
         }
 
-        // ?type=SALE|RENTAL (the public site's links) preselects the project for display only, until one is saved.
-        val pending = pending(session).let { saved ->
-            if (saved.listingType != null) saved else saved.copy(listingType = FindPropertyRules.parseListingType(type))
+        // The public site's links preselect the project (?type=SALE|RENTAL), for display only: the session keeps
+        // what the visitor posts.
+        val pending = if (requestedStep == null) {
+            // The entry point: a new run, never the answers of a previous one (an abandoned run, or a submitted
+            // listing whose confirmation is still in the session).
+            session.removeAttribute(PendingListing.SESSION_ATTRIBUTE)
+            session.removeAttribute(SUBMITTED_ATTRIBUTE)
+            PendingListing(listingType = FindPropertyRules.parseListingType(type))
+        } else {
+            pending(session)
         }
         val requested = STEPS.indexOf(requestedStep).coerceAtLeast(0)
         val allowed = STEPS.indexOf(firstIncomplete(pending))
@@ -551,8 +561,8 @@ class OfferPropertyController(
     private fun isAllowed(step: String, pending: PendingListing): Boolean =
         STEPS.indexOf(step) <= STEPS.indexOf(firstIncomplete(pending))
 
-    private fun redirect(step: String): String =
-        if (step == STEP_PROPERTY) "redirect:/offer-property" else "redirect:/offer-property?step=$step"
+    /** Every step has its own URL: the bare `/offer-property` is the entry point, which starts a new run. */
+    private fun redirect(step: String): String = "redirect:/offer-property?step=$step"
 
     private fun errors(vararg errors: Pair<String, String?>): Map<String, String> =
         errors.mapNotNull { (field, message) -> message?.let { field to it } }.toMap()

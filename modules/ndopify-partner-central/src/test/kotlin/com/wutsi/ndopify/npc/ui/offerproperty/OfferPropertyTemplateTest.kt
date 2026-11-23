@@ -203,12 +203,21 @@ class OfferPropertyTemplateTest {
     fun `a sale session ticks Vendre and words the project`() {
         session.setAttribute(PendingListing.SESSION_ATTRIBUTE, PendingListing(listingType = ListingType.SALE))
 
-        val page = render(get("/offer-property"))
+        val page = render(get("/offer-property?step=property"))
 
         assertTrue(page.selectFirst("input[name=listingType][value=SALE]")!!.hasAttr("checked"))
         assertFalse(page.selectFirst("input[name=listingType][value=RENTAL]")!!.hasAttr("checked"))
         assertTrue(page.text().contains("présente votre bien aux acheteurs"))
         assertEquals("SALE", page.selectFirst("form[data-offer-form]")?.attr("data-listing-type"))
+    }
+
+    @Test
+    fun `starting again shows an empty property step`() {
+        val page = render(get("/offer-property"))
+
+        assertEquals("Étape 1 sur 7", page.selectFirst("[data-progress-label]")?.text())
+        assertTrue(page.select("input[name=listingType][checked]").isEmpty())
+        assertTrue(page.select("input[name=propertyCategory][checked]").isEmpty())
     }
 
     @Test
@@ -236,7 +245,10 @@ class OfferPropertyTemplateTest {
 
     @Test
     fun `other steps link to the previous one`() {
-        assertEquals("/offer-property", render(get("/offer-property?step=address")).selectFirst("a[data-prev]")?.attr("href"))
+        assertEquals(
+            "/offer-property?step=property",
+            render(get("/offer-property?step=address")).selectFirst("a[data-prev]")?.attr("href"),
+        )
         assertEquals(
             "/offer-property?step=terms",
             render(get("/offer-property?step=features")).selectFirst("a[data-prev]")?.attr("href"),
