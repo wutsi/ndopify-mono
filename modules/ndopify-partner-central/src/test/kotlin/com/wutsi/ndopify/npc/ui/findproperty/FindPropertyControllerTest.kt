@@ -22,6 +22,7 @@ import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
+import com.wutsi.ndopify.npc.ui.offerproperty.PendingListing
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
@@ -269,12 +270,81 @@ class FindPropertyControllerTest {
     }
 
     @Test
-    fun `the type parameter never overwrites a saved project`() {
+    fun `starting a new run drops the answers of the previous one`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
+
+        val result = mvc.perform(get("/find-property").session(session)).andReturn()
+
+        assertEquals("need", model(result)["step"])
+        assertEquals(PendingMandate(), model(result)["answers"])
+        assertNull(pending())
+    }
+
+    @Test
+    fun `starting a new run drops the previous confirmation`() {
+        session.setAttribute(
+            SubmittedMandate.SESSION_ATTRIBUTE,
+            SubmittedMandate("ray@gmail.com", "+237670000001", ContactPeriodType.EVENING),
+        )
+
+        val result = mvc.perform(get("/find-property").session(session)).andReturn()
+
+        assertEquals("need", model(result)["step"])
+        assertNull(session.getAttribute(SubmittedMandate.SESSION_ATTRIBUTE))
+    }
+
+    @Test
+    fun `the type parameter of a new run wins over the previous project`() {
         session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, PendingMandate(listingType = ListingType.RENTAL))
 
         val result = mvc.perform(get("/find-property").param("type", "SALE").session(session)).andReturn()
 
+        assertEquals(ListingType.SALE, (model(result)["answers"] as PendingMandate).listingType)
+        assertNull(pending())
+    }
+
+    @Test
+    fun `an in-run URL ignores the type parameter`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, PendingMandate(listingType = ListingType.RENTAL))
+
+        val result = mvc.perform(get("/find-property?step=need&type=SALE").session(session)).andReturn()
+
+        assertEquals("need", model(result)["step"])
         assertEquals(ListingType.RENTAL, (model(result)["answers"] as PendingMandate).listingType)
+        assertEquals(PendingMandate(listingType = ListingType.RENTAL), pending())
+    }
+
+    @Test
+    fun `going back to the need step keeps the answers of the current run`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
+
+        val result = mvc.perform(get("/find-property?step=need").session(session)).andReturn()
+
+        assertEquals("need", model(result)["step"])
+        assertEquals(complete, model(result)["answers"])
+        assertEquals(complete, pending())
+    }
+
+    @Test
+    fun `a step posted with its errors leaves the run untouched`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
+
+        val result = mvc.perform(
+            post("/find-property/budget").session(session).param("priceAmount", "1"),
+        ).andReturn()
+
+        assertEquals("budget", model(result)["step"])
+        assertTrue(errors(result).containsKey("priceAmount"))
+        assertEquals(complete, pending())
+    }
+
+    @Test
+    fun `starting a run keeps the other wizard's answers`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, PendingListing())
+
+        mvc.perform(get("/find-property").session(session)).andReturn()
+
+        assertEquals(PendingListing(), session.getAttribute(PendingListing.SESSION_ATTRIBUTE))
     }
 
     @Test
@@ -364,7 +434,7 @@ class FindPropertyControllerTest {
             post("/find-property/area").session(session).param("cityId", "$YAOUNDE").param("neighborhoodIds", "1001"),
         ).andReturn()
 
-        assertEquals("redirect:/find-property", result.modelAndView?.viewName)
+        assertEquals("redirect:/find-property?step=need", result.modelAndView?.viewName)
         assertNull(pending())
     }
 
@@ -967,7 +1037,7 @@ class FindPropertyControllerTest {
         mvc.perform(post("/find-property/review").session(session)).andReturn()
         val result = mvc.perform(post("/find-property/review").session(session)).andReturn()
 
-        assertEquals("redirect:/find-property", result.modelAndView?.viewName)
+        assertEquals("redirect:/find-property?step=need", result.modelAndView?.viewName)
         verify(mandateClient, times(1)).create(any())
     }
 

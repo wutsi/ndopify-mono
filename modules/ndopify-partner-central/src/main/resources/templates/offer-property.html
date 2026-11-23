@@ -158,7 +158,7 @@
 
                     <div class="form__actions">
                         <a class="btn btn--outline" data-prev
-                           th:href="${returning} ? @{/offer-property(step='review')} : @{/offer-property}">Précédent</a>
+                           th:href="${returning} ? @{/offer-property(step='review')} : @{/offer-property(step='property')}">Précédent</a>
                         <button class="btn btn--primary" data-next
                                 th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
                         </button>

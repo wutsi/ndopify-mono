@@ -20,6 +20,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
+import com.wutsi.ndopify.npc.ui.findproperty.PendingMandate
 import com.wutsi.ndopify.npc.ui.findproperty.SubmittedMandate
 import com.wutsi.ndopify.npc.ui.login.LoginController
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
@@ -263,12 +264,76 @@ class OfferPropertyControllerTest {
     }
 
     @Test
-    fun `the type parameter never overwrites a saved project`() {
+    fun `starting a new run drops the answers of the previous one`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, complete)
+
+        val result = mvc.perform(get("/offer-property").session(session)).andReturn()
+
+        assertEquals("property", model(result)["step"])
+        assertEquals(PendingListing(), model(result)["answers"])
+        assertNull(pending())
+    }
+
+    @Test
+    fun `starting a new run drops the previous confirmation`() {
+        session.setAttribute(OfferPropertyController.SUBMITTED_ATTRIBUTE, submitted())
+
+        val result = mvc.perform(get("/offer-property").session(session)).andReturn()
+
+        assertEquals("property", model(result)["step"])
+        assertNull(session.getAttribute(OfferPropertyController.SUBMITTED_ATTRIBUTE))
+    }
+
+    @Test
+    fun `the type parameter of a new run wins over the previous project`() {
         session.setAttribute(PendingListing.SESSION_ATTRIBUTE, PendingListing(listingType = ListingType.RENTAL))
 
-        val result = mvc.perform(get("/offer-property?type=SALE").session(session)).andReturn()
+        val result = mvc.perform(get("/offer-property").param("type", "SALE").session(session)).andReturn()
 
+        assertEquals(ListingType.SALE, (model(result)["answers"] as PendingListing).listingType)
+        assertNull(pending())
+    }
+
+    @Test
+    fun `an in-run URL ignores the type parameter`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, PendingListing(listingType = ListingType.RENTAL))
+
+        val result = mvc.perform(get("/offer-property?step=property&type=SALE").session(session)).andReturn()
+
+        assertEquals("property", model(result)["step"])
         assertEquals(ListingType.RENTAL, (model(result)["answers"] as PendingListing).listingType)
+        assertEquals(PendingListing(listingType = ListingType.RENTAL), pending())
+    }
+
+    @Test
+    fun `going back to the property step keeps the answers of the current run`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, complete)
+
+        val result = mvc.perform(get("/offer-property?step=property").session(session)).andReturn()
+
+        assertEquals("property", model(result)["step"])
+        assertEquals(complete, model(result)["answers"])
+        assertEquals(complete, pending())
+    }
+
+    @Test
+    fun `a step posted with its errors leaves the run untouched`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, complete)
+
+        val result = mvc.perform(post("/offer-property/terms").session(session)).andReturn()
+
+        assertEquals("terms", model(result)["step"])
+        assertTrue(errors(result).isNotEmpty())
+        assertEquals(complete, pending())
+    }
+
+    @Test
+    fun `starting a run keeps the other wizard's answers`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, PendingMandate())
+
+        mvc.perform(get("/offer-property").session(session)).andReturn()
+
+        assertEquals(PendingMandate(), session.getAttribute(PendingMandate.SESSION_ATTRIBUTE))
     }
 
     @Test
@@ -342,7 +407,7 @@ class OfferPropertyControllerTest {
                 .param("cityId", "$YAOUNDE").param("neighborhoodId", "1001"),
         ).andReturn()
 
-        assertEquals("redirect:/offer-property", result.modelAndView?.viewName)
+        assertEquals("redirect:/offer-property?step=property", result.modelAndView?.viewName)
     }
 
     // POST /offer-property/terms

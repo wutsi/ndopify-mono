@@ -139,7 +139,9 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   validates (`FindPropertyRules`) into the session's `PendingMandate`, and the review submits the session as a
   SEARCH mandate (`NdMandateClient` → `POST /v1/mandates`, price in the tenant's currency) whose `listingType` is
   `SALE` or `RENTAL`, then shows the confirmation while a `SubmittedMandate` is in the session. The need step asks
-  *Louer / Acheter*; `?type=SALE|RENTAL` preselects it when the session has no answer yet, and never overwrites one.
+  *Louer / Acheter*; `?type=SALE|RENTAL` preselects it. `GET /find-property` without a `step` is the entry point
+  and starts a new run: it drops the session's `PendingMandate` and `SubmittedMandate`, so a previous run's answers
+  are never shown (every in-run URL, *Précédent* included, carries its `step`).
   A purchase drops the *Chambre* type, offers *Terrain* under both uses with a required surface, asks no furniture,
   reads *Budget total* (floor 1 000 000 FCFA, `PeriodicityType.NONE`), the buying horizon and a required financing
   answer, asks the title documents (*Titre foncier*, *Plan de bornage*, *Certificat de propriété*) for a *Terrain*
@@ -156,15 +158,16 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   (`property` → `address` → `terms` → `features` → `amenities` → `contact` → `review`), `POST /offer-property/{step}`
   validates (`OfferPropertyRules`, the only validation a listing gets) into the session's `PendingListing`, and the
   review submits it as a LISTING mandate for the chosen project (`listingType`, required on the first step and
-  preselected from `?type=SALE|RENTAL` while no answer is saved) in the tenant's currency (`NdMandateClient` →
-  `POST /v1/mandates`), then shows the confirmation while a `SubmittedMandate` is in the session. A sale has a
-  one-off price (`PeriodicityType.NONE`, at least 1 000 000 FCFA), no advance nor deposit, no furnishing, *Terrain*
-  offered for both uses and no *Chambre*; a sold *Terrain* requires its surface, offers the optional *Document de
-  propriété* (*Titre foncier*, *Plan de bornage*, *Certificat de propriété*, several or none, sent only for a
-  SALE · LAND) and shows its implied price per m² as the surface is typed — display only, never sent nor stored.
-  `availableFrom` must be between today and 365 days later, in the tenant's time zone (`Clock`, so a saved date can
-  expire). The header's *Quitter* and the confirmation's CTA go to `{publicPortalUrl}/owner` for a rental,
-  `{publicPortalUrl}/owner/sell` for a sale (none without a `publicPortalUrl`). Without JS every step posts;
+  preselected from `?type=SALE|RENTAL`) in the tenant's currency (`NdMandateClient` → `POST /v1/mandates`), then
+  shows the confirmation while a `SubmittedMandate` is in the session. `GET /offer-property` without a `step` is the
+  entry point and starts a new run, dropping the session's `PendingListing` and `SubmittedMandate` like *Trouver un
+  bien*. A sale has a one-off price (`PeriodicityType.NONE`, at least 1 000 000 FCFA), no advance nor deposit, no
+  furnishing, *Terrain* offered for both uses and no *Chambre*; a sold *Terrain* requires its surface, offers the
+  optional *Document de propriété* (*Titre foncier*, *Plan de bornage*, *Certificat de propriété*, several or none,
+  sent only for a SALE · LAND) and shows its implied price per m² as the surface is typed — display only, never sent
+  nor stored. `availableFrom` must be between today and 365 days later, in the tenant's time zone (`Clock`, so a
+  saved date can expire). The header's *Quitter* and the confirmation's CTA go to `{publicPortalUrl}/owner` for a
+  rental, `{publicPortalUrl}/owner/sell` for a sale (none without a `publicPortalUrl`). Without JS every step posts;
   `src/main/assets/js/offer-property.js` only enhances (city / neighbourhood slim-select over `/locations`,
   "150 000", the project's texts, questions of the type and of the project, the documents, the price per m², E.164
   WhatsApp), mirroring `OfferPropertyRules`. Prototype: `src/main/html/v2/offer-property.html` (approved 2026-11-22).
