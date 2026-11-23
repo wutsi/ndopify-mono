@@ -18,7 +18,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-/** Renders `templates/index.html` with a real Thymeleaf engine. */
+/** Renders `templates/index.html` (the goal picker) with a real Thymeleaf engine. */
 class IndexTemplateTest {
     /** Stands for [HomeController]: puts the given attributes in the model and renders `index`. */
     @Controller
@@ -66,8 +66,48 @@ class IndexTemplateTest {
     }
 
     @Test
+    fun `the goal picker asks what the visitor's project is`() {
+        val page = render("tenant" to tenant)
+
+        assertEquals("Quel est votre projet immobilier ?", page.selectFirst("h1")!!.text())
+        assertEquals(
+            listOf("/louer", "/acheter", "/owner", "/owner/sell"),
+            page.select("a.goal-card").map { it.attr("href") },
+        )
+        assertEquals(
+            listOf("Je cherche un bien", "J'ai un bien"),
+            page.select(".goal-group h2").map { it.text() },
+        )
+        assertEquals(
+            listOf("Louer", "Acheter", "Mettre en location", "Vendre"),
+            page.select(".goal-card__title").map { it.text() },
+        )
+        // Nothing to browse: the cards are the only way in
+        assertTrue(page.select("article, [data-listing]").isEmpty())
+    }
+
+    @Test
+    fun `the shell nav links to the four landing pages`() {
+        val page = render("tenant" to tenant)
+
+        assertEquals(
+            listOf("Louer", "Acheter", "Propriétaires", "Agents"),
+            page.select(".site-nav__list a").map { it.text() },
+        )
+        assertEquals(
+            listOf("/louer", "/acheter", "/owner", "/agent"),
+            page.select(".site-nav__list a").map { it.attr("href") },
+        )
+        assertTrue(page.select(".site-nav__list a[aria-current=page]").isEmpty())
+        assertEquals(
+            listOf("/louer", "/acheter", "/owner", "/agent"),
+            page.select(".site-footer nav a").map { it.attr("href") },
+        )
+    }
+
+    @Test
     fun `tenant logo and icon`() {
-        val page = render("tenant" to tenant, "findPropertyUrl" to "https://partner.ndopify.cm/find-property")
+        val page = render("tenant" to tenant)
 
         assertEquals("https://cdn.ndopify.cm/logo.png", page.selectFirst("header img")?.attr("src"))
         assertEquals("Ndopify Cameroun", page.selectFirst("header img")?.attr("alt"))
@@ -92,29 +132,13 @@ class IndexTemplateTest {
     }
 
     @Test
-    fun `every call to action opens find-property`() {
-        val page = render("tenant" to tenant, "findPropertyUrl" to "https://partner.ndopify.cm/find-property")
-
-        val ctas = page.select(".cta-row a")
-        assertEquals(4, ctas.size)
-        assertTrue(ctas.all { it.attr("href") == "https://partner.ndopify.cm/find-property" })
-    }
-
-    @Test
-    fun `no call to action without find-property URL`() {
-        val page = render("tenant" to tenant)
-
-        assertTrue(page.select(".cta-row").isEmpty())
-    }
-
-    @Test
     fun `no pre-MVP promise`() {
-        val text = render("tenant" to tenant, "findPropertyUrl" to "https://partner.ndopify.cm/find-property").text()
+        val text = render("tenant" to tenant).text()
 
         listOf("Pass Visite", "sous 24 h", "visites sont-elles payantes", "vidéos", "GPS").forEach {
             assertFalse(text.contains(it), it)
         }
-        assertTrue(text.contains("Lancer ma recherche"))
+        assertTrue(text.contains("Des agents vérifiés, à votre service."))
     }
 
     @Test
@@ -149,7 +173,7 @@ class IndexTemplateTest {
 
     @Test
     fun `no link to the prototype`() {
-        val page = render("tenant" to tenant, "findPropertyUrl" to "https://partner.ndopify.cm/find-property")
+        val page = render("tenant" to tenant)
 
         assertTrue(page.select("[href$=.html], [src$=.html]").isEmpty())
     }

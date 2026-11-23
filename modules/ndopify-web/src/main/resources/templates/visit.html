@@ -23,7 +23,7 @@
   feedback form, or its thanks once answered; no check-in UI. Never agentRemarks.
 */-->
 <body class="visit-page" data-page="visit">
-<th:block th:replace="~{fragments/site-header :: header('home', 'Menu', true)}"></th:block>
+<th:block th:replace="~{fragments/site-header :: header(null, 'Menu', true)}"></th:block>
 
 <th:block th:replace="~{fragments/icon-sprite :: sprite}"></th:block>
 
@@ -316,7 +316,7 @@
     </div>
 </div>
 
-<footer th:replace="~{fragments/site-footer :: footer('© 2026 Ndopify. Logements vérifiés. Locations fiables.', true)}"></footer>
+<footer th:replace="~{fragments/site-footer :: footer('© 2026 Ndopify. Des agents vérifiés, à votre service.', true)}"></footer>
 
 </body>
 </html>

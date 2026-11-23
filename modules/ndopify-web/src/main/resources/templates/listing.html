@@ -20,7 +20,7 @@
   prototype's: listing.js answers from canned replies, nothing on the server handles its form.
 */-->
 <body class="listing-page">
-<th:block th:replace="~{fragments/site-header :: header('home', 'Menu', true)}"></th:block>
+<th:block th:replace="~{fragments/site-header :: header(null, 'Menu', true)}"></th:block>
 
 <th:block th:replace="~{fragments/icon-sprite :: sprite}"></th:block>
 
@@ -236,7 +236,7 @@
     </button>
 </div>
 
-<footer th:replace="~{fragments/site-footer :: footer('© 2026 Ndopify. Logements vérifiés. Locations fiables.', true)}"></footer>
+<footer th:replace="~{fragments/site-footer :: footer('© 2026 Ndopify. Des agents vérifiés, à votre service.', true)}"></footer>
 
 <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/js/intlTelInput.min.js"></script>
 </body>
