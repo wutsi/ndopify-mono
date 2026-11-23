@@ -60,6 +60,11 @@
         return Array.prototype.slice.call((root || document).querySelectorAll(selector));
     }
 
+    function checkedValue(name, root) {
+        var input = $('input[name="' + name + '"]:checked', root);
+        return input ? input.value : "";
+    }
+
     function announce(region, message) {
         if (!region) return;
         region.textContent = "";
