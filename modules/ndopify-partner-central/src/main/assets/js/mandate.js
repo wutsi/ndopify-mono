@@ -28,8 +28,8 @@
     // FindPropertyRules.MAX_AMOUNT_DIGITS: the server's bound on an amount, applied as it is typed.
     var MAX_AMOUNT_DIGITS = 12;
 
-    // FindPropertyRules: the follow-up questions of each type.
-    var WITHOUT_ROOMS = ["STUDIO", "ROOM"];
+    // FindPropertyRules: the follow-up questions of each type. A plot of land has no bedrooms, whatever the project.
+    var WITHOUT_ROOMS = ["STUDIO", "ROOM", "LAND"];
     var WITHOUT_FURNITURE = ["LAND", "BUILDING", "INDUSTRIAL"];
     var WITHOUT_PARKINGS = ["LAND", "ROOM"];
 
