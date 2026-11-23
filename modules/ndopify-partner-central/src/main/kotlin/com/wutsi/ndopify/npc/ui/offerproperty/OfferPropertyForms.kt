@@ -1,10 +1,13 @@
 package com.wutsi.ndopify.npc.ui.offerproperty
 
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 
 /** Step "property". */
 data class PropertyForm(
+    val listingType: ListingType? = null,
     val propertyCategory: PropertyCategory? = null,
 )
 
@@ -30,6 +33,7 @@ data class FeaturesForm(
     val hasParking: String? = null,
     val parkings: String? = null,
     val area: String? = null,
+    val ownershipDocuments: List<TitleDocumentType> = emptyList(),
 )
 
 /** Step "amenities": the road access (one of [OfferPropertyRules.ROAD_ACCESS]) and the names of the checked boxes. */

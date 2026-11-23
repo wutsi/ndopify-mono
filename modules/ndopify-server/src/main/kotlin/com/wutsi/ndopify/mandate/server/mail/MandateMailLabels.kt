@@ -75,6 +75,18 @@ internal object MandateMailLabels {
             .joinToString(" · ")
             .ifEmpty { null }
 
+    // Ex: "Titre foncier · Plan de bornage"; null without documents, and outside a land sale (a rental, another type).
+    // "·", never a comma: a document name may contain one.
+    fun ownershipDocuments(mandate: MandateEntity): String? =
+        if (mandate.listingType == ListingType.SALE && mandate.propertyType == PropertyType.LAND) {
+            mandate.ownershipDocuments
+                .mapNotNull { TITLE_DOCUMENTS[it] }
+                .joinToString(" · ")
+                .ifEmpty { null }
+        } else {
+            null
+        }
+
     fun neighbourhoods(mandate: MandateEntity, locationService: LocationService): String? =
         mandate.neighborhoodIds
             .mapNotNull { id -> locationService.findByIdOrNull(id)?.name }

@@ -2,8 +2,10 @@ package com.wutsi.ndopify.npc.ui.offerproperty
 
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.FurnitureType
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.listing.RentalTerms
 import com.wutsi.ndopify.web.core.service.TenantFormatter
@@ -15,6 +17,10 @@ import java.time.format.DateTimeParseException
  * [PendingListing] (to tell which steps are complete). Each returns the French error message, or null when valid.
  * Messages and thresholds are the ones of the `offer-property.js` prototype. ndopify-server re-checks the caution and
  * advance range only, so the other rules here are the only validation a listing gets.
+ *
+ * The wizard serves two projects: a rental ([ListingType.RENTAL]) and a sale ([ListingType.SALE]). A sale offers land
+ * for both uses and no room, asks no furniture, requires the surface of a plot of land and its optional documents, has
+ * its own price floor, and has no advance nor deposit.
  */
 object OfferPropertyRules {
     const val STEP_PROPERTY = "property"
@@ -37,6 +43,9 @@ object OfferPropertyRules {
 
     // Smallest monthly rent worth a listing, in the tenant's currency.
     const val MIN_RENT = 5000L
+
+    /** The smallest sale price worth a listing, one amount for every property type. */
+    const val MIN_SALE_PRICE = 1_000_000L
 
     /** How far ahead the availability date may be, in days. */
     const val MAX_AVAILABILITY_DAYS = 365L
@@ -64,7 +73,7 @@ object OfferPropertyRules {
         "securedFenced",
     )
 
-    /** The category each offered property type belongs to, in form order (prototype's PROPERTY_TYPES). */
+    /** The category each rental property type belongs to, in form order (prototype's PROPERTY_TYPES). */
     val CATEGORIES_BY_TYPE: Map<PropertyType, PropertyCategory> = linkedMapOf(
         PropertyType.APARTMENT to PropertyCategory.RESIDENTIAL,
         PropertyType.HOUSE to PropertyCategory.RESIDENTIAL,
@@ -78,22 +87,71 @@ object OfferPropertyRules {
         PropertyType.LAND to PropertyCategory.COMMERCIAL,
     )
 
+    // A sale drops the room type and offers land for both uses (a plot to build on is residential too).
+    private val SALE_CATEGORIES_BY_TYPE: Map<PropertyType, Set<PropertyCategory>> =
+        CATEGORIES_BY_TYPE.filterKeys { it != PropertyType.ROOM }.mapValues { (type, category) ->
+            if (type == PropertyType.LAND) {
+                setOf(PropertyCategory.RESIDENTIAL, PropertyCategory.COMMERCIAL)
+            } else {
+                setOf(category)
+            }
+        }
+
     private val WITHOUT_ROOMS = setOf(PropertyType.ROOM, PropertyType.STUDIO, PropertyType.BUILDING)
+
+    private val TITLE_DOCUMENT_TYPES = listOf(
+        TitleDocumentType.LAND_TITLE,
+        TitleDocumentType.SURVEY_PLAN,
+        TitleDocumentType.CERTIFICATE_OF_OWNERSHIP,
+    )
 
     private fun residential(category: PropertyCategory?) = category == PropertyCategory.RESIDENTIAL
 
-    // A whole building is let as it is, furnished or not flat by flat.
-    fun needsFurniture(category: PropertyCategory?, type: PropertyType?): Boolean =
-        residential(category) && type != PropertyType.BUILDING
+    private fun isSale(listingType: ListingType?): Boolean = listingType == ListingType.SALE
 
-    fun needsRooms(category: PropertyCategory?, type: PropertyType?): Boolean =
-        residential(category) && type !in WITHOUT_ROOMS
+    private fun categoriesByType(listingType: ListingType?): Map<PropertyType, Set<PropertyCategory>> =
+        if (isSale(listingType)) {
+            SALE_CATEGORIES_BY_TYPE
+        } else {
+            CATEGORIES_BY_TYPE.mapValues { setOf(it.value) }
+        }
 
-    // A room is let in a shared home: its parking, if any, isn't its own.
-    fun needsParking(category: PropertyCategory?, type: PropertyType?): Boolean =
-        residential(category) && type != PropertyType.ROOM
+    /** The types offered for [category], in form order, for the project. */
+    fun propertyTypes(category: PropertyCategory, listingType: ListingType?): List<PropertyType> =
+        categoriesByType(listingType).filterValues { category in it }.keys.toList()
 
-    fun needsArea(category: PropertyCategory?): Boolean = category == PropertyCategory.COMMERCIAL
+    /** Whether [type] is offered for [category] and the project; unknown answers never fit. */
+    fun typeFits(category: PropertyCategory?, type: String?, listingType: ListingType?): Boolean {
+        val known = FindPropertyRules.parsePropertyType(type) ?: return false
+        return categoriesByType(listingType)[known]?.contains(category) == true
+    }
+
+    fun listingType(value: ListingType?): String? =
+        if (value == null || value == ListingType.UNKNOWN) {
+            "Indiquez si vous souhaitez mettre votre bien en location ou le vendre."
+        } else {
+            null
+        }
+
+    // A whole building is let as it is, furnished or not flat by flat; a sale never asks the furnishing.
+    fun needsFurniture(category: PropertyCategory?, type: PropertyType?, listingType: ListingType?): Boolean =
+        !isSale(listingType) && residential(category) && type != PropertyType.BUILDING
+
+    // A plot has no bedrooms; a sale never asks them for it.
+    fun needsRooms(category: PropertyCategory?, type: PropertyType?, listingType: ListingType?): Boolean =
+        residential(category) && type !in WITHOUT_ROOMS && type != PropertyType.LAND
+
+    // A room is let in a shared home: its parking, if any, isn't its own. A plot has none.
+    fun needsParking(category: PropertyCategory?, type: PropertyType?, listingType: ListingType?): Boolean =
+        residential(category) && type != PropertyType.ROOM && type != PropertyType.LAND
+
+    /** A commercial property is always measured; a plot of land sold is sold by its surface. */
+    fun needsArea(category: PropertyCategory?, type: PropertyType?, listingType: ListingType?): Boolean =
+        category == PropertyCategory.COMMERCIAL || (isSale(listingType) && type == PropertyType.LAND)
+
+    /** The documents a seller declares, in prototype order: a land sale only, and always optional. */
+    fun ownershipDocumentTypes(listingType: ListingType?, type: PropertyType?): List<TitleDocumentType> =
+        if (isSale(listingType) && type == PropertyType.LAND) TITLE_DOCUMENT_TYPES else emptyList()
 
     fun propertyCategory(value: PropertyCategory?): String? =
         if (value == null || value == PropertyCategory.UNKNOWN) {
@@ -108,13 +166,23 @@ object OfferPropertyRules {
     fun neighborhoodId(value: Long?): String? =
         if (value == null || value <= 0) "Choisissez le quartier." else null
 
-    fun priceAmount(value: Long?, formatter: TenantFormatter): String? = when {
-        value == null || value <= 0 -> "Indiquez le loyer mensuel souhaité."
-        value < MIN_RENT -> "Indiquez un loyer d'au moins ${formatter.money(MIN_RENT)} par mois."
-        else -> null
-    }
+    fun priceAmount(value: Long?, formatter: TenantFormatter, listingType: ListingType?): String? =
+        if (isSale(listingType)) {
+            when {
+                value == null || value <= 0 -> "Indiquez le prix de vente souhaité."
+                value < MIN_SALE_PRICE -> "Indiquez un prix d'au moins ${formatter.money(MIN_SALE_PRICE)}."
+                else -> null
+            }
+        } else {
+            when {
+                value == null || value <= 0 -> "Indiquez le loyer mensuel souhaité."
+                value < MIN_RENT -> "Indiquez un loyer d'au moins ${formatter.money(MIN_RENT)} par mois."
+                else -> null
+            }
+        }
 
-    fun isPriceAmount(value: Long?): Boolean = value != null && value >= MIN_RENT
+    fun isPriceAmount(value: Long?, listingType: ListingType?): Boolean =
+        value != null && value >= if (isSale(listingType)) MIN_SALE_PRICE else MIN_RENT
 
     /** Optional: no advance asked. */
     fun advanceRent(value: Int?): String? =
@@ -132,10 +200,8 @@ object OfferPropertyRules {
         else -> null
     }
 
-    fun propertyType(category: PropertyCategory?, type: String?): String? {
-        val known = FindPropertyRules.parsePropertyType(type)
-        return if (known != null && CATEGORIES_BY_TYPE[known] == category) null else "Choisissez le type de bien."
-    }
+    fun propertyType(category: PropertyCategory?, type: String?, listingType: ListingType?): String? =
+        if (typeFits(category, type, listingType)) null else "Choisissez le type de bien."
 
     fun furnitureType(value: String?): String? =
         if (FurnitureType.entries.any { it != FurnitureType.UNKNOWN && it.name == value }) {
@@ -156,7 +222,9 @@ object OfferPropertyRules {
         else -> PARKING_PLACES_REQUIRED
     }
 
-    fun area(value: Int?): String? = when {
+    /** A surface: optional unless [required] (a plot of land sold), and when given always usable. */
+    fun area(value: Int?, required: Boolean): String? = when {
+        value == null && required -> "Indiquez la surface du terrain."
         value == null -> "Indiquez la surface, même approximative."
         value !in MIN_AREA..MAX_AREA -> "Indiquez une surface d'au moins $MIN_AREA m²."
         else -> null

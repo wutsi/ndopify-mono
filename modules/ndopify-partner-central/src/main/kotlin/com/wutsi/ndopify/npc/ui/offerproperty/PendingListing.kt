@@ -4,8 +4,10 @@ import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.join.JoinRules
 import com.wutsi.ndopify.refdata.dto.Money
@@ -21,6 +23,7 @@ import java.time.LocalDate
  * depends on the day.
  */
 data class PendingListing(
+    val listingType: ListingType? = null,
     val propertyCategory: PropertyCategory? = null,
     val cityId: Long? = null,
     val neighborhoodId: Long? = null,
@@ -33,6 +36,7 @@ data class PendingListing(
     val rooms: String? = null,
     val parkings: String? = null,
     val area: Int? = null,
+    val ownershipDocuments: List<TitleDocumentType> = emptyList(),
     val roadAccess: String? = null,
     val amenities: Set<String> = emptySet(),
     val firstName: String? = null,
@@ -47,24 +51,30 @@ data class PendingListing(
 
     fun has(amenity: String): Boolean = amenities.contains(amenity)
 
+    /** The wizard's project: a rental unless the owner chose to sell. */
+    fun isSale(): Boolean = FindPropertyRules.isSale(listingType)
+
     fun isComplete(step: String, today: LocalDate): Boolean = when (step) {
-        OfferPropertyRules.STEP_PROPERTY -> OfferPropertyRules.propertyCategory(propertyCategory) == null
+        OfferPropertyRules.STEP_PROPERTY ->
+            OfferPropertyRules.listingType(listingType) == null &&
+                OfferPropertyRules.propertyCategory(propertyCategory) == null
 
         OfferPropertyRules.STEP_ADDRESS ->
             OfferPropertyRules.cityId(cityId) == null && OfferPropertyRules.neighborhoodId(neighborhoodId) == null
 
         OfferPropertyRules.STEP_TERMS ->
-            OfferPropertyRules.isPriceAmount(priceAmount) &&
-                OfferPropertyRules.advanceRent(advanceRent) == null &&
-                OfferPropertyRules.securityDeposit(securityDeposit) == null &&
+            OfferPropertyRules.isPriceAmount(priceAmount, listingType) &&
+                (isSale() || OfferPropertyRules.advanceRent(advanceRent) == null) &&
+                (isSale() || OfferPropertyRules.securityDeposit(securityDeposit) == null) &&
                 OfferPropertyRules.availableFrom(availableFrom, today) == null
 
         OfferPropertyRules.STEP_FEATURES -> listOf(
-            OfferPropertyRules.propertyType(propertyCategory, propertyType),
+            OfferPropertyRules.propertyType(propertyCategory, propertyType, listingType),
             OfferPropertyRules.furnitureType(furnitureType).takeIf { needsFurniture() },
             OfferPropertyRules.rooms(rooms).takeIf { needsRooms() },
             OfferPropertyRules.parkings(parkings).takeIf { needsParking() },
-            OfferPropertyRules.area(area).takeIf { OfferPropertyRules.needsArea(propertyCategory) },
+            OfferPropertyRules.area(area, OfferPropertyRules.needsArea(propertyCategory, type(), listingType))
+                .takeIf { OfferPropertyRules.needsArea(propertyCategory, type(), listingType) },
         ).all { it == null }
 
         OfferPropertyRules.STEP_AMENITIES -> OfferPropertyRules.roadAccess(roadAccess) == null
@@ -87,18 +97,21 @@ data class PendingListing(
 
     private fun type() = FindPropertyRules.parsePropertyType(propertyType)
 
-    private fun needsFurniture() = OfferPropertyRules.needsFurniture(propertyCategory, type())
+    private fun needsFurniture() = OfferPropertyRules.needsFurniture(propertyCategory, type(), listingType)
 
-    private fun needsRooms() = OfferPropertyRules.needsRooms(propertyCategory, type())
+    private fun needsRooms() = OfferPropertyRules.needsRooms(propertyCategory, type(), listingType)
 
-    private fun needsParking() = OfferPropertyRules.needsParking(propertyCategory, type())
+    private fun needsParking() = OfferPropertyRules.needsParking(propertyCategory, type(), listingType)
 
-    /** The answers as a LISTING rental mandate. Questions that don't apply to the chosen type are sent as null. */
+    /**
+     * The answers as a LISTING mandate, for the chosen project. Questions that don't apply to the chosen type are sent
+     * as null. A sale is a one-off price with no advance, deposit nor furnishing; only a land sale sends the documents
+     * of ownership the seller declares. The price per m² is not an answer: it is never sent.
+     */
     fun toCreateMandateRequest(currency: String): CreateMandateRequest =
         CreateMandateRequest(
             mandateType = MandateType.LISTING,
-            // Only rentals for now: the landlord isn't asked.
-            listingType = ListingType.RENTAL,
+            listingType = listingType ?: ListingType.RENTAL,
             propertyCategory = propertyCategory ?: PropertyCategory.UNKNOWN,
             cityId = cityId ?: -1,
             neighbourhoodIds = listOfNotNull(neighborhoodId),
@@ -106,7 +119,8 @@ data class PendingListing(
             furnitureType = FurnitureType.entries.firstOrNull { it.name == furnitureType }?.takeIf { needsFurniture() },
             rooms = rooms?.takeIf { needsRooms() },
             parkings = parkings?.takeIf { needsParking() },
-            area = area?.takeIf { OfferPropertyRules.needsArea(propertyCategory) },
+            area = area?.takeIf { OfferPropertyRules.needsArea(propertyCategory, type(), listingType) },
+            ownershipDocuments = ownershipDocuments.filter { isSale() && type() == PropertyType.LAND }.distinct(),
             waterMeter = has("waterMeter"),
             dedicatedWaterMeter = has("dedicatedWaterMeter"),
             waterTank = has("waterTank"),
@@ -121,9 +135,13 @@ data class PendingListing(
             securedFenced = has("securedFenced"),
             securityGuard = has("securityGuard"),
             videoSurveillance = has("videoSurveillance"),
-            price = Money(amount = priceAmount ?: 0, currency = currency, periodicity = PeriodicityType.MONTHLY),
-            advanceRent = advanceRent,
-            securityDeposit = securityDeposit,
+            price = Money(
+                amount = priceAmount ?: 0,
+                currency = currency,
+                periodicity = if (isSale()) PeriodicityType.NONE else PeriodicityType.MONTHLY,
+            ),
+            advanceRent = advanceRent.takeIf { !isSale() },
+            securityDeposit = securityDeposit.takeIf { !isSale() },
             availableFrom = availableFrom,
             firstName = firstName.orEmpty(),
             lastName = lastName.orEmpty(),

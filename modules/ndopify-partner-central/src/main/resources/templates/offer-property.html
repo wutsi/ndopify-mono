@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head(${step == 'confirmation'} ? 'Bien enregistré — Ndopify' : 'Proposer un bien — Ndopify', 'Mettez votre bien en location avec un Agent Vérifié Ndopify de votre quartier : audit et photos gratuits, frais dus seulement à la signature du bail.', true)}"></head>
+<head th:replace="~{fragments/head :: head(${step == 'confirmation'} ? 'Bien enregistré — Ndopify' : 'Proposer un bien — Ndopify', 'Mettez votre bien en location ou en vente avec un Agent Vérifié Ndopify de votre quartier : audit et photos gratuits, commission due seulement si le projet aboutit.', true)}"></head>
 <!--/*
   One page, seven steps then the confirmation: OfferPropertyController picks the step (model attribute "step") and
   only renders that one. Each step is its own form, posted to /offer-property/{step}; the answers live in the HTTP
@@ -50,15 +50,38 @@
             <h2 class="visually-hidden" data-steps-title>Étapes du formulaire</h2>
 
             <!--/* Step 1: property (POST /offer-property/property) */-->
-            <form class="form" data-offer-form method="post" novalidate th:action="@{/offer-property/property}"
+            <form class="form" data-offer-form method="post"
+                  th:attrappend="data-listing-type=${answers.listingType != null ? answers.listingType.name() : 'RENTAL'}" novalidate th:action="@{/offer-property/property}"
                   th:if="${step == 'property'}">
                 <input name="returnTo" th:if="${returning}" type="hidden" value="review">
                 <fieldset class="step" data-step="property" tabindex="-1">
                     <legend class="visually-hidden" th:text="|Étape ${stepNumber} sur ${stepCount} : votre bien|">
                         Étape 1 sur 7 : votre bien</legend>
-                    <h3 aria-hidden="true">Quel bien souhaitez-vous louer&nbsp;?</h3>
-                    <p>Un Agent Vérifié de votre quartier vérifie votre bien, le photographie et trouve vos locataires.
-                        L'audit et la publication sont gratuits.</p>
+                    <h3 aria-hidden="true">Quel est votre projet&nbsp;?</h3>
+                    <p data-project-intro th:unless="${sale}">Un Agent Vérifié de votre quartier vérifie votre bien, le
+                        photographie et trouve vos locataires. L'audit et la publication sont gratuits.</p>
+                    <p data-project-intro th:if="${sale}">Un Agent Vérifié de votre quartier vérifie votre bien, le
+                        photographie et le présente aux acheteurs. L'audit et la publication sont gratuits.</p>
+                    <fieldset aria-describedby="listingType-error" class="choices" data-group="listingType"
+                              th:attr="aria-invalid=${errors['listingType'] != null ? 'true' : null}">
+                        <legend class="choices__legend">Vous souhaitez&nbsp;:</legend>
+                        <div class="choices__grid">
+                            <label class="choice choice--described">
+                                <input name="listingType" required
+                                       th:checked="${answers.listingType != null and answers.listingType.name() == 'RENTAL'}"
+                                       type="radio" value="RENTAL">
+                                <span><th:block th:text="${listingTypeLabels['RENTAL']}">Mettre en location</th:block>
+                                    <span class="choice__detail">Votre agent trouve votre locataire.</span></span></label>
+                            <label class="choice choice--described">
+                                <input name="listingType" required
+                                       th:checked="${answers.listingType != null and answers.listingType.name() == 'SALE'}"
+                                       type="radio" value="SALE">
+                                <span><th:block th:text="${listingTypeLabels['SALE']}">Vendre</th:block>
+                                    <span class="choice__detail">Votre agent présente votre bien aux
+                                        acheteurs.</span></span></label>
+                        </div>
+                        <p th:replace="~{:: error('listingType')}"></p>
+                    </fieldset>
                     <fieldset aria-describedby="propertyCategory-error" class="choices" data-group="propertyCategory"
                               th:attr="aria-invalid=${errors['propertyCategory'] != null ? 'true' : null}">
                         <legend class="choices__legend">Pour quel usage&nbsp;?</legend>
@@ -67,13 +90,17 @@
                                 <input name="propertyCategory" required
                                        th:checked="${answers.propertyCategory != null and answers.propertyCategory.name() == 'RESIDENTIAL'}"
                                        type="radio" value="RESIDENTIAL">
-                                <span><th:block th:text="${categoryLabels['RESIDENTIAL']}">Résidentiel</th:block> <span class="choice__detail">Pour y habiter&nbsp;: chambre,
+                                <span><th:block th:text="${categoryLabels['RESIDENTIAL']}">Résidentiel</th:block> <span
+                                        class="choice__detail" data-category-detail
+                                        th:text="${sale} ? ${categoryDetailLabels['SALE_RESIDENTIAL']} : ${categoryDetailLabels['RENTAL_RESIDENTIAL']}">Pour y habiter&nbsp;: chambre,
                                     studio, appartement, villa, immeuble…</span></span></label>
                             <label class="choice choice--described">
                                 <input name="propertyCategory" required
                                        th:checked="${answers.propertyCategory != null and answers.propertyCategory.name() == 'COMMERCIAL'}"
                                        type="radio" value="COMMERCIAL">
-                                <span><th:block th:text="${categoryLabels['COMMERCIAL']}">Commercial</th:block> <span class="choice__detail">Pour une activité&nbsp;: bureau,
+                                <span><th:block th:text="${categoryLabels['COMMERCIAL']}">Commercial</th:block> <span
+                                        class="choice__detail"
+                                        th:text="${categoryDetailLabels['COMMERCIAL']}">Pour une activité&nbsp;: bureau,
                                     boutique, entrepôt, terrain…</span></span></label>
                         </div>
                         <p th:replace="~{:: error('propertyCategory')}"></p>
@@ -88,7 +115,8 @@
             </form>
 
             <!--/* Step 2: address (POST /offer-property/address) */-->
-            <form class="form" data-offer-form method="post" novalidate th:action="@{/offer-property/address}"
+            <form class="form" data-offer-form method="post"
+                  th:attrappend="data-listing-type=${answers.listingType != null ? answers.listingType.name() : 'RENTAL'}" novalidate th:action="@{/offer-property/address}"
                   th:attr="data-locations-url=@{/locations}" th:if="${step == 'address'}">
                 <input name="returnTo" th:if="${returning}" type="hidden" value="review">
                 <fieldset class="step" data-step="address" tabindex="-1">
@@ -136,7 +164,8 @@
             </form>
 
             <!--/* Step 3: terms (POST /offer-property/terms) */-->
-            <form class="form" data-offer-form method="post" novalidate th:action="@{/offer-property/terms}"
+            <form class="form" data-offer-form method="post"
+                  th:attrappend="data-listing-type=${answers.listingType != null ? answers.listingType.name() : 'RENTAL'}" novalidate th:action="@{/offer-property/terms}"
                   th:if="${step == 'terms'}">
                 <input name="returnTo" th:if="${returning}" type="hidden" value="review">
                 <fieldset class="step" data-step="terms" tabindex="-1">
@@ -144,9 +173,13 @@
                             th:text="|Étape ${stepNumber} sur ${stepCount} : vos conditions financières|">
                         Étape 3 sur 7 : vos conditions financières</legend>
                     <h3 aria-hidden="true">Quelles sont vos conditions&nbsp;?</h3>
-                    <p>Le loyer et les garanties que vous demandez, et la date à laquelle le bien est libre.</p>
+                    <p th:unless="${sale}">Le loyer et les garanties que vous demandez, et la date à laquelle le bien
+                        est libre.</p>
+                    <p th:if="${sale}">Le prix que vous demandez, et la date à laquelle le bien est libre.</p>
                     <div class="field">
-                        <label class="field__label" for="priceAmount">Loyer mensuel souhaité</label>
+                        <label class="field__label" for="priceAmount"
+                               th:text="${sale} ? 'Prix de vente souhaité' : 'Loyer mensuel souhaité'">Loyer mensuel
+                            souhaité</label>
                         <div class="input-unit">
                             <input aria-describedby="priceAmount-error" class="input" id="priceAmount"
                                    inputmode="numeric" name="priceAmount" required
@@ -154,11 +187,11 @@
                                    th:value="${answers.priceAmount != null} ? ${#numbers.formatInteger(answers.priceAmount, 1, 'WHITESPACE')} : ''"
                                    type="text">
                             <span aria-hidden="true" class="input-unit__suffix"
-                                  th:text="|${currency} / mois|">FCFA / mois</span>
+                                  th:text="|${currency}${sale ? '' : ' / mois'}|">FCFA / mois</span>
                         </div>
                         <p th:replace="~{:: error('priceAmount')}"></p>
                     </div>
-                    <div class="field">
+                    <div class="field" th:unless="${sale}">
                         <label class="field__label" for="advanceRent">Avance de loyer exigée <span
                                 class="field__optional">(si applicable)</span></label>
                         <select aria-describedby="advanceRent-error" class="input select" id="advanceRent"
@@ -171,7 +204,7 @@
                         </select>
                         <p th:replace="~{:: error('advanceRent')}"></p>
                     </div>
-                    <div class="field">
+                    <div class="field" th:unless="${sale}">
                         <label class="field__label" for="securityDeposit">Caution demandée</label>
                         <select aria-describedby="securityDeposit-error" class="input select" id="securityDeposit"
                                 name="securityDeposit"
@@ -195,8 +228,11 @@
                     <div class="hint" id="conditions-hint">
                         <svg th:replace="~{fragments/icon :: info}"></svg>
                         <div>
-                            <p>Rien à payer d'avance&nbsp;: les frais de service, 1&nbsp;mois de loyer, ne sont dus
-                                qu'à la signature du bail.</p>
+                            <p th:unless="${sale}">Rien à payer d'avance&nbsp;: les frais de service, 1&nbsp;mois de
+                                loyer, ne sont dus qu'à la signature du bail.</p>
+                            <p th:if="${sale}">Rien à payer d'avance&nbsp;: la commission de votre agent est écrite
+                                dans votre mandat, et n'est due que si votre bien est vendu grâce à lui. Le prix de
+                                vente vous est versé directement.</p>
                         </div>
                     </div>
 
@@ -211,7 +247,10 @@
             </form>
 
             <!--/* Step 4: features (POST /offer-property/features) */-->
-            <form class="form" data-offer-form method="post" novalidate th:action="@{/offer-property/features}"
+            <form class="form" data-offer-form method="post"
+                  th:attrappend="data-listing-type=${answers.listingType != null ? answers.listingType.name() : 'RENTAL'}"
+                  th:attr="data-price-amount=${answers.priceAmount}, data-currency=${currency}" novalidate
+                  th:action="@{/offer-property/features}"
                   th:if="${step == 'features'}"
                   th:with="residential=${answers.propertyCategory != null and answers.propertyCategory.name() == 'RESIDENTIAL'}">
                 <input name="returnTo" th:if="${returning}" type="hidden" value="review">
@@ -235,7 +274,7 @@
                     <!--/* The follow-up questions: offer-property.js hides those that don't apply to the type. */-->
                     <fieldset aria-describedby="furnitureType-error" class="choices" data-group="furnitureType"
                               th:attr="aria-invalid=${errors['furnitureType'] != null ? 'true' : null}"
-                              th:if="${residential}">
+                              th:if="${residential and !sale}">
                         <legend class="choices__legend">Ameublement</legend>
                         <div class="choices__grid choices__grid--2">
                             <label class="choice"><input name="furnitureType" required
@@ -296,8 +335,10 @@
                         <p th:replace="~{:: error('parkings')}"></p>
                     </fieldset>
 
-                    <div class="field" data-group="area" th:unless="${residential}">
-                        <label class="field__label" data-area-label for="area">Surface estimée</label>
+                    <div class="field" data-group="area" th:if="${asksArea}">
+                        <label class="field__label" data-area-label for="area"
+                               th:text="${landSale} ? 'Surface du terrain estimée' : 'Surface estimée'">Surface
+                            estimée</label>
                         <div class="input-unit">
                             <input aria-describedby="area-error" class="input" id="area" inputmode="numeric"
                                    name="area" required
@@ -307,7 +348,30 @@
                             <span aria-hidden="true" class="input-unit__suffix">m²</span>
                         </div>
                         <p th:replace="~{:: error('area')}"></p>
+                        <!--/* A sold plot's implied price per m²: display only, filled by offer-property.js, never sent. */-->
+                        <p class="hint" data-price-per-sqm hidden></p>
                     </div>
+
+                    <!--/* The documents of ownership a seller declares: a sale of a Terrain only, optional, several.
+                           Rendered even when hidden, so a post without JS still carries them; the server filters. */-->
+                    <fieldset class="choices" data-group="ownershipDocuments" th:hidden="${!asksOwnershipDocuments}">
+                        <legend class="choices__legend">Document de propriété <span
+                                class="field__optional">(facultatif)</span></legend>
+                        <div class="choices__grid">
+                            <label class="choice" th:each="document : ${ownershipDocumentLabels}">
+                                <input name="ownershipDocuments"
+                                       th:checked="${ownershipDocumentNames.contains(document.key)}"
+                                       th:value="${document.key}" type="checkbox">
+                                <th:block th:text="${document.value}">Titre foncier</th:block></label>
+                        </div>
+                        <div class="hint">
+                            <svg th:replace="~{fragments/icon :: info}"></svg>
+                            <div>
+                                <p>Facultatif&nbsp;: vous pouvez cocher plusieurs documents, ou aucun. Votre agent
+                                    les vérifie lors de l'audit.</p>
+                            </div>
+                        </div>
+                    </fieldset>
 
                     <div class="form__actions">
                         <a class="btn btn--outline" data-prev
@@ -320,7 +384,8 @@
             </form>
 
             <!--/* Step 5: amenities (POST /offer-property/amenities) — every box posts amenities=<name> */-->
-            <form class="form" data-offer-form method="post" novalidate th:action="@{/offer-property/amenities}"
+            <form class="form" data-offer-form method="post"
+                  th:attrappend="data-listing-type=${answers.listingType != null ? answers.listingType.name() : 'RENTAL'}" novalidate th:action="@{/offer-property/amenities}"
                   th:if="${step == 'amenities'}">
                 <input name="returnTo" th:if="${returning}" type="hidden" value="review">
                 <fieldset class="step" data-step="amenities" tabindex="-1">
@@ -402,7 +467,8 @@
             </form>
 
             <!--/* Step 6: contact (POST /offer-property/contact) */-->
-            <form class="form" data-offer-form method="post" novalidate th:action="@{/offer-property/contact}"
+            <form class="form" data-offer-form method="post"
+                  th:attrappend="data-listing-type=${answers.listingType != null ? answers.listingType.name() : 'RENTAL'}" novalidate th:action="@{/offer-property/contact}"
                   th:if="${step == 'contact'}">
                 <input name="returnTo" th:if="${returning}" type="hidden" value="review">
                 <fieldset class="step" data-step="contact" tabindex="-1">
@@ -487,7 +553,8 @@
             </form>
 
             <!--/* Step 7: review (POST /offer-property/review) — only reachable once every answer is in the session */-->
-            <form class="form" data-offer-form method="post" novalidate th:action="@{/offer-property/review}"
+            <form class="form" data-offer-form method="post"
+                  th:attrappend="data-listing-type=${answers.listingType != null ? answers.listingType.name() : 'RENTAL'}" novalidate th:action="@{/offer-property/review}"
                   th:if="${step == 'review'}">
                 <fieldset class="step" data-step="review" tabindex="-1">
                     <legend class="visually-hidden"
@@ -543,6 +610,18 @@
                                 <a class="link-button review__edit"
                                    th:href="@{/offer-property(step='features', returnTo='review')}">Modifier<span
                                         class="visually-hidden"> les caractéristiques</span></a>
+                            </dd>
+                        </div>
+                        <!--/* A sold plot's declared documents only; any other sale or a rental never shows it. */-->
+                        <div class="review__item" data-review-ownershipDocuments th:if="${ownershipDocumentsLabel != null}">
+                            <dt class="review__term">Document de propriété</dt>
+                            <dd class="review__value">
+                                <p data-review-value="ownershipDocuments" th:text="${ownershipDocumentsLabel}">Titre foncier</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/offer-property(step='features', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> le document de propriété</span></a>
                             </dd>
                         </div>
                         <div class="review__item">
@@ -604,15 +683,20 @@
 
         <!--/* Confirmation — only rendered while a saved listing is in the session */-->
         <section aria-labelledby="confirmation-title" class="confirmation stack" data-confirmation tabindex="-1"
-                 th:if="${step == 'confirmation'}">
+                 th:if="${step == 'confirmation'}"
+                 th:with="sale=${listingType != null and listingType.name() == 'SALE'}">
             <span class="confirmation__mark"><svg th:replace="~{fragments/icon :: check('confirmation__icon')}"></svg></span>
             <h2 id="confirmation-title">Bien enregistré</h2>
-            <p>Félicitations&nbsp;! Votre bien est enregistré. Voici la suite pour le mettre en location&nbsp;:</p>
+            <p th:unless="${sale}">Félicitations&nbsp;! Votre bien est enregistré. Voici la suite pour le mettre en
+                location&nbsp;:</p>
+            <p th:if="${sale}">Félicitations&nbsp;! Votre bien est enregistré. Voici la suite pour le vendre&nbsp;:</p>
             <ol class="next-steps">
                 <li>
                     <div>
                         <p class="next-steps__title">Un agent vous est attribué</p>
-                        <p>Nous choisissons un Agent Vérifié qui connaît bien votre quartier.</p>
+                        <p th:unless="${sale}">Nous choisissons un Agent Vérifié qui connaît bien votre quartier.</p>
+                        <p th:if="${sale}">Nous choisissons un Agent Vérifié de votre quartier qui traite les
+                            ventes.</p>
                     </div>
                 </li>
                 <li>
@@ -642,7 +726,10 @@
                 <li>
                     <div>
                         <p class="next-steps__title">Vous validez l'annonce</p>
-                        <p>L'annonce certifiée n'est publiée qu'après votre accord, auprès de locataires vérifiés.</p>
+                        <p th:unless="${sale}">L'annonce certifiée n'est publiée qu'après votre accord, auprès de
+                            locataires vérifiés.</p>
+                        <p th:if="${sale}">L'annonce certifiée n'est publiée qu'après votre accord. Votre agent la
+                            présente aux acheteurs dont la recherche lui correspond.</p>
                     </div>
                 </li>
             </ol>
@@ -654,9 +741,14 @@
                           stroke-width="1.5"/>
                 </svg>
                 <div>
-                    <p><strong>Garantie anti-fraude.</strong> Aucun bien n'est publié sans vérification de l'identité
-                        du bailleur et de son titre de propriété. L'audit et la publication sont gratuits&nbsp;; les
-                        frais de service, 1&nbsp;mois de loyer, ne sont dus qu'à la signature du bail.</p>
+                    <p th:unless="${sale}"><strong>Garantie anti-fraude.</strong> Aucun bien n'est publié sans
+                        vérification de l'identité du bailleur et de son titre de propriété. L'audit et la publication
+                        sont gratuits&nbsp;; les frais de service, 1&nbsp;mois de loyer, ne sont dus qu'à la
+                        signature du bail.</p>
+                    <p th:if="${sale}"><strong>Garantie anti-fraude.</strong> Aucun bien n'est publié sans vérification
+                        de l'identité du vendeur et de son titre de propriété. L'audit et la publication sont
+                        gratuits&nbsp;; la commission de votre agent, écrite dans votre mandat, n'est due que si votre
+                        bien est vendu grâce à lui.</p>
                 </div>
             </div>
             <div class="cta-row" th:if="${exitUrl}">

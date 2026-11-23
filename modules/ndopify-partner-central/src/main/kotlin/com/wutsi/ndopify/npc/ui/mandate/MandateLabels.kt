@@ -104,6 +104,12 @@ object MandateLabels {
         ListingType.SALE to "Acheter",
     )
 
+    /** An owner's project on *Proposer un bien*: the same enum, the owner's words (prototype's listing type labels). */
+    val OWNER_LISTING_TYPE_LABELS: Map<ListingType, String> = linkedMapOf(
+        ListingType.RENTAL to "Mettre en location",
+        ListingType.SALE to "Vendre",
+    )
+
     /** How a purchase will be paid (prototype's FINANCING_LABELS). */
     val FINANCING_LABELS: Map<FinancingType, String> = linkedMapOf(
         FinancingType.CASH to "Comptant",
@@ -131,6 +137,10 @@ object MandateLabels {
     /** "Location, usage résidentiel" or "Achat, usage résidentiel", the wizards' project; null without a category. */
     fun project(category: PropertyCategory?, listingType: ListingType?): String? =
         PROJECT_LABELS[category]?.let { (if (FindPropertyRules.isSale(listingType)) "Achat, " else "Location, ") + it }
+
+    /** An owner's project: "Vente, usage résidentiel" for a sale, "Location, usage résidentiel" otherwise. */
+    fun ownerProject(category: PropertyCategory?, listingType: ListingType?): String? =
+        PROJECT_LABELS[category]?.let { (if (FindPropertyRules.isSale(listingType)) "Vente, " else "Location, ") + it }
 
     /** The review's horizon term: a purchase is planned, a rental is moved into (or installed for an activity). */
     fun moveInTerm(listingType: ListingType?, category: PropertyCategory?): String = when {
@@ -183,6 +193,10 @@ object MandateLabels {
     fun titleDocuments(documents: List<TitleDocumentType>): String =
         documents.mapNotNull { TITLE_DOCUMENT_LABELS[it] }.joinToString(" · ").ifEmpty { "Aucun document exigé" }
 
+    /** "Titre foncier · Plan de bornage", in the stored order; "Aucun document déclaré" for none. */
+    fun ownershipDocuments(documents: List<TitleDocumentType>): String =
+        documents.mapNotNull { TITLE_DOCUMENT_LABELS[it] }.joinToString(" · ").ifEmpty { "Aucun document déclaré" }
+
     /**
      * The mandate's criteria as term → value rows, in the prototype's order (`criteriaOf`): sector, amount and moving
      * date first (a card's three facts), the category and the type (with them, the page's key criteria), then the
@@ -226,7 +240,9 @@ object MandateLabels {
         ) + listOfNotNull(
             mandate.financingType?.takeIf { sale }?.let { "Financement" to (FINANCING_LABELS[it] ?: NONE) },
             ("Documents exigés" to titleDocuments(mandate.titleDocuments))
-                .takeIf { sale && type == PropertyType.LAND },
+                .takeIf { sale && !owner && type == PropertyType.LAND },
+            ("Document de propriété" to ownershipDocuments(mandate.ownershipDocuments))
+                .takeIf { sale && owner && type == PropertyType.LAND && mandate.ownershipDocuments.isNotEmpty() },
         ) + amenityGroups(mandate) + listOfNotNull(mandate.comments?.trim()?.ifEmpty { null }
             ?.let { "Autres précisions" to it })
     }

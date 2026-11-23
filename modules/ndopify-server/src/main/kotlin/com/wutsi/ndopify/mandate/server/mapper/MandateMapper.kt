@@ -22,6 +22,7 @@ class MandateMapper {
             listingType = entity.listingType,
             financingType = entity.financingType,
             titleDocuments = entity.titleDocuments,
+            ownershipDocuments = entity.ownershipDocuments,
             cityId = entity.cityId,
             neighborhoodIds = entity.neighborhoodIds,
             propertyType = entity.propertyType,

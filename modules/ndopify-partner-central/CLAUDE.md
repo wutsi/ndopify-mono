@@ -152,16 +152,22 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `src/main/assets/js/find-property.js` hides them and computes the price per m². Prototype:
   `src/main/html/v2/find-property.html` (approved 2026-11-22).
 - *Proposer un bien* is `OfferPropertyController` (`ui/offerproperty/`), a **public** wizard for owners offering a
-  property for rent, built like *Trouver un bien*: one page (`templates/offer-property.html`), seven steps
+  property to rent or sell, built like *Trouver un bien*: one page (`templates/offer-property.html`), seven steps
   (`property` → `address` → `terms` → `features` → `amenities` → `contact` → `review`), `POST /offer-property/{step}`
   validates (`OfferPropertyRules`, the only validation a listing gets) into the session's `PendingListing`, and the
-  review submits it as a LISTING / RENTAL mandate with a MONTHLY price in the tenant's currency (`NdMandateClient` →
-  `POST /v1/mandates`), then shows the confirmation while a `SubmittedMandate` is in the session. `availableFrom` must
-  be between today and 365 days later, in the tenant's time zone (`Clock`, so a saved date can expire). The header's
-  *Quitter* and the confirmation's CTA go to `{publicPortalUrl}/owner` (none without a `publicPortalUrl`). Without JS
-  every step posts; `src/main/assets/js/offer-property.js` only enhances (city / neighbourhood slim-select over
-  `/locations`, "150 000", questions of the type, E.164 WhatsApp), mirroring `OfferPropertyRules`. Prototype:
-  `src/main/html/offer-property.html`.
+  review submits it as a LISTING mandate for the chosen project (`listingType`, required on the first step and
+  preselected from `?type=SALE|RENTAL` while no answer is saved) in the tenant's currency (`NdMandateClient` →
+  `POST /v1/mandates`), then shows the confirmation while a `SubmittedMandate` is in the session. A sale has a
+  one-off price (`PeriodicityType.NONE`, at least 1 000 000 FCFA), no advance nor deposit, no furnishing, *Terrain*
+  offered for both uses and no *Chambre*; a sold *Terrain* requires its surface, offers the optional *Document de
+  propriété* (*Titre foncier*, *Plan de bornage*, *Certificat de propriété*, several or none, sent only for a
+  SALE · LAND) and shows its implied price per m² as the surface is typed — display only, never sent nor stored.
+  `availableFrom` must be between today and 365 days later, in the tenant's time zone (`Clock`, so a saved date can
+  expire). The header's *Quitter* and the confirmation's CTA go to `{publicPortalUrl}/owner` for a rental,
+  `{publicPortalUrl}/owner/sell` for a sale (none without a `publicPortalUrl`). Without JS every step posts;
+  `src/main/assets/js/offer-property.js` only enhances (city / neighbourhood slim-select over `/locations`,
+  "150 000", the project's texts, questions of the type and of the project, the documents, the price per m², E.164
+  WhatsApp), mirroring `OfferPropertyRules`. Prototype: `src/main/html/v2/offer-property.html` (approved 2026-11-22).
 - KYC is `KycController` (`ui/kyc/`), one page (`templates/kyc.html`), reached from the Espace agent's banner. Wizard steps `front` →
   `back` → `selfie` → `review`: `GET /kyc?step=…` shows a step (never past the first photo the case lacks) and
   `POST /kyc/{step}` uploads that photo straight to the agent's PENDING_VERIFICATION case (`NdKycClient`), so the case is the

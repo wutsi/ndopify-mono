@@ -74,6 +74,7 @@ class MandateOfferBotlet(
             mandate.rooms?.trim()?.ifBlank { null }?.let { rooms -> "$rooms pièce" + if (rooms == "1") "" else "s" },
             mandate.area?.let { "$it m²" },
             mandate.availableFrom?.let { "disponible le ${formatter.date(it)}" },
+            MandateMailLabels.ownershipDocuments(mandate)?.let { "document de propriété : $it" },
         ).ifEmpty { null }?.joinToString(" · ")
 
     // Ex: "Location - Appartement", or "Location" without a property type

@@ -1,6 +1,9 @@
 package com.wutsi.ndopify.npc.ui.offerproperty
 
+import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
@@ -75,14 +78,10 @@ class OfferPropertyController(
     @ModelAttribute("tenant")
     fun tenant(): Tenant = tenantContext.getTenant()
 
-    /** "Quitter": the owners' page of the tenant's public portal, or nothing without a portal. */
-    @ModelAttribute("exitUrl")
-    fun exitUrl(): String? =
-        tenantContext.getTenant().publicPortalUrl?.trim()?.trimEnd('/')?.takeIf { it.isNotEmpty() }?.let { "$it/owner" }
-
     @GetMapping
     fun show(
         @RequestParam(name = "step", required = false) requestedStep: String?,
+        @RequestParam(name = "type", required = false) type: String?,
         @RequestParam(required = false) returnTo: String?,
         session: HttpSession,
         model: Model,
@@ -93,10 +92,15 @@ class OfferPropertyController(
             model.addAttribute("maskedEmail", LoginController.maskEmail(submitted.email))
             model.addAttribute("whatsappNumber", submitted.whatsappNumber)
             model.addAttribute("contactPeriodLabel", MandateLabels.CONTACT_PERIOD_LABELS[submitted.preferredContactPeriod])
+            model.addAttribute("listingType", submitted.listingType)
+            model.addAttribute("exitUrl", exitUrl(submitted.listingType))
             return VIEW
         }
 
-        val pending = pending(session)
+        // ?type=SALE|RENTAL (the public site's links) preselects the project for display only, until one is saved.
+        val pending = pending(session).let { saved ->
+            if (saved.listingType != null) saved else saved.copy(listingType = FindPropertyRules.parseListingType(type))
+        }
         val requested = STEPS.indexOf(requestedStep).coerceAtLeast(0)
         val allowed = STEPS.indexOf(firstIncomplete(pending))
         return step(STEPS[minOf(requested, allowed)], pending, returnTo, emptyMap(), model)
@@ -109,8 +113,14 @@ class OfferPropertyController(
         session: HttpSession,
         model: Model,
     ): String {
-        val answers = pending(session).copy(propertyCategory = form.propertyCategory)
-        val errors = errors("propertyCategory" to OfferPropertyRules.propertyCategory(answers.propertyCategory))
+        val answers = pending(session).copy(
+            listingType = form.listingType,
+            propertyCategory = form.propertyCategory,
+        )
+        val errors = errors(
+            "listingType" to OfferPropertyRules.listingType(answers.listingType),
+            "propertyCategory" to OfferPropertyRules.propertyCategory(answers.propertyCategory),
+        )
         return save(STEP_PROPERTY, answers, errors, returnTo, session, model)
     }
 
@@ -153,14 +163,16 @@ class OfferPropertyController(
         }
         val answers = pending.copy(
             priceAmount = FindPropertyRules.parseAmount(form.priceAmount),
-            advanceRent = months(form.advanceRent, blank = null),
-            securityDeposit = months(form.securityDeposit, blank = null),
+            // A sale has no advance nor deposit: they are not asked, and any posted value is dropped.
+            advanceRent = months(form.advanceRent, blank = null).takeIf { !pending.isSale() },
+            securityDeposit = months(form.securityDeposit, blank = null).takeIf { !pending.isSale() },
             availableFrom = date,
         )
         val errors = errors(
-            "priceAmount" to OfferPropertyRules.priceAmount(answers.priceAmount, formatter()),
-            "advanceRent" to OfferPropertyRules.advanceRent(answers.advanceRent),
-            "securityDeposit" to OfferPropertyRules.securityDeposit(answers.securityDeposit),
+            "priceAmount" to OfferPropertyRules.priceAmount(answers.priceAmount, formatter(), answers.listingType),
+            "advanceRent" to OfferPropertyRules.advanceRent(answers.advanceRent).takeIf { !answers.isSale() },
+            "securityDeposit" to OfferPropertyRules.securityDeposit(answers.securityDeposit)
+                .takeIf { !answers.isSale() },
             "availableFrom" to dateError,
         )
         return save(STEP_TERMS, answers, errors, returnTo, session, model)
@@ -178,18 +190,26 @@ class OfferPropertyController(
 
         // Questions that don't apply to the posted type are dropped: without JS the page shows them all.
         val category = pending.propertyCategory
+        val listingType = pending.listingType
         val typeAnswer = form.propertyType?.takeIf { it.isNotEmpty() }
         val type = FindPropertyRules.parsePropertyType(typeAnswer)
-        val needsParking = OfferPropertyRules.needsParking(category, type)
+        val needsParking = OfferPropertyRules.needsParking(category, type, listingType)
         val hasParking = form.hasParking
         val places = form.parkings?.takeIf { it.isNotEmpty() }
         val areaText = form.area?.trim().orEmpty()
         val area = FindPropertyRules.parseAmount(areaText)?.takeIf { it <= Int.MAX_VALUE }?.toInt()
-        val needsArea = OfferPropertyRules.needsArea(category)
+        val needsArea = OfferPropertyRules.needsArea(category, type, listingType)
+        // Only a plot of land sold names its surface: a commercial premises keeps the optional wording.
+        val areaRequired = pending.isSale() && type == PropertyType.LAND
+        val documents = form.ownershipDocuments
+            .filter { it in OfferPropertyRules.ownershipDocumentTypes(listingType, type) }
+            .distinct()
         val answers = pending.copy(
             propertyType = typeAnswer,
-            furnitureType = form.furnitureType?.takeIf { OfferPropertyRules.needsFurniture(category, type) },
-            rooms = form.rooms?.takeIf { OfferPropertyRules.needsRooms(category, type) },
+            furnitureType = form.furnitureType?.takeIf {
+                OfferPropertyRules.needsFurniture(category, type, listingType)
+            },
+            rooms = form.rooms?.takeIf { OfferPropertyRules.needsRooms(category, type, listingType) },
             parkings = when {
                 !needsParking -> null
                 hasParking == HAS_NO_PARKING -> OfferPropertyRules.NO_PARKING
@@ -197,12 +217,14 @@ class OfferPropertyController(
                 else -> null
             },
             area = area.takeIf { needsArea },
+            ownershipDocuments = documents,
         )
         val errors = errors(
-            "propertyType" to OfferPropertyRules.propertyType(category, typeAnswer),
+            "propertyType" to OfferPropertyRules.propertyType(category, typeAnswer, listingType),
             "furnitureType" to OfferPropertyRules.furnitureType(answers.furnitureType)
-                .takeIf { OfferPropertyRules.needsFurniture(category, type) },
-            "rooms" to OfferPropertyRules.rooms(answers.rooms).takeIf { OfferPropertyRules.needsRooms(category, type) },
+                .takeIf { OfferPropertyRules.needsFurniture(category, type, listingType) },
+            "rooms" to OfferPropertyRules.rooms(answers.rooms)
+                .takeIf { OfferPropertyRules.needsRooms(category, type, listingType) },
             // No answer is the "Parking ou garage" question's error; the places' own is under "Combien de places ?".
             "hasParking" to OfferPropertyRules.PARKING_ANSWER_REQUIRED
                 .takeIf { needsParking && hasParking != HAS_PARKING && hasParking != HAS_NO_PARKING },
@@ -212,7 +234,11 @@ class OfferPropertyController(
                 else -> OfferPropertyRules.parkings(answers.parkings)
             },
             // Something typed that isn't a usable number is an error too, not a silent "no area".
-            "area" to if (!needsArea) null else OfferPropertyRules.area(area ?: 0.takeIf { areaText.isNotEmpty() }),
+            "area" to when {
+                !needsArea -> null
+                area == null && areaText.isEmpty() -> OfferPropertyRules.area(null, required = areaRequired)
+                else -> OfferPropertyRules.area(area ?: 0, required = areaRequired)
+            },
         )
         // The posted choice, so that "Oui" stays checked when only its places are missing (never on a redirect).
         if (errors.isNotEmpty()) model.addAttribute("hasParking", hasParking)
@@ -287,6 +313,7 @@ class OfferPropertyController(
                 email = pending.email.orEmpty(),
                 whatsappNumber = pending.whatsappNumber.orEmpty(),
                 preferredContactPeriod = pending.preferredContactPeriod,
+                listingType = pending.listingType ?: ListingType.RENTAL,
             ),
         )
         return redirect(STEP_CONFIRMATION)
@@ -323,6 +350,7 @@ class OfferPropertyController(
         model.addAttribute("stepCount", STEPS.size)
         model.addAttribute("answers", answers)
         model.addAttribute("errors", errors)
+        model.addAttribute("exitUrl", exitUrl(answers))
         // "Revenir à la revue" instead of "Suivant": only once every answer is in.
         model.addAttribute(
             "returning",
@@ -330,7 +358,10 @@ class OfferPropertyController(
         )
 
         if (step == STEP_PROPERTY) {
+            model.addAttribute("sale", answers.isSale())
+            model.addAttribute("listingTypeLabels", MandateLabels.byName(MandateLabels.OWNER_LISTING_TYPE_LABELS))
             model.addAttribute("categoryLabels", MandateLabels.byName(MandateLabels.CATEGORY_LABELS))
+            model.addAttribute("categoryDetailLabels", CATEGORY_DETAIL_LABELS)
         }
         if (step == STEP_ADDRESS || step == STEP_REVIEW) {
             // Names of the chosen city and neighbourhood: the selects' initial options, and the review.
@@ -340,30 +371,48 @@ class OfferPropertyController(
         }
         if (step == STEP_TERMS) {
             val today = today()
+            model.addAttribute("sale", answers.isSale())
             model.addAttribute("currency", formatter().currency())
             model.addAttribute("availableMin", today.toString())
             model.addAttribute("availableMax", today.plusDays(OfferPropertyRules.MAX_AVAILABILITY_DAYS).toString())
             model.addAttribute("rentalMonths", RentalTerms.MONTHS)
         }
         if (step == STEP_FEATURES) {
+            val type = FindPropertyRules.parsePropertyType(answers.propertyType)
+            model.addAttribute("sale", answers.isSale())
             model.addAttribute(
                 "propertyTypes",
-                OfferPropertyRules.CATEGORIES_BY_TYPE.filterValues { it == answers.propertyCategory }.keys.toList(),
+                OfferPropertyRules.propertyTypes(answers.propertyCategory!!, answers.listingType),
             )
             model.addAttribute("propertyTypeLabels", PROPERTY_TYPE_LABELS)
             model.addAttribute("furnitureLabels", MandateLabels.byName(MandateLabels.FURNITURE_TYPE_LABELS))
+            model.addAttribute("currency", formatter().currency())
+            model.addAttribute("ownershipDocumentLabels", MandateLabels.byName(MandateLabels.TITLE_DOCUMENT_LABELS))
+            model.addAttribute("ownershipDocumentNames", HashSet(answers.ownershipDocuments.map { it.name }))
+            model.addAttribute(
+                "asksOwnershipDocuments",
+                OfferPropertyRules.ownershipDocumentTypes(answers.listingType, type).isNotEmpty(),
+            )
+            model.addAttribute("asksArea", !residential(answers.propertyCategory) || answers.isSale())
+            model.addAttribute("landSale", answers.isSale() && type == PropertyType.LAND)
         }
         if (step == STEP_AMENITIES) {
             // The owner's wording, as the listing's (road access: one radio, in the mandates' wording)
             model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS + ListingViews.AMENITY_LABELS)
         }
         if (step == STEP_REVIEW) {
-            model.addAttribute("categoryLabel", MandateLabels.project(answers.propertyCategory, null))
+            model.addAttribute("categoryLabel", MandateLabels.ownerProject(answers.propertyCategory, answers.listingType))
             model.addAttribute("locationLabel", locationLabel(model))
             model.addAttribute("termsLines", termsLines(answers))
             model.addAttribute("propertyLabel", propertyLabel(answers))
             model.addAttribute("amenitiesLabel", amenitiesLabel(answers))
             model.addAttribute("contactLines", contactLines(answers))
+            model.addAttribute(
+                "ownershipDocumentsLabel",
+                answers.ownershipDocuments
+                    .takeIf { answers.isSale() && FindPropertyRules.parsePropertyType(answers.propertyType) == PropertyType.LAND }
+                    ?.let { MandateLabels.ownershipDocuments(it) },
+            )
         }
         return VIEW
     }
@@ -375,16 +424,23 @@ class OfferPropertyController(
         return if (city == null || neighborhood == null) null else "${neighborhood.name}, ${city.name}"
     }
 
-    /** "150 000 FCFA par mois", "Avance de 3 mois", "Caution de 2 mois", "Disponible dès maintenant". */
+    /**
+     * "150 000 FCFA par mois", "Avance de 3 mois", "Caution de 2 mois", "Disponible dès maintenant"; a sale's price
+     * has no "/ mois" and no advance nor deposit line.
+     */
     private fun termsLines(answers: PendingListing): List<String> {
         val formatter = formatter()
+        val availability = answers.availableFrom?.let {
+            if (it == formatter.today(clock)) "Disponible dès maintenant" else "Disponible dès le " + formatter.date(it)
+        }
+        if (answers.isSale()) {
+            return listOfNotNull(answers.priceAmount?.let { formatter.money(it) }, availability)
+        }
         return listOfNotNull(
             answers.priceAmount?.let { formatter.money(it) + " par mois" },
             answers.advanceRent?.let { "Avance de $it mois" } ?: "Sans avance de loyer",
             answers.securityDeposit?.let { "Caution de $it mois" } ?: "Sans caution",
-            answers.availableFrom?.let {
-                if (it == formatter.today(clock)) "Disponible dès maintenant" else "Disponible dès le " + formatter.date(it)
-            },
+            availability,
         )
     }
 
@@ -395,10 +451,12 @@ class OfferPropertyController(
         val parts = listOfNotNull(
             PROPERTY_TYPE_LABELS[type],
             MandateLabels.FURNITURE_LABELS[answers.furnitureType]
-                ?.takeIf { OfferPropertyRules.needsFurniture(category, type) },
-            MandateLabels.ROOM_LABELS[answers.rooms]?.takeIf { OfferPropertyRules.needsRooms(category, type) },
-            MandateLabels.PARKING_LABELS[answers.parkings]?.takeIf { OfferPropertyRules.needsParking(category, type) },
-            answers.area?.takeIf { OfferPropertyRules.needsArea(category) }
+                ?.takeIf { OfferPropertyRules.needsFurniture(category, type, answers.listingType) },
+            MandateLabels.ROOM_LABELS[answers.rooms]
+                ?.takeIf { OfferPropertyRules.needsRooms(category, type, answers.listingType) },
+            MandateLabels.PARKING_LABELS[answers.parkings]
+                ?.takeIf { OfferPropertyRules.needsParking(category, type, answers.listingType) },
+            answers.area?.takeIf { OfferPropertyRules.needsArea(category, type, answers.listingType) }
                 ?.let { MandateLabels.formatNumber(it) + " m²" },
         )
         return parts.joinToString(" · ")
@@ -447,6 +505,15 @@ class OfferPropertyController(
         return if (text.isEmpty()) blank else text.toIntOrNull() ?: 0
     }
 
+    /** "Quitter" and the confirmation: the owners' page of the project on the tenant's public portal. */
+    private fun exitUrl(answers: PendingListing): String? = exitUrl(answers.listingType)
+
+    private fun exitUrl(listingType: ListingType?): String? =
+        tenantContext.getTenant().publicPortalUrl?.trim()?.trimEnd('/')?.takeIf { it.isNotEmpty() }
+            ?.let { if (FindPropertyRules.isSale(listingType)) "$it/owner/sell" else "$it/owner" }
+
+    private fun residential(category: PropertyCategory?) = category == PropertyCategory.RESIDENTIAL
+
     private fun formatter(): TenantFormatter = TenantFormatter(tenantContext.getTenant())
 
     private fun today(): LocalDate = formatter().today(clock)
@@ -465,6 +532,13 @@ class OfferPropertyController(
     private fun pending(session: HttpSession): PendingListing =
         session.getAttribute(PendingListing.SESSION_ATTRIBUTE) as PendingListing? ?: PendingListing()
 }
+
+// The category's detail text at step 1: a sale offers a plot to build on (prototype's choice__detail).
+private val CATEGORY_DETAIL_LABELS: Map<String, String> = mapOf(
+    "RENTAL_RESIDENTIAL" to "Pour y habiter\u00a0: chambre, studio, appartement, villa, immeuble…",
+    "SALE_RESIDENTIAL" to "Pour y habiter\u00a0: appartement, villa, immeuble, terrain à bâtir…",
+    "COMMERCIAL" to "Pour une activité\u00a0: bureau, boutique, entrepôt, terrain…",
+)
 
 // "Villa, maison" is one answer, as in the prototype: it is sent as HOUSE.
 private val PROPERTY_TYPE_LABELS: Map<PropertyType, String> =

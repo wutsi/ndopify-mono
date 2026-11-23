@@ -5,10 +5,12 @@
  * step still posts without it:
  * - address: a slim-select type-ahead over GET /locations?type=CITY&q=…, then the chosen city's neighbourhoods
  *   (GET /locations?type=NEIGHBORHOOD&parent-id=…), a single choice;
- * - terms: the rent as "150 000" as you type (the server reads the digits);
+ * - property: the project's texts follow the rent / sell choice as it changes;
+ * - terms: the rent (or the sale price) as "150 000" as you type (the server reads the digits);
  * - features: shows only the questions that apply to the chosen type (furnishing, rooms, parking, and the number of
  *   places only after "Oui"), disables the hidden ones so they don't post; the surface of a commercial property
- *   is formatted like the rent;
+ *   is formatted like the rent. For a sale, a plot asks its documents and shows its implied price per m² (display
+ *   only, never sent nor stored);
  * - contact: intl-tel-input formats the WhatsApp number and posts E.164 ("+237677123456");
  * - "Suivant" stays inactive until every required field of the step is filled (the server still validates them);
  * - the review's submit button can't be pressed twice.
@@ -35,6 +37,20 @@
     var WITHOUT_FURNITURE = ["BUILDING"];
     var WITHOUT_PARKING = ["ROOM"];
 
+    // The project's texts, as the server renders them (the prototype's data-for pairs): they follow the choice.
+    var PROJECT_TEXTS = {
+        RENTAL: {
+            intro: "Un Agent Vérifié de votre quartier vérifie votre bien, le photographie et trouve vos " +
+                "locataires. L'audit et la publication sont gratuits.",
+            residential: "Pour y habiter\u00a0: chambre, studio, appartement, villa, immeuble…"
+        },
+        SALE: {
+            intro: "Un Agent Vérifié de votre quartier vérifie votre bien, le photographie et le présente aux " +
+                "acheteurs. L'audit et la publication sont gratuits.",
+            residential: "Pour y habiter\u00a0: appartement, villa, immeuble, terrain à bâtir…"
+        }
+    };
+
     /* ---------- Helpers ---------- */
     function $(selector, root) {
         return (root || document).querySelector(selector);
@@ -42,6 +58,11 @@
 
     function $all(selector, root) {
         return Array.prototype.slice.call((root || document).querySelectorAll(selector));
+    }
+
+    function checkedValue(name, root) {
+        var input = $('input[name="' + name + '"]:checked', root);
+        return input ? input.value : "";
     }
 
     function announce(region, message) {
@@ -338,46 +359,120 @@
         });
     }
 
+    /* ---------- Step: property (the project's texts) ---------- */
+    function initProject(form) {
+        var intro = $("[data-project-intro]", form);
+        var detail = $("[data-category-detail]", form);
+
+        function apply() {
+            var source = PROJECT_TEXTS[checkedValue("listingType", form) === "SALE" ? "SALE" : "RENTAL"];
+            if (intro) intro.textContent = source.intro;
+            if (detail) detail.textContent = source.residential;
+        }
+
+        $all('input[name="listingType"]', form).forEach(function (input) {
+            input.addEventListener("change", apply);
+        });
+        apply();
+    }
+
     /* ---------- Step: features ---------- */
     function initFeatures(form, refresh) {
+        // The controller renders the saved answers on the form: the project, and the asking price the price per m²
+        // is derived from. Neither is read from another step's radio (this page has only its own).
+        var sale = (form.getAttribute("data-listing-type") || "RENTAL") === "SALE";
+        var askingPrice = Number(form.getAttribute("data-price-amount")) || 0;
+        var currency = form.getAttribute("data-currency") || "";
         var groups = {
             furnitureType: $('[data-group="furnitureType"]', form),
             rooms: $('[data-group="rooms"]', form),
             hasParking: $('[data-group="hasParking"]', form),
-            parkings: $('[data-group="parkings"]', form)
+            parkings: $('[data-group="parkings"]', form),
+            area: $('[data-group="area"]', form),
+            ownershipDocuments: $('[data-group="ownershipDocuments"]', form)
         };
         var areaLabel = $("[data-area-label]", form);
+        var areaInput = $("#area", form);
+        var perSqm = $("[data-price-per-sqm]", form);
 
-        function checkedValue(name) {
-            var input = $('input[name="' + name + '"]:checked', form);
-            return input ? input.value : "";
+        function isLand(type) {
+            return type === "LAND";
         }
 
-        // A hidden question is disabled (it doesn't post) and never in error; a shown one gates "Suivant".
+        function needsFurniture(type) {
+            return !sale && WITHOUT_FURNITURE.indexOf(type) === -1;
+        }
+
+        // A plot has no bedrooms nor parking; a sale never asks the furnishing.
+        function needsRooms(type) {
+            return WITHOUT_ROOMS.indexOf(type) === -1 && !isLand(type);
+        }
+
+        function needsParking(type) {
+            return WITHOUT_PARKING.indexOf(type) === -1 && !isLand(type);
+        }
+
+        // The server renders the surface of a commercial property only; a sold plot always asks it.
+        function needsArea(type) {
+            return !!groups.area && (!sale || isLand(type));
+        }
+
+        function areaValue() {
+            return areaInput && areaInput.value.trim() ? Number(digitsOf(areaInput.value)) : 0;
+        }
+
+        // A sold plot's implied rate, asking price ÷ surface rounded to the nearest 100: display only, never sent,
+        // never stored, never on the review. Hidden without a valid price or surface, for another type or a rental.
+        function updatePricePerSqm(type) {
+            if (!perSqm) return;
+            var surface = areaValue();
+            var show = sale && isLand(type) && askingPrice > 0 && surface >= 5 && areaInput && areaInput.value.trim();
+            var rate = show ? Math.round((askingPrice / surface) / 100) * 100 : 0;
+            if (!show || rate <= 0) {
+                perSqm.hidden = true;
+                perSqm.textContent = "";
+                return;
+            }
+            perSqm.textContent = "Soit ≈ " + formatNumber(rate) + " " + currency + "/m² pour " +
+                formatNumber(surface) + " m²";
+            perSqm.hidden = false;
+        }
+
+        // A hidden question is disabled (it doesn't post) and never in error; a shown one gates "Suivant" — except
+        // the documents, which are optional.
         function show(key, shown) {
             var group = groups[key];
             if (!group) return; // only rendered for the category that asks it
             group.hidden = !shown;
             $all("input", group).forEach(function (input) {
                 input.disabled = !shown;
-                input.required = shown;
+                if (key !== "ownershipDocuments") input.required = shown;
             });
             if (!shown) setFieldError(group, $("#" + key + "-error", form), "");
         }
 
         function updateQuestions() {
-            var type = checkedValue("propertyType");
-            show("furnitureType", WITHOUT_FURNITURE.indexOf(type) === -1);
-            show("rooms", WITHOUT_ROOMS.indexOf(type) === -1);
-            show("hasParking", WITHOUT_PARKING.indexOf(type) === -1);
+            var type = checkedValue("propertyType", form);
+            show("furnitureType", needsFurniture(type));
+            show("rooms", needsRooms(type));
+            show("hasParking", needsParking(type));
             // The number of places only after "Oui" (the server reads "Non" as 0 places).
-            show("parkings", WITHOUT_PARKING.indexOf(type) === -1 && checkedValue("hasParking") === "YES");
-            if (areaLabel) areaLabel.textContent = type === "LAND" ? "Surface du terrain estimée" : "Surface estimée";
+            show("parkings", needsParking(type) && checkedValue("hasParking", form) === "YES");
+            show("area", needsArea(type));
+            // The documents of ownership a seller declares: a sale of a Terrain only, optional and several.
+            show("ownershipDocuments", sale && isLand(type));
+            if (areaLabel) {
+                areaLabel.textContent = isLand(type) ? "Surface du terrain estimée" : "Surface estimée";
+            }
+            updatePricePerSqm(type);
             refresh();
         }
 
         $all('input[name="propertyType"], input[name="hasParking"]', form).forEach(function (input) {
             input.addEventListener("change", updateQuestions);
+        });
+        if (areaInput) areaInput.addEventListener("input", function () {
+            updatePricePerSqm(checkedValue("propertyType", form));
         });
         updateQuestions();
     }
@@ -410,6 +505,7 @@
         });
 
         if ($("#cityId", form)) initAddress(form, refresh);
+        if ($('input[name="listingType"]', form).length) initProject(form);
         if ($('[data-group="propertyType"]', form)) initFeatures(form, refresh);
         bindNumber($("#priceAmount", form), 9);
         bindNumber($("#area", form), 7);

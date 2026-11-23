@@ -50,6 +50,26 @@ class MandateMapperTest {
     }
 
     @Test
+    fun `maps the ownership documents`() {
+        val entity = MandateEntity(
+            id = 1L,
+            listingType = ListingType.SALE,
+            ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+        )
+
+        val mandate = mapper.toMandate(entity)
+
+        assertEquals(listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN), mandate.ownershipDocuments)
+    }
+
+    @Test
+    fun `maps a rental with no ownership document`() {
+        val mandate = mapper.toMandate(MandateEntity(id = 1L, listingType = ListingType.RENTAL))
+
+        assertEquals(emptyList(), mandate.ownershipDocuments)
+    }
+
+    @Test
     fun `toMandate maps the deal the mandate was closed on`() {
         val entity = MandateEntity(
             id = 1L,

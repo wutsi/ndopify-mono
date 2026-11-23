@@ -17,6 +17,7 @@ import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class MandateLabelsTest {
     @Test
@@ -78,11 +79,32 @@ class MandateLabelsTest {
     }
 
     @Test
+    fun `the owner project words a sale`() {
+        assertEquals("Location, usage résidentiel", MandateLabels.ownerProject(PropertyCategory.RESIDENTIAL, ListingType.RENTAL))
+        assertEquals("Vente, usage résidentiel", MandateLabels.ownerProject(PropertyCategory.RESIDENTIAL, ListingType.SALE))
+        assertEquals("Vente, usage commercial", MandateLabels.ownerProject(PropertyCategory.COMMERCIAL, ListingType.SALE))
+        assertNull(MandateLabels.ownerProject(null, ListingType.SALE))
+    }
+
+    @Test
     fun `move in term words a purchase`() {
         assertEquals("Date d'emménagement", MandateLabels.moveInTerm(null, PropertyCategory.RESIDENTIAL))
         assertEquals("Date d'installation", MandateLabels.moveInTerm(ListingType.RENTAL, PropertyCategory.COMMERCIAL))
         assertEquals("Achat prévu", MandateLabels.moveInTerm(ListingType.SALE, PropertyCategory.RESIDENTIAL))
         assertEquals("Achat prévu", MandateLabels.moveInTerm(ListingType.SALE, PropertyCategory.COMMERCIAL))
+    }
+
+    @Test
+    fun `ownership documents are named or none declared`() {
+        assertEquals(
+            "Titre foncier · Plan de bornage",
+            MandateLabels.ownershipDocuments(listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN)),
+        )
+        assertEquals("Aucun document déclaré", MandateLabels.ownershipDocuments(emptyList()))
+        assertEquals(
+            "Certificat de propriété",
+            MandateLabels.ownershipDocuments(listOf(TitleDocumentType.CERTIFICATE_OF_OWNERSHIP)),
+        )
     }
 
     @Test
@@ -287,5 +309,50 @@ class MandateLabelsTest {
             11L to Location(id = 11, name = "Kotto"),
             12L to Location(id = 12, name = "Logpom"),
         )
+    }
+
+    @Test
+    fun `a sale criteria has no furniture row and shows the documents`() {
+        val mandate = Mandate(
+            mandateType = MandateType.LISTING,
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = PropertyType.LAND,
+            cityId = 1,
+            area = 800,
+            furnitureType = FurnitureType.FULLY_FURNISHED, // left over from an earlier answer
+            price = Money(45_000_000, "XAF", PeriodicityType.NONE),
+            availableFrom = LocalDate.of(2026, 12, 1),
+            ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+        )
+
+        val rows = MandateLabels.criteria(mandate, LOCATIONS, FORMATTER)
+
+        assertTrue(rows.none { it.first == "Meublé" })
+        assertEquals("Titre foncier · Plan de bornage", rows.first { it.first == "Document de propriété" }.second)
+    }
+
+    @Test
+    fun `a rental criteria is unchanged`() {
+        val mandate = Mandate(
+            mandateType = MandateType.LISTING,
+            listingType = ListingType.RENTAL,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = PropertyType.APARTMENT,
+            cityId = 1,
+            neighborhoodIds = listOf(11, 12),
+            furnitureType = FurnitureType.UNFURNISHED,
+            rooms = "3",
+            parkings = "0",
+            area = 80,
+            price = Money(150_000, "XAF", PeriodicityType.MONTHLY),
+            availableFrom = LocalDate.of(2026, 12, 1),
+        )
+
+        val rows = MandateLabels.criteria(mandate, LOCATIONS, FORMATTER)
+
+        assertTrue(rows.any { it.first == "Meublé" })
+        assertTrue(rows.none { it.first == "Document de propriété" })
+        assertEquals("150\u00a0000\u00a0FCFA / mois", rows.first { it.first == "Loyer" }.second)
     }
 }

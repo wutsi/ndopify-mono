@@ -1,8 +1,10 @@
 package com.wutsi.ndopify.npc.ui.offerproperty
 
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
@@ -60,13 +62,13 @@ class OfferPropertyRulesTest {
 
     @Test
     fun priceAmount() {
-        assertEquals("Indiquez le loyer mensuel souhaité.", OfferPropertyRules.priceAmount(null, FORMATTER))
-        assertEquals("Indiquez le loyer mensuel souhaité.", OfferPropertyRules.priceAmount(0, FORMATTER))
+        assertEquals("Indiquez le loyer mensuel souhaité.", OfferPropertyRules.priceAmount(null, FORMATTER, null))
+        assertEquals("Indiquez le loyer mensuel souhaité.", OfferPropertyRules.priceAmount(0, FORMATTER, null))
         assertEquals(
             "Indiquez un loyer d'au moins ${FORMATTER.money(5000)} par mois.",
-            OfferPropertyRules.priceAmount(4999, FORMATTER),
+            OfferPropertyRules.priceAmount(4999, FORMATTER, null),
         )
-        assertNull(OfferPropertyRules.priceAmount(5000, FORMATTER))
+        assertNull(OfferPropertyRules.priceAmount(5000, FORMATTER, null))
     }
 
     @Test
@@ -116,30 +118,105 @@ class OfferPropertyRulesTest {
     @Test
     fun propertyType() {
         val message = "Choisissez le type de bien."
-        assertNull(OfferPropertyRules.propertyType(residential, "BUILDING"))
-        assertNull(OfferPropertyRules.propertyType(commercial, "LAND"))
-        assertEquals(message, OfferPropertyRules.propertyType(commercial, "BUILDING"))
-        assertEquals(message, OfferPropertyRules.propertyType(residential, "VILLA"))
-        assertEquals(message, OfferPropertyRules.propertyType(residential, null))
-        assertEquals(message, OfferPropertyRules.propertyType(null, "APARTMENT"))
+        assertNull(OfferPropertyRules.propertyType(residential, "BUILDING", null))
+        assertNull(OfferPropertyRules.propertyType(commercial, "LAND", null))
+        assertEquals(message, OfferPropertyRules.propertyType(commercial, "BUILDING", null))
+        assertEquals(message, OfferPropertyRules.propertyType(residential, "VILLA", null))
+        assertEquals(message, OfferPropertyRules.propertyType(residential, null, null))
+        assertEquals(message, OfferPropertyRules.propertyType(null, "APARTMENT", null))
     }
 
     @Test
     fun needs() {
-        assertFalse(OfferPropertyRules.needsFurniture(residential, PropertyType.BUILDING))
-        assertTrue(OfferPropertyRules.needsFurniture(residential, PropertyType.ROOM))
-        assertFalse(OfferPropertyRules.needsFurniture(commercial, PropertyType.OFFICE))
-        assertFalse(OfferPropertyRules.needsRooms(residential, PropertyType.STUDIO))
-        assertFalse(OfferPropertyRules.needsRooms(residential, PropertyType.ROOM))
-        assertFalse(OfferPropertyRules.needsRooms(residential, PropertyType.BUILDING))
-        assertTrue(OfferPropertyRules.needsRooms(residential, PropertyType.APARTMENT))
-        assertFalse(OfferPropertyRules.needsRooms(commercial, PropertyType.OFFICE))
-        assertFalse(OfferPropertyRules.needsParking(residential, PropertyType.ROOM))
-        assertTrue(OfferPropertyRules.needsParking(residential, PropertyType.BUILDING))
-        assertFalse(OfferPropertyRules.needsParking(commercial, PropertyType.OFFICE))
-        assertTrue(OfferPropertyRules.needsArea(commercial))
-        assertFalse(OfferPropertyRules.needsArea(residential))
-        assertFalse(OfferPropertyRules.needsArea(null))
+        assertFalse(OfferPropertyRules.needsFurniture(residential, PropertyType.BUILDING, null))
+        assertTrue(OfferPropertyRules.needsFurniture(residential, PropertyType.ROOM, null))
+        assertFalse(OfferPropertyRules.needsFurniture(commercial, PropertyType.OFFICE, null))
+        assertFalse(OfferPropertyRules.needsRooms(residential, PropertyType.STUDIO, null))
+        assertFalse(OfferPropertyRules.needsRooms(residential, PropertyType.ROOM, null))
+        assertFalse(OfferPropertyRules.needsRooms(residential, PropertyType.BUILDING, null))
+        assertTrue(OfferPropertyRules.needsRooms(residential, PropertyType.APARTMENT, null))
+        assertFalse(OfferPropertyRules.needsRooms(commercial, PropertyType.OFFICE, null))
+        assertFalse(OfferPropertyRules.needsParking(residential, PropertyType.ROOM, null))
+        assertTrue(OfferPropertyRules.needsParking(residential, PropertyType.BUILDING, null))
+        assertFalse(OfferPropertyRules.needsParking(commercial, PropertyType.OFFICE, null))
+        assertTrue(OfferPropertyRules.needsArea(commercial, PropertyType.OFFICE, null))
+        assertFalse(OfferPropertyRules.needsArea(residential, PropertyType.APARTMENT, null))
+        assertFalse(OfferPropertyRules.needsArea(null, null, null))
+    }
+
+    @Test
+    fun `a sale offers land to both uses and no room`() {
+        assertEquals(
+            listOf(
+                PropertyType.APARTMENT, PropertyType.HOUSE, PropertyType.STUDIO, PropertyType.DUPLEX,
+                PropertyType.BUILDING, PropertyType.LAND,
+            ),
+            OfferPropertyRules.propertyTypes(PropertyCategory.RESIDENTIAL, ListingType.SALE),
+        )
+        assertEquals(
+            listOf(PropertyType.OFFICE, PropertyType.RETAIL, PropertyType.INDUSTRIAL, PropertyType.LAND),
+            OfferPropertyRules.propertyTypes(PropertyCategory.COMMERCIAL, ListingType.SALE),
+        )
+        assertEquals(
+            listOf(PropertyType.APARTMENT, PropertyType.HOUSE, PropertyType.ROOM, PropertyType.STUDIO,
+                PropertyType.DUPLEX, PropertyType.BUILDING),
+            OfferPropertyRules.propertyTypes(PropertyCategory.RESIDENTIAL, ListingType.RENTAL),
+        )
+        assertFalse(OfferPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "ROOM", ListingType.SALE))
+        assertTrue(OfferPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "LAND", ListingType.SALE))
+        assertTrue(OfferPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "LAND", ListingType.SALE))
+        assertFalse(OfferPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "LAND", ListingType.RENTAL))
+        assertTrue(OfferPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "LAND", ListingType.RENTAL))
+    }
+
+    @Test
+    fun `a sale asks no furniture, no rooms nor parking for land`() {
+        assertFalse(OfferPropertyRules.needsFurniture(PropertyCategory.RESIDENTIAL, PropertyType.APARTMENT, ListingType.SALE))
+        assertTrue(OfferPropertyRules.needsFurniture(PropertyCategory.RESIDENTIAL, PropertyType.APARTMENT, ListingType.RENTAL))
+        assertFalse(OfferPropertyRules.needsRooms(PropertyCategory.RESIDENTIAL, PropertyType.LAND, ListingType.SALE))
+        assertFalse(OfferPropertyRules.needsParking(PropertyCategory.RESIDENTIAL, PropertyType.LAND, ListingType.SALE))
+    }
+
+    @Test
+    fun `only a land sale requires its surface`() {
+        assertTrue(OfferPropertyRules.needsArea(PropertyCategory.RESIDENTIAL, PropertyType.LAND, ListingType.SALE))
+        assertFalse(OfferPropertyRules.needsArea(PropertyCategory.RESIDENTIAL, PropertyType.LAND, ListingType.RENTAL))
+        assertTrue(OfferPropertyRules.needsArea(PropertyCategory.COMMERCIAL, PropertyType.OFFICE, ListingType.RENTAL))
+        assertEquals("Indiquez la surface du terrain.", OfferPropertyRules.area(null, required = true))
+        assertEquals("Indiquez une surface d'au moins 5 m².", OfferPropertyRules.area(4, required = true))
+    }
+
+    @Test
+    fun `the documents are a land sale's only`() {
+        assertEquals(
+            listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN, TitleDocumentType.CERTIFICATE_OF_OWNERSHIP),
+            OfferPropertyRules.ownershipDocumentTypes(ListingType.SALE, PropertyType.LAND),
+        )
+        assertEquals(emptyList(), OfferPropertyRules.ownershipDocumentTypes(ListingType.SALE, PropertyType.VILLA))
+        assertEquals(emptyList(), OfferPropertyRules.ownershipDocumentTypes(ListingType.RENTAL, PropertyType.LAND))
+    }
+
+    @Test
+    fun `a sale has its own price floor`() {
+        assertNull(OfferPropertyRules.priceAmount(1_000_000L, FORMATTER, ListingType.SALE))
+        assertEquals(
+            "Indiquez un prix d'au moins ${FORMATTER.money(1_000_000)}.",
+            OfferPropertyRules.priceAmount(900_000L, FORMATTER, ListingType.SALE),
+        )
+        assertEquals("Indiquez le prix de vente souhaité.", OfferPropertyRules.priceAmount(null, FORMATTER, ListingType.SALE))
+        assertNull(OfferPropertyRules.priceAmount(5_000L, FORMATTER, ListingType.RENTAL))
+        assertTrue(OfferPropertyRules.isPriceAmount(1_000_000L, ListingType.SALE))
+        assertFalse(OfferPropertyRules.isPriceAmount(999_999L, ListingType.SALE))
+        assertTrue(OfferPropertyRules.isPriceAmount(5_000L, ListingType.RENTAL))
+    }
+
+    @Test
+    fun `the project is required`() {
+        val message = "Indiquez si vous souhaitez mettre votre bien en location ou le vendre."
+        assertEquals(message, OfferPropertyRules.listingType(null))
+        assertEquals(message, OfferPropertyRules.listingType(ListingType.UNKNOWN))
+        assertNull(OfferPropertyRules.listingType(ListingType.RENTAL))
+        assertNull(OfferPropertyRules.listingType(ListingType.SALE))
     }
 
     @Test
@@ -168,11 +245,11 @@ class OfferPropertyRulesTest {
 
     @Test
     fun area() {
-        assertEquals("Indiquez la surface, même approximative.", OfferPropertyRules.area(null))
-        assertEquals("Indiquez une surface d'au moins 5 m².", OfferPropertyRules.area(4))
-        assertNull(OfferPropertyRules.area(5))
-        assertNull(OfferPropertyRules.area(1_000_000))
-        assertEquals("Indiquez une surface d'au moins 5 m².", OfferPropertyRules.area(1_000_001))
+        assertEquals("Indiquez la surface, même approximative.", OfferPropertyRules.area(null, required = false))
+        assertEquals("Indiquez une surface d'au moins 5 m².", OfferPropertyRules.area(4, required = false))
+        assertNull(OfferPropertyRules.area(5, required = false))
+        assertNull(OfferPropertyRules.area(1_000_000, required = false))
+        assertEquals("Indiquez une surface d'au moins 5 m².", OfferPropertyRules.area(1_000_001, required = false))
     }
 
     @Test
