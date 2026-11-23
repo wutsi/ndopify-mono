@@ -448,9 +448,13 @@ class OfferPropertyTemplateTest {
 
         val page = render(get("/offer-property?step=features"))
 
-        assertNull(page.selectFirst("input[name=rooms]"))
-        assertNull(page.selectFirst("input[name=hasParking]"))
-        assertNull(page.selectFirst("input[name=parkings]"))
+        assertTrue(page.selectFirst("[data-group=rooms]")!!.hasAttr("hidden"))
+        assertTrue(page.selectFirst("[data-group=hasParking]")!!.hasAttr("hidden"))
+        assertTrue(page.selectFirst("[data-group=parkings]")!!.hasAttr("hidden"))
+        assertTrue(page.select("input[name=rooms]").isNotEmpty())
+        assertTrue(page.select("input[name=rooms]").none { it.hasAttr("required") })
+        assertTrue(page.select("input[name=hasParking]").none { it.hasAttr("required") })
+        assertTrue(page.select("input[name=parkings]").none { it.hasAttr("required") })
         assertFalse(page.selectFirst("[data-group=ownershipDocuments]")!!.hasAttr("hidden"))
     }
 
