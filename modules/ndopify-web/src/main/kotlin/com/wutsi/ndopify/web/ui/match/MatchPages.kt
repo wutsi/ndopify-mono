@@ -5,6 +5,7 @@ import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -38,6 +39,9 @@ import java.time.LocalDate
  * the mandate is approved. An UNAVAILABLE match still shows its open visit when the listing went away after the
  * customer accepted it, since the visit is still alive; it never offers the form then. The `visit` flash (`requested`,
  * `invalid-slot`, `conflict`, set by the request's redirect) follows the same rule as the answer's.
+ *
+ * The mandate's `listingType` picks the wording: a SALE search speaks of a *bien* and of the purchase (*avant votre
+ * achat*), a RENTAL search keeps the *logement* and the moving-in (*avant votre emménagement*).
  */
 object MatchPages {
     /** The searched amenities, by `Match.missingAmenities` field name, worded as on the listing page. */
@@ -75,6 +79,7 @@ object MatchPages {
         visit: String? = null,
     ): MatchPage {
         val state = state(match, listing)
+        val sale = mandate.listingType == ListingType.SALE
         val visitFee = mandate.visitFee.takeIf { it.amount > 0 }
             ?.let { formatter.money(it.amount, it.currency) }
         val termsNote = "Les visites sont organisées par votre agent. " +
@@ -109,8 +114,10 @@ object MatchPages {
         return MatchPage(
             id = match.id,
             state = state,
-            title = "$firstName vous propose ce logement".replaceFirstChar { it.uppercase() },
-            searchSummary = searchSummary(mandate, locations, tenant, formatter),
+            sale = sale,
+            title = ("$firstName vous propose " + (if (sale) "ce bien" else "ce logement"))
+                .replaceFirstChar { it.uppercase() },
+            searchSummary = searchSummary(mandate, locations, tenant, formatter, sale),
             agentFirstName = firstName,
             agentName = fullName.replaceFirstChar { it.uppercase() },
             agentInitials = listOf(agent.party.firstName, agent.party.lastName)
@@ -119,7 +126,7 @@ object MatchPages {
             agentPhotoUrl = agent.party.photoUrl?.ifBlank { null },
             agentWhatsappUrl = agent.whatsappNumber?.filter { it.isDigit() }?.ifEmpty { null }?.let { "https://wa.me/$it" },
             reasons = if (listing != null && listingPage != null) {
-                reasons(match, mandate, listing, listingPage.price, locations, formatter, today)
+                reasons(match, mandate, listing, listingPage.price, locations, formatter, today, sale)
             } else {
                 emptyList()
             },
@@ -128,9 +135,9 @@ object MatchPages {
             visitFee = visitFee,
             flash = when {
                 answer == "accepted" && state == AnswerState.ACCEPTED ->
-                    "C'est noté : ce logement vous intéresse, votre agent est prévenu."
+                    "C'est noté : " + (if (sale) "ce bien" else "ce logement") + " vous intéresse, votre agent est prévenu."
                 answer == "rejected" && state == AnswerState.REJECTED ->
-                    "C'est noté : vous avez écarté ce logement, votre agent est prévenu."
+                    "C'est noté : vous avez écarté " + (if (sale) "ce bien" else "ce logement") + ", votre agent est prévenu."
                 else -> null
             },
             visit = panel,
@@ -183,8 +190,14 @@ object MatchPages {
     }
 
     /** "Pour votre recherche : appartement 3 chambres à Bonapriso, jusqu'à 250K FCFA / mois." */
-    private fun searchSummary(mandate: Mandate, locations: List<Location>, tenant: Tenant, formatter: TenantFormatter): String {
-        val type = ListingPages.PROPERTY_TYPE_LABELS[mandate.propertyType]?.lowercase() ?: "logement"
+    private fun searchSummary(
+        mandate: Mandate,
+        locations: List<Location>,
+        tenant: Tenant,
+        formatter: TenantFormatter,
+        sale: Boolean,
+    ): String {
+        val type = ListingPages.PROPERTY_TYPE_LABELS[mandate.propertyType]?.lowercase() ?: if (sale) "bien" else "logement"
         val places = mandate.neighborhoodIds.mapNotNull { id -> locations.find { it.id == id }?.name }
             .ifEmpty { listOfNotNull(locations.find { it.id == mandate.cityId }?.name) }
         val what = listOfNotNull(type, mandate.rooms?.let { rooms(it) }).joinToString(" ") +
@@ -210,6 +223,7 @@ object MatchPages {
         locations: List<Location>,
         formatter: TenantFormatter,
         today: LocalDate,
+        sale: Boolean,
     ): List<FitReason> {
         val neighborhood = locations.find { it.id == listing.neighborhoodId }?.name
         val movingIn = mandate.movingPeriod != MovingPeriod.UNKNOWN || mandate.availableFrom != null
@@ -223,7 +237,9 @@ object MatchPages {
                 ?.takeIf { match.furnitureScore == 1.0 && mandate.furnitureType != null }
                 ?.let { "$it, comme demandé" },
             if (match.availabilityScore == 1.0 && movingIn) {
-                available?.let { "Disponible le ${formatter.date(it)}, avant votre emménagement" } ?: "Disponible immédiatement"
+                available
+                    ?.let { "Disponible le ${formatter.date(it)}, avant votre " + (if (sale) "achat" else "emménagement") }
+                    ?: "Disponible immédiatement"
             } else {
                 null
             },

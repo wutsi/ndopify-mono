@@ -4,6 +4,8 @@ import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.match.dto.Match
@@ -106,18 +108,39 @@ class MatchTemplateTest {
     )
     private val images = (1..3).map { ListingImage(id = it.toLong(), url = "https://cdn/$it.jpg", title = "Photo $it") }
 
+    /** A SALE SEARCH: a villa for a buyer, 250M FCFA, no periodicity. */
+    private val saleMandate = mandate.copy(
+        listingType = ListingType.SALE,
+        propertyType = PropertyType.VILLA,
+        rooms = "4",
+        price = Money(250_000_000, "XAF", PeriodicityType.NONE),
+        movingPeriod = MovingPeriod.WITHIN_3_MONTHS,
+    )
+
+    /** The villa proposed to that buyer. */
+    private val saleListing = listing.copy(
+        listingType = ListingType.SALE,
+        propertyType = PropertyType.VILLA,
+        rooms = 4,
+        price = 240_000_000,
+        pricePeriodicityType = PeriodicityType.NONE,
+        availableFrom = LocalDate.of(2026, 12, 1),
+        title = "Villa 4 chambres à Bonapriso",
+    )
+
     private fun page(
         status: MatchStatus = MatchStatus.PROPOSED,
         listing: Listing? = this.listing,
         agent: Agent = this.agent,
         mandate: Mandate = this.mandate,
+        scores: Match = this.match,
         answer: String? = null,
         visitPanel: VisitPanel? = null,
         visitFlash: String? = null,
         visitFee: String? = null,
     ): MatchPage {
         val built = MatchPages.of(
-            match.copy(status = status),
+            scores.copy(status = status),
             mandate,
             agent,
             listing,
@@ -479,5 +502,95 @@ class MatchTemplateTest {
         MatchStatus.entries.forEach { status ->
             assertFalse(html(page(status)).contains("Propriétaire pressé"), status.name)
         }
+    }
+
+    @Test
+    fun `a sale proposal's page speaks of a bien`() {
+        val doc = render(page(listing = saleListing, mandate = saleMandate, scores = match.copy(availabilityScore = 1.0)))
+
+        assertEquals("Serge vous propose ce bien", doc.selectFirst("#proposal-title")?.text())
+        assertEquals(
+            "Pour votre recherche : villa 4 chambres à Bonapriso, jusqu'à 250M FCFA.",
+            doc.selectFirst(".proposal__subtitle")?.text(),
+        )
+        assertEquals("Pourquoi ce bien ?", doc.selectFirst(".proposal__why summary")?.text())
+        assertTrue(
+            doc.select(".proposal__fit li").map { it.text() }
+                .contains("Disponible le 01 déc. 2026, avant votre achat"),
+        )
+        assertEquals("Ce bien vous intéresse ?", doc.selectFirst("[data-answer=PENDING] .answer__question")?.text())
+        assertEquals("Ce bien vous intéresse ?", doc.selectFirst("#answer-title")?.text())
+        assertEquals("Pourquoi pas ce bien ?", doc.selectFirst("#reject-title")?.text())
+        assertEquals("Photos du bien", doc.selectFirst(".lightbox")?.attr("aria-label"))
+        assertEquals("240M FCFA", doc.selectFirst(".price-card__price")?.text())
+        assertEquals("240M FCFA", doc.selectFirst(".cta-bar__price")?.text())
+        assertFalse(doc.selectFirst("main")!!.text().contains("logement"))
+        assertFalse(doc.selectFirst("main")!!.text().contains("/ mois"))
+    }
+
+    @Test
+    fun `a sale proposal's states speak of a bien`() {
+        val accepted = render(page(MatchStatus.ACCEPTED, listing = saleListing, mandate = saleMandate))
+        assertEquals("Ce bien vous intéresse", accepted.selectFirst(".answer[data-answer=ACCEPTED] .answer__status")?.text())
+
+        val rejected = render(page(MatchStatus.REJECTED, listing = saleListing, mandate = saleMandate))
+        assertEquals("Vous avez écarté ce bien.", rejected.select("[data-answer=REJECTED] p")[0].text())
+        assertEquals(
+            "Serge est prévenu et continue de chercher pour vous : il vous enverra d'autres biens.",
+            rejected.select("[data-answer=REJECTED] p")[1].text(),
+        )
+        assertEquals("Bien écarté", rejected.selectFirst("[data-bar-answer=REJECTED]")?.text())
+
+        val expired = render(page(MatchStatus.EXPIRED, listing = saleListing, mandate = saleMandate))
+        assertEquals(
+            "Ce bien vous intéresse toujours ? Contactez Serge.",
+            expired.selectFirst("[data-answer=EXPIRED] p:not(.answer__status)")?.text(),
+        )
+
+        val unavailable = render(page(listing = null, mandate = saleMandate))
+        assertEquals("Ce bien n'est plus disponible.", unavailable.selectFirst("[data-answer=UNAVAILABLE] .answer__status")?.text())
+        assertTrue(unavailable.selectFirst("[data-answer=UNAVAILABLE]")!!.text().contains("Il a été vendu ou retiré."))
+
+        listOf(accepted, rejected, expired, unavailable).forEach { doc ->
+            assertFalse(doc.selectFirst("main")!!.text().contains("logement"))
+        }
+    }
+
+    @Test
+    fun `a sale proposal's visit hints speak of the bien`() {
+        val doc = render(
+            page(
+                MatchStatus.ACCEPTED,
+                listing = saleListing,
+                mandate = saleMandate,
+                visitPanel = VisitPanel(
+                    open = null,
+                    form = VisitForm(
+                        days = VisitSlots.days(LocalDate.of(2026, 10, 31), FORMATTER),
+                        times = VisitSlots.times(),
+                        contact = "Sandrine",
+                        video = true,
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
+            "Serge vous fait visiter le bien sur place.",
+            doc.selectFirst(".visit-type__hint--on-site")?.text(),
+        )
+        assertEquals(
+            "Serge vous fait visiter le bien en direct, par appel vidéo WhatsApp.",
+            doc.selectFirst(".visit-type__hint--video")?.text(),
+        )
+    }
+
+    @Test
+    fun `a rental proposal keeps its rental wording`() {
+        val doc = render()
+
+        assertEquals("Pourquoi ce logement ?", doc.selectFirst(".proposal__why summary")?.text())
+        assertEquals("Ce logement vous intéresse ?", doc.selectFirst("[data-answer=PENDING] .answer__question")?.text())
+        assertEquals("Photos du logement", doc.selectFirst(".lightbox")?.attr("aria-label"))
     }
 }

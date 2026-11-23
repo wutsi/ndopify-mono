@@ -51,7 +51,8 @@
 
             <!-- Folded by default: the listing comes first, the reasons are a tap away. -->
             <details class="proposal__why" th:unless="${#lists.isEmpty(page.reasons) and #lists.isEmpty(page.criteria)}">
-                <summary>Pourquoi ce logement&nbsp;?<svg aria-hidden="true" class="icon proposal__chevron"><use href="#i-chevron-right"/></svg></summary>
+                <summary><th:block th:if="${page.sale}">Pourquoi ce bien&nbsp;?</th:block><th:block
+                        th:unless="${page.sale}">Pourquoi ce logement&nbsp;?</th:block><svg aria-hidden="true" class="icon proposal__chevron"><use href="#i-chevron-right"/></svg></summary>
                 <ul class="check-list proposal__fit">
                     <li th:each="reason : ${page.reasons}"><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>[[${reason.text}]]</li>
                 </ul>
@@ -102,8 +103,11 @@
 
         <!--/* The listing can't be shown anymore: rented, withdrawn... */-->
         <section aria-label="Votre réponse" class="answer" data-answer="UNAVAILABLE" th:if="${page.state.name() == 'UNAVAILABLE'}">
-            <p class="answer__status">Ce logement n'est plus disponible.</p>
-            <p>Il a été loué ou retiré. <th:block th:text="${#strings.capitalize(page.agentFirstName)}">Serge</th:block>
+            <p class="answer__status"><th:block th:if="${page.sale}">Ce bien n'est plus disponible.</th:block><th:block
+                    th:unless="${page.sale}">Ce logement n'est plus disponible.</th:block></p>
+            <p><th:block th:if="${page.sale}">Il a été vendu ou retiré.</th:block><th:block
+                    th:unless="${page.sale}">Il a été loué ou retiré.</th:block> <th:block
+                    th:text="${#strings.capitalize(page.agentFirstName)}">Serge</th:block>
                 continue de chercher pour vous.</p>
             <!--/* A visit open before the listing went away: it stays reachable */-->
             <div class="answer__visit" th:if="${page.visit?.open}" th:with="open=${page.visit.open}">
@@ -170,7 +174,8 @@
                     </ul>
 
                     <div class="answer" data-answer="PENDING" th:if="${page.state.name() == 'PENDING'}">
-                        <p class="answer__question">Ce logement vous intéresse&nbsp;?</p>
+                        <p class="answer__question"><th:block th:if="${page.sale}">Ce bien vous intéresse&nbsp;?</th:block><th:block
+                                th:unless="${page.sale}">Ce logement vous intéresse&nbsp;?</th:block></p>
                         <form method="post" th:action="@{/match/{id}/accept(id=${page.id})}">
                             <button class="btn btn-primary price-card__cta" type="submit">Ça m'intéresse</button>
                         </form>
@@ -179,7 +184,9 @@
 
                     <div class="answer" data-answer="ACCEPTED" th:if="${page.state.name() == 'ACCEPTED'}">
                         <p class="answer__status answer__status--success">
-                            <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>Ce logement vous intéresse
+                            <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg><th:block
+                                th:if="${page.sale}">Ce bien vous intéresse</th:block><th:block
+                                th:unless="${page.sale}">Ce logement vous intéresse</th:block>
                         </p>
 
                         <!-- Mandate approved, no visit yet: open the request popup -->
@@ -221,14 +228,18 @@
 
                     <div class="answer" data-answer="EXPIRED" th:if="${page.state.name() == 'EXPIRED'}">
                         <p class="answer__status">Cette proposition a expiré.</p>
-                        <p th:text="|Ce logement vous intéresse toujours ? Contactez ${page.agentFirstName}.|">Ce
-                            logement vous intéresse toujours&nbsp;? Contactez Serge.</p>
+                        <p><th:block th:if="${page.sale}">Ce bien</th:block><th:block
+                                th:unless="${page.sale}">Ce logement</th:block> <th:block
+                                th:text="|vous intéresse toujours ? Contactez ${page.agentFirstName}.|">vous intéresse toujours ? Contactez Serge.</th:block></p>
                     </div>
 
                     <div class="answer" data-answer="REJECTED" th:if="${page.state.name() == 'REJECTED'}">
-                        <p class="answer__status">Vous avez écarté ce logement.</p>
-                        <p th:text="|${#strings.capitalize(page.agentFirstName)} est prévenu et continue de chercher pour vous : il vous enverra d'autres logements.|">Serge
-                            est prévenu et continue de chercher pour vous : il vous enverra d'autres logements.</p>
+                        <p class="answer__status"><th:block th:if="${page.sale}">Vous avez écarté ce bien.</th:block><th:block
+                                th:unless="${page.sale}">Vous avez écarté ce logement.</th:block></p>
+                        <p><th:block th:text="|${#strings.capitalize(page.agentFirstName)} est prévenu et continue de chercher pour vous : il vous enverra |">Serge
+                            est prévenu et continue de chercher pour vous : il vous enverra </th:block><th:block
+                                th:if="${page.sale}">d'autres biens</th:block><th:block
+                                th:unless="${page.sale}">d'autres logements</th:block>.</p>
                     </div>
                 </div>
             </aside>
@@ -254,7 +265,8 @@
         </div>
         <p class="cta-bar__note" data-bar-answer="ACCEPTED"
            th:if="${page.state.name() == 'ACCEPTED' and page.visit?.form == null and page.visit?.open == null}">Vous intéresse</p>
-        <p class="cta-bar__note" data-bar-answer="REJECTED" th:if="${page.state.name() == 'REJECTED'}">Logement écarté</p>
+        <p class="cta-bar__note" data-bar-answer="REJECTED" th:if="${page.state.name() == 'REJECTED'}"><th:block
+                th:if="${page.sale}">Bien écarté</th:block><th:block th:unless="${page.sale}">Logement écarté</th:block></p>
         <p class="cta-bar__note" data-bar-answer="EXPIRED" th:if="${page.state.name() == 'EXPIRED'}">Proposition expirée</p>
     </div>
 </main>
@@ -269,7 +281,9 @@
     <div class="modal__panel">
         <header class="modal__header">
             <div>
-                <h2 class="modal__title" id="answer-title">Ce logement vous intéresse&nbsp;?</h2>
+                <h2 class="modal__title" id="answer-title"><th:block th:if="${page.sale}">Ce bien vous
+                    intéresse&nbsp;?</th:block><th:block th:unless="${page.sale}">Ce logement vous
+                    intéresse&nbsp;?</th:block></h2>
                 <p class="modal__subtitle"><th:block th:text="${page.listing.title}">Appartement 3 chambres à Bonapriso</th:block><span
                         class="modal__price">&nbsp;· <strong th:text="${page.listing.price}">240K FCFA / mois</strong></span></p>
             </div>
@@ -297,7 +311,9 @@
     <div class="modal__panel">
         <header class="modal__header">
             <div>
-                <h2 class="modal__title" id="reject-title">Pourquoi pas ce logement&nbsp;?</h2>
+                <h2 class="modal__title" id="reject-title"><th:block th:if="${page.sale}">Pourquoi pas ce
+                    bien&nbsp;?</th:block><th:block th:unless="${page.sale}">Pourquoi pas ce
+                    logement&nbsp;?</th:block></h2>
                 <p class="modal__subtitle" th:text="|Votre réponse aide ${page.agentFirstName} à mieux choisir les prochains.|">Votre
                     réponse aide Serge à mieux choisir les prochains.</p>
             </div>
@@ -349,10 +365,13 @@
                     <label th:if="${form.video}"><input name="type" required type="radio" value="VIDEO">
                         <svg aria-hidden="true" class="icon"><use href="#i-video"/></svg>En vidéo</label>
                 </div>
-                <p class="visit-type__hint visit-type__hint--on-site"
-                   th:text="|${page.agentFirstName} vous fait visiter le logement sur place.|">Serge vous fait visiter le logement sur place.</p>
-                <p class="visit-type__hint visit-type__hint--video"
-                   th:text="|${page.agentFirstName} vous fait visiter le logement en direct, par appel vidéo WhatsApp.|">Serge vous fait visiter le logement en direct, par appel vidéo WhatsApp.</p>
+                <p class="visit-type__hint visit-type__hint--on-site"><th:block
+                        th:text="|${page.agentFirstName} vous fait visiter |">Serge vous fait visiter </th:block><th:block
+                        th:if="${page.sale}">le bien</th:block><th:block th:unless="${page.sale}">le logement</th:block> sur place.</p>
+                <p class="visit-type__hint visit-type__hint--video"><th:block
+                        th:text="|${page.agentFirstName} vous fait visiter |">Serge vous fait visiter </th:block><th:block
+                        th:if="${page.sale}">le bien</th:block><th:block th:unless="${page.sale}">le logement</th:block> en direct,
+                    par appel vidéo WhatsApp.</p>
             </div>
             <div class="field" th:if="${form.contact}">
                 <label>Vos coordonnées</label>
@@ -401,7 +420,8 @@
 <script id="listing-photos" type="application/json" th:inline="javascript">
     /*[[${page.listing.photos}]]*/ []
 </script>
-<div aria-label="Photos du logement" aria-modal="true" class="lightbox" data-lightbox hidden role="dialog">
+<div class="lightbox" data-lightbox hidden role="dialog" aria-modal="true"
+     th:attr="aria-label=${page.sale} ? 'Photos du bien' : 'Photos du logement'">
     <div class="lightbox__bar">
         <p aria-live="polite" class="lightbox__counter" data-lightbox-counter></p>
         <button class="lightbox__btn" data-lightbox-close type="button">
