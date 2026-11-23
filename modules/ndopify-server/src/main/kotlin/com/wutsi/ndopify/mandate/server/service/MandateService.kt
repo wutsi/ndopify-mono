@@ -425,10 +425,12 @@ class MandateService(
 
     /**
      * Sends an ASSIGNED mandate (or a PENDING_APPROVAL one, again) to its customer for approval: it becomes
-     * PENDING_APPROVAL, with a contract to sign. [request] confirms the contract's terms (duration, visit fee); null
-     * keeps the contract's current ones, or the tenant default for a new one. In 3 transactions, so that no lock is
-     * held while the contract's content is uploaded (creating a contract locks the tenant's contract sequence until
-     * commit):
+     * PENDING_APPROVAL, with a contract to sign. [request] confirms the contract's terms (duration 1..36, visit fee,
+     * and for a sale mandate its commission in % of the sale price, 1..20 — anything else is 400
+     * `HTTP_INVALID_PARAMETER`); null keeps the contract's current ones, or the tenant default for a new one (the
+     * commission's from `ndopify.mandate.contract.sale-commission-rate`). A rental stores no commission. In 3
+     * transactions, so that no lock is held while the contract's content is uploaded (creating a contract locks the
+     * tenant's contract sequence until commit):
      * 1. Under the contract's lock, then the mandate's (the order of a signature, so that they can't deadlock): its
      *    contract, or a new one (none yet, or expired), with the requested terms, linked to the mandate right away. A
      *    concurrent request waits for the lock, then reuses it: never 2 contracts for a mandate.
