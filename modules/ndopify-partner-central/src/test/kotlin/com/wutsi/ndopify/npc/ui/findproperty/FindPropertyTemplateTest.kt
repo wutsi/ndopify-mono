@@ -195,7 +195,7 @@ class FindPropertyTemplateTest {
         val page = render(get("/find-property?step=property"))
 
         val types = page.select("input[name=propertyType]").map { it.attr("value") }
-        assertEquals(listOf("RETAIL", "OFFICE", "INDUSTRIAL", "BUILDING", "LAND", "ANY"), types)
+        assertEquals(listOf("RETAIL", "OFFICE", "INDUSTRIAL", "BUILDING", "ANY"), types)
         assertNull(page.selectFirst("[data-group=rooms]"))
         assertNotNull(page.selectFirst("[data-group=furnitureType]"))
         assertNotNull(page.selectFirst("[data-group=parkings]"))

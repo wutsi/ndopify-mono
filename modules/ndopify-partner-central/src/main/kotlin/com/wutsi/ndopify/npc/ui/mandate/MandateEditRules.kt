@@ -38,7 +38,7 @@ object MandateEditRules {
         return listOfNotNull(
             FindPropertyRules.neighborhoodIds(form.neighborhoodIds)?.let { "neighborhoodIds" to it },
             FindPropertyRules.propertyCategory(form.propertyCategory)?.let { "propertyCategory" to it },
-            typeError(form, owner)?.let { "propertyType" to it },
+            typeError(form, mandate)?.let { "propertyType" to it },
             ("rooms" to "Indiquez le nombre de chambres.")
                 .takeIf {
                     FindPropertyRules.needsRooms(form.propertyCategory, type, mandate.listingType) &&
@@ -171,12 +171,19 @@ object MandateEditRules {
     /** The type; null for "Indifférent", no answer, or a value that isn't a type ([typeError] rejects it). */
     private fun type(form: MandateEditForm): PropertyType? = FindPropertyRules.parsePropertyType(form.propertyType)
 
-    private fun typeError(form: MandateEditForm, owner: Boolean): String? {
+    private fun typeError(form: MandateEditForm, mandate: Mandate): String? {
         val answer = form.propertyType?.takeIf { it.isNotEmpty() && it != ANY }
+        val owner = mandate.mandateType == MandateType.LISTING
+        // A rental land stored before #275 keeps its answer: only unchanged, in its saved category.
+        val storedLand = !FindPropertyRules.isSale(mandate.listingType) &&
+            mandate.propertyType == PropertyType.LAND &&
+            form.propertyType == PropertyType.LAND.name &&
+            form.propertyCategory == mandate.propertyCategory
         return when {
             answer == null && owner -> "Choisissez un type de bien proposé."
             answer != null && type(form) == null -> "Choisissez un type de bien proposé."
-            else -> FindPropertyRules.propertyType(form.propertyCategory, answer, null)
+            storedLand -> null
+            else -> FindPropertyRules.propertyType(form.propertyCategory, answer, mandate.listingType)
         }
     }
 

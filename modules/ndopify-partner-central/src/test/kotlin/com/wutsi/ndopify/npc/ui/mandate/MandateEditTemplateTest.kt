@@ -6,6 +6,8 @@ import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
@@ -164,8 +166,11 @@ class MandateEditTemplateTest {
         // Property: every follow-up question without JS, the types tagged with their categories.
         assertTrue(form.selectFirst("input[name=propertyCategory][value=RESIDENTIAL]")!!.hasAttr("checked"))
         assertTrue(form.selectFirst("input[name=propertyType][value=HOUSE]")!!.hasAttr("checked"))
-        assertEquals("COMMERCIAL", form.selectFirst("input[name=propertyType][value=LAND]")?.parent()?.attr("data-categories"))
         assertNotNull(form.selectFirst("input[name=propertyType][value=ANY]"))
+        val typeGrid = form.selectFirst("[data-group=propertyType] > .choices__grid")!!
+        assertFalse(typeGrid.hasClass("choices__grid--2"))
+        assertTrue(form.selectFirst("[data-group=rooms] > .choices__grid")!!.hasClass("choices__grid--2"))
+        assertTrue(form.selectFirst("[data-group=parkings] > .choices__grid")!!.hasClass("choices__grid--2"))
         assertTrue(form.selectFirst("input[name=rooms][value=3]")!!.hasAttr("checked"))
         assertTrue(form.selectFirst("input[name=furnitureType][value=ANY]")!!.hasAttr("checked"))
         assertTrue(form.selectFirst("input[name=parkings][value=ANY]")!!.hasAttr("checked"))
@@ -184,6 +189,38 @@ class MandateEditTemplateTest {
         assertEquals("Près d'une école", form.selectFirst("textarea[name=comments]")?.text())
         assertEquals("/mandates/201", form.selectFirst(".form__actions a")?.attr("href"))
         assertEquals("Enregistrer", form.selectFirst(".form__actions button[type=submit]")?.text())
+    }
+
+    @Test
+    fun `a rental no longer offers land`() {
+        val page = render(MANDATE)
+        assertNull(page.selectFirst("input[name=propertyType][value=LAND]"))
+    }
+
+    @Test
+    fun `a stored rental land stays checked and readable`() {
+        val page = render(MANDATE.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = PropertyType.LAND))
+        val form = page.selectFirst("form[data-edit-form]")!!
+        assertEquals("false", form.attr("data-sale"))
+        val land = assertNotNull(page.selectFirst("input[name=propertyType][value=LAND]"))
+        assertTrue(land.hasAttr("checked"))
+        assertEquals("RESIDENTIAL COMMERCIAL", land.parent()!!.attr("data-categories"))
+        // A rental offers only the saved answer: mandate.js hides it once another type is picked.
+        assertEquals("", land.parent()!!.attr("data-rental-categories"))
+    }
+
+    @Test
+    fun `a sale still offers land under both uses`() {
+        val page = render(
+            MANDATE.copy(listingType = ListingType.SALE, propertyCategory = PropertyCategory.RESIDENTIAL),
+        )
+        val form = page.selectFirst("form[data-edit-form]")!!
+        assertEquals("true", form.attr("data-sale"))
+        val land = assertNotNull(page.selectFirst("input[name=propertyType][value=LAND]"))
+        assertFalse(land.hasAttr("checked"))
+        // A sale's land fits Résidentiel too: mandate.js keeps data-categories for a sale, data-rental-categories
+        // for a rental.
+        assertEquals("RESIDENTIAL COMMERCIAL", land.parent()!!.attr("data-categories"))
     }
 
     @Test
@@ -344,7 +381,7 @@ class MandateEditTemplateTest {
         assertEquals("mandate-edit", page.body().attr("data-page"))
         val form = page.selectFirst("form[data-edit-form]")!!
         assertEquals("/locations", form.attr("data-locations-url"))
-        assertEquals(12, form.select("[data-categories]").size)
+        assertEquals(11, form.select("[data-categories]").size)
         assertEquals(5, form.select("[data-edit-group] [data-group-value]").size)
         assertEquals(DOUALA.toString(), form.selectFirst("[data-city-id]")?.attr("data-city-id"))
         assertNotNull(form.selectFirst("[data-group=rooms]"))

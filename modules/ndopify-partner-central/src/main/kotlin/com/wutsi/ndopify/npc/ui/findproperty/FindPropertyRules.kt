@@ -16,9 +16,9 @@ import com.wutsi.ndopify.web.core.service.TenantFormatter
  * valid. Messages and thresholds are the ones of the `find-property.js` prototype. ndopify-server doesn't re-check
  * any of this yet, so these rules are the only validation a mandate gets.
  *
- * The wizard serves two projects: a rental ([ListingType.RENTAL]) and a purchase ([ListingType.SALE]). A purchase
- * offers land for both uses and no room, asks no furniture, requires the surface of a plot of land and its optional
- * documents, has its own budget floor and asks how the buyer will pay.
+ * The wizard serves two projects: a rental ([ListingType.RENTAL]) and a purchase ([ListingType.SALE]). Land is
+ * bought, never rented: only a purchase offers it, for both uses and no room, asks no furniture, requires the
+ * surface of a plot of land and its optional documents, has its own budget floor and asks how the buyer will pay.
  */
 object FindPropertyRules {
     const val MAX_NEIGHBORHOODS = 3
@@ -42,7 +42,10 @@ object FindPropertyRules {
     val ROOMS = listOf("1", "2", "3", "4", "5+")
     val PARKINGS = listOf("0", "1", "2", "3+", ANY)
 
-    /** The categories each property type can be searched under, in form order (prototype's PROPERTY_TYPES). */
+    /**
+     * The categories each property type can be searched under, in form order (prototype's PROPERTY_TYPES). A rental
+     * offers no land: nobody rents bare land to live on it (one buys it to build).
+     */
     private val RENTAL_CATEGORIES_BY_TYPE: Map<PropertyType, Set<PropertyCategory>> = linkedMapOf(
         PropertyType.ROOM to setOf(PropertyCategory.RESIDENTIAL),
         PropertyType.STUDIO to setOf(PropertyCategory.RESIDENTIAL),
@@ -54,11 +57,10 @@ object FindPropertyRules {
         PropertyType.OFFICE to setOf(PropertyCategory.COMMERCIAL),
         PropertyType.INDUSTRIAL to setOf(PropertyCategory.COMMERCIAL),
         PropertyType.BUILDING to setOf(PropertyCategory.COMMERCIAL),
-        // Commercial only when rented: nobody rents bare land to live on it (one buys it to build).
-        PropertyType.LAND to setOf(PropertyCategory.COMMERCIAL),
     )
 
-    // A purchase drops the room type and offers land for both uses (a plot to build on is residential too).
+    // A purchase drops the room type and offers land for both uses (a plot to build on is residential too); a rental
+    // never offers land.
     private val SALE_CATEGORIES_BY_TYPE: Map<PropertyType, Set<PropertyCategory>> =
         RENTAL_CATEGORIES_BY_TYPE - PropertyType.ROOM +
             (PropertyType.LAND to setOf(PropertyCategory.RESIDENTIAL, PropertyCategory.COMMERCIAL))

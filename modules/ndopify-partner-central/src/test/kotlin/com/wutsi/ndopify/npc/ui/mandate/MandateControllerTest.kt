@@ -16,6 +16,7 @@ import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -61,6 +62,8 @@ import com.wutsi.ndopify.npc.ui.visit.PendingVisitView
 import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.party.dto.Party
+import com.wutsi.ndopify.refdata.dto.Money
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
@@ -1419,6 +1422,78 @@ class MandateControllerTest {
         assertEquals(PropertyCategory.RESIDENTIAL, request.firstValue.propertyCategory)
         assertEquals(true, request.firstValue.waterWell)
         assertEquals(null, request.firstValue.furnitureType)
+    }
+
+    @Test
+    fun `save - a stored rental land is kept`() {
+        doReturn(MANDATE.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = PropertyType.LAND))
+            .whenever(mandateClient).get(201)
+
+        val result = mvc.perform(
+            edit("propertyCategory" to "COMMERCIAL", "propertyType" to "LAND", "rooms" to "", "furnitureType" to "", "parkings" to ""),
+        ).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        val request = argumentCaptor<UpdateMandateRequest>()
+        verify(mandateClient).update(com.nhaarman.mockitokotlin2.eq(201L), request.capture())
+        assertEquals(PropertyType.LAND, request.firstValue.propertyType)
+    }
+
+    @Test
+    fun `save - a stored rental land on a landlord's listing is kept`() {
+        doReturn(
+            MANDATE.copy(
+                mandateType = MandateType.LISTING,
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = PropertyType.LAND,
+            ),
+        ).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(
+            edit("propertyCategory" to "COMMERCIAL", "propertyType" to "LAND", "rooms" to "", "furnitureType" to "", "parkings" to ""),
+        ).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        val request = argumentCaptor<UpdateMandateRequest>()
+        verify(mandateClient).update(com.nhaarman.mockitokotlin2.eq(201L), request.capture())
+        assertEquals(PropertyType.LAND, request.firstValue.propertyType)
+    }
+
+    @Test
+    fun `save - a sale land under residential is kept`() {
+        doReturn(
+            MANDATE.copy(
+                mandateType = MandateType.LISTING,
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
+                propertyType = PropertyType.LAND,
+                price = Money(15_000_000, "XAF", PeriodicityType.NONE),
+            ),
+        ).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(
+            edit(
+                "propertyCategory" to "RESIDENTIAL", "propertyType" to "LAND", "rooms" to "",
+                "furnitureType" to "", "parkings" to "", "area" to "300", "priceAmount" to "15 000 000",
+            ),
+        ).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        val request = argumentCaptor<UpdateMandateRequest>()
+        verify(mandateClient).update(com.nhaarman.mockitokotlin2.eq(201L), request.capture())
+        assertEquals(PropertyCategory.RESIDENTIAL, request.firstValue.propertyCategory)
+        assertEquals(PropertyType.LAND, request.firstValue.propertyType)
+    }
+
+    @Test
+    fun `save - a rental land that isn't stored is refused`() {
+        val result = mvc.perform(
+            edit("propertyCategory" to "COMMERCIAL", "propertyType" to "LAND", "rooms" to "", "furnitureType" to "", "parkings" to ""),
+        ).andReturn()
+
+        assertEquals("mandate/edit", result.modelAndView?.viewName)
+        assertEquals("Choisissez un type de bien proposé.", errors(result)["propertyType"])
+        verify(mandateClient, never()).update(any(), any())
     }
 
     @Test

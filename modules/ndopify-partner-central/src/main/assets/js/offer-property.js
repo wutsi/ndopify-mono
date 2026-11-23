@@ -42,12 +42,15 @@
         RENTAL: {
             intro: "Un Agent Vérifié de votre quartier vérifie votre bien, le photographie et trouve vos " +
                 "locataires. L'audit et la publication sont gratuits.",
-            residential: "Pour y habiter\u00a0: chambre, studio, appartement, villa, immeuble…"
+            residential: "Pour y habiter\u00a0: chambre, studio, appartement, villa, immeuble…",
+            commercial: "Pour une activité\u00a0: bureau, boutique, entrepôt…"
         },
         SALE: {
             intro: "Un Agent Vérifié de votre quartier vérifie votre bien, le photographie et le présente aux " +
                 "acheteurs. L'audit et la publication sont gratuits.",
-            residential: "Pour y habiter\u00a0: appartement, villa, immeuble, terrain à bâtir…"
+            residential: "Pour y habiter\u00a0: appartement, villa, immeuble, terrain à bâtir…",
+            // Land is sold, never let: only the sale's description names it.
+            commercial: "Pour une activité\u00a0: bureau, boutique, entrepôt, terrain…"
         }
     };
 
@@ -363,11 +366,13 @@
     function initProject(form) {
         var intro = $("[data-project-intro]", form);
         var detail = $("[data-category-detail]", form);
+        var commercialDetail = $("[data-category-commercial-detail]", form);
 
         function apply() {
             var source = PROJECT_TEXTS[checkedValue("listingType", form) === "SALE" ? "SALE" : "RENTAL"];
             if (intro) intro.textContent = source.intro;
             if (detail) detail.textContent = source.residential;
+            if (commercialDetail) commercialDetail.textContent = source.commercial;
         }
 
         $all('input[name="listingType"]', form).forEach(function (input) {

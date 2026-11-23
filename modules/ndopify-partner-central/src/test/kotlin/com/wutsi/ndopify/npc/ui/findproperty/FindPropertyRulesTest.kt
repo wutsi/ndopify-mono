@@ -48,7 +48,7 @@ class FindPropertyRulesTest {
         assertNull(FindPropertyRules.propertyType(PropertyCategory.RESIDENTIAL, null, null))
         assertNull(FindPropertyRules.propertyType(PropertyCategory.RESIDENTIAL, "ANY", null))
         assertNull(FindPropertyRules.propertyType(PropertyCategory.RESIDENTIAL, "APARTMENT", null))
-        assertNull(FindPropertyRules.propertyType(PropertyCategory.COMMERCIAL, "LAND", null))
+        assertNull(FindPropertyRules.propertyType(PropertyCategory.COMMERCIAL, "OFFICE", null))
         assertEquals(
             "Choisissez un type de bien proposé.",
             FindPropertyRules.propertyType(PropertyCategory.COMMERCIAL, "APARTMENT", null),
@@ -101,10 +101,14 @@ class FindPropertyRulesTest {
             ),
             FindPropertyRules.propertyTypes(PropertyCategory.RESIDENTIAL, ListingType.RENTAL),
         )
+        assertEquals(
+            listOf(PropertyType.RETAIL, PropertyType.OFFICE, PropertyType.INDUSTRIAL, PropertyType.BUILDING),
+            FindPropertyRules.propertyTypes(PropertyCategory.COMMERCIAL, ListingType.RENTAL),
+        )
         assertFalse(FindPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "ROOM", ListingType.SALE))
         assertTrue(FindPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "LAND", ListingType.SALE))
         assertTrue(FindPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "LAND", ListingType.SALE))
-        assertFalse(FindPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "LAND", ListingType.RENTAL))
+        assertFalse(FindPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "LAND", ListingType.RENTAL))
     }
 
     @Test

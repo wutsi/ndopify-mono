@@ -19,6 +19,7 @@ import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 
 class MandateEditRulesTest {
     companion object {
@@ -240,10 +241,62 @@ class MandateEditRulesTest {
             MandateEditRules.errors(FORM.copy(propertyType = "ANY", rooms = null), MANDATE, FORMATTER)["rooms"],
         )
         assertEquals(emptyMap(), MandateEditRules.errors(FORM.copy(propertyType = "STUDIO", rooms = null), MANDATE, FORMATTER))
-        assertEquals(
-            emptyMap(),
-            MandateEditRules.errors(FORM.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = "LAND", rooms = null, furnitureType = null), MANDATE, FORMATTER),
+        val storedLand = MANDATE.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = PropertyType.LAND)
+        val landForm = FORM.copy(
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = "LAND",
+            rooms = null,
+            furnitureType = null,
+            parkings = null,
         )
+        assertEquals(emptyMap(), MandateEditRules.errors(landForm, storedLand, FORMATTER))
+        assertEquals(
+            "Choisissez un type de bien proposé.",
+            MandateEditRules.errors(landForm, MANDATE, FORMATTER)["propertyType"],
+        )
+    }
+
+    @Test
+    fun `errors - a sale land is accepted`() {
+        val sale = MANDATE.copy(
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.LAND,
+            rooms = null,
+            furnitureType = null,
+            parkings = null,
+            price = Money(15_000_000, "XAF", PeriodicityType.NONE),
+        )
+        val form = FORM.copy(
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = "LAND",
+            rooms = null,
+            furnitureType = null,
+            parkings = null,
+            area = "300",
+            priceAmount = "15 000 000",
+        )
+
+        assertNull(MandateEditRules.errors(form, sale, FORMATTER)["propertyType"])
+    }
+
+    @Test
+    fun `errors - a stored rental land on a landlord's listing is accepted`() {
+        val storedLand = MANDATE.copy(
+            mandateType = MandateType.LISTING,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.LAND,
+        )
+        val form = FORM.copy(
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = "LAND",
+            rooms = null,
+            furnitureType = null,
+            parkings = null,
+        )
+
+        assertEquals(emptyMap(), MandateEditRules.errors(form, storedLand, FORMATTER))
+        assertEquals(PropertyType.LAND, MandateEditRules.request(form, storedLand).propertyType)
     }
 
     @Test
@@ -333,6 +386,7 @@ class MandateEditRulesTest {
 
     @Test
     fun `request - drops follow-ups that don't apply`() {
+        val storedLand = MANDATE.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = PropertyType.LAND)
         val request = MandateEditRules.request(
             FORM.copy(
                 propertyCategory = PropertyCategory.COMMERCIAL,
@@ -341,7 +395,7 @@ class MandateEditRulesTest {
                 furnitureType = "FULLY_FURNISHED",
                 parkings = "2",
             ),
-            MANDATE,
+            storedLand,
         )
 
         assertEquals(PropertyType.LAND, request.propertyType)

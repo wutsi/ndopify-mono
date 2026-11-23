@@ -24,12 +24,12 @@ class OfferPropertyRulesTest {
             listOf(
                 PropertyType.APARTMENT, PropertyType.HOUSE, PropertyType.ROOM, PropertyType.STUDIO,
                 PropertyType.DUPLEX, PropertyType.BUILDING, PropertyType.OFFICE, PropertyType.RETAIL,
-                PropertyType.INDUSTRIAL, PropertyType.LAND,
+                PropertyType.INDUSTRIAL,
             ),
             OfferPropertyRules.CATEGORIES_BY_TYPE.keys.toList(),
         )
         assertEquals(residential, OfferPropertyRules.CATEGORIES_BY_TYPE[PropertyType.BUILDING])
-        assertEquals(commercial, OfferPropertyRules.CATEGORIES_BY_TYPE[PropertyType.LAND])
+        assertNull(OfferPropertyRules.CATEGORIES_BY_TYPE[PropertyType.LAND])
     }
 
     @Test
@@ -119,7 +119,7 @@ class OfferPropertyRulesTest {
     fun propertyType() {
         val message = "Choisissez le type de bien."
         assertNull(OfferPropertyRules.propertyType(residential, "BUILDING", null))
-        assertNull(OfferPropertyRules.propertyType(commercial, "LAND", null))
+        assertEquals(message, OfferPropertyRules.propertyType(commercial, "LAND", null))
         assertEquals(message, OfferPropertyRules.propertyType(commercial, "BUILDING", null))
         assertEquals(message, OfferPropertyRules.propertyType(residential, "VILLA", null))
         assertEquals(message, OfferPropertyRules.propertyType(residential, null, null))
@@ -162,11 +162,15 @@ class OfferPropertyRulesTest {
                 PropertyType.DUPLEX, PropertyType.BUILDING),
             OfferPropertyRules.propertyTypes(PropertyCategory.RESIDENTIAL, ListingType.RENTAL),
         )
+        assertEquals(
+            listOf(PropertyType.OFFICE, PropertyType.RETAIL, PropertyType.INDUSTRIAL),
+            OfferPropertyRules.propertyTypes(PropertyCategory.COMMERCIAL, ListingType.RENTAL),
+        )
         assertFalse(OfferPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "ROOM", ListingType.SALE))
         assertTrue(OfferPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "LAND", ListingType.SALE))
         assertTrue(OfferPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "LAND", ListingType.SALE))
         assertFalse(OfferPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "LAND", ListingType.RENTAL))
-        assertTrue(OfferPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "LAND", ListingType.RENTAL))
+        assertFalse(OfferPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "LAND", ListingType.RENTAL))
     }
 
     @Test

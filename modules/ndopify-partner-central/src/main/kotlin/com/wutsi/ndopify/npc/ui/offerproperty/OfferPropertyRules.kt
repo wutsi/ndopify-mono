@@ -18,9 +18,9 @@ import java.time.format.DateTimeParseException
  * Messages and thresholds are the ones of the `offer-property.js` prototype. ndopify-server re-checks the caution and
  * advance range only, so the other rules here are the only validation a listing gets.
  *
- * The wizard serves two projects: a rental ([ListingType.RENTAL]) and a sale ([ListingType.SALE]). A sale offers land
- * for both uses and no room, asks no furniture, requires the surface of a plot of land and its optional documents, has
- * its own price floor, and has no advance nor deposit.
+ * The wizard serves two projects: a rental ([ListingType.RENTAL]) and a sale ([ListingType.SALE]). A rental offers no
+ * land; a sale offers it for both uses and no room, asks no furniture, requires the surface of a plot of land and its
+ * optional documents, has its own price floor, and has no advance nor deposit.
  */
 object OfferPropertyRules {
     const val STEP_PROPERTY = "property"
@@ -73,7 +73,10 @@ object OfferPropertyRules {
         "securedFenced",
     )
 
-    /** The category each rental property type belongs to, in form order (prototype's PROPERTY_TYPES). */
+    /**
+     * The category each rental property type belongs to, in form order (prototype's PROPERTY_TYPES). A rental offers
+     * no land.
+     */
     val CATEGORIES_BY_TYPE: Map<PropertyType, PropertyCategory> = linkedMapOf(
         PropertyType.APARTMENT to PropertyCategory.RESIDENTIAL,
         PropertyType.HOUSE to PropertyCategory.RESIDENTIAL,
@@ -84,18 +87,14 @@ object OfferPropertyRules {
         PropertyType.OFFICE to PropertyCategory.COMMERCIAL,
         PropertyType.RETAIL to PropertyCategory.COMMERCIAL,
         PropertyType.INDUSTRIAL to PropertyCategory.COMMERCIAL,
-        PropertyType.LAND to PropertyCategory.COMMERCIAL,
     )
 
-    // A sale drops the room type and offers land for both uses (a plot to build on is residential too).
+    // A sale drops the room type and offers land for both uses (a plot to build on is residential too); a rental
+    // never offers land.
     private val SALE_CATEGORIES_BY_TYPE: Map<PropertyType, Set<PropertyCategory>> =
-        CATEGORIES_BY_TYPE.filterKeys { it != PropertyType.ROOM }.mapValues { (type, category) ->
-            if (type == PropertyType.LAND) {
-                setOf(PropertyCategory.RESIDENTIAL, PropertyCategory.COMMERCIAL)
-            } else {
-                setOf(category)
-            }
-        }
+        (CATEGORIES_BY_TYPE - PropertyType.ROOM)
+            .mapValues { (_, category) -> setOf(category) } +
+            (PropertyType.LAND to setOf(PropertyCategory.RESIDENTIAL, PropertyCategory.COMMERCIAL))
 
     private val WITHOUT_ROOMS = setOf(PropertyType.ROOM, PropertyType.STUDIO, PropertyType.BUILDING)
 
