@@ -272,6 +272,16 @@ class OfferPropertyRulesTest {
     }
 
     @Test
+    fun pricePerSqm() {
+        assertEquals(56_300L, OfferPropertyRules.pricePerSqm(ListingType.SALE, PropertyType.LAND, 45_000_000L, 800))
+        assertNull(OfferPropertyRules.pricePerSqm(ListingType.SALE, PropertyType.LAND, 45_000_000L, 4))
+        assertNull(OfferPropertyRules.pricePerSqm(ListingType.SALE, PropertyType.LAND, null, 800))
+        assertNull(OfferPropertyRules.pricePerSqm(ListingType.SALE, PropertyType.HOUSE, 45_000_000L, 800))
+        assertNull(OfferPropertyRules.pricePerSqm(ListingType.RENTAL, PropertyType.LAND, 45_000_000L, 800))
+        assertNull(OfferPropertyRules.pricePerSqm(ListingType.SALE, PropertyType.LAND, 1_000_000L, 1_000_000))
+    }
+
+    @Test
     fun projectLabel() {
         assertEquals("Vente", OfferPropertyRules.projectLabel(ListingType.SALE))
         assertEquals("Location", OfferPropertyRules.projectLabel(ListingType.RENTAL))

@@ -292,13 +292,16 @@
 
                     <fieldset aria-describedby="rooms-error" class="choices" data-group="rooms"
                               th:attr="aria-invalid=${errors['rooms'] != null ? 'true' : null}"
-                              th:if="${residential}">
+                              th:hidden="${!showsRooms}" th:if="${residential}">
                         <legend class="choices__legend">Nombre de chambres</legend>
                         <div class="choices__grid">
-                            <label class="choice" th:each="rooms : ${ {'1', '2', '3', '4'} }"><input name="rooms" required
+                            <label class="choice" th:each="rooms : ${ {'1', '2', '3', '4'} }"><input name="rooms"
+                                    th:attr="required=${requiresRooms} ? 'required' : null"
                                     th:checked="${answers.rooms == rooms}" th:value="${rooms}" type="radio" value="1">
                                 <th:block th:text="${rooms}">1</th:block></label>
-                            <label class="choice"><input name="rooms" required th:checked="${answers.rooms == '5+'}"
+                            <label class="choice"><input name="rooms"
+                                                         th:attr="required=${requiresRooms} ? 'required' : null"
+                                                         th:checked="${answers.rooms == '5+'}"
                                                          type="radio" value="5+"> 5&nbsp;et&nbsp;+</label>
                         </div>
                         <p th:replace="~{:: error('rooms')}"></p>
@@ -307,13 +310,15 @@
                     <!--/* "Non" is stored as 0 places; hasParking only exists in the form. */-->
                     <fieldset aria-describedby="hasParking-error" class="choices" data-group="hasParking"
                               th:attr="aria-invalid=${errors['hasParking'] != null ? 'true' : null}"
-                              th:if="${residential}">
+                              th:hidden="${!showsParking}" th:if="${residential}">
                         <legend class="choices__legend">Parking ou garage</legend>
                         <div class="choices__grid choices__grid--2">
-                            <label class="choice"><input name="hasParking" required
+                            <label class="choice"><input name="hasParking"
+                                                         th:attr="required=${requiresParking} ? 'required' : null"
                                                          th:checked="${hasParking != null ? hasParking == 'YES' : (answers.parkings == '1' or answers.parkings == '2' or answers.parkings == '3+')}"
                                                          type="radio" value="YES"> Oui</label>
-                            <label class="choice"><input name="hasParking" required
+                            <label class="choice"><input name="hasParking"
+                                                         th:attr="required=${requiresParking} ? 'required' : null"
                                                          th:checked="${hasParking != null ? hasParking == 'NO' : answers.parkings == '0'}"
                                                          type="radio" value="NO"> Non</label>
                         </div>
@@ -322,16 +327,19 @@
 
                     <fieldset aria-describedby="parkings-error" class="choices" data-group="parkings"
                               th:attr="aria-invalid=${errors['parkings'] != null ? 'true' : null}"
-                              th:if="${residential}">
+                              th:hidden="${!showsParking}" th:if="${residential}">
                         <legend class="choices__legend">Combien de places&nbsp;?</legend>
                         <div class="choices__grid">
-                            <label class="choice"><input name="parkings" required
+                            <label class="choice"><input name="parkings"
+                                                         th:attr="required=${requiresParking} ? 'required' : null"
                                                          th:checked="${answers.parkings == '1'}"
                                                          type="radio" value="1"> 1</label>
-                            <label class="choice"><input name="parkings" required
+                            <label class="choice"><input name="parkings"
+                                                         th:attr="required=${requiresParking} ? 'required' : null"
                                                          th:checked="${answers.parkings == '2'}"
                                                          type="radio" value="2"> 2</label>
-                            <label class="choice"><input name="parkings" required
+                            <label class="choice"><input name="parkings"
+                                                         th:attr="required=${requiresParking} ? 'required' : null"
                                                          th:checked="${answers.parkings == '3+'}"
                                                          type="radio" value="3+"> 3&nbsp;et&nbsp;+</label>
                         </div>
@@ -355,8 +363,9 @@
                         <p class="hint" data-price-per-sqm hidden></p>
                     </div>
 
-                    <!--/* The documents of ownership a seller declares: a sale of a Terrain only, optional, several.
-                           Rendered even when hidden, so a post without JS still carries them; the server filters. */-->
+                    <!--/* The documents of ownership a seller declares: every sale until its type is known, then a plot
+                           of land only, optional, several. Rendered even when hidden, so a post without JS still
+                           carries them; the server filters. */-->
                     <fieldset class="choices" data-group="ownershipDocuments" th:hidden="${!asksOwnershipDocuments}">
                         <legend class="choices__legend">Document de propriété <span
                                 class="field__optional">(facultatif)</span></legend>

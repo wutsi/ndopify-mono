@@ -381,7 +381,10 @@ class OfferPropertyController(
         }
         if (step == STEP_FEATURES) {
             val type = FindPropertyRules.parsePropertyType(answers.propertyType)
-            model.addAttribute("sale", answers.isSale())
+            val sale = answers.isSale()
+            val category = answers.propertyCategory
+            val residential = category == PropertyCategory.RESIDENTIAL
+            model.addAttribute("sale", sale)
             model.addAttribute(
                 "propertyTypes",
                 OfferPropertyRules.propertyTypes(answers.propertyCategory!!, answers.listingType),
@@ -391,12 +394,27 @@ class OfferPropertyController(
             model.addAttribute("currency", formatter().currency())
             model.addAttribute("ownershipDocumentLabels", MandateLabels.byName(MandateLabels.TITLE_DOCUMENT_LABELS))
             model.addAttribute("ownershipDocumentNames", HashSet(answers.ownershipDocuments.map { it.name }))
+            // A sale renders the follow-up questions until its type is known, then only the ones its type needs.
             model.addAttribute(
-                "asksOwnershipDocuments",
-                OfferPropertyRules.ownershipDocumentTypes(answers.listingType, type).isNotEmpty(),
+                "showsRooms",
+                residential && (!sale || type == null || OfferPropertyRules.needsRooms(category, type, answers.listingType)),
             )
-            model.addAttribute("asksArea", !residential(answers.propertyCategory) || answers.isSale())
-            model.addAttribute("landSale", answers.isSale() && type == PropertyType.LAND)
+            model.addAttribute(
+                "requiresRooms",
+                residential && (!sale || (type != null && OfferPropertyRules.needsRooms(category, type, answers.listingType))),
+            )
+            model.addAttribute(
+                "showsParking",
+                residential && (!sale || type == null || OfferPropertyRules.needsParking(category, type, answers.listingType)),
+            )
+            model.addAttribute(
+                "requiresParking",
+                residential && (!sale || (type != null && OfferPropertyRules.needsParking(category, type, answers.listingType))),
+            )
+            // Every sale may declare its documents until its type is known; only a plot of land then keeps them.
+            model.addAttribute("asksOwnershipDocuments", sale && (type == null || type == PropertyType.LAND))
+            model.addAttribute("asksArea", !residential(category) || sale)
+            model.addAttribute("landSale", sale && type == PropertyType.LAND)
         }
         if (step == STEP_AMENITIES) {
             // The owner's wording, as the listing's (road access: one radio, in the mandates' wording)
@@ -428,7 +446,7 @@ class OfferPropertyController(
 
     /**
      * "150 000 FCFA par mois", "Avance de 3 mois", "Caution de 2 mois", "Disponible dès maintenant"; a sale's price
-     * has no "/ mois" and no advance nor deposit line.
+     * has no "/ mois" and no advance nor deposit line, and a sold plot adds its implied rate right after it.
      */
     private fun termsLines(answers: PendingListing): List<String> {
         val formatter = formatter()
@@ -436,7 +454,15 @@ class OfferPropertyController(
             if (it == formatter.today(clock)) "Disponible dès maintenant" else "Disponible dès le " + formatter.date(it)
         }
         if (answers.isSale()) {
-            return listOfNotNull(answers.priceAmount?.let { formatter.money(it) }, availability)
+            val type = FindPropertyRules.parsePropertyType(answers.propertyType)
+            val rate = OfferPropertyRules.pricePerSqm(answers.listingType, type, answers.priceAmount, answers.area)
+            return listOfNotNull(
+                answers.priceAmount?.let { formatter.money(it) },
+                rate?.let {
+                    "≈ " + formatter.money(it) + "/m² pour " + MandateLabels.formatNumber(answers.area!!) + " m²"
+                },
+                availability,
+            )
         }
         return listOfNotNull(
             answers.priceAmount?.let { formatter.money(it) + " par mois" },

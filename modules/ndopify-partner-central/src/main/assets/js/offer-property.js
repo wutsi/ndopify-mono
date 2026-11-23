@@ -8,9 +8,10 @@
  * - property: the project's texts follow the rent / sell choice as it changes;
  * - terms: the rent (or the sale price) as "150 000" as you type (the server reads the digits);
  * - features: shows only the questions that apply to the chosen type (furnishing, rooms, parking, and the number of
- *   places only after "Oui"), disables the hidden ones so they don't post; the surface of a commercial property
- *   is formatted like the rent. For a sale, a plot asks its documents and shows its implied price per m² (display
- *   only, never sent nor stored);
+ *   places only after "Oui"), disables the hidden ones so they don't post; a sale whose type isn't saved yet keeps
+ *   them visible but not required; the surface of a commercial property is formatted like the rent. For a sale, the
+ *   documents appear for every sale from the first render, then for a plot only once its type is saved, and a plot
+ *   shows its implied price per m² (display only, never sent nor stored);
  * - contact: intl-tel-input formats the WhatsApp number and posts E.164 ("+237677123456");
  * - "Suivant" stays inactive until every required field of the step is filled (the server still validates them);
  * - the review's submit button can't be pressed twice.
@@ -31,8 +32,9 @@
     var PHONE_INVALID = "Ce numéro n'est pas un numéro mobile valide. Exemple : 6 77 12 34 56";
 
     // Same rules as OfferPropertyRules (needsFurniture, needsRooms, needsParking, needsArea). The server renders
-    // only the chosen category's types, so a residential form has the residential questions and a commercial one
-    // the surface (always asked): only the type narrows the residential questions down.
+    // only the chosen category's types, and a sale renders its residential questions until its type is saved (not
+    // required), then only those its type needs: a saved plot of land gets no rooms nor parking. A commercial
+    // property asks the surface; only the type narrows the residential questions down.
     var WITHOUT_ROOMS = ["ROOM", "STUDIO", "BUILDING"];
     var WITHOUT_FURNITURE = ["BUILDING"];
     var WITHOUT_PARKING = ["ROOM"];
@@ -426,8 +428,9 @@
             return areaInput && areaInput.value.trim() ? Number(digitsOf(areaInput.value)) : 0;
         }
 
-        // A sold plot's implied rate, asking price ÷ surface rounded to the nearest 100: display only, never sent,
-        // never stored, never on the review. Hidden without a valid price or surface, for another type or a rental.
+        // A sold plot's implied rate, asking price ÷ surface rounded to the nearest 100: display only on the features
+        // step, never sent nor stored; the review computes its own line server-side. Hidden without a valid price or
+        // surface, for another type or a rental.
         function updatePricePerSqm(type) {
             if (!perSqm) return;
             var surface = areaValue();
@@ -443,29 +446,51 @@
             perSqm.hidden = false;
         }
 
-        // A hidden question is disabled (it doesn't post) and never in error; a shown one gates "Suivant" — except
-        // the documents, which are optional.
-        function show(key, shown) {
+        // A hidden question is disabled (it doesn't post) and never in error; a shown one gates "Suivant" when
+        // [required]. The documents are optional, and a sale's questions shown before its type is saved aren't
+        // required yet — the server renders the same state (#273).
+        function show(key, shown, required) {
             var group = groups[key];
             if (!group) return; // only rendered for the category that asks it
             group.hidden = !shown;
             $all("input", group).forEach(function (input) {
                 input.disabled = !shown;
-                if (key !== "ownershipDocuments") input.required = shown;
+                input.required = shown && required !== false;
             });
             if (!shown) setFieldError(group, $("#" + key + "-error", form), "");
         }
 
+        // A sale whose type isn't saved yet keeps the questions visible, but not required; once the type is saved, its
+        // own rules decide. A rental waits for its type, as before.
+        function showsRooms(type) {
+            return sale ? (!type || needsRooms(type)) : needsRooms(type);
+        }
+
+        function requiresRooms(type) {
+            return sale ? (!!type && needsRooms(type)) : showsRooms(type);
+        }
+
+        function showsParking(type) {
+            return sale ? (!type || needsParking(type)) : needsParking(type);
+        }
+
+        function requiresParking(type) {
+            return sale ? (!!type && needsParking(type)) : showsParking(type);
+        }
+
         function updateQuestions() {
             var type = checkedValue("propertyType", form);
-            show("furnitureType", needsFurniture(type));
-            show("rooms", needsRooms(type));
-            show("hasParking", needsParking(type));
-            // The number of places only after "Oui" (the server reads "Non" as 0 places).
-            show("parkings", needsParking(type) && checkedValue("hasParking", form) === "YES");
-            show("area", needsArea(type));
-            // The documents of ownership a seller declares: a sale of a Terrain only, optional and several.
-            show("ownershipDocuments", sale && isLand(type));
+            var hasParking = checkedValue("hasParking", form);
+            // The number of places only after "Oui" (the server reads "Non" as 0 places); a sale's first render keeps
+            // it visible until "Non", as the server rendered it.
+            var places = showsParking(type) && (hasParking === "YES" || (sale && !type && hasParking !== "NO"));
+            show("furnitureType", needsFurniture(type), true);
+            show("rooms", showsRooms(type), requiresRooms(type));
+            show("hasParking", showsParking(type), requiresParking(type));
+            show("parkings", places, requiresParking(type));
+            show("area", needsArea(type), true);
+            // The documents of ownership a seller declares: every sale until its type is saved, then a Terrain only.
+            show("ownershipDocuments", sale && (!type || isLand(type)), false);
             if (areaLabel) {
                 areaLabel.textContent = isLand(type) ? "Surface du terrain estimée" : "Surface estimée";
             }

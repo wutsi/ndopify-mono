@@ -152,6 +152,18 @@ object OfferPropertyRules {
     fun needsArea(category: PropertyCategory?, type: PropertyType?, listingType: ListingType?): Boolean =
         category == PropertyCategory.COMMERCIAL || (isSale(listingType) && type == PropertyType.LAND)
 
+    /**
+     * A sold plot's implied rate: asking price ÷ surface, rounded to the nearest 100, or null when the answers are not a
+     * SALE · LAND or the price/surface is missing or unusable. A rate rounding to 0 is null too, as the page hides it.
+     */
+    fun pricePerSqm(listingType: ListingType?, type: PropertyType?, priceAmount: Long?, area: Int?): Long? {
+        if (!isSale(listingType) || type != PropertyType.LAND) return null
+        if (priceAmount == null || priceAmount <= 0) return null
+        if (area == null || area < MIN_AREA) return null
+        val rate = Math.round((priceAmount.toDouble() / area) / 100) * 100
+        return rate.takeIf { it > 0 }
+    }
+
     /** The documents a seller declares, in prototype order: a land sale only, and always optional. */
     fun ownershipDocumentTypes(listingType: ListingType?, type: PropertyType?): List<TitleDocumentType> =
         if (isSale(listingType) && type == PropertyType.LAND) TITLE_DOCUMENT_TYPES else emptyList()

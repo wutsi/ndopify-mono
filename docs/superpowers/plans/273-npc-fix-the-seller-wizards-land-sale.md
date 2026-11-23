@@ -9,7 +9,7 @@ without depending on JavaScript.
 **Architecture:** The controller derives five display flags for the features step from the saved answers
 (`showsRooms`, `requiresRooms`, `showsParking`, `requiresParking`, `asksOwnershipDocuments`) and the template renders
 each question from them; a `requires…` flag is false while the type is unknown, so a sale's first render is optional,
-and a land sale's questions are not rendered. One pure rule, `OfferPropertyRules.pricePerSqm`, gives the rate; the
+and a land sale's questions are rendered hidden. One pure rule, `OfferPropertyRules.pricePerSqm`, gives the rate; the
 review appends its line after the total price, formatted through `TenantFormatter.money` and
 `MandateLabels.formatNumber`. The page script mirrors the flags (hiding, disabling, and
 `required`) so it enhances the server render instead of replacing it.
@@ -50,8 +50,9 @@ Review it at `http://localhost:8899/offer-property.html?sample=sale|land|land-no
 
 ## Review Focus
 
-- **No-JS land sale.** Without the script, a *Terrain* sale must not render rooms/parking, must show the three optional
-  documents, and must post and save with `rooms = null`, `parkings = null` and an empty document list.
+- **No-JS land sale.** Without the script, a *Terrain* sale must keep rooms/parking hidden (their fieldsets stay in the
+  DOM for the residential category), must show the three optional documents, and must post and save with `rooms = null`,
+  `parkings = null` and an empty document list.
 - **No-JS sale, type not chosen.** The first render shows the questions but does not require them; a *Terrain* then
   posts without them, while a house still gets the server's *Indiquez le nombre de chambres.* message.
 - **The rate's formatting.** The review line is *≈ 56 300 FCFA/m² pour 800 m²*, grouped and in the tenant's currency,
@@ -90,17 +91,19 @@ model.addAttribute("asksOwnershipDocuments", sale && (type == null || type == Pr
 ```
 
   `landSale` stays `answers.isSale() && type == PropertyType.LAND`; `asksArea` stays as it is; `residential` stays the
-  template's `th:with` for the furniture fieldset.
+  template's `th:with` (the category guard of the rooms/parking fieldsets and the furniture one).
 
 - Produces in `offer-property.html`:
-  - the *Nombre de chambres* fieldset `th:if="${showsRooms}"`; every `input[name=rooms]` gets
+  - the *Nombre de chambres* fieldset keeps the residential category guard (`th:if="${residential}"`) and is hidden by
+    its type flag (`th:hidden="${!showsRooms}"`); every `input[name=rooms]` gets
     `th:attr="required=${requiresRooms} ? 'required' : null"` instead of the literal `required`;
-  - the *Parking ou garage* fieldset `th:if="${showsParking}"`; every `input[name=hasParking]` gets the same
-    `required` expression from `requiresParking`;
-  - the *Combien de places ?* fieldset `th:if="${showsParking}"`; every `input[name=parkings]` gets the same
-    `required` expression from `requiresParking`;
+  - the *Parking ou garage* fieldset `th:if="${residential}"` and `th:hidden="${!showsParking}"`; every
+    `input[name=hasParking]` gets the same `required` expression from `requiresParking`;
+  - the *Combien de places ?* fieldset `th:if="${residential}"` and `th:hidden="${!showsParking}"`; every
+    `input[name=parkings]` gets the same `required` expression from `requiresParking`;
   - the documents fieldset keeps `th:hidden="${!asksOwnershipDocuments}"` and its optional checkboxes.
-  The rooms/parking fieldsets no longer use the `residential` `th:with`; the furniture one keeps `th:if="${residential and !sale}"`.
+  The rooms/parking fieldsets keep the `residential` category guard and hide a type-level question instead of omitting
+  it, so a live type change reveals it again; the furniture one keeps `th:if="${residential and !sale}"`.
 
 - [ ] **Step 1: Write the failing controller tests**
 
@@ -123,8 +126,8 @@ Expected: the new model keys are null.
 In `OfferPropertyTemplateTest`:
 - a sale with no type (`sale.copy(propertyType = null)`): `input[name=rooms]` and `input[name=hasParking]` exist and
   none has `required`; `[data-group=ownershipDocuments]` is not hidden;
-- the land `sale`: no `input[name=rooms]`, no `input[name=hasParking]`, no `input[name=parkings]`; the documents are
-  visible; `[data-price-per-sqm]` exists;
+- the land `sale`: the rooms, hasParking and parkings fieldsets are rendered with `hidden` and none of their inputs is
+  `required`; the documents are visible; `[data-price-per-sqm]` exists;
 - a house sale (`sale.copy(propertyType = "HOUSE", area = null)`): rooms, hasParking and parkings exist with
   `required`; the documents are hidden;
 - the default rental (apartment): rooms/hasParking/parkings exist with `required`; the documents are hidden;
