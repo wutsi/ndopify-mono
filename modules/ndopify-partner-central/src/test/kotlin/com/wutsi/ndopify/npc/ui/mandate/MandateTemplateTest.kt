@@ -348,6 +348,7 @@ class MandateTemplateTest {
         assertEquals("listing", page.selectFirst("h1 [data-mandate-kind]")?.attr("data-mandate-kind"))
         assertEquals("Le bailleur", page.selectFirst("#contact-title")?.text())
         assertEquals("Bailleur", page.selectFirst("[data-contact-role]")?.text())
+        assertEquals("Modifier les coordonnées du bailleur", page.selectFirst("[data-contact-edit]")?.attr("aria-label"))
         assertEquals("Son bien", page.selectFirst("#search-title")?.text())
         assertTrue(page.text().contains("Présentez le bien aux locataires et organisez les visites."))
     }
@@ -681,9 +682,12 @@ class MandateTemplateTest {
         assertEquals("Vente", page.selectFirst("h1 [data-deal-tag]")?.text())
         assertEquals("status-tag status-tag--info", page.selectFirst("h1 [data-deal-tag]")?.className())
         assertEquals("Acheteur", page.selectFirst("[data-contact-role]")?.text())
+        assertEquals("L'acheteur", page.selectFirst("#contact-title")?.text())
+        assertEquals("Modifier les coordonnées de l'acheteur", page.selectFirst("[data-contact-edit]")?.attr("aria-label"))
         assertTrue(page.text().contains("Proposez des biens à l'acheteur et organisez les visites."))
         assertFalse(page.text().contains("Proposez des biens au client"))
         assertFalse(page.text().contains("au loyer de"))
+        assertFalse(page.text().contains("locataire"))
     }
 
     @Test
@@ -693,8 +697,11 @@ class MandateTemplateTest {
         assertEquals("Vendeur · Maison", page.selectFirst("[data-mandate-title]")?.text())
         assertEquals("Vente", page.selectFirst("h1 [data-deal-tag]")?.text())
         assertEquals("Vendeur", page.selectFirst("[data-contact-role]")?.text())
+        assertEquals("Le vendeur", page.selectFirst("#contact-title")?.text())
+        assertEquals("Modifier les coordonnées du vendeur", page.selectFirst("[data-contact-edit]")?.attr("aria-label"))
         assertTrue(page.text().contains("Présentez le bien aux acheteurs et organisez les visites."))
         assertFalse(page.text().contains("Présentez le bien aux locataires"))
+        assertFalse(page.text().contains("bailleur"))
     }
 
     @Test

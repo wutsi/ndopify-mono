@@ -57,14 +57,29 @@ class MandateRulesTest {
 
     @Test
     fun `a sale's customer is the seller or the buyer`() {
-        assertEquals("Vendeur", MandateRules.words(MandateType.LISTING, ListingType.SALE).role)
-        assertEquals("Acheteur", MandateRules.words(MandateType.SEARCH, ListingType.SALE).role)
+        val seller = MandateRules.words(MandateType.LISTING, ListingType.SALE)
+        assertEquals("Vendeur", seller.role)
+        assertEquals("le vendeur", seller.the)
+        assertEquals("Le vendeur", seller.theUpper)
+        assertEquals("du vendeur", seller.of)
+        assertEquals("son bien", seller.search)
+        assertEquals("Son bien", seller.searchUpper)
+        assertEquals("au vendeur", seller.to)
+
+        val buyer = MandateRules.words(MandateType.SEARCH, ListingType.SALE)
+        assertEquals("Acheteur", buyer.role)
+        assertEquals("l'acheteur", buyer.the)
+        assertEquals("L'acheteur", buyer.theUpper)
+        assertEquals("de l'acheteur", buyer.of)
+        assertEquals("sa recherche", buyer.search)
+        assertEquals("Sa recherche", buyer.searchUpper)
+        assertEquals("à l'acheteur", buyer.to)
+
+        // A rental keeps the landlord's and the client's words.
+        assertEquals("au bailleur", MandateRules.words(MandateType.LISTING, ListingType.RENTAL).to)
+        assertEquals("au client", MandateRules.words(MandateType.SEARCH, ListingType.RENTAL).to)
         assertEquals("Bailleur", MandateRules.words(MandateType.LISTING, ListingType.RENTAL).role)
         assertEquals("Client", MandateRules.words(MandateType.SEARCH, ListingType.RENTAL).role)
-
-        // Only the role changes: the other words stay the neutral ones.
-        assertEquals("le bailleur", MandateRules.words(MandateType.LISTING, ListingType.SALE).the)
-        assertEquals("sa recherche", MandateRules.words(MandateType.SEARCH, ListingType.SALE).search)
     }
 
     @Test

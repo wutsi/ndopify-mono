@@ -66,8 +66,11 @@ object MandateRules {
 
     private val OWNER = PartyWords("le bailleur", "Le bailleur", "du bailleur", "son bien", "Son bien", "au bailleur", "Bailleur")
     private val CLIENT = PartyWords("le client", "Le client", "du client", "sa recherche", "Sa recherche", "au client", "Client")
-    private val SELLER = OWNER.copy(role = "Vendeur")
-    private val BUYER = CLIENT.copy(role = "Acheteur")
+
+    // A sale's parties, as the prototype's `partyWords`: the buyer's elided "l'acheteur". The search words stay
+    // neutral: the seller has a bien, the buyer a recherche.
+    private val SELLER = PartyWords("le vendeur", "Le vendeur", "du vendeur", "son bien", "Son bien", "au vendeur", "Vendeur")
+    private val BUYER = PartyWords("l'acheteur", "L'acheteur", "de l'acheteur", "sa recherche", "Sa recherche", "à l'acheteur", "Acheteur")
 
     /** An unknown status reads as the neutral "Fermé" tag: the page never shows one anyway (see [SHOWN]). */
     fun tag(status: MandateStatus): Tag = TAGS[status] ?: TAGS.getValue(MandateStatus.CLOSED)
