@@ -10,6 +10,7 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -35,6 +36,7 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.NOW
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.ACCEPTED
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.APPROVED
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.CUSTOMER
+import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.LAND_SALE
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.PENDING
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.date
 import com.wutsi.ndopify.npc.ui.match.MatchFixtures
@@ -867,6 +869,48 @@ class MandateTemplateTest {
         assertEquals("Maison, 3 chambres", key[3].selectFirst("dd")?.text())
         assertEquals("Voir tous les critères (3)", page.selectFirst("[data-mandate-more] summary")?.text())
         assertEquals(3, page.select("[data-mandate-criteria] .review__item").size)
+    }
+
+    @Test
+    fun `documents note for a land purchase`() {
+        val page = render(LAND_SALE)
+
+        val key = page.select("[data-mandate-key-criteria] .review__item")
+        val documents = key.last()!!
+        assertEquals("Documents exigés", documents.selectFirst("dt")?.text())
+        assertEquals("Titre foncier · Plan de bornage", documents.selectFirst("dd")?.text())
+        assertEquals(
+            "Les terrains à vendre dont le vendeur n'a déclaré aucun de ces documents ne vous sont pas proposés. " +
+                "Un seul de ces documents déclaré suffit.",
+            page.selectFirst("[data-mandate-documents-note]")?.text(),
+        )
+    }
+
+    @Test
+    fun `no documents note without a requirement`() {
+        val page = render(LAND_SALE.copy(titleDocuments = emptyList()))
+
+        assertNull(page.selectFirst("[data-mandate-documents-note]"))
+        assertTrue(
+            page.select("[data-mandate-key-criteria] .review__item")
+                .any { it.selectFirst("dt")?.text() == "Documents exigés" && it.selectFirst("dd")?.text() == "Aucun document exigé" },
+        )
+    }
+
+    @Test
+    fun `no documents note for a rental`() {
+        assertNull(render(APPROVED).selectFirst("[data-mandate-documents-note]"))
+    }
+
+    @Test
+    fun `no documents note nor row for a non-land sale`() {
+        val page = render(LAND_SALE.copy(propertyType = PropertyType.HOUSE))
+
+        assertNull(page.selectFirst("[data-mandate-documents-note]"))
+        assertFalse(
+            (page.select("[data-mandate-key-criteria] .review__item") + page.select("[data-mandate-criteria] .review__item"))
+                .any { it.selectFirst("dt")?.text() == "Documents exigés" },
+        )
     }
 
     @Test

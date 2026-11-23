@@ -3,10 +3,12 @@ package com.wutsi.ndopify.npc.ui.mandate
 import com.wutsi.ndopify.contract.dto.Contract
 import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
@@ -39,6 +41,7 @@ object MandateViews {
     private const val TYPE = "Type de propriété"
     private const val ROOMS = "Chambres"
     private const val COMMENTS = "Autres précisions"
+    private const val DOCUMENTS = "Documents exigés"
     private const val KEY_FACTS = 3
 
     private val CAMEROON_PHONE = Regex("""^\+237(\d)(\d{2})(\d{2})(\d{2})(\d{2})$""")
@@ -119,6 +122,10 @@ object MandateViews {
             contact = customer?.let { contact(mandate, it) },
             keyCriteria = key,
             moreCriteria = more,
+            titleDocumentsRequired = mandate.mandateType == MandateType.SEARCH &&
+                mandate.listingType == ListingType.SALE &&
+                mandate.propertyType == PropertyType.LAND &&
+                mandate.titleDocuments.any { it != TitleDocumentType.UNKNOWN },
             editable = status in MandateRules.EDITABLE,
             customerEditable = status in MandateRules.CUSTOMER_EDITABLE,
             closable = status == MandateStatus.APPROVED,
@@ -180,7 +187,7 @@ object MandateViews {
     private fun partyName(customer: Customer): String =
         listOf(customer.party.firstName, customer.party.lastName).filter { it.isNotBlank() }.joinToString(" ")
 
-    /** Visible: sector, amount, date, the type with its rooms, then the comments. Folded: everything else. */
+    /** Visible: sector, amount, date, the type with its rooms, then the comments, then the required documents. */
     private fun criteria(
         mandate: Mandate,
         locations: Map<Long, Location>,
@@ -191,8 +198,9 @@ object MandateViews {
         val rooms = byTerm[ROOMS]?.let { if (it == "1") "1 chambre" else "$it chambres" }
         val key = rows.take(KEY_FACTS) +
             listOf("Type de bien" to listOfNotNull(byTerm[TYPE], rooms).joinToString(", ")) +
-            listOfNotNull(byTerm[COMMENTS]?.let { COMMENTS to it })
-        val more = rows.drop(KEY_FACTS).filter { (term, _) -> term !in setOf(TYPE, ROOMS, COMMENTS) }
+            listOfNotNull(byTerm[COMMENTS]?.let { COMMENTS to it }) +
+            listOfNotNull(byTerm[DOCUMENTS]?.let { DOCUMENTS to it })
+        val more = rows.drop(KEY_FACTS).filter { (term, _) -> term !in setOf(TYPE, ROOMS, COMMENTS, DOCUMENTS) }
         return key to more
     }
 
