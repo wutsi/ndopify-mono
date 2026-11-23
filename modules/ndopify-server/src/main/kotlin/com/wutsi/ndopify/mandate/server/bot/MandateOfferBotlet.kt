@@ -52,7 +52,7 @@ class MandateOfferBotlet(
         val lines = mutableListOf(
             "📋 Nouveau mandat : " + criteria(mandate) +
                 (MandateMailLabels.neighbourhoods(mandate, locationService)?.let { " ($it)" } ?: "") +
-                " — ${MandateMailLabels.budget(mandate, formatter)}",
+                " — ${MandateMailLabels.budget(mandate, formatter)}" + purchase(mandate),
         )
         if (mandate.mandateType == MandateType.LISTING) {
             details(mandate, formatter)?.let { lines.add(it) }
@@ -60,6 +60,13 @@ class MandateOfferBotlet(
         lines.add("Expire le ${formatter.date(assignment.expiresAt)} à ${formatter.time(assignment.expiresAt)}.")
         return lines.joinToString("\n")
     }
+
+    // The purchase answers on the criteria line: financing first, then the documents the buyer requires.
+    private fun purchase(mandate: MandateEntity): String =
+        listOfNotNull(
+            MandateMailLabels.financingType(mandate)?.let { " · Financement : $it" },
+            MandateMailLabels.titleDocuments(mandate)?.let { " · Documents : $it" },
+        ).joinToString("")
 
     // The listing's facts on one line: "4 pièces · 250 m² · disponible le 01/12/2026"
     private fun details(mandate: MandateEntity, formatter: TenantFormatter): String? =

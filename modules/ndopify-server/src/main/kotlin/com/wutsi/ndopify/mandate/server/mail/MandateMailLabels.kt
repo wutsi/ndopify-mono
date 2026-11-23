@@ -2,7 +2,9 @@ package com.wutsi.ndopify.mandate.server.mail
 
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.mandate.dto.FinancingType
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.server.service.LocationService
@@ -32,6 +34,21 @@ internal object MandateMailLabels {
         PeriodicityType.YEARLY to "an",
     )
 
+    // How a purchase is financed (FinancingType): a buyer's declaration, shown to the agent.
+    private val FINANCING_TYPES = mapOf(
+        FinancingType.CASH to "Comptant",
+        FinancingType.BANK_LOAN to "Prêt bancaire",
+        FinancingType.TRANSFER_FROM_ABROAD to "Transfert depuis l'étranger",
+        FinancingType.UNDECIDED to "Pas encore décidé",
+    )
+
+    // The land documents a buyer requires (TitleDocumentType).
+    private val TITLE_DOCUMENTS = mapOf(
+        TitleDocumentType.LAND_TITLE to "Titre foncier",
+        TitleDocumentType.SURVEY_PLAN to "Plan de bornage",
+        TitleDocumentType.CERTIFICATE_OF_OWNERSHIP to "Certificat de propriété",
+    )
+
     // A customer searching buys, an owner listing sells
     fun listingType(mandate: MandateEntity): String =
         when {
@@ -46,6 +63,17 @@ internal object MandateMailLabels {
 
     fun propertyType(mandate: MandateEntity): String? =
         mandate.propertyType?.let { PROPERTY_TYPES[it] }
+
+    // Ex: "Comptant"; null for a rental, and for no usable answer.
+    fun financingType(mandate: MandateEntity): String? =
+        if (mandate.listingType == ListingType.SALE) mandate.financingType?.let { FINANCING_TYPES[it] } else null
+
+    // Ex: "Titre foncier · Plan de bornage"; null without documents. "·", never a comma: a document name may contain one.
+    fun titleDocuments(mandate: MandateEntity): String? =
+        mandate.titleDocuments
+            .mapNotNull { TITLE_DOCUMENTS[it] }
+            .joinToString(" · ")
+            .ifEmpty { null }
 
     fun neighbourhoods(mandate: MandateEntity, locationService: LocationService): String? =
         mandate.neighborhoodIds
