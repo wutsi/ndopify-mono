@@ -6,6 +6,7 @@ import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import org.junit.jupiter.api.Test
@@ -20,6 +21,7 @@ class PendingListingTest {
         val TODAY: LocalDate = LocalDate.of(2026, 10, 21)
 
         val COMPLETE = PendingListing(
+            listingType = ListingType.RENTAL,
             propertyCategory = PropertyCategory.RESIDENTIAL,
             cityId = 2220957,
             neighborhoodId = 1001,
@@ -131,6 +133,101 @@ class PendingListingTest {
         assertEquals("ray@gmail.com", request.email)
         assertEquals("+237670000001", request.whatsappNumber)
         assertEquals(ContactPeriodType.MORNING, request.preferredContactPeriod)
+    }
+
+    @Test
+    fun `a rental is the same request as before`() {
+        val pending = PendingListing(
+            listingType = ListingType.RENTAL,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            cityId = 1L,
+            neighborhoodId = 2L,
+            propertyType = "APARTMENT",
+            rooms = "3",
+            furnitureType = "UNFURNISHED",
+            parkings = "1",
+            area = 80,
+            priceAmount = 150_000L,
+            advanceRent = 2,
+            securityDeposit = 2,
+            availableFrom = TODAY.plusDays(10),
+            firstName = "Sandrine",
+            lastName = "Eboa",
+            email = "s@example.com",
+            whatsappNumber = "+237600000000",
+            preferredContactPeriod = ContactPeriodType.MORNING,
+        )
+
+        val request = pending.toCreateMandateRequest("XAF")
+
+        assertEquals(ListingType.RENTAL, request.listingType)
+        assertEquals(PeriodicityType.MONTHLY, request.price.periodicity)
+        assertEquals(2, request.advanceRent)
+        assertEquals(2, request.securityDeposit)
+        assertEquals(emptyList(), request.ownershipDocuments)
+    }
+
+    @Test
+    fun `a land sale sends its documents at a one-off price and no rental terms`() {
+        val pending = COMPLETE.copy(
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = "LAND",
+            area = 800,
+            priceAmount = 45_000_000L,
+            ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+            advanceRent = 2,
+            securityDeposit = 2,
+            rooms = "3",
+            furnitureType = "UNFURNISHED",
+        )
+
+        val request = pending.toCreateMandateRequest("XAF")
+
+        assertEquals(ListingType.SALE, request.listingType)
+        assertEquals(PeriodicityType.NONE, request.price.periodicity)
+        assertEquals(
+            listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+            request.ownershipDocuments,
+        )
+        assertNull(request.advanceRent)
+        assertNull(request.securityDeposit)
+        assertNull(request.rooms)
+        assertNull(request.furnitureType)
+        assertEquals(800, request.area)
+    }
+
+    @Test
+    fun `a villa sale sends no document`() {
+        val pending = COMPLETE.copy(
+            listingType = ListingType.SALE,
+            propertyType = "VILLA",
+            ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE),
+        )
+
+        assertEquals(emptyList(), pending.toCreateMandateRequest("XAF").ownershipDocuments)
+    }
+
+    @Test
+    fun `a land sale without a document is complete`() {
+        val sale = COMPLETE.copy(
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = "LAND",
+            area = 800,
+            priceAmount = 45_000_000L,
+            advanceRent = null,
+            securityDeposit = null,
+            rooms = null,
+            furnitureType = null,
+            parkings = null,
+            ownershipDocuments = emptyList(),
+        )
+
+        assertTrue(sale.isComplete("features", TODAY))
+        assertEquals("features", step(sale.copy(area = null)))
+        assertTrue(sale.isComplete("terms", TODAY))
+        assertEquals("terms", step(sale.copy(priceAmount = 900_000L)))
     }
 
     @Test
