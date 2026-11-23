@@ -363,8 +363,9 @@
                         <p class="hint" data-price-per-sqm hidden></p>
                     </div>
 
-                    <!--/* The documents of ownership a seller declares: a sale of a Terrain only, optional, several.
-                           Rendered even when hidden, so a post without JS still carries them; the server filters. */-->
+                    <!--/* The documents of ownership a seller declares: every sale until its type is known, then a plot
+                           of land only, optional, several. Rendered even when hidden, so a post without JS still
+                           carries them; the server filters. */-->
                     <fieldset class="choices" data-group="ownershipDocuments" th:hidden="${!asksOwnershipDocuments}">
                         <legend class="choices__legend">Document de propriété <span
                                 class="field__optional">(facultatif)</span></legend>

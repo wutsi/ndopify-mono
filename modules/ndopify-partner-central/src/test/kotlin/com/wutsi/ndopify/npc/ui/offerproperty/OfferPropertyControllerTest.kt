@@ -617,6 +617,19 @@ class OfferPropertyControllerTest {
     }
 
     @Test
+    fun `a house sale still refuses a missing number of rooms`() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            sale.copy(propertyType = null, area = null),
+        )
+
+        val result = mvc.perform(features("propertyType" to "HOUSE")).andReturn()
+
+        assertEquals("features", model(result)["step"])
+        assertEquals("Indiquez le nombre de chambres.", errors(result)["rooms"])
+    }
+
+    @Test
     fun `a land sale keeps any number of documents`() {
         session.setAttribute(
             PendingListing.SESSION_ATTRIBUTE,

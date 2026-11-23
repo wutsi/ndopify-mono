@@ -10,8 +10,8 @@
  * - features: shows only the questions that apply to the chosen type (furnishing, rooms, parking, and the number of
  *   places only after "Oui"), disables the hidden ones so they don't post; a sale whose type isn't saved yet keeps
  *   them visible but not required; the surface of a commercial property is formatted like the rent. For a sale, the
- *   documents appear from the first render (a plot only once its type is saved) and a plot shows its implied price
- *   per m² (display only, never sent nor stored);
+ *   documents appear for every sale from the first render, then for a plot only once its type is saved, and a plot
+ *   shows its implied price per m² (display only, never sent nor stored);
  * - contact: intl-tel-input formats the WhatsApp number and posts E.164 ("+237677123456");
  * - "Suivant" stays inactive until every required field of the step is filled (the server still validates them);
  * - the review's submit button can't be pressed twice.
