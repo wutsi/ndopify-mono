@@ -454,7 +454,7 @@ class OfferPropertyTemplateTest {
         val page = render(get("/offer-property?step=features"))
 
         assertEquals(
-            listOf("OFFICE", "RETAIL", "INDUSTRIAL", "LAND"),
+            listOf("OFFICE", "RETAIL", "INDUSTRIAL"),
             page.select("input[name=propertyType]").map { it.attr("value") },
         )
         assertNull(page.selectFirst("input[name=rooms]"))
@@ -462,6 +462,18 @@ class OfferPropertyTemplateTest {
         assertNull(page.selectFirst("input[name=hasParking]"))
         assertNull(page.selectFirst("input[name=parkings]"))
         assertEquals("45", page.selectFirst("input[name=area]")?.attr("value"))
+    }
+
+    @Test
+    fun `the rental commercial description names no land`() {
+        val rental = render(get("/offer-property?step=property"))
+        val commercialRental = rental.selectFirst("input[value=COMMERCIAL]")!!.parent()!!.text()
+        assertFalse(commercialRental.contains("terrain"), commercialRental)
+
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, complete.copy(listingType = ListingType.SALE))
+        val salePage = render(get("/offer-property?step=property"))
+        val commercialSale = salePage.selectFirst("input[value=COMMERCIAL]")!!.parent()!!.text()
+        assertTrue(commercialSale.contains("terrain"), commercialSale)
     }
 
     @Test

@@ -598,7 +598,7 @@ class OfferPropertyControllerTest {
     }
 
     @Test
-    fun `a land rental drops the documents`() {
+    fun `a rental refuses land`() {
         session.setAttribute(
             PendingListing.SESSION_ATTRIBUTE,
             complete.copy(
@@ -607,13 +607,11 @@ class OfferPropertyControllerTest {
             ),
         )
 
-        val result = mvc.perform(
-            features("propertyType" to "LAND", "area" to "800", "ownershipDocuments" to "LAND_TITLE"),
-        ).andReturn()
+        val result = mvc.perform(features("propertyType" to "LAND", "area" to "800")).andReturn()
 
-        assertEquals("redirect:/offer-property?step=amenities", result.modelAndView?.viewName)
-        assertEquals(emptyList(), pending()?.ownershipDocuments)
-        assertEquals(800, pending()?.area)
+        assertEquals("features", model(result)["step"])
+        assertEquals("Choisissez le type de bien.", errors(result)["propertyType"])
+        assertNull(pending()?.propertyType)
     }
 
     @Test

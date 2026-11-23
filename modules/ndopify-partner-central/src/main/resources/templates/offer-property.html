@@ -103,8 +103,8 @@
                                        type="radio" value="COMMERCIAL">
                                 <span><th:block th:text="${categoryLabels['COMMERCIAL']}">Commercial</th:block> <span
                                         class="choice__detail"
-                                        th:text="${categoryDetailLabels['COMMERCIAL']}">Pour une activité&nbsp;: bureau,
-                                    boutique, entrepôt, terrain…</span></span></label>
+                                        th:text="${sale} ? ${categoryDetailLabels['SALE_COMMERCIAL']} : ${categoryDetailLabels['RENTAL_COMMERCIAL']}">Pour une activité&nbsp;: bureau,
+                                    boutique, entrepôt…</span></span></label>
                         </div>
                         <p th:replace="~{:: error('propertyCategory')}"></p>
                     </fieldset>

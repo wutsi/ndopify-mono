@@ -539,11 +539,13 @@ class OfferPropertyController(
 private val CATEGORY_DETAIL_LABELS: Map<String, String> = mapOf(
     "RENTAL_RESIDENTIAL" to "Pour y habiter\u00a0: chambre, studio, appartement, villa, immeuble…",
     "SALE_RESIDENTIAL" to "Pour y habiter\u00a0: appartement, villa, immeuble, terrain à bâtir…",
-    "COMMERCIAL" to "Pour une activité\u00a0: bureau, boutique, entrepôt, terrain…",
+    "RENTAL_COMMERCIAL" to "Pour une activité\u00a0: bureau, boutique, entrepôt…",
+    "SALE_COMMERCIAL" to "Pour une activité\u00a0: bureau, boutique, entrepôt, terrain…",
 )
 
-// "Villa, maison" is one answer, as in the prototype: it is sent as HOUSE.
+// "Villa, maison" is one answer, as in the prototype: it is sent as HOUSE. Land is only a sale's: it keeps its label
+// even though the rental map no longer lists it.
 private val PROPERTY_TYPE_LABELS: Map<PropertyType, String> =
-    OfferPropertyRules.CATEGORIES_BY_TYPE.keys.associateWith { type ->
+    (OfferPropertyRules.CATEGORIES_BY_TYPE.keys + PropertyType.LAND).associateWith { type ->
         if (type == PropertyType.HOUSE) "Villa, maison" else MandateLabels.propertyType(type)
     }
