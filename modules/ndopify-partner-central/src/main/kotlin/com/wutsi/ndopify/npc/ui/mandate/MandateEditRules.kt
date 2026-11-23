@@ -37,10 +37,10 @@ object MandateEditRules {
             FindPropertyRules.propertyCategory(form.propertyCategory)?.let { "propertyCategory" to it },
             typeError(form, owner)?.let { "propertyType" to it },
             ("rooms" to "Indiquez le nombre de chambres.")
-                .takeIf { FindPropertyRules.needsRooms(form.propertyCategory, type) && FindPropertyRules.rooms(form.rooms) != null },
+                .takeIf { FindPropertyRules.needsRooms(form.propertyCategory, type, null) && FindPropertyRules.rooms(form.rooms) != null },
             ("furnitureType" to "Indiquez si le bien est meublé.")
                 .takeIf {
-                    FindPropertyRules.needsFurniture(type) &&
+                    FindPropertyRules.needsFurniture(type, null) &&
                         (FindPropertyRules.furnitureType(form.furnitureType) != null || (owner && form.furnitureType == ANY))
                 },
             ("parkings" to "Choisissez un nombre de places proposé.")
@@ -49,10 +49,10 @@ object MandateEditRules {
                         (FindPropertyRules.parkings(form.parkings) != null || (owner && form.parkings == ANY))
                 },
             ("area" to "Indiquez la surface en m², ou laissez le champ vide.")
-                .takeIf { area.isFailure || FindPropertyRules.area(area.getOrNull()) != null },
+                .takeIf { area.isFailure || FindPropertyRules.area(area.getOrNull(), false) != null },
             priceError(form.priceAmount, owner, formatter)?.let { "priceAmount" to it },
             ("movingPeriod" to if (owner) "Indiquez quand le bien est disponible." else "Indiquez la date d'emménagement.")
-                .takeIf { FindPropertyRules.movingPeriod(form.movingPeriod) != null },
+                .takeIf { FindPropertyRules.movingPeriod(form.movingPeriod, null) != null },
             FindPropertyRules.comments(form.comments?.trim())?.let { "comments" to it },
         ).toMap()
     }
@@ -68,13 +68,16 @@ object MandateEditRules {
         return UpdateMandateRequest(
             propertyCategory = form.propertyCategory ?: mandate.propertyCategory,
             listingType = mandate.listingType,
+            // Not editable here: the wizard's purchase answers travel unchanged, or the update would clear them.
+            financingType = mandate.financingType,
+            titleDocuments = mandate.titleDocuments,
             cityId = mandate.cityId,
             neighbourhoodIds = form.neighborhoodIds.distinct(),
             propertyType = type,
             furnitureType = form.furnitureType
-                ?.takeIf { FindPropertyRules.needsFurniture(type) && it != ANY }
+                ?.takeIf { FindPropertyRules.needsFurniture(type, null) && it != ANY }
                 ?.let { FurnitureType.valueOf(it) },
-            rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(form.propertyCategory, type) },
+            rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(form.propertyCategory, type, null) },
             parkings = form.parkings?.ifEmpty { null }?.takeIf { FindPropertyRules.asksParkings(type) && it != ANY },
             area = area(form.area).getOrNull(),
             waterMeter = "waterMeter" in amenities,
@@ -106,7 +109,7 @@ object MandateEditRules {
     /** Each folded group's current value, as the prototype's `SUMMARIES`; [neighborhoods] are the chosen names. */
     fun summaries(form: MandateEditForm, neighborhoods: List<String>, formatter: TenantFormatter): Map<String, String> {
         val type = type(form)
-        val rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(form.propertyCategory, type) && FindPropertyRules.rooms(it) == null }
+        val rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(form.propertyCategory, type, null) && FindPropertyRules.rooms(it) == null }
         val area = area(form.area).getOrNull()
         val amenities = form.amenities.distinct().size
         val price = FindPropertyRules.parseAmount(form.priceAmount)?.takeIf { it > 0 }
@@ -147,7 +150,7 @@ object MandateEditRules {
         return when {
             answer == null && owner -> "Choisissez un type de bien proposé."
             answer != null && type(form) == null -> "Choisissez un type de bien proposé."
-            else -> FindPropertyRules.propertyType(form.propertyCategory, answer)
+            else -> FindPropertyRules.propertyType(form.propertyCategory, answer, null)
         }
     }
 
@@ -157,7 +160,7 @@ object MandateEditRules {
         return if (amount == null || amount <= 0) {
             if (owner) "Indiquez le loyer, en $currency par mois." else "Indiquez le budget, en $currency par mois."
         } else {
-            FindPropertyRules.priceAmount(amount, formatter)
+            FindPropertyRules.priceAmount(amount, formatter, null)
         }
     }
 

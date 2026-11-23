@@ -1,11 +1,14 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.listing.dto.FurnitureType
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.mandate.dto.FinancingType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
@@ -146,6 +149,73 @@ class MandateLabelsTest {
             ),
             MandateLabels.criteria(mandate, LOCATIONS, FORMATTER),
         )
+    }
+
+    @Test
+    fun `criteria - a land purchase has no furniture row and shows its financing and documents`() {
+        val mandate = Mandate(
+            mandateType = MandateType.SEARCH,
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.LAND,
+            cityId = 1,
+            area = 400,
+            furnitureType = FurnitureType.FULLY_FURNISHED, // left over from an earlier answer
+            price = Money(10_000_000, "XAF", PeriodicityType.NONE),
+            movingPeriod = MovingPeriod.WITHIN_3_MONTHS,
+            financingType = FinancingType.CASH,
+            titleDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+        )
+
+        val rows = MandateLabels.criteria(mandate, LOCATIONS, FORMATTER)
+
+        assertEquals("10\u00a0000\u00a0000\u00a0FCFA", rows.single { it.first == "Budget" }.second)
+        assertEquals(emptyList(), rows.filter { it.first == "Meublé" })
+        assertEquals("Comptant", rows.single { it.first == "Financement" }.second)
+        assertEquals(
+            "Titre foncier · Plan de bornage",
+            rows.single { it.first == "Documents exigés" }.second,
+        )
+    }
+
+    @Test
+    fun `criteria - a land purchase without documents says so`() {
+        val mandate = Mandate(
+            mandateType = MandateType.SEARCH,
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.LAND,
+            cityId = 1,
+            price = Money(10_000_000, "XAF", PeriodicityType.NONE),
+            financingType = FinancingType.UNDECIDED,
+        )
+
+        val rows = MandateLabels.criteria(mandate, LOCATIONS, FORMATTER)
+
+        assertEquals("Pas encore décidé", rows.single { it.first == "Financement" }.second)
+        assertEquals("Aucun document exigé", rows.single { it.first == "Documents exigés" }.second)
+    }
+
+    @Test
+    fun `criteria - a rental is unchanged`() {
+        val mandate = Mandate(
+            mandateType = MandateType.SEARCH,
+            listingType = ListingType.RENTAL,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = PropertyType.APARTMENT,
+            cityId = 1,
+            rooms = "3",
+            price = Money(150000, "XAF", PeriodicityType.MONTHLY),
+            movingPeriod = MovingPeriod.WITHIN_1_MONTH,
+            financingType = FinancingType.CASH, // never kept for a rental
+        )
+
+        val rows = MandateLabels.criteria(mandate, LOCATIONS, FORMATTER)
+
+        assertEquals("150\u00a0000\u00a0FCFA / mois", rows.single { it.first == "Budget" }.second)
+        assertEquals("Indifférent", rows.single { it.first == "Meublé" }.second)
+        assertEquals(emptyList(), rows.filter { it.first == "Financement" })
+        assertEquals(emptyList(), rows.filter { it.first == "Documents exigés" })
     }
 
     @Test

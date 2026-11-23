@@ -59,16 +59,17 @@ data class PendingMandate(
             FindPropertyRules.cityId(cityId) == null && FindPropertyRules.neighborhoodIds(neighborhoodIds) == null
 
         FindPropertyController.STEP_PROPERTY ->
-            FindPropertyRules.propertyType(propertyCategory, propertyType) == null &&
-                (!FindPropertyRules.needsRooms(propertyCategory, type()) || FindPropertyRules.rooms(rooms) == null) &&
-                (!FindPropertyRules.needsFurniture(type()) || FindPropertyRules.furnitureType(furnitureType) == null) &&
-                FindPropertyRules.area(area) == null
+            FindPropertyRules.propertyType(propertyCategory, propertyType, null) == null &&
+                (!FindPropertyRules.needsRooms(propertyCategory, type(), null) || FindPropertyRules.rooms(rooms) == null) &&
+                (!FindPropertyRules.needsFurniture(type(), null) || FindPropertyRules.furnitureType(furnitureType) == null) &&
+                FindPropertyRules.area(area, false) == null
 
         // Every criterion is optional.
         FindPropertyController.STEP_AMENITIES -> true
 
         FindPropertyController.STEP_BUDGET ->
-            FindPropertyRules.isPriceAmount(priceAmount) && FindPropertyRules.movingPeriod(movingPeriod) == null
+            FindPropertyRules.isPriceAmount(priceAmount, null) &&
+                FindPropertyRules.movingPeriod(movingPeriod, null) == null
 
         FindPropertyController.STEP_CONTACT -> listOf(
             JoinRules.firstName(firstName),
@@ -100,8 +101,8 @@ data class PendingMandate(
             propertyType = type,
             furnitureType = FurnitureType.entries
                 .firstOrNull { it.name == furnitureType }
-                ?.takeIf { FindPropertyRules.needsFurniture(type) },
-            rooms = rooms?.takeIf { FindPropertyRules.needsRooms(propertyCategory, type) },
+                ?.takeIf { FindPropertyRules.needsFurniture(type, null) },
+            rooms = rooms?.takeIf { FindPropertyRules.needsRooms(propertyCategory, type, null) },
             parkings = parkings?.takeIf { FindPropertyRules.asksParkings(type) && it != FindPropertyRules.ANY },
             area = area,
             waterMeter = has("waterMeter"),

@@ -134,25 +134,23 @@ class FindPropertyController(
         val area = FindPropertyRules.parseAmount(areaText)?.takeIf { it <= Int.MAX_VALUE }?.toInt()
         val answers = pending.copy(
             propertyType = typeAnswer,
-            rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(pending.propertyCategory, type) },
-            furnitureType = form.furnitureType?.takeIf { FindPropertyRules.needsFurniture(type) },
+            rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(pending.propertyCategory, type, null) },
+            furnitureType = form.furnitureType?.takeIf { FindPropertyRules.needsFurniture(type, null) },
             parkings = form.parkings?.takeIf { it.isNotEmpty() && FindPropertyRules.asksParkings(type) },
             area = area,
         )
         val errors = errors(
-            "propertyType" to FindPropertyRules.propertyType(answers.propertyCategory, typeAnswer),
+            "propertyType" to FindPropertyRules.propertyType(answers.propertyCategory, typeAnswer, null),
             "rooms" to
-                if (FindPropertyRules.needsRooms(answers.propertyCategory, type)) FindPropertyRules.rooms(answers.rooms) else null,
+                if (FindPropertyRules.needsRooms(answers.propertyCategory, type, null)) FindPropertyRules.rooms(answers.rooms) else null,
             "furnitureType" to
-                if (FindPropertyRules.needsFurniture(type)) FindPropertyRules.furnitureType(answers.furnitureType) else null,
+                if (FindPropertyRules.needsFurniture(type, null)) FindPropertyRules.furnitureType(answers.furnitureType) else null,
             "parkings" to FindPropertyRules.parkings(answers.parkings),
             // Something typed that isn't a usable number is an error too, not a silent "no area".
             "area" to if (areaText.isNotEmpty() && area == null) {
-                FindPropertyRules.area(0)
+                FindPropertyRules.area(0, false)
             } else {
-                FindPropertyRules.area(
-                area
-            )
+                FindPropertyRules.area(area, false)
             },
         )
         return save(STEP_PROPERTY, answers, errors, returnTo, session, model)
@@ -188,8 +186,8 @@ class FindPropertyController(
             movingPeriod = form.movingPeriod,
         )
         val errors = errors(
-            "priceAmount" to FindPropertyRules.priceAmount(answers.priceAmount, formatter()),
-            "movingPeriod" to FindPropertyRules.movingPeriod(answers.movingPeriod),
+            "priceAmount" to FindPropertyRules.priceAmount(answers.priceAmount, formatter(), null),
+            "movingPeriod" to FindPropertyRules.movingPeriod(answers.movingPeriod, null),
         )
         return save(STEP_BUDGET, answers, errors, returnTo, session, model)
     }
@@ -300,7 +298,7 @@ class FindPropertyController(
         if (step == STEP_PROPERTY) {
             model.addAttribute(
                 "propertyTypes",
-                FindPropertyRules.CATEGORIES_BY_TYPE.filterValues { it.contains(answers.propertyCategory) }.keys.toList(),
+                FindPropertyRules.propertyTypes(answers.propertyCategory!!, null),
             )
             model.addAttribute("propertyTypeLabels", MandateLabels.PROPERTY_TYPE_LABELS)
             model.addAttribute("furnitureLabels", MandateLabels.byName(MandateLabels.FURNITURE_TYPE_LABELS))
@@ -328,8 +326,12 @@ class FindPropertyController(
         val type = FindPropertyRules.parsePropertyType(answers.propertyType)
         val parts = listOfNotNull(
             MandateLabels.PROPERTY_TYPE_LABELS[type] ?: "Tout type de bien",
-            MandateLabels.ROOM_LABELS[answers.rooms]?.takeIf { FindPropertyRules.needsRooms(answers.propertyCategory, type) },
-            MandateLabels.FURNITURE_LABELS[answers.furnitureType]?.takeIf { FindPropertyRules.needsFurniture(type) },
+            MandateLabels.ROOM_LABELS[answers.rooms]?.takeIf {
+                FindPropertyRules.needsRooms(answers.propertyCategory, type, null)
+            },
+            MandateLabels.FURNITURE_LABELS[answers.furnitureType]?.takeIf {
+                FindPropertyRules.needsFurniture(type, null)
+            },
             MandateLabels.PARKING_LABELS[answers.parkings]?.takeIf { FindPropertyRules.asksParkings(type) },
             answers.area?.let { MandateLabels.formatNumber(it) + " m² minimum" },
         )

@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.ui.home
 
 import com.wutsi.ndopify.listing.dto.FurnitureType
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
@@ -151,6 +152,29 @@ class AssignmentViewsTest {
         assertFalse("Chambres" in terms)
         assertFalse("Parking" in terms)
         assertFalse("Meublé" in terms)
+    }
+
+    @Test
+    fun `a sale offer asks no furniture and no rooms for land`() {
+        val view = AssignmentViews.of(
+            ASSIGNMENT,
+            MANDATE.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = PropertyType.LAND,
+                rooms = null,
+                area = 400,
+            ),
+            NAMES,
+            NOW,
+            FORMATTER,
+        )
+
+        val terms = view.details.map { it.first }
+        assertFalse("Meublé" in terms)
+        assertFalse("Chambres" in terms)
+        assertFalse("Parking" in terms)
+        assertEquals("400 m²", view.details.toMap()["Surface souhaitée"])
     }
 
     @Test
