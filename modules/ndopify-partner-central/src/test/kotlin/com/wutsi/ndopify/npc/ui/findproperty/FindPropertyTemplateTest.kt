@@ -135,7 +135,7 @@ class FindPropertyTemplateTest {
     fun `the need step asks to rent or buy`() {
         session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, PendingMandate(listingType = ListingType.SALE))
 
-        val page = render(get("/find-property"))
+        val page = render(get("/find-property?step=need"))
 
         assertEquals(
             listOf("RENTAL", "SALE"),
@@ -154,11 +154,22 @@ class FindPropertyTemplateTest {
     fun needPrefilled() {
         session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
 
-        val page = render(get("/find-property"))
+        val page = render(get("/find-property?step=need"))
 
         assertTrue(page.selectFirst("input[name=listingType][value=RENTAL]")!!.hasAttr("checked"))
         assertTrue(page.selectFirst("input[name=propertyCategory][value=RESIDENTIAL]")!!.hasAttr("checked"))
         assertFalse(page.selectFirst("input[name=propertyCategory][value=COMMERCIAL]")!!.hasAttr("checked"))
+    }
+
+    @Test
+    fun `starting again shows an empty need step`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
+
+        val page = render(get("/find-property"))
+
+        assertEquals("Étape 1 sur 7", page.selectFirst("[data-progress-label]")?.text())
+        assertTrue(page.select("input[name=listingType][checked]").isEmpty())
+        assertTrue(page.select("input[name=propertyCategory][checked]").isEmpty())
     }
 
     @Test
@@ -182,7 +193,7 @@ class FindPropertyTemplateTest {
         assertEquals("Yaoundé", page.selectFirst("#cityId option[selected]")?.text())
         assertEquals(listOf("Bastos", "Essos"), page.select("#neighborhoodIds option[selected]").map { it.text() })
         assertEquals("2 sur 3 sélectionnés", page.selectFirst("[data-neighborhood-counter]")?.text())
-        assertEquals("/find-property", page.selectFirst("[data-prev]")?.attr("href"))
+        assertEquals("/find-property?step=need", page.selectFirst("[data-prev]")?.attr("href"))
     }
 
     @Test
@@ -398,7 +409,7 @@ class FindPropertyTemplateTest {
             PendingMandate(listingType = ListingType.SALE),
         )
 
-        val sale = render(get("/find-property"))
+        val sale = render(get("/find-property?step=need"))
 
         assertEquals("SALE", form(sale).attr("data-listing-type"))
     }
@@ -651,7 +662,7 @@ class FindPropertyTemplateTest {
     fun `step 1 shows no project pill`() {
         session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, PendingMandate(listingType = ListingType.SALE))
 
-        assertNull(render(get("/find-property")).selectFirst(".project-tag"))
+        assertNull(render(get("/find-property?step=need")).selectFirst(".project-tag"))
     }
 
     @Test

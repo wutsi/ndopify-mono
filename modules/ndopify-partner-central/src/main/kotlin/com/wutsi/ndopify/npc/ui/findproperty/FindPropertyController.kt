@@ -37,6 +37,9 @@ import org.springframework.web.client.RestClientException
  * incomplete one is. Answers only reach the session once validated, so the review submits the session, never the
  * page. ndopify-server doesn't validate mandates yet: [FindPropertyRules] and the location checks here are all the
  * validation a mandate gets.
+ *
+ * No `step` is the entry point ([show]), and always starts a new run: the answers of a previous one (abandoned, or
+ * already submitted) are dropped, never shown. Every in-run URL carries its step.
  */
 @Controller
 @RequestMapping("/find-property")
@@ -87,10 +90,16 @@ class FindPropertyController(
             return VIEW
         }
 
-        // The public site's links preselect the project (?type=SALE|RENTAL), never over a saved answer: the copy is
-        // for display only, and the session keeps what the visitor posted.
-        val pending = pending(session).let { saved ->
-            if (saved.listingType != null) saved else saved.copy(listingType = FindPropertyRules.parseListingType(type))
+        // The public site's links preselect the project (?type=SALE|RENTAL), for display only: the session keeps
+        // what the visitor posts.
+        val pending = if (requestedStep == null) {
+            // The entry point: a new run, never the answers of a previous one (an abandoned run, or a submitted
+            // request whose confirmation is still in the session).
+            session.removeAttribute(PendingMandate.SESSION_ATTRIBUTE)
+            session.removeAttribute(SubmittedMandate.SESSION_ATTRIBUTE)
+            PendingMandate(listingType = FindPropertyRules.parseListingType(type))
+        } else {
+            pending(session)
         }
         val requested = STEPS.indexOf(requestedStep).coerceAtLeast(0)
         val allowed = STEPS.indexOf(pending.firstIncompleteStep())
@@ -426,8 +435,8 @@ class FindPropertyController(
     private fun isAllowed(step: String, pending: PendingMandate): Boolean =
         STEPS.indexOf(step) <= STEPS.indexOf(pending.firstIncompleteStep())
 
-    private fun redirect(step: String): String =
-        if (step == STEP_NEED) "redirect:/find-property" else "redirect:/find-property?step=$step"
+    /** Every step has its own URL: the bare `/find-property` is the entry point, which starts a new run. */
+    private fun redirect(step: String): String = "redirect:/find-property?step=$step"
 
     private fun errors(vararg errors: Pair<String, String?>): Map<String, String> =
         errors.mapNotNull { (field, message) -> message?.let { field to it } }.toMap()

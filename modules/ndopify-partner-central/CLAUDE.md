@@ -139,7 +139,9 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   validates (`FindPropertyRules`) into the session's `PendingMandate`, and the review submits the session as a
   SEARCH mandate (`NdMandateClient` → `POST /v1/mandates`, price in the tenant's currency) whose `listingType` is
   `SALE` or `RENTAL`, then shows the confirmation while a `SubmittedMandate` is in the session. The need step asks
-  *Louer / Acheter*; `?type=SALE|RENTAL` preselects it when the session has no answer yet, and never overwrites one.
+  *Louer / Acheter*; `?type=SALE|RENTAL` preselects it. `GET /find-property` without a `step` is the entry point
+  and starts a new run: it drops the session's `PendingMandate` and `SubmittedMandate`, so a previous run's answers
+  are never shown (every in-run URL, *Précédent* included, carries its `step`).
   A purchase drops the *Chambre* type, offers *Terrain* under both uses with a required surface, asks no furniture,
   reads *Budget total* (floor 1 000 000 FCFA, `PeriodicityType.NONE`), the buying horizon and a required financing
   answer, asks the title documents (*Titre foncier*, *Plan de bornage*, *Certificat de propriété*) for a *Terrain*
