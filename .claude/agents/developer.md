@@ -45,7 +45,8 @@ read the branch's commits, `git cherry -v origin/<repository.default_branch> <br
 story's comments, the plan and any open PR, which resumes at the checks). When the last review starts with
 `Round n — Changes requested (author)` or `Final — Changes requested`, the resume first addresses the review
 (*Address the review*). A `Round n — Changes requested (reviewer)` pass is not yours: stop and point at `review <pr>`
-or `ship` — the reviewer owns it. Otherwise stop.
+or `ship` — the reviewer owns it. Otherwise stop. On any resume, `git fetch origin` first and read the branch against
+the fetched `origin/<repository.default_branch>`, never a stale local `main`.
 
 Before anything else: read the repository's agent instructions (`AGENTS.md`, or `CLAUDE.md` when there is no
 `AGENTS.md`), the instructions of every package/module the story touches, `MEMORY.md` when it exists, and the project
@@ -60,9 +61,29 @@ workaround.
 Read the story and its plan. Assign the story to the current user and move it to the profile's
 `tracker.statuses.in_progress` (*Story tracker*).
 
+The story's branch starts at the tip of GitHub's default branch: fetch it and use
+`origin/<repository.default_branch>` as the commit to branch from — never the primary checkout's stale `HEAD` or a
+local default branch that GitHub does not have.
+
+```bash
+git fetch origin
+git branch --show-current   # must be repository.default_branch; else git switch it (dirty tree: stop)
+git status --porcelain      # the primary checkout must print nothing
+git rev-parse origin/<repository.default_branch>   # the branch point, quoted in the report
+git rev-list --count HEAD..origin/<repository.default_branch>   # > 0: behind, fast-forward below
+git rev-list --count origin/<repository.default_branch>..HEAD   # > 0: ahead, stop and report
+```
+
+Switch to the default branch first when the checkout is on another one: the counts and the branch point come from
+`HEAD`. Bring a behind-only default branch level with `git merge --ff-only origin/<repository.default_branch>`; a local
+default branch that is ahead of GitHub or diverged from it belongs to the user: stop and report it — never `rebase`,
+`reset`, `stash`, `--autostash`, `clean` or force anything in the primary checkout.
+
 Create one worktree with `superpowers:using-git-worktrees` on one branch, using the profile's `branch.pattern` (its
-`branch.example` shows the shape), for the whole story — shared-module changes included. Name the worktree after the
-branch so both carry the story id; step 4 opens the PR from this branch.
+`branch.example` shows the shape), for the whole story — shared-module changes included. With git, branch from
+GitHub's commit, not the local default branch: `git worktree add <dir> -b <branch> origin/<repository.default_branch>`.
+A native worktree tool that branches from the current `HEAD` is safe only after the checks above; otherwise stop and
+ask. Name the worktree after the branch so both carry the story id; step 4 opens the PR from this branch.
 
 ## 2. Implement
 
@@ -134,10 +155,10 @@ A red release run: report it and stop.
 
 ### Branch
 
-Revert the local `-SNAPSHOT` edit (`git checkout -- <version_file>`: `git rebase` refuses a dirty tree), then rebase on
-`origin/<repository.default_branch>`: the library commits drop out, being already upstream (if git keeps one, as a
-conflict or a non-empty commit, stop and ask). Commit `fix dependencies: <module> <version>, …` with the released
-versions not yet on the default branch. Push gate → `git push -u origin <branch>`. Force only as
+Revert the local `-SNAPSHOT` edit (`git checkout -- <version_file>`: `git rebase` refuses a dirty tree), `git fetch
+origin`, then rebase on `origin/<repository.default_branch>`: the library commits drop out, being already upstream (if
+git keeps one, as a conflict or a non-empty commit, stop and ask). Commit `fix dependencies: <module> <version>, …`
+with the released versions not yet on the default branch. Push gate → `git push -u origin <branch>`. Force only as
 `--force-with-lease`, after a rebase.
 
 Library-only story (nothing left on the branch after the rebase): push the `fix dependencies` commit to the default
@@ -219,12 +240,13 @@ edit or overwrite it. A successful run is `OUTCOME: done`, with `BRANCH`, `WORKT
 
 ## Stop and ask
 
-Stop instead of guessing when a requirement is ambiguous, the story conflicts with a repository rule, the approved
-prototype and the plan disagree, a build fails twice for the same reason, a cherry-pick does not apply cleanly or
-touches anything outside its module, a release run is red, PR checks are still red after a fix, or a step would be
-irreversible and isn't listed here. When you can ask the user, ask; when you run as a subagent and cannot, end with
-`OUTCOME: gate`, `GATE: question`, and the questions in `NOTES`. Never merge, never force-push beyond
-`--force-with-lease` after a rebase, and never put unrelated changes in a commit.
+Stop instead of guessing when a requirement is ambiguous, the story conflicts with a repository rule, the primary
+checkout cannot be brought to a clean default branch level with GitHub, the approved prototype and the plan disagree, a
+build fails twice for the same reason, a cherry-pick does not apply cleanly or touches anything outside its module, a
+release run is red, PR checks are still red after a fix, or a step would be irreversible and isn't listed here. When
+you can ask the user, ask; when you run as a subagent and cannot, end with `OUTCOME: gate`, `GATE: question`, and the
+questions in `NOTES`. Never merge, never force-push beyond `--force-with-lease` after a rebase, and never put unrelated
+changes in a commit.
 
 ## Done when
 

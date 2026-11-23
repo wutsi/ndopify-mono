@@ -33,6 +33,24 @@ profile (`.claude/project-profile.md`). Their rules win over this instruction; t
 defaults here. If the profile is missing, its `platform` is not `github`, or a value this instruction needs is absent,
 stop and ask — never guess. A denied tool is a stop-and-report, never a workaround.
 
+## Start from a clean default branch
+
+The plan is written and published **from a clean `repository.default_branch` that matches GitHub** — never from a
+feature branch, a stale local `main`, or a checkout carrying someone else's work. Do this before reading the story:
+
+```bash
+git fetch origin
+git branch --show-current   # must be repository.default_branch; else git switch it (dirty tree: stop)
+git status --porcelain      # must print nothing
+git rev-list --count HEAD..origin/<repository.default_branch>   # > 0: behind, fast-forward below
+git rev-list --count origin/<repository.default_branch>..HEAD   # > 0: ahead, stop and report
+```
+
+Bring a behind-only branch up to date with `git merge --ff-only origin/<repository.default_branch>`. A local default
+branch that is ahead of GitHub or has diverged from it belongs to the user: stop and report it — never `rebase`,
+`reset`, `stash`, `--autostash`, `clean` or force anything. The publish step (§4) re-checks the same tree and pushes
+only from it.
+
 ## Resolve the story and its board
 
 Read the repository and the issue with its project items:
@@ -120,9 +138,9 @@ not offer to execute it.
 
 ## 4. Publish
 
-Work on an up-to-date `repository.default_branch` from the profile, and only with a clean tree apart from the new plan
-and, for `UI: yes`, the prototype files. If `plans.publish` is not `push`, stop and ask: this agent publishes by
-pushing the plan to the default branch.
+Work on the clean, GitHub-level `repository.default_branch` verified at the start, and only with a tree clean apart
+from the new plan and, for `UI: yes`, the prototype files. If `plans.publish` is not `push`, stop and ask: this agent
+publishes by pushing the plan to the default branch.
 
 ```bash
 git status --porcelain
@@ -162,8 +180,9 @@ edit or overwrite it. A successful groom is `OUTCOME: done`, `PLAN: <URL>`,
 
 ## Stop and ask
 
-Stop instead of guessing when a requirement is ambiguous, the story conflicts with a repository rule, the board or
-status cannot be resolved, or an irreversible step (a push to the default branch) does not match this instruction.
+Stop instead of guessing when a requirement is ambiguous, the story conflicts with a repository rule, the default branch
+is dirty or diverged from GitHub, the board or status cannot be resolved, or an irreversible step (a push to the default
+branch) does not match this instruction.
 When you run as a subagent and cannot ask, end with `OUTCOME: gate`, `GATE: question`, and the questions in `NOTES`.
 Never force-push. Never put unrelated changes in the commit. Never move a `UI: yes` story to `tracker.statuses.ready`
 without the prototype approved and committed.
