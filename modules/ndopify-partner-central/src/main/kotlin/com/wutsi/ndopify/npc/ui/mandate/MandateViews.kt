@@ -2,11 +2,14 @@ package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.contract.dto.Contract
 import com.wutsi.ndopify.customer.dto.Customer
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.refdata.dto.Location
+import com.wutsi.ndopify.refdata.dto.Money
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import java.util.Date
 
@@ -76,7 +79,8 @@ object MandateViews {
             )
         }
         val (key, more) = criteria(mandate, locations, formatter)
-        val dealLine = dealLine(mandate, deal)
+        val sale = mandate.listingType == ListingType.SALE
+        val dealLine = dealLine(mandate, deal, sale)
 
         return MandateView(
             id = mandate.id,
@@ -85,6 +89,7 @@ object MandateViews {
             tag = MandateRules.tag(status),
             words = MandateRules.words(mandate.mandateType),
             owner = mandate.mandateType == MandateType.LISTING,
+            sale = sale,
             acceptedAt = format(accepted?.modifiedAt),
             steps = steps,
             currentStep = current,
@@ -96,7 +101,12 @@ object MandateViews {
             approvedAt = format(mandate.approvedAt),
             validUntil = format(contract?.validUntil),
             closedAt = format(mandate.closedAt),
-            finalPrice = mandate.finalPrice?.let { formatter.money(it, mandate.price.currency) + " / mois" },
+            finalPrice = mandate.finalPrice?.let {
+                MandateLabels.price(
+                    Money(it, mandate.price.currency, if (sale) PeriodicityType.NONE else PeriodicityType.MONTHLY),
+                    formatter,
+                )
+            },
             age = mandate.age?.let { if (it > 1) "$it jours" else "$it jour" },
             cancellation = if (status == MandateStatus.CANCELLED) MandateRules.cancellation(mandate.cancellationCode) else null,
             cancellationReason = mandate.cancellationReason?.trim()?.ifEmpty { null },
@@ -131,29 +141,41 @@ object MandateViews {
         val outside: String?,
     )
 
-    private fun dealLine(mandate: Mandate, deal: MandateDeal?): DealLine {
+    private fun dealLine(mandate: Mandate, deal: MandateDeal?, sale: Boolean): DealLine {
         if (mandate.status != MandateStatus.CLOSED) return DealLine(null, null, null, null, null, null)
         val owner = mandate.mandateType == MandateType.LISTING
         if (mandate.dealOutside) {
             return DealLine(
                 listingId = deal?.listingId,
-                listingLabel = deal?.listingId?.let { "Annonce n° $it" },
+                listingLabel = deal?.listingId?.let { listingLabel(it, owner, sale) },
                 counterpartId = null,
                 counterpartLabel = null,
                 clientLabel = null,
-                outside = if (owner) "Client hors de vos recherches" else "Bien hors de vos annonces",
+                outside = when {
+                    !owner -> "Bien hors de vos annonces"
+                    sale -> "Vendu à un autre acheteur"
+                    else -> "Client hors de vos recherches"
+                },
             )
         }
         if (deal == null || mandate.dealMatchId == null) return DealLine(null, null, null, null, null, null)
         return DealLine(
             listingId = deal.listingId,
-            listingLabel = deal.listingId?.let { "Annonce n° $it" },
+            listingLabel = deal.listingId?.let { listingLabel(it, owner, sale) },
             counterpartId = deal.counterpartId,
             counterpartLabel = deal.counterpartId?.let { "Fermé avec le mandat n° $it" },
-            clientLabel = if (owner) deal.customer?.let { "Client : ${partyName(it)}" } else null,
+            clientLabel = if (owner) {
+                deal.customer?.let { (if (sale) "Acheteur : " else "Client : ") + partyName(it) }
+            } else {
+                null
+            },
             outside = null,
         )
     }
+
+    /** "Annonce n° 501", and "Annonce n° 501 vendue" on a sale's landlord page: the listing left the market as sold. */
+    private fun listingLabel(id: Long, owner: Boolean, sale: Boolean): String =
+        "Annonce n° $id" + if (owner && sale) " vendue" else ""
 
     private fun partyName(customer: Customer): String =
         listOf(customer.party.firstName, customer.party.lastName).filter { it.isNotBlank() }.joinToString(" ")

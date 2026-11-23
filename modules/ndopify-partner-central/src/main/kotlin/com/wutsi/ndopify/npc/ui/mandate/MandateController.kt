@@ -598,7 +598,11 @@ class MandateController(
         val text = when (outcome) {
             SENT -> "Mandat envoyé $to pour signature."
             RESENT -> "Mandat renvoyé $to pour signature."
-            CLOSED -> "Mandat fermé : félicitations pour ce bail !"
+            CLOSED -> if (view.sale) {
+                "Mandat fermé : félicitations pour cette vente !"
+            } else {
+                "Mandat fermé : félicitations pour ce bail !"
+            }
             CANCELLED -> "Mandat annulé. Il ne figure plus dans vos mandats en cours."
             SAVED -> "Mandat modifié."
             SAVED_UNSENT ->

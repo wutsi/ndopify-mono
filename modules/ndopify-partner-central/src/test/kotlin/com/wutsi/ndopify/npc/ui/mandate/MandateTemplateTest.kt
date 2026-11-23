@@ -9,6 +9,7 @@ import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -588,6 +589,57 @@ class MandateTemplateTest {
         assertEquals(listOf("done", "done", "done", "done"), page.select("[data-mandate-steps] li").map { it.attr("data-state") })
         // No deal fields: a pre-feature closing shows no deal line.
         assertNull(page.selectFirst("[data-panel=CLOSED] [data-closed-deal]"))
+    }
+
+    @Test
+    fun `a closed sale reads Vente conclue with its sale price`() {
+        val page = render(
+            APPROVED.copy(
+                status = MandateStatus.CLOSED,
+                listingType = ListingType.SALE,
+                closedAt = date("2026-11-01T10:00:00Z"),
+                finalPrice = 15_000_000,
+                age = 12,
+            ),
+        )
+
+        val panel = page.selectFirst("[data-panel=CLOSED]")!!
+        assertEquals("Vente conclue", panel.selectFirst(".alert__title")?.text())
+        assertEquals(
+            "Mandat fermé le 01 nov. 2026, au prix de 15 000 000 FCFA, 12 jours après son approbation.",
+            panel.selectFirst(".alert__title + p")?.text()?.replace('\u00a0', ' '),
+        )
+        assertFalse(panel.text().contains("au loyer de"))
+        assertFalse(panel.text().contains("/ mois"))
+    }
+
+    @Test
+    fun `a closed rental reads Bail signe with its rent`() {
+        val page = render(
+            APPROVED.copy(status = MandateStatus.CLOSED, closedAt = date("2026-11-01T10:00:00Z"), finalPrice = 240000, age = 12),
+        )
+
+        val panel = page.selectFirst("[data-panel=CLOSED]")!!
+        assertEquals("Bail signé", panel.selectFirst(".alert__title")?.text())
+        assertEquals(
+            "Mandat fermé le 01 nov. 2026, au loyer de 240 000 FCFA / mois, 12 jours après son approbation.",
+            panel.selectFirst(".alert__title + p")?.text()?.replace('\u00a0', ' '),
+        )
+    }
+
+    @Test
+    fun `a sale's next hint words the deed of sale`() {
+        val page = render(APPROVED.copy(listingType = ListingType.SALE))
+
+        assertTrue(page.text().contains("Une fois l'acte de vente signé, fermez le mandat (en bas de page) en indiquant le prix de vente final."))
+        assertFalse(page.text().contains("Une fois le bail signé"))
+    }
+
+    @Test
+    fun `a rental's next hint is unchanged`() {
+        val page = render(APPROVED)
+
+        assertTrue(page.text().contains("Une fois le bail signé, fermez le mandat (en bas de page) en indiquant le loyer convenu."))
     }
 
     @Test

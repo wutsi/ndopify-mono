@@ -13,6 +13,7 @@ import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
@@ -627,6 +628,59 @@ class MandateControllerTest {
     }
 
     // Closed deal line
+
+    @Test
+    fun `a closed sale congratulates the sale`() {
+        doReturn(
+            APPROVED.copy(
+                status = MandateStatus.CLOSED,
+                listingType = ListingType.SALE,
+                closedAt = MandateViewsTest.date("2026-11-01T10:00:00Z"),
+                finalPrice = 15_000_000,
+            ),
+        ).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(get("/mandates/201").flashAttr(MandateController.OUTCOME, MandateController.CLOSED)).andReturn()
+
+        assertEquals("Mandat fermé : félicitations pour cette vente !", model(result)["outcomeText"])
+    }
+
+    @Test
+    fun `a closed rental congratulates the lease`() {
+        doReturn(APPROVED.copy(status = MandateStatus.CLOSED)).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(get("/mandates/201").flashAttr(MandateController.OUTCOME, MandateController.CLOSED)).andReturn()
+
+        assertEquals("Mandat fermé : félicitations pour ce bail !", model(result)["outcomeText"])
+    }
+
+    @Test
+    fun `closed - a sale's listing deal names the buyer`() {
+        doReturn(
+            APPROVED.copy(status = MandateStatus.CLOSED, mandateType = MandateType.LISTING, listingType = ListingType.SALE, dealMatchId = 100),
+        ).whenever(mandateClient).get(201)
+        doReturn(Match(id = 100, mandateId = 204, listingId = 501)).whenever(matchClient).get(100)
+        doReturn(APPROVED.copy(id = 204, customerId = 14)).whenever(mandateClient).get(204)
+        doReturn(CUSTOMER.copy(id = 14, party = Party(firstName = "Sandrine", lastName = "Eboa"))).whenever(customerClient).get(14)
+
+        val view = mandate(mvc.perform(get("/mandates/201")).andReturn())
+
+        assertEquals("Annonce n° 501 vendue", view.listingLabel)
+        assertEquals("Acheteur : Sandrine Eboa", view.clientLabel)
+        assertNull(view.outside)
+    }
+
+    @Test
+    fun `closed - a sale outside is sold to another buyer`() {
+        doReturn(
+            APPROVED.copy(status = MandateStatus.CLOSED, mandateType = MandateType.LISTING, listingType = ListingType.SALE, dealOutside = true),
+        ).whenever(mandateClient).get(201)
+
+        val view = mandate(mvc.perform(get("/mandates/201")).andReturn())
+
+        assertEquals("Vendu à un autre acheteur", view.outside)
+        assertNull(view.clientLabel)
+    }
 
     @Test
     fun `closed - deal - the listing and its mandate`() {
