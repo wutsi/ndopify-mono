@@ -304,6 +304,17 @@ class FindPropertyControllerTest {
     }
 
     @Test
+    fun `an in-run URL ignores the type parameter`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, PendingMandate(listingType = ListingType.RENTAL))
+
+        val result = mvc.perform(get("/find-property?step=need&type=SALE").session(session)).andReturn()
+
+        assertEquals("need", model(result)["step"])
+        assertEquals(ListingType.RENTAL, (model(result)["answers"] as PendingMandate).listingType)
+        assertEquals(PendingMandate(listingType = ListingType.RENTAL), pending())
+    }
+
+    @Test
     fun `going back to the need step keeps the answers of the current run`() {
         session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
 
