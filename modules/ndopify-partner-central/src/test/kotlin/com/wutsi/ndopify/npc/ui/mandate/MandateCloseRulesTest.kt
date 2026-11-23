@@ -25,7 +25,7 @@ class MandateCloseRulesTest {
 
         assertEquals(
             CloseMatchRequest(Money(amount = 240000, currency = "XAF", periodicity = PeriodicityType.MONTHLY)),
-            MandateCloseRules.closeMatch(draft, "XAF"),
+            MandateCloseRules.closeMatch(draft, "XAF", sale = false),
         )
     }
 
@@ -35,7 +35,35 @@ class MandateCloseRulesTest {
 
         assertEquals(
             CloseMandateRequest(Money(amount = 240000, currency = "XAF", periodicity = PeriodicityType.MONTHLY)),
-            MandateCloseRules.closeMandate(draft, "XAF"),
+            MandateCloseRules.closeMandate(draft, "XAF", sale = false),
         )
+    }
+
+    @Test
+    fun `a sale's close match carries no periodicity`() {
+        val draft = PendingMandateClose(matchId = 100, priceAmount = 15_000_000)
+
+        assertEquals(
+            CloseMatchRequest(Money(amount = 15_000_000, currency = "XAF", periodicity = PeriodicityType.NONE)),
+            MandateCloseRules.closeMatch(draft, "XAF", sale = true),
+        )
+    }
+
+    @Test
+    fun `a sale's outside close carries no periodicity`() {
+        val draft = PendingMandateClose(outside = true, priceAmount = 15_000_000)
+
+        assertEquals(
+            CloseMandateRequest(Money(amount = 15_000_000, currency = "XAF", periodicity = PeriodicityType.NONE)),
+            MandateCloseRules.closeMandate(draft, "XAF", sale = true),
+        )
+    }
+
+    @Test
+    fun `a rental's requests keep the monthly periodicity`() {
+        val draft = PendingMandateClose(matchId = 100, priceAmount = 240000)
+
+        assertEquals(PeriodicityType.MONTHLY, MandateCloseRules.closeMatch(draft, "XAF", sale = false).finalPrice.periodicity)
+        assertEquals(PeriodicityType.MONTHLY, MandateCloseRules.closeMandate(draft, "XAF", sale = false).finalPrice.periodicity)
     }
 }

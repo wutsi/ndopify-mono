@@ -2,6 +2,7 @@ package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
@@ -161,6 +162,34 @@ class MandateViewsTest {
         assertFalse(view.editable)
         assertFalse(view.closable)
         assertFalse(view.cancellable)
+    }
+
+    @Test
+    fun `a closed sale shows its final price without a month`() {
+        val view = view(
+            APPROVED.copy(status = MandateStatus.CLOSED, listingType = ListingType.SALE, finalPrice = 15_000_000, age = 12),
+        )
+
+        assertTrue(view.sale)
+        assertEquals("15\u00a0000\u00a0000\u00a0FCFA", view.finalPrice)
+    }
+
+    @Test
+    fun `a closed rental is unchanged`() {
+        val view = view(APPROVED.copy(status = MandateStatus.CLOSED, finalPrice = 240000))
+
+        assertFalse(view.sale)
+        assertEquals("240\u00a0000\u00a0FCFA / mois", view.finalPrice)
+    }
+
+    @Test
+    fun `a closed mandate without a final price leaves the line out`() {
+        assertNull(view(APPROVED.copy(status = MandateStatus.CLOSED, listingType = ListingType.SALE, finalPrice = null)).finalPrice)
+    }
+
+    @Test
+    fun `an unknown listing type reads as a rental`() {
+        assertFalse(view(MANDATE.copy(listingType = ListingType.UNKNOWN)).sale)
     }
 
     @Test

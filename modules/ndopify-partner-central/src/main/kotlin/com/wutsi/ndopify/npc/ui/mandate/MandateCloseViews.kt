@@ -3,6 +3,7 @@ package com.wutsi.ndopify.npc.ui.mandate
 import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingSummary
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -37,13 +38,13 @@ data class CloseStepView(
 )
 
 /**
- * What the confirm step recaps: the deal's two sides, the agreed rent (already formatted), and what closing does.
- * Each label is a finished string, so the template never formats an amount itself.
+ * What the confirm step recaps: the deal's two sides, the agreed rent or sale price (already formatted), and what
+ * closing does. Each label is a finished string, so the template never formats an amount itself.
  */
 data class CloseRecapView(
     val property: String,
     val client: String,
-    val rent: String,
+    val price: String,
     val note: String,
 )
 
@@ -56,6 +57,8 @@ data class MandateCloseView(
     val title: String,
     /** A landlord's listing, not a search. */
     val owner: Boolean,
+    /** A sale mandate (a listing's sale, or a buyer's search): its screens say *Prix*, never a rent. */
+    val sale: Boolean,
     val candidates: List<CloseCandidateView>,
     /** The candidates could not be read: the step shows the "unavailable" note and the outside option only. */
     val candidatesUnavailable: Boolean,
@@ -79,14 +82,19 @@ object MandateCloseViews {
     fun interestLabel(match: Match, formatter: TenantFormatter): String? =
         match.answeredAt?.let { "Intéressé le " + formatter.date(it) }
 
-    /** The counterpart step's label: a landlord closes with a client, a search with a listing. */
-    private fun counterpartLabel(owner: Boolean): String = if (owner) "Client" else "Bien"
+    /** The counterpart step's label: a landlord closes with a client (a buyer for a sale), a search with a listing. */
+    private fun counterpartLabel(owner: Boolean, sale: Boolean): String = when {
+        !owner -> "Bien"
+        sale -> "Acheteur"
+        else -> "Client"
+    }
 
     /** The wizard's steps in order, without the counterpart one when it doesn't apply. */
-    fun steps(counterpartApplicable: Boolean, owner: Boolean): List<CloseStepView> =
+    fun steps(counterpartApplicable: Boolean, owner: Boolean, sale: Boolean): List<CloseStepView> =
         listOfNotNull(
-            CloseStepView(PendingMandateClose.STEP_COUNTERPART, counterpartLabel(owner)).takeIf { counterpartApplicable },
-            CloseStepView(PendingMandateClose.STEP_PRICE, "Loyer"),
+            CloseStepView(PendingMandateClose.STEP_COUNTERPART, counterpartLabel(owner, sale))
+                .takeIf { counterpartApplicable },
+            CloseStepView(PendingMandateClose.STEP_PRICE, if (sale) "Prix" else "Loyer"),
             CloseStepView(PendingMandateClose.STEP_CONFIRM, "Confirmation"),
         )
 
@@ -102,6 +110,7 @@ object MandateCloseViews {
         mandateId = mandate.id,
         title = MandateLabels.title(mandate),
         owner = mandate.mandateType == MandateType.LISTING,
+        sale = mandate.listingType == ListingType.SALE,
         candidates = candidates,
         candidatesUnavailable = candidatesUnavailable,
         step = step,
@@ -183,7 +192,7 @@ object MandateCloseViews {
     )
 
     /**
-     * The confirm step's recap: the deal's two sides, the agreed rent and what closing does. [matchId] is the stored
+     * The confirm step's recap: the deal's two sides, the agreed rent or sale price, and what closing does. [matchId] is the stored
      * counterpart match (null for an outside deal, or when the counterpart step was skipped): it drives the note,
      * which states exactly what will be closed. [selected] is that match resolved for the labels (null when the
      * candidates can't be read, even though [matchId] stays set); [listing] the landlord's own listing ([owner]);
@@ -202,11 +211,12 @@ object MandateCloseViews {
         formatter: TenantFormatter,
     ): CloseRecapView {
         val owner = mandate.mandateType == MandateType.LISTING
+        val sale = mandate.listingType == ListingType.SALE
         return CloseRecapView(
             property = propertyLabel(owner, selected, outside, listing, locations),
-            client = clientLabel(owner, selected, outside, customer),
-            rent = formatter.money(amount) + " / mois",
-            note = note(owner, matchId != null, mandate.id),
+            client = clientLabel(owner, sale, selected, outside, customer),
+            price = formatter.money(amount) + if (sale) "" else " / mois",
+            note = note(owner, sale, matchId != null, mandate.id),
         )
     }
 
@@ -224,16 +234,21 @@ object MandateCloseViews {
         else -> "Un bien"
     }
 
-    /** The deal's client: a listing's chosen client, or a search's customer (the person who signs). */
-    private fun clientLabel(owner: Boolean, selected: CloseCandidateView?, outside: Boolean, customer: Party?): String =
-        when {
-            owner -> when {
-                outside -> "Un client hors de vos recherches"
-                selected != null -> selected.title
-                else -> "Un client"
-            }
-            else -> partyName(customer) ?: "Le client"
+    /** The deal's client: a listing's chosen client (its buyer for a sale), or a search's customer (the signer). */
+    private fun clientLabel(
+        owner: Boolean,
+        sale: Boolean,
+        selected: CloseCandidateView?,
+        outside: Boolean,
+        customer: Party?,
+    ): String = when {
+        owner -> when {
+            outside -> if (sale) "Aucun acheteur de vos recherches" else "Un client hors de vos recherches"
+            selected != null -> selected.title
+            else -> if (sale) "Un acheteur" else "Un client"
         }
+        else -> partyName(customer) ?: if (sale) "L'acheteur" else "Le client"
+    }
 
     /** "Appartement · 2 chambres, Bonapriso — annonce n° 501", the landlord's own listing. */
     private fun listingLabel(listing: Listing, locations: Map<Long, Location>): String {
@@ -250,12 +265,21 @@ object MandateCloseViews {
         party?.let { listOf(it.firstName, it.lastName).filter { name -> name.isNotBlank() }.joinToString(" ") }
             ?.ifBlank { null }
 
-    /** What closing does, keyed on whether a counterpart match is stored: both sides of the deal, or this mandate alone. */
-    private fun note(owner: Boolean, hasMatch: Boolean, id: Long): String = when {
+    /**
+     * What closing does, keyed on whether a counterpart match is stored (both sides of the deal, or this mandate
+     * alone) and on a sale (the listing is marked sold, the other side is the buyer's or seller's mandate).
+     */
+    private fun note(owner: Boolean, sale: Boolean, hasMatch: Boolean, id: Long): String = when {
+        owner && sale && hasMatch ->
+            "À la confirmation : le mandat n° $id est fermé, l'annonce est marquée vendue et le mandat de l'acheteur est fermé. Cette action est définitive."
+        owner && sale ->
+            "À la confirmation : le mandat n° $id est fermé et l'annonce est marquée vendue. Cette action est définitive."
         owner && hasMatch ->
             "À la confirmation : le mandat n° $id est fermé, l'annonce est retirée du marché et la recherche du client est fermée. Cette action est définitive."
         owner ->
             "À la confirmation : le mandat n° $id est fermé et l'annonce est retirée du marché. Cette action est définitive."
+        sale && hasMatch ->
+            "À la confirmation : le mandat n° $id est fermé, l'annonce est marquée vendue et le mandat du vendeur est fermé. Cette action est définitive."
         hasMatch ->
             "À la confirmation : le mandat n° $id est fermé, l'annonce est retirée du marché et le mandat du bailleur est fermé. Cette action est définitive."
         else ->

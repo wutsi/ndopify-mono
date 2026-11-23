@@ -23,16 +23,17 @@ object MandateCloseRules {
     }
 
     /** The deal with the chosen counterpart; the price is the one the price step validated. */
-    fun closeMatch(draft: PendingMandateClose, currency: String): CloseMatchRequest =
-        CloseMatchRequest(finalPrice = price(draft, currency))
+    fun closeMatch(draft: PendingMandateClose, currency: String, sale: Boolean): CloseMatchRequest =
+        CloseMatchRequest(finalPrice = price(draft, currency, sale))
 
     /** The outside closure, when the deal has no counterpart of the agent's. */
-    fun closeMandate(draft: PendingMandateClose, currency: String): CloseMandateRequest =
-        CloseMandateRequest(finalPrice = price(draft, currency))
+    fun closeMandate(draft: PendingMandateClose, currency: String, sale: Boolean): CloseMandateRequest =
+        CloseMandateRequest(finalPrice = price(draft, currency, sale))
 
-    private fun price(draft: PendingMandateClose, currency: String) = Money(
+    /** A sale price is a one-off amount, a rent is monthly: the server stores the amount only, the contract states it. */
+    private fun price(draft: PendingMandateClose, currency: String, sale: Boolean) = Money(
         amount = draft.priceAmount ?: 0,
         currency = currency,
-        periodicity = PeriodicityType.MONTHLY,
+        periodicity = if (sale) PeriodicityType.NONE else PeriodicityType.MONTHLY,
     )
 }

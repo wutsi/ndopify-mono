@@ -14,6 +14,8 @@ data class MandateView(
     val words: MandateRules.PartyWords,
     /** A landlord's listing, not a search. */
     val owner: Boolean,
+    /** A sale mandate (a listing's sale, or a buyer's search): its closing screens say price, never rent. */
+    val sale: Boolean,
     val acceptedAt: String?,
     /** Assigné > En approbation > Actif > Fermé (or Annulé). */
     val steps: List<StepView>,

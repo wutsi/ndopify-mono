@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.customer.dto.CustomerSummary
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.match.dto.Match
@@ -132,22 +133,95 @@ class MandateCloseViewsTest {
     fun `steps - counterpart for a search, omitted when it doesn't apply`() {
         assertEquals(
             listOf("counterpart" to "Bien", "price" to "Loyer", "confirm" to "Confirmation"),
-            MandateCloseViews.steps(true, owner = false).map { it.name to it.label },
+            MandateCloseViews.steps(true, owner = false, sale = false).map { it.name to it.label },
         )
         assertEquals(
             listOf("price" to "Loyer", "confirm" to "Confirmation"),
-            MandateCloseViews.steps(false, owner = false).map { it.name to it.label },
+            MandateCloseViews.steps(false, owner = false, sale = false).map { it.name to it.label },
         )
     }
 
     @Test
     fun `steps - counterpart for a listing is the client`() {
-        assertEquals("Client", MandateCloseViews.steps(true, owner = true).first().label)
+        assertEquals("Client", MandateCloseViews.steps(true, owner = true, sale = false).first().label)
+    }
+
+    @Test
+    fun `a sale's steps are the buyer, the price and the confirmation`() {
+        assertEquals(
+            listOf("Acheteur", "Prix", "Confirmation"),
+            MandateCloseViews.steps(counterpartApplicable = true, owner = true, sale = true).map { it.label },
+        )
+        assertEquals(
+            listOf("Bien", "Prix", "Confirmation"),
+            MandateCloseViews.steps(counterpartApplicable = true, owner = false, sale = true).map { it.label },
+        )
+    }
+
+    @Test
+    fun `a rental's steps are unchanged`() {
+        assertEquals(
+            listOf("Client", "Loyer", "Confirmation"),
+            MandateCloseViews.steps(counterpartApplicable = true, owner = true, sale = false).map { it.label },
+        )
+    }
+
+    @Test
+    fun `an unknown listing type reads as a rental`() {
+        val unknown = MANDATE.copy(listingType = ListingType.UNKNOWN)
+
+        assertEquals(
+            listOf("Client", "Loyer", "Confirmation"),
+            MandateCloseViews.steps(counterpartApplicable = true, owner = true, sale = unknown.listingType == ListingType.SALE)
+                .map { it.label },
+        )
+        assertEquals(
+            "240\u00a0000\u00a0FCFA / mois",
+            MandateCloseViews.recap(unknown, null, null, false, null, null, emptyMap(), 240000, FORMATTER).price,
+        )
+    }
+
+    @Test
+    fun `a sale's recap shows the final price without a month`() {
+        val sale = MANDATE.copy(listingType = ListingType.SALE, mandateType = MandateType.LISTING)
+
+        val recap = MandateCloseViews.recap(sale, null, null, true, null, null, emptyMap(), 15_000_000, FORMATTER)
+
+        assertEquals("15\u00a0000\u00a0000\u00a0FCFA", recap.price)
+        assertEquals(
+            "À la confirmation : le mandat n° 201 est fermé et l'annonce est marquée vendue. Cette action est définitive.",
+            recap.note,
+        )
+    }
+
+    @Test
+    fun `a sale's recap names the buyer's mandate`() {
+        val owner = MANDATE.copy(listingType = ListingType.SALE, mandateType = MandateType.LISTING)
+        val selected = MandateCloseViews.candidate(clientMatch, ListingViewsTest.SEARCHES[0], ListingViewsTest.CUSTOMERS[0], 150000, FORMATTER)
+
+        val recap = MandateCloseViews.recap(owner, 9002, selected, false, null, null, emptyMap(), 15_000_000, FORMATTER)
+
+        assertEquals(
+            "À la confirmation : le mandat n° 201 est fermé, l'annonce est marquée vendue et le mandat de l'acheteur est fermé. Cette action est définitive.",
+            recap.note,
+        )
+    }
+
+    @Test
+    fun `a sale's search recap names the seller's mandate`() {
+        val sale = MANDATE.copy(listingType = ListingType.SALE)
+
+        val recap = MandateCloseViews.recap(sale, 9001, null, false, null, null, emptyMap(), 15_000_000, FORMATTER)
+
+        assertEquals(
+            "À la confirmation : le mandat n° 201 est fermé, l'annonce est marquée vendue et le mandat du vendeur est fermé. Cette action est définitive.",
+            recap.note,
+        )
     }
 
     @Test
     fun `outside-only list - no counterpart step, the price is the first`() {
-        val steps = MandateCloseViews.steps(counterpartApplicable = false, owner = false)
+        val steps = MandateCloseViews.steps(counterpartApplicable = false, owner = false, sale = false)
         val view = MandateCloseViews.of(
             MANDATE.copy(status = MandateStatus.APPROVED),
             emptyList(),
@@ -175,7 +249,7 @@ class MandateCloseViewsTest {
             emptyList(),
             candidatesUnavailable = true,
             step = "counterpart",
-            steps = MandateCloseViews.steps(true, owner = true),
+            steps = MandateCloseViews.steps(true, owner = true, sale = false),
             currency = "FCFA",
         )
 
@@ -210,7 +284,7 @@ class MandateCloseViewsTest {
 
         assertEquals("Appartement · 3 chambres, Bonapriso — annonce n° 3012", recap.property)
         assertEquals("Ray Sponsible", recap.client)
-        assertEquals("240\u00a0000\u00a0FCFA / mois", recap.rent)
+        assertEquals("240\u00a0000\u00a0FCFA / mois", recap.price)
         assertEquals(
             "À la confirmation : le mandat n° 201 est fermé, l'annonce est retirée du marché et le mandat du bailleur est fermé. Cette action est définitive.",
             recap.note,
@@ -235,7 +309,7 @@ class MandateCloseViewsTest {
 
         assertEquals("Appartement · 2 chambres, Bonapriso — annonce n° 501", recap.property)
         assertEquals("Un client hors de vos recherches", recap.client)
-        assertEquals("150\u00a0000\u00a0FCFA / mois", recap.rent)
+        assertEquals("150\u00a0000\u00a0FCFA / mois", recap.price)
         assertEquals(
             "À la confirmation : le mandat n° 201 est fermé et l'annonce est retirée du marché. Cette action est définitive.",
             recap.note,
@@ -258,7 +332,7 @@ class MandateCloseViewsTest {
 
         assertEquals("Un bien", recap.property)
         assertEquals("Ray Sponsible", recap.client)
-        assertEquals("240\u00a0000\u00a0FCFA / mois", recap.rent)
+        assertEquals("240\u00a0000\u00a0FCFA / mois", recap.price)
         assertEquals(
             "À la confirmation : le mandat n° 201 est fermé. Aucune annonce n'est retirée du marché. Cette action est définitive.",
             recap.note,
@@ -313,12 +387,13 @@ class MandateCloseViewsTest {
             mandateId = 201,
             title = "Locataire",
             owner = false,
+            sale = false,
             candidates = emptyList(),
             candidatesUnavailable = false,
             step = "price",
             stepNumber = 1,
             stepCount = 2,
-            steps = MandateCloseViews.steps(false, false),
+            steps = MandateCloseViews.steps(false, owner = false, sale = false),
             currency = "FCFA",
         )
 

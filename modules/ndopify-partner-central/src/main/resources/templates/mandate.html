@@ -10,8 +10,10 @@
       customer, who signs it online; sent again, it resets the signature deadline.
     - Modifier le mandat (Assigné, En approbation): /mandates/{id}/edit. Saved while En approbation, its contract is
       cancelled and the mandate is Assigné again, to be sent anew.
-    - Fermer (Actif, on its own page /mandates/{id}/close: lease signed, with the agreed rent) and Annuler (any active
-      step, with a reason): at the bottom of the page, since they're rare and final.
+    - Fermer (Actif, on its own page /mandates/{id}/close: lease signed, with the agreed rent — a sale's deed signed,
+      with its final price) and Annuler (any active step, with a reason): at the bottom of the page, since they're rare
+      and final. A CLOSED SALE mandate ("mandate.sale") words its panel as a sale: "Vente conclue", "au prix de", the
+      final price with no " / mois", the buyer "Acheteur : …" and the listing "Annonce n° … vendue".
   "mandate" is the MandateView, absent when "locked" (mandate not found, or a status the page doesn't show).
   "end" is the cancel form open without JS ("cancel" or null), "form" its values (MandateEndForm)
   and "errors" its errors per field. "outcomeText" / "outcomeStyle" are the last action's outcome (flash attribute
@@ -222,8 +224,9 @@
                             <summary>Et ensuite&nbsp;?</summary>
                             <div class="assignment__details-body">
                                 <p><span th:text="${m.owner} ? 'Présentez le bien aux locataires et organisez les visites.' : 'Proposez des biens au client et organisez les visites.'">Proposez
-                                    des biens au client et organisez les visites.</span> Une fois le bail signé, fermez le
-                                    mandat (en bas de page) en indiquant le loyer convenu.</p>
+                                    des biens au client et organisez les visites.</span> <span
+                                    th:text="${m.sale} ? 'Une fois l\'acte de vente signé, fermez le mandat (en bas de page) en indiquant le prix de vente final.' : 'Une fois le bail signé, fermez le mandat (en bas de page) en indiquant le loyer convenu.'">Une fois le bail signé, fermez le
+                                    mandat (en bas de page) en indiquant le loyer convenu.</span></p>
                             </div>
                         </details>
                     </div>
@@ -231,8 +234,9 @@
                     <div class="alert alert--success" th:if="${m.status.name() == 'CLOSED'}" data-panel="CLOSED">
                         <svg th:replace="~{fragments/icon :: check('icon')}"></svg>
                         <div>
-                            <p class="alert__title">Bail signé</p>
-                            <p>Mandat fermé le <span th:text="${m.closedAt}">1 novembre 2026</span>, au loyer de
+                            <p class="alert__title" th:text="${m.sale} ? 'Vente conclue' : 'Bail signé'">Bail signé</p>
+                            <p>Mandat fermé le <span th:text="${m.closedAt}">1 novembre 2026</span>,
+                                <span th:text="${m.sale} ? 'au prix de' : 'au loyer de'">au loyer de</span>
                                 <strong th:text="${m.finalPrice}">240 000 FCFA / mois</strong>, <span th:text="${m.age}">12 jours</span>
                                 après son approbation.</p>
                             <!-- What the closing recorded: the listing, the counterpart mandate and the client, or the

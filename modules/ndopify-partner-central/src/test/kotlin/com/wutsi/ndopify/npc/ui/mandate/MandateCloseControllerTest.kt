@@ -1,14 +1,17 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
+import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -229,6 +232,38 @@ class MandateCloseControllerTest {
     }
 
     @Test
+    fun `a sale's price error asks the final sale price`() {
+        withCandidate()
+        doReturn(APPROVED.copy(listingType = ListingType.SALE)).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(post("/mandates/201/close/price").param("finalPrice", "")).andReturn()
+
+        assertEquals("mandate/close", result.modelAndView?.viewName)
+        assertEquals("price", view(result).step)
+        assertEquals(mapOf("finalPrice" to "Indiquez le prix de vente final, en FCFA."), errors(result))
+    }
+
+    @Test
+    fun `a sale accepts any positive amount`() {
+        withCandidate()
+        doReturn(APPROVED.copy(listingType = ListingType.SALE)).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(post("/mandates/201/close/price").param("finalPrice", "1")).andReturn()
+
+        assertEquals("redirect:/mandates/201/close?step=confirm", result.modelAndView?.viewName)
+        assertEquals(1L, draft(result)?.priceAmount)
+    }
+
+    @Test
+    fun `a rental's price error is unchanged`() {
+        withCandidate()
+
+        val result = mvc.perform(post("/mandates/201/close/price").param("finalPrice", "0")).andReturn()
+
+        assertEquals(mapOf("finalPrice" to "Indiquez le loyer convenu, en FCFA par mois."), errors(result))
+    }
+
+    @Test
     fun `price - kept between steps`() {
         withCandidate()
 
@@ -357,6 +392,50 @@ class MandateCloseControllerTest {
         ).andReturn()
 
         verify(mandateClient).close(201, CloseMandateRequest(Money(240000, "XAF", PeriodicityType.MONTHLY)))
+    }
+
+    @Test
+    fun `a sale's confirm sends no periodicity`() {
+        doReturn(APPROVED.copy(listingType = ListingType.SALE)).whenever(mandateClient).get(201)
+        val request = argumentCaptor<CloseMatchRequest>()
+
+        val result = mvc.perform(
+            post("/mandates/201/close/confirm")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(matchId = 100, priceAmount = 15_000_000)),
+        ).andReturn()
+
+        assertEquals("closed", outcome(result))
+        verify(matchClient).close(eq(100L), request.capture())
+        assertEquals(15_000_000L, request.firstValue.finalPrice.amount)
+        assertEquals(PeriodicityType.NONE, request.firstValue.finalPrice.periodicity)
+    }
+
+    @Test
+    fun `a sale's outside close sends no periodicity`() {
+        doReturn(APPROVED.copy(listingType = ListingType.SALE)).whenever(mandateClient).get(201)
+        val request = argumentCaptor<CloseMandateRequest>()
+
+        mvc.perform(
+            post("/mandates/201/close/confirm")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(outside = true, priceAmount = 15_000_000)),
+        ).andReturn()
+
+        verify(mandateClient).close(eq(201L), request.capture())
+        assertEquals(PeriodicityType.NONE, request.firstValue.finalPrice.periodicity)
+    }
+
+    @Test
+    fun `a rental's confirm keeps the monthly periodicity`() {
+        doReturn(APPROVED.copy(listingType = ListingType.UNKNOWN)).whenever(mandateClient).get(201)
+        val request = argumentCaptor<CloseMatchRequest>()
+
+        mvc.perform(
+            post("/mandates/201/close/confirm")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(matchId = 100, priceAmount = 240_000)),
+        ).andReturn()
+
+        verify(matchClient).close(eq(100L), request.capture())
+        assertEquals(PeriodicityType.MONTHLY, request.firstValue.finalPrice.periodicity)
     }
 
     @Test

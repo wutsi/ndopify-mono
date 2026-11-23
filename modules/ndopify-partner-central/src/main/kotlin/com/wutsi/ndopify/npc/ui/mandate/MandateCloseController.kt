@@ -4,6 +4,7 @@ import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -38,7 +39,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 /**
  * The closing wizard (`mandate/close.html`), on its own page reached from the mandate page's *Fermer le mandat* link
  * while the mandate is APPROVED. Three steps, one at a time (`?step=`): the deal's counterpart (an ACCEPTED match), the
- * agreed rent, then the confirmation.
+ * agreed rent (a sale's final price), then the confirmation. A SALE mandate (`listingType == SALE`) sends
+ * `PeriodicityType.NONE` on its requests; a rental, and a legacy mandate without a type, `MONTHLY`.
  *
  * - `GET /mandates/{id}/close?step=…` shows a step; `POST /mandates/{id}/close/counterpart|price|confirm` validates it,
  *   stores its answer in the session's [PendingMandateClose] and redirects to the next step (or back to the mandate
@@ -123,7 +125,7 @@ class MandateCloseController(
             return redirectStep(mandate.id, draft.copy(matchId = null).firstIncompleteStep(counterpartApplicable))
         }
 
-        val steps = MandateCloseViews.steps(counterpartApplicable, mandate.mandateType == MandateType.LISTING)
+        val steps = MandateCloseViews.steps(counterpartApplicable, mandate.mandateType == MandateType.LISTING, sale(mandate))
         val names = steps.map { it.name }
         val allowed = names.indexOf(draft.firstIncompleteStep(counterpartApplicable))
 
@@ -164,7 +166,7 @@ class MandateCloseController(
             session.setAttribute(PendingMandateClose.SESSION_ATTRIBUTE, draft.copy(matchId = matchId, outside = false))
             return redirectStep(id, PendingMandateClose.STEP_PRICE)
         }
-        val steps = MandateCloseViews.steps(counterpartApplicable, mandate.mandateType == MandateType.LISTING)
+        val steps = MandateCloseViews.steps(counterpartApplicable, mandate.mandateType == MandateType.LISTING, sale(mandate))
         return render(mandate, read, steps, PendingMandateClose.STEP_COUNTERPART, form, mapOf("counterpart" to COUNTERPART_ERROR), draft, model)
     }
 
@@ -185,14 +187,19 @@ class MandateCloseController(
 
         val amount = MandateCloseRules.amount(form.finalPrice)
         if (amount == null) {
-            val steps = MandateCloseViews.steps(counterpartApplicable, mandate.mandateType == MandateType.LISTING)
+            val steps = MandateCloseViews.steps(counterpartApplicable, mandate.mandateType == MandateType.LISTING, sale(mandate))
+            val error = if (sale(mandate)) {
+                "Indiquez le prix de vente final, en ${formatter().currency()}."
+            } else {
+                "Indiquez le loyer convenu, en ${formatter().currency()} par mois."
+            }
             return render(
                 mandate,
                 read,
                 steps,
                 PendingMandateClose.STEP_PRICE,
                 form,
-                mapOf("finalPrice" to "Indiquez le loyer convenu, en ${formatter().currency()} par mois."),
+                mapOf("finalPrice" to error),
                 draft,
                 model,
             )
@@ -207,12 +214,14 @@ class MandateCloseController(
 
         val draft = pending(session)
         val currency = tenantContext.getTenant().currencyCode
+        // A sale's price is one-off, a rental's monthly: the request says so, even though the server stores the amount.
+        val sale = lookup("mandate $id") { mandateClient.get(id) }?.let { sale(it) } ?: false
         val outcome =
             try {
                 if (draft.matchId != null) {
-                    matchClient.close(draft.matchId, MandateCloseRules.closeMatch(draft, currency))
+                    matchClient.close(draft.matchId, MandateCloseRules.closeMatch(draft, currency, sale))
                 } else {
-                    mandateClient.close(id, MandateCloseRules.closeMandate(draft, currency))
+                    mandateClient.close(id, MandateCloseRules.closeMandate(draft, currency, sale))
                 }
                 MandateController.CLOSED
             } catch (ex: HttpClientErrorException) {
@@ -395,6 +404,9 @@ class MandateCloseController(
         model.addAttribute("locked", true)
         return VIEW
     }
+
+    /** A sale mandate closes on its sale price; a rental, and a legacy mandate without a type, on a monthly rent. */
+    private fun sale(mandate: Mandate): Boolean = mandate.listingType == ListingType.SALE
 
     private fun pending(session: HttpSession): PendingMandateClose =
         session.getAttribute(PendingMandateClose.SESSION_ATTRIBUTE) as PendingMandateClose? ?: PendingMandateClose()
