@@ -999,10 +999,12 @@ a.user-menu__item:hover {
     display: none;
 }
 
-/* The title's words: the client's name first, then who the mandate is with and what it is for. */
+/* The title's words: the client's name first, then who the mandate is with and what it is for. Left-aligned, so the
+   type badge under them hugs its own word instead of stretching to the client's name. */
 .mandate-title__text {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
 }
 
 /* On a card, the name leads; the party and type are a quiet line under it. */

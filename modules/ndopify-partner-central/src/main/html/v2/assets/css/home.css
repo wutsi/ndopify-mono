@@ -364,7 +364,8 @@
 
 /* ---------- Mandates (index.html › Mes mandats) ---------- */
 
-/* Status of a mandate: the label carries the meaning, the colours only echo it. */
+/* Status of a mandate: the label carries the meaning, the colours only echo it. The pill keeps the body font and
+   line-height wherever it sits, so it looks the same inside a card title as beside the page title. */
 .status-tag {
     display: inline-flex;
     align-items: center;
@@ -372,8 +373,10 @@
     border: 1px solid var(--color-border-strong);
     border-radius: var(--radius-control);
     background: var(--color-bg);
+    font-family: var(--font-body);
     font-size: var(--step-hint);
     font-weight: 600;
+    line-height: 1.6;
     white-space: nowrap;
 }
 
@@ -393,6 +396,14 @@
     border-color: var(--color-success-border);
     background: var(--color-success-bg);
     color: var(--color-success-fg);
+}
+
+/* The mandate's type (Vente / Location): an ink keyline on white, so it reads on the page and stays apart from
+   every status hue and from the grey neutral status. The type is not a state. */
+.status-tag--type {
+    border-color: var(--color-fg);
+    background: var(--color-bg);
+    color: var(--color-fg);
 }
 
 /* The whole card opens the mandate: the title's link covers it. */
@@ -601,7 +612,7 @@ h1.alert__title {
     font: 600 var(--step-h4) / 1.3 var(--font-body);
 }
 
-/* Title and status tag on one line; the title a size down on phones, where it would wrap. */
+/* Title, then the type and status pills; the title a size down on phones, where the pills take their own line. */
 .mandate-intro {
     margin-bottom: var(--space-4);
 }
@@ -613,6 +624,16 @@ h1.alert__title {
     gap: var(--space-2) var(--space-3);
 }
 
+/* The type and the status: one pair of pills after the title. Below 640px the pair takes a line of its own, so a long
+   title never pushes one badge away from the other; from 640px it sits on the title's line when it fits. */
+.mandate-intro__tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    flex-basis: 100%;
+}
+
 .mandate-intro h1 {
     font-size: var(--step-h2);
 }
@@ -620,6 +641,10 @@ h1.alert__title {
 @media (min-width: 640px) {
     .mandate-intro h1 {
         font-size: var(--step-h1);
+    }
+
+    .mandate-intro__tags {
+        flex-basis: auto;
     }
 }
 
@@ -1279,36 +1304,13 @@ h1.alert__title {
     margin-top: var(--space-3);
 }
 
-/* v2 — "Vente" / "Location" after a mandate's title (offers, Mes mandats, mandate page): a small pill, quieter than
-   the status tag. A sale is in the info blue, a rental neutral. */
-.deal-tag {
-    display: inline-flex;
-    align-items: center;
-    align-self: flex-start;
-    flex: none;
-    padding: 0 var(--space-2);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-control);
-    background: var(--color-surface-alt);
-    color: var(--color-fg);
-    font-family: var(--font-body, inherit);
-    font-size: var(--step-hint);
-    font-weight: 600;
-    line-height: 1.6;
-    white-space: nowrap;
-}
-.deal-tag--sale {
-    border-color: var(--color-info-border);
-    background: var(--color-info-bg);
-    color: var(--color-info-fg);
-}
-/* In a row title (offers, the mandate page's h1), it sits on the text's line. */
-.mandate-title > .deal-tag {
+/* v2 (#276) — the type badge ("Vente" / "Location") follows the mandate on its offer card, on a Mes mandats card and
+   on the mandate page. In an offer's row title it sits on the title's line; on a card it is a quiet line of its own
+   under the party and type. */
+.mandate-title > .status-tag--type {
     align-self: center;
 }
-.mandate-title__text > .deal-tag {
-    margin-top: var(--space-1, 0.25rem);
-}
-h1.mandate-title > .deal-tag {
-    font-size: var(--step-hint);
+
+.mandate-title__text > .status-tag--type {
+    margin-top: var(--space-1);
 }

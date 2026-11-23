@@ -11,12 +11,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" href="assets/css/partner-central.css?v=3">
+    <link rel="stylesheet" href="assets/css/partner-central.css?v=4">
     <!-- ?v=2 on the prototype assets: bump it when they change, so Safari's file:// cache reloads them. -->
-    <link rel="stylesheet" href="assets/css/home.css?v=5">
+    <link rel="stylesheet" href="assets/css/home.css?v=6">
     <link rel="stylesheet" href="assets/css/listing.css?v=3">
     <link rel="stylesheet" href="assets/css/visit.css?v=3">
-    <script src="assets/js/partner-central.js?v=2" defer></script>
+    <script src="assets/js/partner-central.js?v=3" defer></script>
     <script src="assets/js/visit.js?v=4" defer></script>
 </head>
 <body data-page="agent-home">
@@ -88,9 +88,11 @@
                 "Mes mandats" below. Without any offer, the section isn't shown at all (also once the last one is
                 declined). PROTOTYPE: deadlines are relative to the page load (data-expires-in, in minutes);
                 ?assignments=empty shows an agent without offers.
-                v2: each offer says whether it's a sale or a rental, a "Vente" / "Location" tag after its kind
+                v2: each offer says whether it's a sale or a rental, a "Vente" / "Location" type badge after its kind
                 (Locataire, Acheteur, Propriétaire, Vendeur). 104 is a SALE offer: a buyer's search for a plot of land,
                 with a budget ("15M FCFA", no "/ mois") and "Achat prévu" instead of "Emménagement".
+                v2 (#276): the type badge is a status-tag of the type variant (an ink keyline, not a status colour) and
+                both a sale and a rental carry it.
             -->
             <p class="visually-hidden" role="status" data-assignments-status></p>
             <section class="home-section" aria-labelledby="assignments-title" data-assignments-section>
@@ -101,7 +103,7 @@
                     <li class="assignment" data-assignment data-mandate-id="101" data-expires-in="52">
                         <article aria-labelledby="assignment-101-title">
                             <div class="assignment__head">
-                                <h3 id="assignment-101-title" class="assignment__type mandate-title"><span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><span>Locataire</span><span class="deal-tag deal-tag--rental">Location</span></h3>
+                                <h3 id="assignment-101-title" class="assignment__type mandate-title"><span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><span>Locataire</span><span class="status-tag status-tag--type" data-deal-tag>Location</span></h3>
                                 <p class="assignment__timer" data-timer>
                                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                          stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
@@ -171,7 +173,7 @@
                     <li class="assignment" data-assignment data-mandate-id="104" data-expires-in="45">
                         <article aria-labelledby="assignment-104-title">
                             <div class="assignment__head">
-                                <h3 id="assignment-104-title" class="assignment__type mandate-title"><span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><span>Acheteur</span><span class="deal-tag deal-tag--sale">Vente</span></h3>
+                                <h3 id="assignment-104-title" class="assignment__type mandate-title"><span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><span>Acheteur</span><span class="status-tag status-tag--type" data-deal-tag>Vente</span></h3>
                                 <p class="assignment__timer" data-timer>
                                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                          stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
@@ -236,7 +238,7 @@
                     <li class="assignment" data-assignment data-mandate-id="102" data-expires-in="9">
                         <article aria-labelledby="assignment-102-title">
                             <div class="assignment__head">
-                                <h3 id="assignment-102-title" class="assignment__type mandate-title"><span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M17 6l3 3M14.5 8.5l2 2"/></svg></span><span>Propriétaire</span><span class="deal-tag deal-tag--rental">Location</span></h3>
+                                <h3 id="assignment-102-title" class="assignment__type mandate-title"><span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M17 6l3 3M14.5 8.5l2 2"/></svg></span><span>Propriétaire</span><span class="status-tag status-tag--type" data-deal-tag>Location</span></h3>
                                 <p class="assignment__timer" data-timer>
                                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                          stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
@@ -306,7 +308,7 @@
                     <li class="assignment" data-assignment data-mandate-id="103" data-expires-in="38">
                         <article aria-labelledby="assignment-103-title">
                             <div class="assignment__head">
-                                <h3 id="assignment-103-title" class="assignment__type mandate-title"><span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><span>Locataire</span><span class="deal-tag deal-tag--rental">Location</span></h3>
+                                <h3 id="assignment-103-title" class="assignment__type mandate-title"><span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><span>Locataire</span><span class="status-tag status-tag--type" data-deal-tag>Location</span></h3>
                                 <p class="assignment__timer" data-timer>
                                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                          stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
@@ -577,8 +579,10 @@
                 its public page, the clients it interested (the matches whose client answered "intéressé", with or
                 without a visit; see LISTING_ACTIVITY), and the visits of the property. ?listing=published shows 203
                 with a published listing. ?mandates=empty shows the empty state.
-                v2: every card has its "Vente" / "Location" tag (setDealTag). 301 is a seller's villa (Vendeur, Vente),
-                signed, its listing still "À créer"; its facts read "Prix" (250M FCFA, no "/ mois").
+                v2: every card has its "Vente" / "Location" type badge (setDealTag), a status-tag of the type variant,
+                under the party and type and hugging its own word (not the client's name width). 301 is a seller's
+                villa (Vendeur, Vente), signed, its listing still "À créer"; its facts read "Prix" (250M FCFA, no
+                "/ mois").
             -->
             <section class="home-section" aria-labelledby="mandates-title">
                 <h2 id="mandates-title">Mes mandats</h2>
@@ -593,6 +597,7 @@
                                     <span class="mandate-title__text">
                                         <a class="mandate-card__link" href="mandate.html?id=201" data-mandate-link>Jean-Pierre Fotso</a>
                                         <span class="mandate-card__kind" data-mandate-kind-label>Locataire · Maison</span>
+                                        <span class="status-tag status-tag--type" data-deal-tag>Location</span>
                                     </span>
                                 </h3>
                                 <p class="status-tag status-tag--info" data-status-tag>Assigné</p>
@@ -627,6 +632,7 @@
                                     <span class="mandate-title__text">
                                         <a class="mandate-card__link" href="mandate.html?id=202" data-mandate-link>Grâce Nkoulou</a>
                                         <span class="mandate-card__kind" data-mandate-kind-label>Locataire · Appartement</span>
+                                        <span class="status-tag status-tag--type" data-deal-tag>Location</span>
                                     </span>
                                 </h3>
                                 <p class="status-tag status-tag--warning" data-status-tag>En approbation</p>
@@ -661,6 +667,7 @@
                                     <span class="mandate-title__text">
                                         <a class="mandate-card__link" href="mandate.html?id=203" data-mandate-link>Emmanuel Tchoua</a>
                                         <span class="mandate-card__kind" data-mandate-kind-label>Propriétaire · Appartement</span>
+                                        <span class="status-tag status-tag--type" data-deal-tag>Location</span>
                                     </span>
                                 </h3>
                                 <p class="status-tag status-tag--success" data-status-tag>Actif</p>
@@ -700,6 +707,7 @@
                                     <span class="mandate-title__text">
                                         <a class="mandate-card__link" href="mandate.html?id=204" data-mandate-link>Sandrine Eboa</a>
                                         <span class="mandate-card__kind" data-mandate-kind-label>Locataire · Appartement</span>
+                                        <span class="status-tag status-tag--type" data-deal-tag>Location</span>
                                     </span>
                                 </h3>
                                 <p class="status-tag status-tag--success" data-status-tag>Actif</p>
@@ -734,6 +742,7 @@
                                     <span class="mandate-title__text">
                                         <a class="mandate-card__link" href="mandate.html?id=205" data-mandate-link>Yannick Mballa</a>
                                         <span class="mandate-card__kind" data-mandate-kind-label>Locataire · Appartement</span>
+                                        <span class="status-tag status-tag--type" data-deal-tag>Location</span>
                                     </span>
                                 </h3>
                                 <p class="status-tag" data-status-tag>Assigné</p>
@@ -755,6 +764,7 @@
                                     <span class="mandate-title__text">
                                         <a class="mandate-card__link" href="mandate.html?id=206" data-mandate-link>Nadège Atangana</a>
                                         <span class="mandate-card__kind" data-mandate-kind-label>Locataire · Studio</span>
+                                        <span class="status-tag status-tag--type" data-deal-tag>Location</span>
                                     </span>
                                 </h3>
                                 <p class="status-tag" data-status-tag>Actif</p>
@@ -776,7 +786,7 @@
                                     <span class="mandate-title__text">
                                         <a class="mandate-card__link" href="mandate.html?id=301" data-mandate-link>Rodrigue Essomba</a>
                                         <span class="mandate-card__kind" data-mandate-kind-label>Vendeur · Villa</span>
-                                        <span class="deal-tag deal-tag--sale">Vente</span>
+                                        <span class="status-tag status-tag--type" data-deal-tag>Vente</span>
                                     </span>
                                 </h3>
                                 <p class="status-tag" data-status-tag>Actif</p>
@@ -802,6 +812,7 @@
                                     <span class="mandate-title__text">
                                         <a class="mandate-card__link" href="mandate.html?id=207" data-mandate-link>Serge Kamga</a>
                                         <span class="mandate-card__kind" data-mandate-kind-label>Propriétaire · Duplex</span>
+                                        <span class="status-tag status-tag--type" data-deal-tag>Location</span>
                                     </span>
                                 </h3>
                                 <p class="status-tag" data-status-tag>En approbation</p>
@@ -834,7 +845,7 @@
                     <li class="mandate-card" data-mandate-card>
                         <article>
                             <div class="assignment__head">
-                                <h3 class="assignment__type mandate-title"><span class="mandate-title__icon" data-mandate-kind></span><span class="mandate-title__text"><a class="mandate-card__link" data-mandate-link></a><span class="mandate-card__kind" data-mandate-kind-label></span></span></h3>
+                                <h3 class="assignment__type mandate-title"><span class="mandate-title__icon" data-mandate-kind></span><span class="mandate-title__text"><a class="mandate-card__link" data-mandate-link></a><span class="mandate-card__kind" data-mandate-kind-label></span><span class="status-tag status-tag--type" data-deal-tag></span></span></h3>
                                 <p class="status-tag" data-status-tag></p>
                             </div>
                             <dl class="assignment__facts" data-mandate-facts></dl>

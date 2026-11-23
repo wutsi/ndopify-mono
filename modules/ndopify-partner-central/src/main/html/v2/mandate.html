@@ -11,21 +11,24 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" href="assets/css/partner-central.css?v=20261119a">
+    <link rel="stylesheet" href="assets/css/partner-central.css?v=20261123a">
     <link rel="stylesheet" href="assets/css/rejoindre.css">
     <link rel="stylesheet" href="assets/css/find-property.css">
-    <link rel="stylesheet" href="assets/css/home.css?v=20261118c">
+    <link rel="stylesheet" href="assets/css/home.css?v=20261123a">
     <link rel="stylesheet" href="assets/css/listing.css">
     <link rel="stylesheet" href="assets/css/visit.css">
-    <script src="assets/js/partner-central.js?v=20261122c" defer></script>
+    <script src="assets/js/partner-central.js?v=20261123a" defer></script>
     <script src="assets/js/visit.js?v=20261118a" defer></script>
 </head>
 <!--
     v2: a SALE mandate (?id=301, a seller's villa, signed; ?id=302, a seller's plot of land whose criteria show its
     "Document de propriété"; ?id=104 once its offer is accepted, a buyer's land search; ?id=303 and ?id=304, the buyers
-    of the villa of 301) reads as a sale: "Vendeur" / "Acheteur" and a "Vente" tag after the title, "Prix" / "Budget"
+    of the villa of 301) reads as a sale: "Vendeur" / "Acheteur" and a "Vente" type badge, "Prix" / "Budget"
     with no "/ mois", no furniture, and the closing wording of a sale (data-sale-text: "Vente conclue",
     "au prix de", "prix de vente final").
+    v2 (#276): the type ("Vente" / "Location") and the status are two pills of the same status-tag, siblings of the
+    title and outside the h1, one after the other on its line; below 640px the pair takes its own line under the title.
+    The type pill is the ink-keyline variant (status-tag--type), never a status colour; see setDealTag.
     v2 (#258): the closed panel of a sale records the deal like the wizard that produced it: "Acheteur : …" (not
     "Client"), "Annonce n° … vendue" (not "retirée du marché"), and "Vendu à un autre acheteur" for a deal closed
     without a counterpart; its success notice says "Mandat fermé : félicitations pour cette vente !". A RENTAL mandate
@@ -138,11 +141,16 @@
             </div>
 
             <div hidden data-mandate>
-                <!-- The status sits by the title, so the steps below can stay compact. -->
+                <!-- The type and the status sit by the title, so the steps below can stay compact. -->
                 <div class="page-intro mandate-intro">
                     <div class="mandate-intro__head">
                         <h1 class="mandate-title"><span class="mandate-title__icon" data-mandate-kind></span><span data-mandate-title></span></h1>
-                        <p class="status-tag" data-status-tag></p>
+                        <!-- The type and the status are siblings of the title, outside the heading: two pills of the
+                             same class. Below 640px they share a line of their own under the title. -->
+                        <div class="mandate-intro__tags">
+                            <span class="status-tag status-tag--type" data-deal-tag></span>
+                            <span class="status-tag" data-status-tag></span>
+                        </div>
                     </div>
                     <p class="mandate__meta">Mandat n° <span data-mandate-number></span> · accepté le
                         <span data-mandate-accepted></span></p>

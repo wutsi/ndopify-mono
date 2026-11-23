@@ -1704,16 +1704,12 @@
         return amount.toLocaleString("fr-FR") + (isSale(id) ? " FCFA" : " FCFA / mois");
     }
 
-    // The short "Vente" / "Location" tag after a mandate's title (offers, Mes mandats, mandate page). Static offers
-    // have it in their markup; this adds or updates it where the title is rendered.
-    function setDealTag(titleEl, id) {
-        if (!titleEl || !MANDATES[id]) return;
-        var tag = $(".deal-tag", titleEl);
-        if (!tag) {
-            tag = document.createElement("span");
-            titleEl.appendChild(tag);
-        }
-        tag.className = "deal-tag deal-tag--" + (isSale(id) ? "sale" : "rental");
+    // The mandate's type badge ("Vente" / "Location"): a status pill of the type variant, beside the status on the
+    // mandate page and on its cards. It is static markup ([data-deal-tag]); this sets its label from the mandate, so a
+    // rental reads "Location" too.
+    function setDealTag(tag, id) {
+        if (!tag || !MANDATES[id]) return;
+        tag.className = "status-tag status-tag--type";
         tag.textContent = isSale(id) ? "Vente" : "Location";
     }
 
@@ -2751,7 +2747,7 @@
                 kind.hidden = !name;
             }
             setKindIcon($("[data-mandate-kind]", item), id);
-            setDealTag($(".mandate-title__text", item), id);
+            setDealTag($("[data-deal-tag]", item), id);
             var facts = $(".assignment__facts", item);
             facts.textContent = "";
             criteriaOf(id).slice(0, 3).forEach(function (row, i) {
@@ -2892,7 +2888,7 @@
         document.title = titleOf(id) + " — Ndopify Partner Central";
         $("[data-mandate-title]").textContent = titleOf(id);
         setKindIcon($("[data-mandate-kind]"), id);
-        setDealTag($("[data-mandate-title]").parentNode, id);
+        setDealTag($("[data-deal-tag]"), id);
         applyDealWording(isSale(id));
         $all("[data-edit-link]").forEach(function (a) {
             a.href = "mandate/edit.html?id=" + encodeURIComponent(id);
