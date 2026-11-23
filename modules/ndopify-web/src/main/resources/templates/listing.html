@@ -75,9 +75,12 @@
   the fields' errors (the popup then has `is-open`). listing.js makes it a modal dialog and binds the WhatsApp number
   (E.164 in a hidden whatsappNumber); it never posts, nor fakes an answer. Hidden field: website, the honeypot;
   movingPeriod, one of the three periods. Everything else — city, type, budget — comes from the listing.
+  A closed SALE listing renders neither this popup nor its form (nothing can be asked for a property that is sold); a
+  closed RENTAL listing keeps them, as today.
 */-->
 <div aria-labelledby="visit-title" class="modal" id="visit"
-     th:classappend="${errors != null && !errors.isEmpty()} ? ' is-open'">
+     th:classappend="${errors != null && !errors.isEmpty()} ? ' is-open'"
+     th:if="${page.closedNotice == null or not page.sale}">
     <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
     <div class="modal__panel">
         <header class="modal__header">

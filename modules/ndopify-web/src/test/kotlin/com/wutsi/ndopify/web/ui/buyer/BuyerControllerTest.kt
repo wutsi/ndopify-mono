@@ -4,6 +4,7 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.wutsi.ndopify.refdata.dto.Tenant
 import com.wutsi.ndopify.web.core.service.TenantContext
+import com.wutsi.ndopify.web.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.web.ui.layout.TenantAdvice
 import org.springframework.test.web.servlet.MvcResult
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
@@ -14,6 +15,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class BuyerControllerTest {
+    private val tenant = TENANT.copy(partnerCentralUrl = "https://partner.ndopify.cm/")
+
     private fun page(context: TenantContext): MvcResult =
         MockMvcBuilders.standaloneSetup(BuyerController())
             .setControllerAdvice(TenantAdvice(context))
@@ -26,8 +29,6 @@ class BuyerControllerTest {
 
     @Test
     fun `buyer page carries the sale find-property URL`() {
-        val tenant = Tenant(id = 1, partnerCentralUrl = "https://partner.ndopify.cm/")
-
         val result = page(context(tenant))
 
         assertEquals("acheter", result.modelAndView?.viewName)
@@ -36,8 +37,20 @@ class BuyerControllerTest {
     }
 
     @Test
+    fun `buyer page carries the tenant's formatted zero`() {
+        val result = page(context(tenant))
+
+        assertEquals("0\u00A0FCFA", result.modelAndView?.model?.get("zeroAmount"))
+        assertEquals(
+            "0\u00A0EUR",
+            page(context(tenant.copy(monetaryFormat = "#,###,##0 EUR", currencySymbol = "EUR")))
+                .modelAndView?.model?.get("zeroAmount"),
+        )
+    }
+
+    @Test
     fun `no URL without a partner central URL`() {
-        assertNull(page(context(Tenant(id = 1, partnerCentralUrl = " "))).modelAndView?.model?.get("findPropertyUrl"))
-        assertNull(page(context(Tenant(id = 1, partnerCentralUrl = null))).modelAndView?.model?.get("findPropertyUrl"))
+        assertNull(page(context(tenant.copy(partnerCentralUrl = " "))).modelAndView?.model?.get("findPropertyUrl"))
+        assertNull(page(context(tenant.copy(partnerCentralUrl = null))).modelAndView?.model?.get("findPropertyUrl"))
     }
 }

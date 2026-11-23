@@ -100,6 +100,7 @@ class ListingTemplateTest {
     /** A sale in Bonapriso, 250M FCFA, available on 1 December 2026. */
     private val saleListing = listing.copy(
         listingType = ListingType.SALE,
+        status = ListingStatus.PUBLISHED,
         propertyType = PropertyType.VILLA,
         rooms = 5,
         price = 250_000_000,
@@ -405,5 +406,50 @@ class ListingTemplateTest {
             assertFalse(doc.selectFirst(".price-card")!!.text().contains(term), term)
             assertFalse(doc.selectFirst("#visit")!!.text().contains(term), term)
         }
+    }
+
+    @Test
+    fun `a sold sale listing offers no interest form`() {
+        val doc = render(
+            page(
+                listing = saleListing.copy(
+                    status = ListingStatus.SOLD,
+                    closedAt = Date.from(LocalDate.of(2026, 10, 12).atStartOfDay(ZoneId.of("Africa/Douala")).toInstant()),
+                ),
+            ),
+        )
+
+        assertEquals("Vendu le 12 oct. 2026", doc.selectFirst(".listing__badges .badge")?.text())
+        assertNull(doc.selectFirst("#visit"))
+        assertNull(doc.selectFirst("form[data-listing-interest-form]"))
+        assertNull(doc.selectFirst(".price-card__cta"))
+        assertNull(doc.selectFirst(".cta-bar__actions"))
+        assertNull(doc.selectFirst("#moving-period-label"))
+    }
+
+    @Test
+    fun `a sold rental listing keeps the interest form markup`() {
+        val doc = render(
+            page(
+                listing = listing.copy(
+                    status = ListingStatus.RENTED,
+                    closedAt = Date.from(LocalDate.of(2026, 10, 12).atStartOfDay(ZoneId.of("Africa/Douala")).toInstant()),
+                ),
+            ),
+        )
+
+        assertEquals("Loué le 12 oct. 2026", doc.selectFirst(".listing__badges .badge")?.text())
+        assertNotNull(doc.selectFirst("#visit"))
+        assertNotNull(doc.selectFirst("form[data-listing-interest-form]"))
+    }
+
+    @Test
+    fun `a published sale listing keeps its interest form`() {
+        val doc = render(page(listing = saleListing))
+
+        assertNotNull(doc.selectFirst("#visit"))
+        assertNotNull(doc.selectFirst("form[data-listing-interest-form]"))
+        assertEquals("Quand souhaitez-vous acheter ?", doc.selectFirst("#moving-period-label")?.text())
+        assertEquals("Envoyer ma demande", doc.selectFirst("form[data-listing-interest-form] button[type=submit]")?.text())
     }
 }

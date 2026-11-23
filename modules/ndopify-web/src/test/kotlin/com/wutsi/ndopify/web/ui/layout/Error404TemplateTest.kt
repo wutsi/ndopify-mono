@@ -65,7 +65,7 @@ class Error404TemplateTest {
         assertTrue(page.select(".site-nav").isEmpty())
         assertTrue(page.select(".site-footer nav").isEmpty())
         assertEquals(
-            "© 2026 Ndopify. Logements vérifiés. Locations fiables.",
+            "© 2026 Ndopify. Des agents vérifiés, à votre service.",
             page.selectFirst(".site-footer small")?.text(),
         )
     }

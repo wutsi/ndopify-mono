@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.web.ui.owner
 
 import com.wutsi.ndopify.refdata.dto.Tenant
+import com.wutsi.ndopify.web.core.service.TenantFormatter
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.springframework.stereotype.Controller
@@ -61,6 +62,16 @@ class SellTemplateTest {
 
     private val offerPropertyUrl = "https://partner.ndopify.cm/offer-property?type=SALE"
 
+    /** A tenant whose money is not in FCFA: the proof lines must follow it, never a hard-coded currency. */
+    private val euroTenant = tenant.copy(
+        currencyCode = "EUR",
+        currencySymbol = "EUR",
+        monetaryFormat = "#,###,##0 EUR",
+        numberFormat = "#,###,##0",
+    )
+
+    private val zeroAmount = TenantFormatter(euroTenant).money(0)
+
     private fun render(vararg attributes: Pair<String, Any?>): Document {
         controller.attributes = mapOf(*attributes)
         return Jsoup.parse(mvc.perform(get("/owner/sell")).andReturn().response.contentAsString)
@@ -68,7 +79,7 @@ class SellTemplateTest {
 
     @Test
     fun `the page sells a verified agent to a seller`() {
-        val page = render("tenant" to tenant, "offerPropertyUrl" to offerPropertyUrl)
+        val page = render("tenant" to tenant, "offerPropertyUrl" to offerPropertyUrl, "zeroAmount" to zeroAmount)
 
         assertEquals("Confiez la vente de votre bien à un agent vérifié", page.selectFirst("h1")?.text())
         assertEquals("Ndopify — Confiez la vente de votre bien à un agent vérifié", page.title())
@@ -83,8 +94,17 @@ class SellTemplateTest {
     }
 
     @Test
+    fun `the proof lines carry the tenant's formatted zero`() {
+        val page = render("tenant" to euroTenant, "offerPropertyUrl" to offerPropertyUrl, "zeroAmount" to zeroAmount)
+
+        assertEquals("0\u00A0EUR", zeroAmount)
+        assertEquals(listOf("0 EUR", "100 %", "Commission"), page.select(".proof-stats strong").map { it.text() })
+        assertFalse(page.text().contains("0 FCFA"))
+    }
+
+    @Test
     fun `every call to action opens the sale wizard`() {
-        val page = render("tenant" to tenant, "offerPropertyUrl" to offerPropertyUrl)
+        val page = render("tenant" to tenant, "offerPropertyUrl" to offerPropertyUrl, "zeroAmount" to zeroAmount)
 
         val ctas = page.select("a.btn-primary")
         assertTrue(ctas.size >= 3, ctas.size.toString())

@@ -239,7 +239,7 @@ object MatchPages {
             if (match.availabilityScore == 1.0 && movingIn) {
                 available
                     ?.let { "Disponible le ${formatter.date(it)}, avant votre " + (if (sale) "achat" else "emménagement") }
-                    ?: "Disponible immédiatement"
+                    ?: if (sale) "Disponible avant votre achat" else "Disponible immédiatement"
             } else {
                 null
             },

@@ -425,10 +425,10 @@ class MatchPagesTest {
     }
 
     @Test
-    fun `a sale search available immediately`() {
+    fun `a sale search with no date is available before the purchase`() {
         val page = page(mandate = saleMandate, listing = saleListing.copy(availableFrom = null))
 
-        assertEquals("Disponible immédiatement", page.reasons.last().text)
+        assertEquals("Disponible avant votre achat", page.reasons.last().text)
     }
 
     @Test
