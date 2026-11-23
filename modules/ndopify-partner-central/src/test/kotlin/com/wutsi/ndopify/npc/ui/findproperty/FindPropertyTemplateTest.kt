@@ -7,7 +7,9 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.mandate.dto.FinancingType
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
@@ -324,6 +326,54 @@ class FindPropertyTemplateTest {
         val page = render(get("/find-property?step=budget"))
 
         assertEquals("Date d'installation souhaitée", page.selectFirst("[data-move-in-label]")?.text())
+    }
+
+    @Test
+    fun `a sale budget step words a purchase and asks its financing`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(
+                listingType = ListingType.SALE,
+                priceAmount = 10_000_000,
+                movingPeriod = MovingPeriod.WITHIN_3_MONTHS,
+                financingType = FinancingType.CASH,
+            ),
+        )
+
+        val page = render(get("/find-property?step=budget"))
+
+        assertEquals("10 000 000", page.selectFirst("#priceAmount")?.attr("value"))
+        assertEquals("Budget total", page.selectFirst("[data-price-label]")?.text())
+        assertEquals("FCFA", page.selectFirst("[data-price-suffix]")?.text())
+        assertEquals("Le prix maximal que vous êtes prêt à payer, et quand vous pensez acheter.", page.selectFirst("[data-budget-intro]")?.text())
+        assertEquals(
+            "Quand souhaitez-vous acheter ?",
+            page.selectFirst("[data-move-in-label]")?.text()?.replace('\u00a0', ' '),
+        )
+        val financing = assertNotNull(page.selectFirst("[data-group=financingType]"))
+        assertFalse(financing.hasAttr("hidden"))
+        assertEquals(
+            listOf("CASH", "BANK_LOAN", "TRANSFER_FROM_ABROAD", "UNDECIDED"),
+            financing.select("input[name=financingType]").map { it.attr("value") },
+        )
+        assertTrue(page.selectFirst("input[name=financingType][value=CASH]")!!.hasAttr("checked"))
+        assertTrue(page.selectFirst("input[name=financingType][value=CASH]")!!.hasAttr("required"))
+        val perSqm = assertNotNull(page.selectFirst("[data-price-per-sqm]"))
+        assertTrue(perSqm.hasAttr("hidden"))
+        assertEquals("", perSqm.text())
+    }
+
+    @Test
+    fun `a rental budget step is today's and asks no financing`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
+
+        val page = render(get("/find-property?step=budget"))
+
+        assertEquals("Budget mensuel", page.selectFirst("[data-price-label]")?.text())
+        assertEquals("FCFA / mois", page.selectFirst("[data-price-suffix]")?.text())
+        assertEquals("Date d'emménagement souhaitée", page.selectFirst("[data-move-in-label]")?.text())
+        assertNull(page.selectFirst("[data-group=financingType]"))
+        assertNotNull(page.selectFirst("[data-price-per-sqm]"))
     }
 
     @Test

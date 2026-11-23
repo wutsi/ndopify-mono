@@ -243,7 +243,7 @@
 
                     <div class="field" data-group="area">
                         <label class="field__label" for="area"><span data-area-label
-                                th:text="${landSale} ? 'Surface du terrain' : (${answers.propertyType == 'LAND'} ? 'Surface du terrain minimale' : 'Surface minimale')">Surface
+                                th:text="${landSale ? 'Surface du terrain' : (answers.propertyType == 'LAND' ? 'Surface du terrain minimale' : 'Surface minimale')}">Surface
                             minimale</span> <span class="field__optional" th:unless="${landSale}">(facultatif)</span></label>
                         <div class="input-unit">
                             <input aria-describedby="area-error" class="input" id="area" inputmode="numeric" name="area"
@@ -342,32 +342,39 @@
             <!--/* Step 5: budget (POST /find-property/budget) */-->
             <form class="form" data-find-form method="post" novalidate th:action="@{/find-property/budget}"
                   th:if="${step == 'budget'}"
-                  th:with="commercial=${#strings.equals(answers.propertyCategory, 'COMMERCIAL')}">
+                  th:with="commercial=${#strings.equals(answers.propertyCategory, 'COMMERCIAL')},
+                           sale=${#strings.equals(answers.listingType, 'SALE')}">
                 <input name="returnTo" th:if="${returning}" type="hidden" value="review">
                 <fieldset class="step" data-step="budget" tabindex="-1">
                     <legend class="visually-hidden"
                             th:text="|Étape ${stepNumber} sur ${stepCount} : votre budget et votre date d'emménagement|">
                         Étape 5 sur 7 : votre budget et votre date d'emménagement</legend>
                     <h3 aria-hidden="true">Votre budget et votre date</h3>
-                    <p data-budget-intro>Le montant maximal que vous êtes prêt à payer, et le moment où vous voulez
-                        vous installer.</p>
+                    <p data-budget-intro th:if="${sale}">Le prix maximal que vous êtes prêt à payer, et quand vous
+                        pensez acheter.</p>
+                    <p data-budget-intro th:unless="${sale}">Le montant maximal que vous êtes prêt à payer, et le moment
+                        où vous voulez vous installer.</p>
                     <div class="field">
-                        <label class="field__label" for="priceAmount">Budget mensuel</label>
+                        <label class="field__label" for="priceAmount"><span data-price-label
+                                th:text="${sale} ? 'Budget total' : 'Budget mensuel'">Budget mensuel</span></label>
                         <div class="input-unit">
                             <input aria-describedby="priceAmount-error price-hint" class="input" id="priceAmount"
                                    inputmode="numeric" name="priceAmount" required
                                    th:attr="aria-invalid=${errors['priceAmount'] != null ? 'true' : null}"
                                    th:value="${answers.priceAmount != null} ? ${#numbers.formatInteger(answers.priceAmount, 1, 'WHITESPACE')} : ''"
                                    type="text">
-                            <span aria-hidden="true" class="input-unit__suffix" th:text="${currency} + ' / mois'">FCFA / mois</span>
+                            <span aria-hidden="true" class="input-unit__suffix" data-price-suffix
+                                  th:text="|${currency}${sale ? '' : ' / mois'}|">FCFA / mois</span>
                         </div>
                         <p th:replace="~{:: error('priceAmount')}"></p>
+                        <!--/* Price per m², derived from the total budget and the surface (land purchase only): display
+                             only, never stored. Hidden until both exist; computed by find-property.js. */-->
+                        <p class="field__counter" data-price-per-sqm hidden></p>
                     </div>
                     <fieldset aria-describedby="movingPeriod-error" class="choices" data-group="movingPeriod"
                               th:attr="aria-invalid=${errors['movingPeriod'] != null ? 'true' : null}">
                         <!--/* A shop or an office is moved into too, but "s'installer" reads better for an activity. */-->
-                        <legend class="choices__legend" data-move-in-label
-                                th:text="${commercial} ? 'Date d\'installation souhaitée' : 'Date d\'emménagement souhaitée'">
+                        <legend class="choices__legend" data-move-in-label th:text="${moveInLabel}">
                             Date d'emménagement souhaitée</legend>
                         <div class="choices__grid">
                             <label class="choice"><input name="movingPeriod" required
@@ -382,11 +389,35 @@
                         </div>
                         <p th:replace="~{:: error('movingPeriod')}"></p>
                     </fieldset>
+                    <!--/* Financing is asked for a purchase only; a rental never shows nor sends it. */-->
+                    <fieldset aria-describedby="financingType-error" class="choices" data-group="financingType"
+                              th:attr="aria-invalid=${errors['financingType'] != null ? 'true' : null}"
+                              th:if="${sale}">
+                        <legend class="choices__legend">Comment financerez-vous votre achat&nbsp;?</legend>
+                        <div class="choices__grid">
+                            <label class="choice"><input name="financingType" required
+                                                         th:checked="${#strings.equals(answers.financingType, 'CASH')}"
+                                                         type="radio" value="CASH"> <th:block th:text="${financingLabels['CASH']}">Comptant</th:block></label>
+                            <label class="choice"><input name="financingType" required
+                                                         th:checked="${#strings.equals(answers.financingType, 'BANK_LOAN')}"
+                                                         type="radio" value="BANK_LOAN"> <th:block th:text="${financingLabels['BANK_LOAN']}">Prêt bancaire</th:block></label>
+                            <label class="choice"><input name="financingType" required
+                                                         th:checked="${#strings.equals(answers.financingType, 'TRANSFER_FROM_ABROAD')}"
+                                                         type="radio" value="TRANSFER_FROM_ABROAD"> <th:block th:text="${financingLabels['TRANSFER_FROM_ABROAD']}">Transfert depuis l'étranger</th:block></label>
+                            <label class="choice"><input name="financingType" required
+                                                         th:checked="${#strings.equals(answers.financingType, 'UNDECIDED')}"
+                                                         type="radio" value="UNDECIDED"> <th:block th:text="${financingLabels['UNDECIDED']}">Pas encore décidé</th:block></label>
+                        </div>
+                        <p th:replace="~{:: error('financingType')}"></p>
+                    </fieldset>
                     <div class="hint" id="price-hint">
                         <svg th:replace="~{fragments/icon :: info}"></svg>
                         <div>
-                            <p>Votre agent ne vous propose que des biens dans ce budget. La caution et les mois
-                                d'avance se discutent avec le bailleur, lors de la visite.</p>
+                            <p data-price-hint th:if="${sale}">Votre agent ne vous propose que des biens dans ce budget.
+                                Le prix se négocie ensuite avec le vendeur.</p>
+                            <p data-price-hint th:unless="${sale}">Votre agent ne vous propose que des biens dans ce
+                                budget. La caution et les mois d'avance se discutent avec le bailleur, lors de la
+                                visite.</p>
                         </div>
                     </div>
                     <div class="form__actions">

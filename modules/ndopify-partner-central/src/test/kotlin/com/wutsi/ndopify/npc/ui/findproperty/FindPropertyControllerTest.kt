@@ -16,6 +16,7 @@ import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateResponse
+import com.wutsi.ndopify.mandate.dto.FinancingType
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
@@ -674,6 +675,68 @@ class FindPropertyControllerTest {
         assertEquals("redirect:/find-property?step=contact", result.modelAndView?.viewName)
         assertEquals(150_000L, pending()?.priceAmount)
         assertEquals(MovingPeriod.WITHIN_3_MONTHS, pending()?.movingPeriod)
+    }
+
+    @Test
+    fun `a purchase requires its financing`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(listingType = ListingType.SALE, priceAmount = null, movingPeriod = null, financingType = null),
+        )
+
+        val result = mvc.perform(
+            post("/find-property/budget").session(session)
+                .param("priceAmount", "10 000 000")
+                .param("movingPeriod", "WITHIN_3_MONTHS"),
+        ).andReturn()
+
+        assertEquals("budget", model(result)["step"])
+        assertEquals("Indiquez comment vous financerez votre achat.", errors(result)["financingType"])
+        assertNull(pending()?.priceAmount)
+    }
+
+    @Test
+    fun `a purchase at the floor is accepted`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(listingType = ListingType.SALE, priceAmount = null, movingPeriod = null, financingType = null),
+        )
+
+        val result = mvc.perform(
+            post("/find-property/budget").session(session)
+                .param("priceAmount", "1 000 000")
+                .param("movingPeriod", "WITHIN_3_MONTHS")
+                .param("financingType", "CASH"),
+        ).andReturn()
+
+        assertEquals("redirect:/find-property?step=contact", result.modelAndView?.viewName)
+        assertEquals(1_000_000L, pending()?.priceAmount)
+        assertEquals(FinancingType.CASH, pending()?.financingType)
+    }
+
+    @Test
+    fun `a rental refuses a rent below the floor and needs no financing`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(listingType = ListingType.RENTAL, priceAmount = null, financingType = null),
+        )
+
+        val low = mvc.perform(
+            post("/find-property/budget").session(session)
+                .param("priceAmount", "4 000")
+                .param("movingPeriod", "WITHIN_1_MONTH"),
+        ).andReturn()
+        assertEquals("Indiquez un loyer d'au moins 5\u00a0000\u00a0FCFA par mois.", errors(low)["priceAmount"])
+
+        val result = mvc.perform(
+            post("/find-property/budget").session(session)
+                .param("priceAmount", "150 000")
+                .param("movingPeriod", "WITHIN_1_MONTH"),
+        ).andReturn()
+
+        assertEquals("redirect:/find-property?step=contact", result.modelAndView?.viewName)
+        assertEquals(150_000L, pending()?.priceAmount)
+        assertNull(pending()?.financingType)
     }
 
     @Test

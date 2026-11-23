@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.findproperty
 
+import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyController.Companion.STEPS
@@ -209,10 +210,12 @@ class FindPropertyController(
         val answers = pending.copy(
             priceAmount = FindPropertyRules.parseAmount(form.priceAmount),
             movingPeriod = form.movingPeriod,
+            financingType = form.financingType,
         )
         val errors = errors(
-            "priceAmount" to FindPropertyRules.priceAmount(answers.priceAmount, formatter(), null),
-            "movingPeriod" to FindPropertyRules.movingPeriod(answers.movingPeriod, null),
+            "priceAmount" to FindPropertyRules.priceAmount(answers.priceAmount, formatter(), pending.listingType),
+            "movingPeriod" to FindPropertyRules.movingPeriod(answers.movingPeriod, pending.listingType),
+            "financingType" to FindPropertyRules.financingType(answers.financingType, pending.listingType),
         )
         return save(STEP_BUDGET, answers, errors, returnTo, session, model)
     }
@@ -342,6 +345,15 @@ class FindPropertyController(
         if (step == STEP_BUDGET) {
             model.addAttribute("currency", formatter().currency())
             model.addAttribute("movingPeriodLabels", MandateLabels.byName(MandateLabels.MOVE_IN_LABELS))
+            model.addAttribute("financingLabels", MandateLabels.byName(MandateLabels.FINANCING_LABELS))
+            model.addAttribute(
+                "moveInLabel",
+                when {
+                    answers.isSale() -> "Quand souhaitez-vous acheter\u00a0?"
+                    answers.propertyCategory == PropertyCategory.COMMERCIAL -> "Date d'installation souhaitée"
+                    else -> "Date d'emménagement souhaitée"
+                },
+            )
         }
         if (step == STEP_AMENITIES) {
             model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS)
