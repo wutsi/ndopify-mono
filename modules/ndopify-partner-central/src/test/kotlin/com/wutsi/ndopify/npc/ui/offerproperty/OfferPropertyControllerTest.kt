@@ -9,10 +9,13 @@ import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateResponse
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
@@ -67,6 +70,19 @@ class OfferPropertyControllerTest {
     )
 
     private val complete = PendingListingTest.COMPLETE
+
+    private val sale = complete.copy(
+        listingType = ListingType.SALE,
+        propertyCategory = PropertyCategory.RESIDENTIAL,
+        propertyType = "LAND",
+        area = 800,
+        priceAmount = 45_000_000L,
+        advanceRent = null,
+        securityDeposit = null,
+        rooms = null,
+        furnitureType = null,
+        parkings = null,
+    )
 
     @BeforeEach
     fun setUp() {
@@ -182,27 +198,85 @@ class OfferPropertyControllerTest {
     @Test
     fun propertySavesAndGoesToAddress() {
         val result = mvc.perform(
-            post("/offer-property/property").session(session).param("propertyCategory", "RESIDENTIAL"),
+            post("/offer-property/property").session(session)
+                .param("listingType", "RENTAL").param("propertyCategory", "RESIDENTIAL"),
         ).andReturn()
 
         assertEquals("redirect:/offer-property?step=address", result.modelAndView?.viewName)
+        assertEquals(ListingType.RENTAL, pending()?.listingType)
         assertEquals(PropertyCategory.RESIDENTIAL, pending()?.propertyCategory)
     }
 
     @Test
     fun propertyWithoutCategory() {
-        val result = mvc.perform(post("/offer-property/property").session(session)).andReturn()
+        val result = mvc.perform(
+            post("/offer-property/property").session(session).param("listingType", "RENTAL"),
+        ).andReturn()
 
         assertEquals("property", model(result)["step"])
         assertEquals("Indiquez si le bien est pour y habiter ou pour une activité.", errors(result)["propertyCategory"])
         assertNull(pending())
     }
 
+    @Test
+    fun propertyWithoutProject() {
+        val result = mvc.perform(
+            post("/offer-property/property").session(session).param("propertyCategory", "RESIDENTIAL"),
+        ).andReturn()
+
+        assertEquals("property", model(result)["step"])
+        assertEquals(
+            "Indiquez si vous souhaitez mettre votre bien en location ou le vendre.",
+            errors(result)["listingType"],
+        )
+        assertNull(pending())
+    }
+
+    @Test
+    fun `the type parameter preselects the project`() {
+        val result = mvc.perform(get("/offer-property?type=SALE").session(session)).andReturn()
+
+        assertEquals(ListingType.SALE, (model(result)["answers"] as PendingListing).listingType)
+        assertEquals(true, model(result)["sale"])
+    }
+
+    @Test
+    fun `the type parameter never overwrites a saved project`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, PendingListing(listingType = ListingType.RENTAL))
+
+        val result = mvc.perform(get("/offer-property?type=SALE").session(session)).andReturn()
+
+        assertEquals(ListingType.RENTAL, (model(result)["answers"] as PendingListing).listingType)
+    }
+
+    @Test
+    fun `an unknown type parameter is ignored`() {
+        val result = mvc.perform(get("/offer-property?type=ANY").session(session)).andReturn()
+
+        assertNull((model(result)["answers"] as PendingListing).listingType)
+    }
+
+    @Test
+    fun `the exit link follows the project`() {
+        doReturn(TENANT.copy(publicPortalUrl = "https://www.ndopify.com/")).whenever(tenantContext).getTenant()
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, complete.copy(listingType = ListingType.SALE))
+
+        assertEquals(
+            "https://www.ndopify.com/owner/sell",
+            model(mvc.perform(get("/offer-property?step=features").session(session)).andReturn())["exitUrl"],
+        )
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, complete)
+        assertEquals(
+            "https://www.ndopify.com/owner",
+            model(mvc.perform(get("/offer-property?step=features").session(session)).andReturn())["exitUrl"],
+        )
+    }
+
     // POST /offer-property/address
 
     @Test
     fun addressSaves() {
-        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, PendingListing(propertyCategory = PropertyCategory.RESIDENTIAL))
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, PendingListing(listingType = ListingType.RENTAL, propertyCategory = PropertyCategory.RESIDENTIAL))
 
         val result = mvc.perform(
             post("/offer-property/address").session(session)
@@ -215,7 +289,7 @@ class OfferPropertyControllerTest {
 
     @Test
     fun addressRejectsANeighborhoodOfAnotherCity() {
-        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, PendingListing(propertyCategory = PropertyCategory.RESIDENTIAL))
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, PendingListing(listingType = ListingType.RENTAL, propertyCategory = PropertyCategory.RESIDENTIAL))
 
         val result = mvc.perform(
             post("/offer-property/address").session(session)
@@ -229,7 +303,7 @@ class OfferPropertyControllerTest {
 
     @Test
     fun addressRejectsACityOfAnotherCountry() {
-        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, PendingListing(propertyCategory = PropertyCategory.RESIDENTIAL))
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, PendingListing(listingType = ListingType.RENTAL, propertyCategory = PropertyCategory.RESIDENTIAL))
 
         val result = mvc.perform(
             post("/offer-property/address").session(session)
@@ -312,6 +386,52 @@ class OfferPropertyControllerTest {
         val result = mvc.perform(terms(price = "1 000")).andReturn()
 
         assertEquals("Indiquez un loyer d'au moins ${FORMATTER.money(5000)} par mois.", errors(result)["priceAmount"])
+    }
+
+    @Test
+    fun `a sale refuses a price below the floor`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale.copy(priceAmount = null))
+
+        val result = mvc.perform(
+            post("/offer-property/terms").session(session)
+                .param("priceAmount", "900 000").param("availableFrom", "2026-10-31"),
+        ).andReturn()
+
+        assertEquals("terms", model(result)["step"])
+        assertEquals(
+            "Indiquez un prix d'au moins ${FORMATTER.money(1_000_000)}.",
+            errors(result)["priceAmount"],
+        )
+        assertNull(pending()?.priceAmount)
+    }
+
+    @Test
+    fun `a sale needs no advance nor deposit`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale.copy(priceAmount = null))
+
+        val result = mvc.perform(
+            post("/offer-property/terms").session(session)
+                .param("priceAmount", "45 000 000").param("advanceRent", "2").param("securityDeposit", "2")
+                .param("availableFrom", "2026-10-31"),
+        ).andReturn()
+
+        assertEquals("redirect:/offer-property?step=features", result.modelAndView?.viewName)
+        assertEquals(45_000_000L, pending()?.priceAmount)
+        assertNull(pending()?.advanceRent)
+        assertNull(pending()?.securityDeposit)
+    }
+
+    @Test
+    fun `a rental keeps its advance, deposit and floor`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, complete.copy(priceAmount = null))
+
+        val below = mvc.perform(terms(price = "4 000")).andReturn()
+        assertEquals("Indiquez un loyer d'au moins ${FORMATTER.money(5000)} par mois.", errors(below)["priceAmount"])
+
+        val saved = mvc.perform(terms()).andReturn()
+        assertEquals("redirect:/offer-property?step=features", saved.modelAndView?.viewName)
+        assertEquals(3, pending()?.advanceRent)
+        assertEquals(2, pending()?.securityDeposit)
     }
 
     // POST /offer-property/features
@@ -405,6 +525,98 @@ class OfferPropertyControllerTest {
         val saved = mvc.perform(features("propertyType" to "OFFICE", "area" to "1 200")).andReturn()
         assertEquals("redirect:/offer-property?step=amenities", saved.modelAndView?.viewName)
         assertEquals(1200, pending()?.area)
+    }
+
+    @Test
+    fun `a land sale requires its surface`() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            sale.copy(propertyType = null, area = null),
+        )
+
+        val result = mvc.perform(features("propertyType" to "LAND")).andReturn()
+
+        assertEquals("features", model(result)["step"])
+        assertEquals("Indiquez la surface du terrain.", errors(result)["area"])
+        assertNull(pending()?.propertyType)
+    }
+
+    @Test
+    fun `a land sale keeps any number of documents`() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            sale.copy(propertyType = null, area = null),
+        )
+
+        val result = mvc.perform(
+            features(
+                "propertyType" to "LAND",
+                "area" to "800",
+                "ownershipDocuments" to "LAND_TITLE",
+                "ownershipDocuments" to "SURVEY_PLAN",
+            ),
+        ).andReturn()
+
+        assertEquals("redirect:/offer-property?step=amenities", result.modelAndView?.viewName)
+        assertEquals(
+            listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+            pending()?.ownershipDocuments,
+        )
+    }
+
+    @Test
+    fun `a villa sale drops the documents`() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            sale.copy(propertyType = null, furnitureType = null),
+        )
+
+        mvc.perform(features("propertyType" to "HOUSE", "ownershipDocuments" to "LAND_TITLE", "rooms" to "3", "hasParking" to "NO")).andReturn()
+
+        assertEquals(emptyList(), pending()?.ownershipDocuments)
+    }
+
+    @Test
+    fun `a land rental drops the documents`() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            complete.copy(
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = null, area = null, rooms = null, furnitureType = null, parkings = null,
+            ),
+        )
+
+        val result = mvc.perform(
+            features("propertyType" to "LAND", "area" to "800", "ownershipDocuments" to "LAND_TITLE"),
+        ).andReturn()
+
+        assertEquals("redirect:/offer-property?step=amenities", result.modelAndView?.viewName)
+        assertEquals(emptyList(), pending()?.ownershipDocuments)
+        assertEquals(800, pending()?.area)
+    }
+
+    @Test
+    fun `a sale stores no rooms nor furniture`() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            sale.copy(propertyType = null, furnitureType = null, rooms = null, parkings = null, area = null),
+        )
+
+        mvc.perform(
+            features(
+                "propertyType" to "LAND",
+                "area" to "800",
+                "rooms" to "3",
+                "furnitureType" to "UNFURNISHED",
+                "hasParking" to "NO",
+            ),
+        ).andReturn()
+
+        assertEquals("LAND", pending()?.propertyType)
+        assertNull(pending()?.rooms)
+        assertNull(pending()?.furnitureType)
+        assertNull(pending()?.parkings)
+        assertEquals(800, pending()?.area)
     }
 
     // POST /offer-property/amenities
@@ -504,6 +716,40 @@ class OfferPropertyControllerTest {
         )
     }
 
+    @Test
+    fun `a land sale review words the sale and its documents`() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            sale.copy(ownershipDocuments = emptyList()),
+        )
+
+        val result = mvc.perform(get("/offer-property?step=review").session(session)).andReturn()
+
+        assertEquals("Vente, usage résidentiel", model(result)["categoryLabel"])
+        assertEquals(
+            listOf(
+                FORMATTER.money(45_000_000),
+                "Disponible dès le " + FORMATTER.date(TODAY.plusDays(10)),
+            ),
+            model(result)["termsLines"],
+        )
+        assertEquals("Aucun document déclaré", model(result)["ownershipDocumentsLabel"])
+    }
+
+    @Test
+    fun `a villa sale review has no ownership documents row`() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            sale.copy(propertyType = "HOUSE", area = null, rooms = "3", parkings = "0"),
+        )
+
+        val result = mvc.perform(get("/offer-property?step=review").session(session)).andReturn()
+
+        assertEquals("review", model(result)["step"])
+        assertNull(model(result)["ownershipDocumentsLabel"])
+        assertEquals("Vente, usage résidentiel", model(result)["categoryLabel"])
+    }
+
     // POST /offer-property/review
 
     @Test
@@ -528,6 +774,28 @@ class OfferPropertyControllerTest {
         assertEquals(LoginController.maskEmail("ray@gmail.com"), model(confirmation)["maskedEmail"])
         assertEquals("+237670000001", model(confirmation)["whatsappNumber"])
         assertEquals("le matin", model(confirmation)["contactPeriodLabel"])
+    }
+
+    @Test
+    fun `submit a sale - its project and its exit link`() {
+        doReturn(TENANT.copy(publicPortalUrl = "https://www.ndopify.com/")).whenever(tenantContext).getTenant()
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            sale.copy(ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE)),
+        )
+        doReturn(CreateMandateResponse(mandateId = 42)).whenever(mandateClient).create(any())
+
+        val result = mvc.perform(post("/offer-property/review").session(session)).andReturn()
+
+        assertEquals("redirect:/offer-property?step=confirmation", result.modelAndView?.viewName)
+        val request = argumentCaptor<CreateMandateRequest>()
+        verify(mandateClient).create(request.capture())
+        assertEquals(ListingType.SALE, request.firstValue.listingType)
+        assertEquals(listOf(TitleDocumentType.LAND_TITLE), request.firstValue.ownershipDocuments)
+
+        val confirmation = mvc.perform(get("/offer-property?step=confirmation").session(session)).andReturn()
+        assertEquals(ListingType.SALE, model(confirmation)["listingType"])
+        assertEquals("https://www.ndopify.com/owner/sell", model(confirmation)["exitUrl"])
     }
 
     @Test
