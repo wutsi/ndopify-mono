@@ -213,6 +213,8 @@ class OfferPropertyTemplateTest {
 
     @Test
     fun `starting again shows an empty property step`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, complete)
+
         val page = render(get("/offer-property"))
 
         assertEquals("Étape 1 sur 7", page.selectFirst("[data-progress-label]")?.text())
