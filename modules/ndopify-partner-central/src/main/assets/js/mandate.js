@@ -276,19 +276,32 @@
             return $('[data-group="' + name + '"]', form);
         }
 
+        // #275: a sale offers a plot of land under both uses (data-categories); a rental offers none, except the one
+        // a stored mandate already answered (data-rental-categories), kept in its saved category while it is still
+        // checked, and no longer offered once another type is picked.
+        var sale = form.getAttribute("data-sale") === "true";
+        var savedLand = !sale && checked("propertyType") === "LAND";
+        var savedCategory = checked("propertyCategory");
+
         // The types of the category; rooms for a home, furniture and parking as FindPropertyRules asks them.
         function syncProperty() {
             var category = checked("propertyCategory");
+            var attribute = sale ? "data-sale-categories" : "data-rental-categories";
             $all('[name="propertyType"]', form).forEach(function (input) {
                 var label = input.closest("label");
-                var fits = !category || label.getAttribute("data-categories").split(" ").indexOf(category) !== -1;
+                var categories = label.hasAttribute(attribute)
+                    ? label.getAttribute(attribute) : label.getAttribute("data-categories");
+                var keep = savedLand && input.value === "LAND" && input.checked && category === savedCategory;
+                var fits = categories.split(" ").indexOf(category) !== -1 || keep;
                 label.hidden = !fits;
                 if (!fits) input.checked = false;
             });
             var type = checked("propertyType");
             if (type === "ANY") type = null;
             group("rooms").hidden = category !== "RESIDENTIAL" || WITHOUT_ROOMS.indexOf(type) !== -1;
-            group("furnitureType").hidden = WITHOUT_FURNITURE.indexOf(type) !== -1;
+            // A sale's edit page has no furniture question at all (th:unless="${sale}").
+            var furniture = group("furnitureType");
+            if (furniture) furniture.hidden = WITHOUT_FURNITURE.indexOf(type) !== -1;
             group("parkings").hidden = WITHOUT_PARKINGS.indexOf(type) !== -1;
         }
 
