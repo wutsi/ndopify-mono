@@ -1619,6 +1619,62 @@
                 movingPeriod: "WITHIN_3_MONTHS",
                 ownershipDocuments: ["LAND_TITLE", "SURVEY_PLAN"]
             }
+        },
+        // v2 (#258): the buyers of the villa of mandate 301 (SEARCH · SALE, signed): closing the seller's mandate on
+        // that deal closes the buyer's search too. 303 is also matched on another agent's villa (see MATCHES): closing
+        // it there leaves that listing and its mandate alone.
+        303: {
+            party: "client",
+            listingType: "SALE",
+            createdAt: -13,
+            initial: { status: "APPROVED", acceptedAt: -13, requestedAt: -11, approvedAt: -10 },
+            contact: {
+                firstName: "Mireille",
+                lastName: "Tchoumi",
+                whatsapp: "+237690778899",
+                email: "m.tchoumi@example.com",
+                period: "Après-midi"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonapriso"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "VILLA",
+                rooms: "4",
+                parkings: "2",
+                area: 350,
+                amenities: ["dedicatedWaterMeter", "waterTank", "generatorSet", "roadPaved", "securedFenced",
+                    "securityGuard"],
+                price: 240000000,
+                movingPeriod: "WITHIN_1_MONTH",
+                comments: "Achat comptant, acte de vente chez le notaire de Bonapriso."
+            }
+        },
+        304: {
+            party: "client",
+            listingType: "SALE",
+            createdAt: -8,
+            initial: { status: "APPROVED", acceptedAt: -8, requestedAt: -7, approvedAt: -5 },
+            contact: {
+                firstName: "Patrice",
+                lastName: "Owona",
+                whatsapp: "+237677445566",
+                email: "p.owona@example.com",
+                period: "Matin"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonapriso"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "VILLA",
+                rooms: "5",
+                parkings: "3+",
+                area: 400,
+                amenities: ["waterWell", "dedicatedElectricityMeter", "generatorSet", "roadPaved", "securedFenced"],
+                price: 260000000,
+                movingPeriod: "WITHIN_1_MONTH",
+                comments: "Prêt bancaire déjà accordé."
+            }
         }
     };
 
@@ -2083,6 +2139,35 @@
                     [false, "4 chambres, une de plus que demandé"], [false, "3 équipements sur 5. Manque : Citerne, Route bitumée"],
                     [true, "Disponible avant la date d'emménagement"], [false, "Meublée : le client la veut vide"]]
             }
+        ],
+        // v2 (#258): the buyers of the seller's villa (mandates 303 and 304): the villa of mandate 301 (its published
+        // listing 601, see cardListingOf), and for 303 another agent's villa: closing the search on that one leaves it
+        // and its mandate with that agent, the co-brokerage rule of a sale as of a rental.
+        303: [
+            {
+                id: "9301", listingId: "601", propertyType: "VILLA", rooms: 5, neighbourhood: "Bonapriso",
+                price: 250000000, availableIn: 0, score: 0.91,
+                initial: { status: "PROPOSED", sentAt: -6, answer: "ACCEPTED", answeredAt: -4 },
+                fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"],
+                    [true, "5 chambres, une de plus que souhaité"], [true, "Disponible dès maintenant"]]
+            },
+            {
+                id: "9302", listingId: "5021", propertyType: "VILLA", rooms: 4, neighbourhood: "Bonapriso",
+                price: 230000000, availableIn: 30, score: 0.84, coBrokerage: true,
+                agent: { id: "1001", name: "Clarisse Mbarga", whatsappNumber: "+237699123456" },
+                initial: { status: "PROPOSED", sentAt: -4, answer: "ACCEPTED", answeredAt: -2 },
+                fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"],
+                    [true, "4 chambres, comme souhaité"], [false, "Disponible dans un mois"]]
+            }
+        ],
+        304: [
+            {
+                id: "9303", listingId: "601", propertyType: "VILLA", rooms: 5, neighbourhood: "Bonapriso",
+                price: 250000000, availableIn: 0, score: 0.87,
+                initial: { status: "PROPOSED", sentAt: -3, answer: "ACCEPTED", answeredAt: -1 },
+                fit: [[true, "Dans le secteur recherché"], [false, "4 % au-dessus du budget"],
+                    [true, "5 chambres, comme souhaité"], [true, "Disponible dès maintenant"]]
+            }
         ]
     };
 
@@ -2332,7 +2417,8 @@
 
     function matchTitle(match) {
         var type = PROPERTY_TYPE_LABELS[match.propertyType];
-        return type + " · " + match.rooms + (match.rooms > 1 ? " chambres" : " chambre");
+        // A plot of land has no rooms (a sale's match)
+        return type + (match.rooms ? " · " + match.rooms + (match.rooms > 1 ? " chambres" : " chambre") : "");
     }
 
     function matchAvailability(match) {
@@ -2358,6 +2444,15 @@
                 sentAt: -5 },
             { mandateId: "209", client: "Rodrigue Essomba", sentAt: -6, answer: "REJECTED", answeredAt: -5,
                 reason: "PRICE" }
+        ],
+        // v2 (#258): the sale of the seller's villa (mandate 301, its listing published by ?listing=published): the
+        // two buyers whose search closes with it are the closing wizard's candidates; another agent's buyer is only
+        // shown here, never proposed as a counterpart.
+        301: [
+            { mandateId: "303", client: "Mireille Tchoumi", sentAt: -6, answer: "ACCEPTED", answeredAt: -4 },
+            { mandateId: "304", client: "Patrice Owona", sentAt: -3, answer: "ACCEPTED", answeredAt: -1 },
+            { otherAgent: true, agent: { id: "1002", name: "Paul Etame", whatsappNumber: "+237699654321" },
+                sentAt: -5, answer: "ACCEPTED", answeredAt: -2 }
         ]
     };
 
@@ -2558,12 +2653,42 @@
         ].join(" · ");
     }
 
-    // PROTOTYPE: ?listing=published shows 203 with a published listing, without going through listing.html.
+    // PROTOTYPE: ?listing=published shows 203 with a published listing, without going through listing.html. A sale's
+    // seller sample (301) gets the same shortcut with a numbered listing, 601, so that the closing flow can record the
+    // deal on it and take it off the market as SOLD.
+    var SIMULATED_SALE_LISTING = { mandateId: "301", id: "601", publishedAt: -5 };
+
+    function simulatedPublishedSaleListing(mandateId) {
+        if (String(mandateId) !== SIMULATED_SALE_LISTING.mandateId) return null;
+        return { id: SIMULATED_SALE_LISTING.id, mandateId: SIMULATED_SALE_LISTING.mandateId,
+            status: "PUBLISHED", publishedAt: Date.now() + SIMULATED_SALE_LISTING.publishedAt * DAY_MS };
+    }
+
     function cardListingOf(mandateId) {
         var listing = listingOf(mandateId);
-        if (listing || String(mandateId) !== "203" ||
-            new URLSearchParams(window.location.search).get("listing") !== "published") return listing;
-        return { id: "501", mandateId: "203", status: "PUBLISHED", publishedAt: Date.now() - 5 * DAY_MS };
+        if (listing) return listing;
+        if (new URLSearchParams(window.location.search).get("listing") !== "published") return null;
+        if (String(mandateId) === "203") {
+            return { id: "501", mandateId: "203", status: "PUBLISHED", publishedAt: Date.now() - 5 * DAY_MS };
+        }
+        return simulatedPublishedSaleListing(mandateId);
+    }
+
+    // The simulated listing, written to the session when the closing records the deal on it: its sections were checked
+    // before its publication, so listing.html?id=601 then says it's sold.
+    function simulatedSaleListingSaved(mandateId) {
+        if (!simulatedPublishedSaleListing(mandateId)) return null;
+        var listing = listingOf(mandateId) || createListing(mandateId, SIMULATED_SALE_LISTING.id);
+        listing.status = "PUBLISHED";
+        listing.publishedAt = Date.now() + SIMULATED_SALE_LISTING.publishedAt * DAY_MS;
+        LISTING_SECTIONS.forEach(function (section) {
+            listing.checked[section.key] = listing.publishedAt;
+        });
+        listing.photos = [1, 2, 3, 4, 5].map(function (n) {
+            return { id: n, src: "assets/images/listing-" + n + ".jpg", status: "VERIFIED" };
+        });
+        saveListing(listing);
+        return listing;
     }
 
     function initMandates() {
@@ -2999,17 +3124,20 @@
                 var days = Math.max(0, Math.floor((state.closedAt - state.approvedAt) / DAY_MS));
                 fill("[data-final-price]", formatFullPriceOf(id, state.finalPrice));
                 fill("[data-age]", days + (days > 1 ? " jours" : " jour"));
-                // What the closing recorded: the client (a landlord's listing) and the withdrawn listing.
+                // What the closing recorded: the counterpart (a buyer, for a sale) and the withdrawn listing.
                 var deal = $("[data-closed-deal]");
                 var parts = [];
                 if (state.closedClientName) {
-                    parts.push("Client : " + state.closedClientName +
+                    parts.push((isSale(id) ? "Acheteur : " : "Client : ") + state.closedClientName +
                         (state.closedClientMandate ? " (sa recherche est fermée)" : ""));
                 }
+                // v2 (#258): a sale closed without a counterpart records the outside deal.
+                if (state.closedOutside) parts.push("Vendu à un autre acheteur");
                 if (state.closedListingId) {
                     // The landlord's page says it was taken off the market; the client's, which property it was
                     parts.push(mandate.party === "bailleur"
-                        ? "Annonce n° " + state.closedListingId + " retirée du marché"
+                        ? "Annonce n° " + state.closedListingId +
+                            (isSale(id) ? " vendue" : " retirée du marché")
                         : "Bien : annonce n° " + state.closedListingId);
                 }
                 if (state.closedByMandate) {
@@ -4233,8 +4361,8 @@
     }
 
     // PROTOTYPE: simulates POST /v1/listings { mandateId }. "owner" keeps the landlord's answers, so that each section
-    // shows what the agent changed.
-    function createListing(mandateId) {
+    // shows what the agent changed. [id] is the sample's fixed number (a simulated published listing).
+    function createListing(mandateId, id) {
         var f = fieldsOf(mandateId);
         var fields = {
             city: f.city,
@@ -4269,7 +4397,7 @@
         };
         var ids = Object.keys(listings()).map(Number);
         var listing = {
-            id: ids.length ? Math.max.apply(null, ids) + 1 : 501,
+            id: id || (ids.length ? Math.max.apply(null, ids) + 1 : 501),
             mandateId: String(mandateId),
             status: "DRAFT",
             createdAt: Date.now(),
@@ -5135,7 +5263,8 @@
     }
 
     // One listing, as a choice: "Appartement · 3 chambres, Bonapriso — annonce n° 3012 / 240K FCFA / mois · Intéressé…".
-    function closeListingOption(m) {
+    // A sale's search reads the sale price, no "/ mois"; another agent's listing names that agent.
+    function closeListingOption(m, mandateId) {
         var label = document.createElement("label");
         label.className = "choice";
         var input = document.createElement("input");
@@ -5148,7 +5277,9 @@
         text.textContent = matchTitle(m) + ", " + m.neighbourhood + " — annonce n° " + m.listingId;
         var meta = document.createElement("span");
         meta.className = "close-client__meta";
-        meta.textContent = formatRent(m.price) + " · " + interestLabel(m);
+        meta.textContent = formatPriceOf(mandateId, m.price) +
+            (isSale(mandateId) && m.coBrokerage && m.agent ? " · chez " + m.agent.name : "") + " · " +
+            interestLabel(m);
         text.appendChild(meta);
         label.appendChild(text);
         return label;
@@ -5160,10 +5291,12 @@
             ? client.mandateId : null;
     }
 
-    // The mandate of the listing, when the prototype models it: only 501 (mandate 203) has one; the other fixture
-    // listings of the matches don't. Served, every listing has its mandate: close it only when it's the agent's.
+    // The mandate of the listing, when the prototype models it: only 501 (mandate 203) and the sale sample's published
+    // listing 601 (mandate 301) have one; the fixtures' other listings don't. Served, every listing has its mandate:
+    // close it only when it's the agent's.
     function listingMandateOf(listingId) {
         if (String(listingId) === "501") return "203";
+        if (String(listingId) === SIMULATED_SALE_LISTING.id) return SIMULATED_SALE_LISTING.mandateId;
         var all = listings();
         var key = Object.keys(all).filter(function (k) {
             return String(all[k].id) === String(listingId);
@@ -5193,14 +5326,22 @@
     function initMandateClose() {
         var query = new URLSearchParams(window.location.search);
         var id = query.get("id");
+        // The prototype's ?listing=published (a published listing without going through listing.html) goes along.
+        var backParams = new URLSearchParams(window.location.search);
+        backParams.delete("step");
+        backParams.delete("counterpart");
+        backParams.delete("counterparts");
         $all("[data-back-link]").forEach(function (a) {
-            a.href = "../mandate.html?id=" + encodeURIComponent(id || "");
+            a.href = "../mandate.html?" + backParams.toString();
         });
 
         if (!ownsMandate(id)) {
             $("[data-close-locked]").hidden = false;
             return;
         }
+        // v2: a sale closes on the sale price (no periodicity), with the buyer / seller words.
+        var sale = isSale(id);
+        applyDealWording(sale, document);
         var initial = stateOf(id);
         if (initial.status !== "APPROVED") {
             $("[data-close-locked-title]").textContent = initial.status === "CLOSED" ||
@@ -5208,7 +5349,10 @@
                 ? "Ce mandat n'est plus actif" : "Ce mandat ne peut pas encore être fermé";
             $("[data-close-locked-text]").textContent = initial.status === "CLOSED" ||
                 initial.status === "CANCELLED"
-                ? "Il ne figure plus dans vos mandats en cours." : "Un mandat se ferme une fois approuvé par le client.";
+                ? "Il ne figure plus dans vos mandats en cours."
+                : sale ? "Ce mandat se ferme une fois le contrat signé par " +
+                    partyWords(MANDATES[id]).the + "."
+                    : "Un mandat se ferme une fois approuvé par le client.";
             $("[data-close-locked]").hidden = false;
             return;
         }
@@ -5224,11 +5368,8 @@
         var price = $("#finalPrice", form);
         var priceError = $("#finalPrice-error", form);
 
-        // Step 1 is the deal's other side: the client of a listing, the listing of a search.
+        // Step 1 is the deal's other side: the client / buyer of a listing, the listing of a search.
         var counterpartStep = owner ? "client" : "listing";
-        // v2: a sale closes on the sale price (no periodicity), with the buyer / seller words.
-        var sale = isSale(id);
-        applyDealWording(sale, document);
         $('[data-close-step="counterpart"]', form).setAttribute("data-close-step", counterpartStep);
         $("[data-counterpart-legend]", form).textContent = owner
             ? (sale ? "À quel acheteur le bien a-t-il été vendu ?" : "Avec quel client le bien a-t-il été loué ?")
@@ -5243,7 +5384,6 @@
         });
 
         var candidates = owner ? closeClients(id) : closeListings(id);
-        var steps = (candidates.length ? [counterpartStep] : []).concat(["price", "confirm"]);
         var draft = closeDraft(id);
         // The landlord's listing, only for a listing mandate (a search has none of its own).
         var listing = owner ? cardListingOf(id) : null;
@@ -5255,6 +5395,37 @@
         document.title = "Fermer le mandat " + id + " — Ndopify Partner Central";
         $("[data-close-title]").textContent = titleOf(id);
         $("[data-close-number]").textContent = id;
+
+        // PROTOTYPE: the counterpart step's two failures. ?counterparts=unavailable, the list it needs couldn't be
+        // read (ndopify-server failing): nothing closes. ?counterpart=gone, the answer kept from the step is no longer
+        // in the list (its search closed meanwhile, another tab): the served wizard starts again on the step.
+        if (query.get("counterparts") === "unavailable") {
+            $("[data-close-unavailable-text]").textContent = owner
+                ? (sale ? "Les acheteurs du bien n'ont pas pu être lus." : "Les clients du bien n'ont pas pu être lus.")
+                : "Les biens de la recherche n'ont pas pu être lus.";
+            var retry = new URLSearchParams(window.location.search);
+            retry.delete("counterparts");
+            $("[data-close-retry]").href = "close.html?" + retry.toString();
+            $("[data-close-unavailable]").hidden = false;
+            return;
+        }
+        var keptCounterpart = owner ? draft.client : draft.listing;
+        var gone = query.get("counterpart") === "gone" ||
+            (keptCounterpart !== undefined && keptCounterpart !== "none" && candidates.length > 0 &&
+                !counterpartChosen());
+        if (gone) {
+            draft = {};
+            saveCloseDraft(id, draft);
+            $("[data-counterpart-conflict-title]").textContent = owner
+                ? (sale ? "L'acheteur choisi n'est plus disponible." : "Le client choisi n'est plus disponible.")
+                : "Le bien choisi n'est plus disponible.";
+            $("[data-counterpart-conflict-text]").textContent =
+                "Choisissez-en un autre : ce mandat n'a pas encore été fermé.";
+            $("[data-counterpart-conflict]").hidden = false;
+        }
+
+        // The step is skipped when there is no candidate at all (nothing to pick from).
+        var steps = (candidates.length ? [counterpartStep] : []).concat(["price", "confirm"]);
 
         function chosenClient() {
             if (draft.client === undefined || draft.client === "none") return null;
@@ -5310,7 +5481,7 @@
         function renderCounterparts() {
             counterpartBox.textContent = "";
             candidates.forEach(function (m, index) {
-                var label = owner ? closeClientOption(m, index) : closeListingOption(m);
+                var label = owner ? closeClientOption(m, index) : closeListingOption(m, id);
                 var input = $("input", label);
                 input.checked = owner ? draft.client === input.value : draft.listing === input.value;
                 counterpartBox.appendChild(label);
@@ -5337,21 +5508,30 @@
                 : (match ? matchTitle(match) + ", " + match.neighbourhood + " · annonce n° " + match.listingId
                     : "Un bien hors de vos annonces");
             $("[data-recap-client]", form).textContent = owner
-                ? (client ? client.client + (searchId ? " — sa recherche sera aussi fermée" : "")
+                ? (client ? client.client + (searchId
+                    ? (sale ? " — son mandat sera aussi fermé" : " — sa recherche sera aussi fermée") : "")
                     : sale ? "Aucun acheteur de vos recherches" : "Aucun client de vos recherches")
                 : contactName(contactOf(id));
             $("[data-recap-price]", form).textContent = formatFullPriceOf(id, draft.price);
 
-            // What confirming does: this mandate, the listing, the deal's other mandate when the agent owns it.
+            // What confirming does: this mandate, the listing, the deal's other mandate when the agent owns it. Another
+            // agent's listing stays on the market with its own mandate: never claimed as withdrawn here.
             var note;
             if (owner) {
                 var actions = ["le mandat n° " + id + " est fermé"];
-                if (listing) actions.push("l'annonce n° " + listing.id + " est retirée du marché");
-                if (client && searchId) actions.push("la recherche de " + client.client + " est fermée");
+                if (listing) actions.push(sale ? "l'annonce n° " + listing.id + " est marquée vendue"
+                    : "l'annonce n° " + listing.id + " est retirée du marché");
+                if (client && searchId) actions.push(sale
+                    ? "le mandat de l'acheteur " + client.client + " n° " + searchId + " est fermé"
+                    : "la recherche de " + client.client + " est fermée");
                 note = "À la confirmation : " + actions.join(", ") + ".";
+            } else if (sale && match && match.coBrokerage) {
+                note = "À la confirmation : le mandat n° " + id + " est fermé. L'annonce n° " + match.listingId +
+                    " reste sur le marché : elle est gérée par " +
+                    (match.agent && match.agent.name ? match.agent.name : "un autre agent") + ".";
             } else if (match) {
                 note = "À la confirmation : le mandat n° " + id + " est fermé, l'annonce n° " + match.listingId +
-                    " est retirée du marché" + (counterpart
+                    (sale ? " est marquée vendue" : " est retirée du marché") + (counterpart
                         ? " et le mandat " + (sale ? "du vendeur" : "du bailleur") + " n° " + counterpart + " est fermé"
                         : " et le mandat " + (sale ? "du vendeur" : "du bailleur") + " est fermé") + ".";
             } else {
@@ -5434,6 +5614,8 @@
                 if (listing) changes.closedListingId = listing.id;
                 changes.closedClientName = client ? client.client : null;
                 changes.closedClientMandate = searchId;
+                // v2: a sale closed without a counterpart records the outside deal; a rental records nothing, as before.
+                if (sale && !client) changes.closedOutside = true;
             } else if (match) {
                 changes.closedListingId = match.listingId;
                 if (counterpart) changes.closedByMandate = counterpart;
@@ -5442,10 +5624,14 @@
             setActive(next, false);
             next.textContent = "Fermeture…";
             window.setTimeout(function () {
-                // PROTOTYPE: ListingService.onMandateClosed → RENTED (SOLD for a sale)
-                var saved = owner ? listingOf(id) : (match ? listingById(match.listingId) : null);
+                // PROTOTYPE: ListingService.onMandateClosed → SOLD for a sale, RENTED for a rental. A listing the agent
+                // never created (the samples' ?listing=published) is written to the session now, so that it's SOLD.
+                var saved = owner
+                    ? (listingOf(id) || (listing && simulatedSaleListingSaved(id)))
+                    : (match ? (listingById(match.listingId) ||
+                        simulatedSaleListingSaved(listingMandateOf(match.listingId))) : null);
                 if (saved) {
-                    saved.status = "RENTED";
+                    saved.status = listingIsSale(saved) ? "SOLD" : "RENTED";
                     saved.closedAt = Date.now();
                     saveListing(saved);
                 }

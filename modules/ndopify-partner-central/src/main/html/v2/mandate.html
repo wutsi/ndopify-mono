@@ -17,15 +17,19 @@
     <link rel="stylesheet" href="assets/css/home.css?v=20261118c">
     <link rel="stylesheet" href="assets/css/listing.css">
     <link rel="stylesheet" href="assets/css/visit.css">
-    <script src="assets/js/partner-central.js?v=20261122a" defer></script>
+    <script src="assets/js/partner-central.js?v=20261122c" defer></script>
     <script src="assets/js/visit.js?v=20261118a" defer></script>
 </head>
 <!--
     v2: a SALE mandate (?id=301, a seller's villa, signed; ?id=302, a seller's plot of land whose criteria show its
-    "Document de propriété"; ?id=104 once its offer is accepted, a buyer's land search)
-    reads as a sale: "Vendeur" / "Acheteur" and a "Vente" tag after the title, "Prix de vente" / "Budget total" with no
-    "/ mois", no furniture, and the closing wording of a sale (data-sale-text: "Vente conclue", "prix de vente final").
-    A RENTAL mandate has a "Location" tag and is otherwise unchanged.
+    "Document de propriété"; ?id=104 once its offer is accepted, a buyer's land search; ?id=303 and ?id=304, the buyers
+    of the villa of 301) reads as a sale: "Vendeur" / "Acheteur" and a "Vente" tag after the title, "Prix de vente" /
+    "Budget total" with no "/ mois", no furniture, and the closing wording of a sale (data-sale-text: "Vente conclue",
+    "au prix de", "prix de vente final").
+    v2 (#258): the closed panel of a sale records the deal like the wizard that produced it: "Acheteur : …" (not
+    "Client"), "Annonce n° … vendue" (not "retirée du marché"), and "Vendu à un autre acheteur" for a deal closed
+    without a counterpart; its success notice says "Mandat fermé : félicitations pour cette vente !". A RENTAL mandate
+    has a "Location" tag and is otherwise unchanged.
     v2 (#256): a buyer's land search that requires documents (104) keeps "Documents exigés" among the visible criteria,
     with the note that a land for sale whose seller declared none of them is not proposed (any one is enough).
     ?id=104&amp;documents=none requires none: "Aucun document exigé", no note.
@@ -594,11 +598,11 @@
                     MANDATE_NOT_APPROVED); Annuler (no lease, with a reason) on any step, in the danger style.
 
                     Fermer has its own page (`mandate/close.html`, /mandates/{id}/close), a wizard in three steps:
-                    1) the client, for a landlord's published listing (its Propositions; "loué à un autre client" is
-                    always offered), 2) the agreed rent, pre-filled with the mandate's, 3) a confirmation of what will
-                    change. Confirming closes the mandate, takes its listing off the market (RENTED, SOLD for a sale),
-                    and closes the selected client's search. Annuler (no lease) has no wizard: it stays here, one form
-                    with its reason.
+                    1) the client / buyer, for a landlord's / seller's published listing (its Propositions; "loué à un
+                    autre client" / "vendu à un autre acheteur" is always offered), 2) the agreed rent / sale price,
+                    pre-filled with the mandate's, 3) a confirmation of what will change. Confirming closes the mandate,
+                    takes its listing off the market (RENTED, SOLD for a sale), and closes the selected client's search.
+                    Annuler (no lease) has no wizard: it stays here, one form with its reason.
                 -->
                 <section class="home-section mandate-close" aria-label="Fin du mandat" hidden data-close>
                     <div class="mandate-panel__actions mandate-close__buttons" data-close-buttons>
