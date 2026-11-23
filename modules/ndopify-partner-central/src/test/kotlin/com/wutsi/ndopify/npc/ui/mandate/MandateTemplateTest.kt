@@ -48,6 +48,7 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
 import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.refdata.dto.Money
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
@@ -1066,6 +1067,52 @@ class MandateTemplateTest {
     // Biens correspondants
 
     private val proposedAt = date("2026-10-28T10:00:00Z")
+
+    @Test
+    fun `a sale search's match cards read the price and a purchase`() {
+        doReturn(listOf(MatchFixtures.MATCH_A.copy(mandateId = 201))).whenever(matchClient).search(any(), any(), any())
+        doReturn(
+            listOf(
+                MatchFixtures.LISTING_A.copy(
+                    cityId = DOUALA,
+                    neighborhoodId = BONAPRISO,
+                    listingType = ListingType.SALE,
+                    price = 240_000_000,
+                    pricePeriodicityType = PeriodicityType.NONE,
+                ),
+            ),
+        ).whenever(listingClient).searchByIds(any())
+
+        val page = render(APPROVED.copy(listingType = ListingType.SALE))
+
+        val card = page.selectFirst("[data-match-id=9001]")!!
+        assertEquals(
+            listOf("Correspondance", "Quartier", "Prix", "Disponibilité"),
+            card.select("[data-match-facts] dt").map { it.text() },
+        )
+        val values = card.select("[data-match-facts] dd")
+        assertEquals("240M FCFA", values[2].text().replace('\u00a0', ' '))
+        assertTrue(values[2].hasClass("match__rent"))
+        assertEquals("Dès le 01 déc. 2026", values[3].text())
+        assertTrue(card.select("[data-match-fit] li").any { it.text().contains("Disponible avant votre achat") })
+
+        val section = page.selectFirst("[data-matches-section]")!!
+        assertFalse(section.text().contains("Loyer"))
+        assertFalse(section.text().contains("/ mois"))
+    }
+
+    @Test
+    fun `a rental search's match cards are unchanged`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201))
+
+        val card = render(APPROVED).selectFirst("[data-match-id=9001]")!!
+
+        assertEquals(
+            listOf("Correspondance", "Quartier", "Loyer", "Disponibilité"),
+            card.select("[data-match-facts] dt").map { it.text() },
+        )
+        assertTrue(card.select("[data-match-fit] li").any { it.text().contains("Disponible avant la date d'emménagement") })
+    }
 
     private fun withMatches(vararg matches: com.wutsi.ndopify.match.dto.Match) {
         doReturn(matches.toList()).whenever(matchClient).search(any(), any(), any())

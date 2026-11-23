@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.ui.match
 
 import com.wutsi.ndopify.agent.dto.Agent
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import com.wutsi.ndopify.npc.ui.agent.AgentCardView
@@ -16,6 +17,7 @@ import com.wutsi.ndopify.npc.ui.match.MatchFixtures.TODAY
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.visit.VisitCardView
 import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -94,6 +96,33 @@ class MatchViewsTest {
         assertEquals(MatchGroup.NEW, view.group)
         assertEquals(7, view.fit.size)
         assertTrue(view.actionable)
+    }
+
+    @Test
+    fun `a sale search's card reads the price and the availability`() {
+        val search = MANDATE.copy(listingType = ListingType.SALE)
+        val listing = LISTING_A.copy(
+            listingType = ListingType.SALE,
+            price = 240_000_000,
+            pricePeriodicityType = PeriodicityType.NONE,
+        )
+
+        val view = MatchViews
+            .section(search, listOf(MATCH_A), mapOf(listing.id to listing), emptyMap(), LOCATIONS, TODAY, FORMATTER)
+            .matches.single()
+
+        assertEquals(listOf("Correspondance", "Quartier", "Prix", "Disponibilité"), view.facts.map { it.first })
+        assertEquals("240M\u00a0FCFA", view.facts[2].second)
+        assertEquals("Dès le 01 déc. 2026", view.facts[3].second)
+        assertTrue(view.fit.any { it.text == "Disponible avant votre achat" })
+    }
+
+    @Test
+    fun `a rental search's card is unchanged`() {
+        val view = section().matches[0]
+
+        assertEquals("Loyer" to "240K\u00a0FCFA / mois", view.facts[2])
+        assertTrue(view.fit.any { it.text == "Disponible avant la date d'emménagement" })
     }
 
     @Test

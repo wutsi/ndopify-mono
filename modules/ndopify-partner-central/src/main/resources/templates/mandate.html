@@ -396,7 +396,7 @@
                                             <dl class="match__facts" data-match-facts>
                                                 <div th:each="fact : ${match.facts}">
                                                     <dt class="visually-hidden" th:text="${fact.first}">Quartier</dt>
-                                                    <dd th:text="${fact.second}" th:classappend="${fact.first == 'Loyer'} ? 'match__rent'">Bonapriso</dd>
+                                                    <dd th:text="${fact.second}" th:classappend="${fact.first == 'Loyer' or fact.first == 'Prix'} ? 'match__rent'">Bonapriso</dd>
                                                 </div>
                                             </dl>
                                             <!-- Sent: one meta line. A sent, unanswered match (or one the client is interested in

@@ -8,6 +8,7 @@ import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
+import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.mandate.Amenity
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
@@ -95,7 +96,7 @@ object MatchRules {
             rooms(match, mandate, listing),
             type(match, mandate, listing),
             amenities(match, mandate),
-            availability(match),
+            availability(match, FindPropertyRules.isSale(mandate.listingType)),
             furniture(match, mandate, listing),
         )
 
@@ -185,12 +186,15 @@ object MatchRules {
         }
     }
 
-    private fun availability(match: Match): FitLine =
-        when {
-            match.availabilityScore >= FULL -> FitLine(true, "Disponible avant la date d'emménagement")
-            match.availabilityScore > 0 -> FitLine(false, "Disponible moins d'un mois après la date d'emménagement")
-            else -> FitLine(false, "Disponible plus d'un mois après la date d'emménagement")
+    /** A sale's availability is read against the purchase: "Disponible avant votre achat". */
+    private fun availability(match: Match, sale: Boolean): FitLine {
+        val after = if (sale) "votre achat" else "la date d'emménagement"
+        return when {
+            match.availabilityScore >= FULL -> FitLine(true, "Disponible avant $after")
+            match.availabilityScore > 0 -> FitLine(false, "Disponible moins d'un mois après $after")
+            else -> FitLine(false, "Disponible plus d'un mois après $after")
         }
+    }
 
     private fun furniture(match: Match, mandate: Mandate, listing: ListingSummary): FitLine? {
         val wanted = FURNITURE_LABELS[mandate.furnitureType] ?: return null
