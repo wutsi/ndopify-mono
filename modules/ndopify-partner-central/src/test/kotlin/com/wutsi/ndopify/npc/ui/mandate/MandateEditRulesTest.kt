@@ -281,6 +281,25 @@ class MandateEditRulesTest {
     }
 
     @Test
+    fun `errors - a stored rental land on a landlord's listing is accepted`() {
+        val storedLand = MANDATE.copy(
+            mandateType = MandateType.LISTING,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.LAND,
+        )
+        val form = FORM.copy(
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = "LAND",
+            rooms = null,
+            furnitureType = null,
+            parkings = null,
+        )
+
+        assertEquals(emptyMap(), MandateEditRules.errors(form, storedLand, FORMATTER))
+        assertEquals(PropertyType.LAND, MandateEditRules.request(form, storedLand).propertyType)
+    }
+
+    @Test
     fun `errors - each field`() {
         val form = FORM.copy(
             neighborhoodIds = listOf(1, 2, 3, 4),
