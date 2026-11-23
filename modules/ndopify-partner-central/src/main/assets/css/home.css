@@ -452,8 +452,10 @@
     border: 1px solid var(--color-border-strong);
     border-radius: var(--radius-control);
     background: var(--color-bg);
+    font-family: var(--font-body);
     font-size: var(--step-hint);
     font-weight: 600;
+    line-height: 1.6;
     white-space: nowrap;
 }
 
@@ -473,6 +475,25 @@
     border-color: var(--color-success-border);
     background: var(--color-success-bg);
     color: var(--color-success-fg);
+}
+
+/* The mandate's type ("Vente" / "Location"), beside the status: the same pill, an ink keyline instead of a status
+   colour. It says the kind, not the state, so it never borrows a status's green, amber or red; the black edge is what
+   keeps it legible on white (a grey hairline disappeared next to the coloured status). */
+.status-tag--type {
+    border-color: var(--color-fg);
+    background: var(--color-bg);
+    color: var(--color-fg);
+}
+
+/* On an offer card the badge sits on the title's line; on a Mes mandats card it is the last line of the title block,
+   a step below the party-and-type line. */
+.mandate-title > .status-tag--type {
+    align-self: center;
+}
+
+.mandate-title__text > .status-tag--type {
+    margin-top: var(--space-1);
 }
 
 /* The whole card opens the mandate: the title's link covers it. */
@@ -674,7 +695,7 @@ h1.alert__title {
     font: 600 var(--step-h4) / 1.3 var(--font-body);
 }
 
-/* Title and status tag on one line; the title a size down on phones, where it would wrap. */
+/* Title and its badges on one line; the title a size down on phones, where they wrap. */
 .mandate-intro {
     margin-bottom: var(--space-4);
 }
@@ -686,6 +707,17 @@ h1.alert__title {
     gap: var(--space-2) var(--space-3);
 }
 
+/* The page's type and status pills: one row after the title, closer together than the gap that separates them from
+   the title, so they read as a pair. On phones the pair takes its own line under the title, whatever the title's
+   length (the head above wraps). */
+.mandate-intro__tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    flex-basis: 100%;
+}
+
 .mandate-intro h1 {
     font-size: var(--step-h2);
 }
@@ -693,6 +725,10 @@ h1.alert__title {
 @media (min-width: 640px) {
     .mandate-intro h1 {
         font-size: var(--step-h1);
+    }
+
+    .mandate-intro__tags {
+        flex-basis: auto;
     }
 }
 

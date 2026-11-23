@@ -1031,6 +1031,9 @@ h1.mandate-title .mandate-title__icon .icon {
 .mandate-title__text {
     display: flex;
     flex-direction: column;
+    /* A column stretches its children across its width, which the client's name sets: the type badge would be as
+       wide as the name instead of hugging its word. Every line hugs its own text. */
+    align-items: flex-start;
 }
 
 /* On a card, the name leads; the party and type are a quiet line under it. */
