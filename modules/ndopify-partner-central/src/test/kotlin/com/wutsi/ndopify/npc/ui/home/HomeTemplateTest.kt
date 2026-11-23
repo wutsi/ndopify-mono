@@ -10,6 +10,7 @@ import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.MandateStats
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -370,6 +371,39 @@ class HomeTemplateTest {
         assertEquals("status-tag status-tag--warning", cards[1].selectFirst(".status-tag")?.className())
         assertTrue(page.selectFirst("[data-mandates-empty]")!!.hasAttr("hidden"))
         assertNull(page.selectFirst("[data-mandates-unavailable]"))
+    }
+
+    @Test
+    fun `sale cards carry the Vente tag`() {
+        doReturn(listOf(ASSIGNMENT.copy(id = 104, mandateId = 104))).whenever(assignmentClient).pending(AGENT.id)
+        doReturn(listOf(MandateSummariesTest.summary(MANDATE.copy(id = 104, listingType = ListingType.SALE))))
+            .whenever(mandateClient).offered(AGENT.id)
+        doReturn(
+            listOf(
+                MandateSummariesTest.summary(
+                    MandateCardsTest.MANDATE.copy(id = 301, mandateType = MandateType.LISTING, listingType = ListingType.SALE),
+                ),
+            ),
+        ).whenever(mandateClient).active(AGENT.id)
+
+        val page = render(get("/"))
+
+        val offer = page.selectFirst("[data-assignment-id=104]")!!
+        assertEquals("Acheteur", offer.selectFirst(".mandate-title > span:nth-child(2)")?.text())
+        assertEquals("Vente", offer.selectFirst("[data-deal-tag]")?.text())
+        assertEquals("status-tag status-tag--info", offer.selectFirst("[data-deal-tag]")?.className())
+
+        val card = page.selectFirst("[data-mandate-id=301]")!!
+        assertEquals("Vendeur · Maison", card.selectFirst("a.mandate-card__link")?.text())
+        assertEquals("Vente", card.selectFirst("[data-deal-tag]")?.text())
+    }
+
+    @Test
+    fun `a rental card carries no Vente tag`() {
+        val page = render(get("/"))
+
+        assertNull(page.selectFirst("[data-assignment] [data-deal-tag]"))
+        assertNull(page.selectFirst("[data-mandate-card] [data-deal-tag]"))
     }
 
     @Test

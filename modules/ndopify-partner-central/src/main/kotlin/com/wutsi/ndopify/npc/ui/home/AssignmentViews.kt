@@ -24,13 +24,14 @@ object AssignmentViews {
         return AssignmentView(
             id = assignment.id,
             // The card shows neither the property type (it is in the details) nor the city (the agent works in one).
-            title = MandateLabels.party(mandate.mandateType),
+            title = MandateLabels.party(mandate.mandateType, mandate.listingType),
             owner = owner,
+            sale = FindPropertyRules.isSale(mandate.listingType),
             sectorTerm = if (mandate.neighborhoodIds.size > 1) "Secteurs" else "Secteur",
             sector = sector(mandate, neighborhoods),
-            priceTerm = if (owner) "Loyer" else "Budget",
+            priceTerm = MandateLabels.amountTerm(owner, mandate.listingType),
             price = MandateLabels.price(mandate.price, formatter, compact = true),
-            movingTerm = if (owner) "Disponibilité" else "Emménagement",
+            movingTerm = MandateLabels.dateTerm(owner, mandate.listingType),
             moving = MandateLabels.MOVE_IN_LABELS[mandate.movingPeriod],
             expiresAt = assignment.expiresAt.time,
             remaining = remaining(assignment.expiresAt.time - now),

@@ -83,6 +83,7 @@ object MandateViews {
         }
         val (key, more) = criteria(mandate, locations, formatter)
         val sale = mandate.listingType == ListingType.SALE
+        val owner = mandate.mandateType == MandateType.LISTING
         val dealLine = dealLine(mandate, deal, sale)
 
         return MandateView(
@@ -90,9 +91,15 @@ object MandateViews {
             status = status,
             title = MandateLabels.title(mandate),
             tag = MandateRules.tag(status),
-            words = MandateRules.words(mandate.mandateType),
-            owner = mandate.mandateType == MandateType.LISTING,
+            words = MandateRules.words(mandate.mandateType, mandate.listingType),
+            owner = owner,
             sale = sale,
+            nextStepHint = when {
+                sale && owner -> "Présentez le bien aux acheteurs et organisez les visites."
+                sale -> "Proposez des biens à l'acheteur et organisez les visites."
+                owner -> "Présentez le bien aux locataires et organisez les visites."
+                else -> "Proposez des biens au client et organisez les visites."
+            },
             acceptedAt = format(accepted?.modifiedAt),
             steps = steps,
             currentStep = current,

@@ -669,6 +669,31 @@ class MandateTemplateTest {
         val page = render(APPROVED)
 
         assertTrue(page.text().contains("Une fois le bail signé, fermez le mandat (en bas de page) en indiquant le loyer convenu."))
+        assertNull(page.selectFirst("[data-deal-tag]"))
+    }
+
+    @Test
+    fun `a sale search's page words the buyer`() {
+        val page = render(APPROVED.copy(listingType = ListingType.SALE))
+
+        assertEquals("Acheteur · Maison", page.selectFirst("[data-mandate-title]")?.text())
+        assertEquals("Vente", page.selectFirst("h1 [data-deal-tag]")?.text())
+        assertEquals("status-tag status-tag--info", page.selectFirst("h1 [data-deal-tag]")?.className())
+        assertEquals("Acheteur", page.selectFirst("[data-contact-role]")?.text())
+        assertTrue(page.text().contains("Proposez des biens à l'acheteur et organisez les visites."))
+        assertFalse(page.text().contains("Proposez des biens au client"))
+        assertFalse(page.text().contains("au loyer de"))
+    }
+
+    @Test
+    fun `a sale listing's page words the seller`() {
+        val page = render(APPROVED.copy(mandateType = MandateType.LISTING, listingType = ListingType.SALE))
+
+        assertEquals("Vendeur · Maison", page.selectFirst("[data-mandate-title]")?.text())
+        assertEquals("Vente", page.selectFirst("h1 [data-deal-tag]")?.text())
+        assertEquals("Vendeur", page.selectFirst("[data-contact-role]")?.text())
+        assertTrue(page.text().contains("Présentez le bien aux acheteurs et organisez les visites."))
+        assertFalse(page.text().contains("Présentez le bien aux locataires"))
     }
 
     @Test

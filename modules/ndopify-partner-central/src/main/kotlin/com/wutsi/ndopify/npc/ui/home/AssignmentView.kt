@@ -9,6 +9,8 @@ data class AssignmentView(
     val title: String,
     /** A landlord's listing (the key icon before the title), not a search (the magnifying glass). */
     val owner: Boolean,
+    /** A SALE mandate: the card carries the "Vente" tag. */
+    val sale: Boolean,
     val sectorTerm: String,
     val sector: String?,
     val priceTerm: String,

@@ -1,10 +1,12 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.contract.dto.Contract
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import java.time.Duration
 import java.util.Date
 
@@ -49,7 +51,7 @@ object MandateRules {
         MandateCancellationCode.OTHER to "autre raison",
     )
 
-    /** How the pages name the agent's customer: a landlord for a listing, else a client. */
+    /** How the pages name the agent's customer: a landlord for a listing, else a client; a sale's seller or buyer. */
     data class PartyWords(
         val the: String,
         val theUpper: String,
@@ -64,11 +66,18 @@ object MandateRules {
 
     private val OWNER = PartyWords("le bailleur", "Le bailleur", "du bailleur", "son bien", "Son bien", "au bailleur", "Bailleur")
     private val CLIENT = PartyWords("le client", "Le client", "du client", "sa recherche", "Sa recherche", "au client", "Client")
+    private val SELLER = OWNER.copy(role = "Vendeur")
+    private val BUYER = CLIENT.copy(role = "Acheteur")
 
     /** An unknown status reads as the neutral "Fermé" tag: the page never shows one anyway (see [SHOWN]). */
     fun tag(status: MandateStatus): Tag = TAGS[status] ?: TAGS.getValue(MandateStatus.CLOSED)
 
-    fun words(type: MandateType): PartyWords = if (type == MandateType.LISTING) OWNER else CLIENT
+    /** Who the customer is in words: a sale's seller or buyer, else today's landlord or client. */
+    fun words(type: MandateType, listingType: ListingType? = null): PartyWords = when {
+        !FindPropertyRules.isSale(listingType) -> if (type == MandateType.LISTING) OWNER else CLIENT
+        type == MandateType.LISTING -> SELLER
+        else -> BUYER
+    }
 
     fun cancellation(code: MandateCancellationCode?): String =
         CANCELLATION_LABELS[code] ?: CANCELLATION_LABELS.getValue(MandateCancellationCode.OTHER)

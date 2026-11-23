@@ -8,6 +8,7 @@ import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStats
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.listing.ListingStatsView
 import com.wutsi.ndopify.npc.ui.listing.ListingViews
 import com.wutsi.ndopify.npc.ui.match.MatchRules
@@ -68,6 +69,7 @@ object MandateCards {
             title = MandateLabels.title(mandate),
             clientName = clientName(mandate, customers),
             owner = mandate.mandateType == MandateType.LISTING,
+            sale = FindPropertyRules.isSale(mandate.listingType),
             tag = MandateRules.tag(mandate.status),
             facts = facts.mapIndexed { i, (term, value) ->
                 when (i) {

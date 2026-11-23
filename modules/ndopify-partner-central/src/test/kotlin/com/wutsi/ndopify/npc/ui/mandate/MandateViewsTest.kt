@@ -307,6 +307,38 @@ class MandateViewsTest {
         assertEquals("Le bailleur", owner.words.theUpper)
         assertTrue(owner.owner)
         assertEquals("Propriétaire · Maison", owner.title)
+        assertEquals("Proposez des biens au client et organisez les visites.", client.nextStepHint)
+        assertEquals("Présentez le bien aux locataires et organisez les visites.", owner.nextStepHint)
+    }
+
+    @Test
+    fun `a sale search's page words the buyer`() {
+        val view = view(MANDATE.copy(listingType = ListingType.SALE, price = Money(15_000_000, "XAF", PeriodicityType.NONE)))
+
+        assertTrue(view.sale)
+        assertEquals("Acheteur · Maison", view.title)
+        assertEquals("Acheteur", view.words.role)
+        assertEquals("Budget" to "15\u00a0000\u00a0000\u00a0FCFA", view.keyCriteria[1])
+        assertEquals("Achat prévu" to "Dans 1 à 3\u00a0mois", view.keyCriteria[2])
+        assertEquals("Proposez des biens à l'acheteur et organisez les visites.", view.nextStepHint)
+    }
+
+    @Test
+    fun `a sale listing's page words the seller`() {
+        val view = view(
+            MANDATE.copy(
+                mandateType = MandateType.LISTING,
+                listingType = ListingType.SALE,
+                price = Money(45_000_000, "XAF", PeriodicityType.NONE),
+            ),
+        )
+
+        assertTrue(view.sale)
+        assertEquals("Vendeur · Maison", view.title)
+        assertEquals("Vendeur", view.words.role)
+        assertEquals("Prix" to "45\u00a0000\u00a0000\u00a0FCFA", view.keyCriteria[1])
+        assertEquals("Disponibilité" to "Dans 1 à 3\u00a0mois", view.keyCriteria[2])
+        assertEquals("Présentez le bien aux acheteurs et organisez les visites.", view.nextStepHint)
     }
 
     @Test

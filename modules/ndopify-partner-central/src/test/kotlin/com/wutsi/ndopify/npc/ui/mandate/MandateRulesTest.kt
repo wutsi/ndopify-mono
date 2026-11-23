@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.contract.dto.Contract
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -52,6 +53,18 @@ class MandateRulesTest {
         assertEquals("sa recherche", client.search)
         assertEquals("Sa recherche", client.searchUpper)
         assertEquals("au client", client.to)
+    }
+
+    @Test
+    fun `a sale's customer is the seller or the buyer`() {
+        assertEquals("Vendeur", MandateRules.words(MandateType.LISTING, ListingType.SALE).role)
+        assertEquals("Acheteur", MandateRules.words(MandateType.SEARCH, ListingType.SALE).role)
+        assertEquals("Bailleur", MandateRules.words(MandateType.LISTING, ListingType.RENTAL).role)
+        assertEquals("Client", MandateRules.words(MandateType.SEARCH, ListingType.RENTAL).role)
+
+        // Only the role changes: the other words stay the neutral ones.
+        assertEquals("le bailleur", MandateRules.words(MandateType.LISTING, ListingType.SALE).the)
+        assertEquals("sa recherche", MandateRules.words(MandateType.SEARCH, ListingType.SALE).search)
     }
 
     @Test

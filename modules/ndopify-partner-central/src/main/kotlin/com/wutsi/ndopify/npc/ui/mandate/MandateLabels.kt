@@ -177,17 +177,41 @@ object MandateLabels {
         }
 
     /**
-     * Who the agent works for, the first word of a mandate's title: an owner for a listing ("Propriétaire", the public
-     * site's word, ndopify-web's menu), else someone looking for a rental.
+     * Who the agent works for, the first word of a mandate's title: a seller or a buyer for a sale ("Vendeur" /
+     * "Acheteur"), else an owner for a listing ("Propriétaire", the public site's word, ndopify-web's menu) or someone
+     * looking for a rental.
      */
-    fun party(type: MandateType): String = if (type == MandateType.LISTING) "Propriétaire" else "Locataire"
+    fun party(type: MandateType, listingType: ListingType? = null): String = when {
+        FindPropertyRules.isSale(listingType) -> if (type == MandateType.LISTING) "Vendeur" else "Acheteur"
+        type == MandateType.LISTING -> "Propriétaire"
+        else -> "Locataire"
+    }
+
+    /** The amount row of the criteria: a seller's asking price, a landlord's rent, a search's budget. */
+    fun amountTerm(owner: Boolean, listingType: ListingType?): String = when {
+        FindPropertyRules.isSale(listingType) && owner -> "Prix"
+        owner -> "Loyer"
+        else -> "Budget"
+    }
+
+    /** The amount of a listing, as the match cards name it: a sale price, else a rent. */
+    fun listingPriceTerm(listingType: ListingType?): String =
+        if (FindPropertyRules.isSale(listingType)) "Prix" else "Loyer"
+
+    /** The date row of the criteria: a landlord's availability, a buyer's purchase, a renter's move. */
+    fun dateTerm(owner: Boolean, listingType: ListingType?): String = when {
+        owner -> "Disponibilité"
+        FindPropertyRules.isSale(listingType) -> "Achat prévu"
+        else -> "Emménagement"
+    }
 
     /** null without a type: any type will do. */
     fun shortPropertyType(type: PropertyType?): String? = PROPERTY_TYPE_SHORT[type] ?: PROPERTY_TYPE_LABELS[type]
 
-    /** "Locataire · Maison", or just "Locataire" without a type. */
+    /** "Vendeur · Terrain", or just "Vendeur" without a type. */
     fun title(mandate: Mandate): String =
-        listOfNotNull(party(mandate.mandateType), shortPropertyType(mandate.propertyType)).joinToString(" · ")
+        listOfNotNull(party(mandate.mandateType, mandate.listingType), shortPropertyType(mandate.propertyType))
+            .joinToString(" · ")
 
     /** "Titre foncier · Plan de bornage", in the stored order; "Aucun document exigé" for none. */
     fun titleDocuments(documents: List<TitleDocumentType>): String =
@@ -223,8 +247,8 @@ object MandateLabels {
         ).joinToString(" — ").ifEmpty { NONE }
         return listOfNotNull(
             (if (mandate.neighborhoodIds.size > 1) "Secteurs" else "Secteur") to sector,
-            (if (owner) "Loyer" else "Budget") to price(mandate.price, formatter),
-            (if (owner) "Disponibilité" else "Emménagement") to (
+            amountTerm(owner, mandate.listingType) to price(mandate.price, formatter),
+            dateTerm(owner, mandate.listingType) to (
                 mandate.availableFrom?.takeIf { owner }?.let { "Dès le " + formatter.date(it) }
                     ?: MOVE_IN_LABELS[mandate.movingPeriod] ?: NONE
                 ),
