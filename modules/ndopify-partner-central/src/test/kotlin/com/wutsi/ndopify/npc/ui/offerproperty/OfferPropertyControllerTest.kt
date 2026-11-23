@@ -455,6 +455,43 @@ class OfferPropertyControllerTest {
         assertEquals(2, pending()?.securityDeposit)
     }
 
+    // GET /offer-property?step=features
+
+    @Test
+    fun `a sale's feature flags follow the saved type`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale.copy(propertyType = null))
+        val first = model(mvc.perform(get("/offer-property?step=features").session(session)).andReturn())
+        assertEquals(true, first["showsRooms"])
+        assertEquals(false, first["requiresRooms"])
+        assertEquals(true, first["showsParking"])
+        assertEquals(false, first["requiresParking"])
+        assertEquals(true, first["asksOwnershipDocuments"])
+
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale)
+        val land = model(mvc.perform(get("/offer-property?step=features").session(session)).andReturn())
+        assertEquals(false, land["showsRooms"])
+        assertEquals(false, land["requiresRooms"])
+        assertEquals(false, land["showsParking"])
+        assertEquals(false, land["requiresParking"])
+        assertEquals(true, land["asksOwnershipDocuments"])
+
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale.copy(propertyType = "HOUSE", area = null))
+        val house = model(mvc.perform(get("/offer-property?step=features").session(session)).andReturn())
+        assertEquals(true, house["showsRooms"])
+        assertEquals(true, house["requiresRooms"])
+        assertEquals(true, house["showsParking"])
+        assertEquals(true, house["requiresParking"])
+        assertEquals(false, house["asksOwnershipDocuments"])
+
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, complete)
+        val rental = model(mvc.perform(get("/offer-property?step=features").session(session)).andReturn())
+        assertEquals(true, rental["showsRooms"])
+        assertEquals(true, rental["requiresRooms"])
+        assertEquals(true, rental["showsParking"])
+        assertEquals(true, rental["requiresParking"])
+        assertEquals(false, rental["asksOwnershipDocuments"])
+    }
+
     // POST /offer-property/features
 
     private fun features(vararg params: Pair<String, String>) =
@@ -560,6 +597,22 @@ class OfferPropertyControllerTest {
         assertEquals("features", model(result)["step"])
         assertEquals("Indiquez la surface du terrain.", errors(result)["area"])
         assertNull(pending()?.propertyType)
+    }
+
+    @Test
+    fun `a land sale posts without rooms nor parking`() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            sale.copy(propertyType = null, area = null),
+        )
+
+        val result = mvc.perform(features("propertyType" to "LAND", "area" to "800")).andReturn()
+
+        assertEquals("redirect:/offer-property?step=amenities", result.modelAndView?.viewName)
+        assertEquals("LAND", pending()?.propertyType)
+        assertNull(pending()?.rooms)
+        assertNull(pending()?.parkings)
+        assertEquals(emptyList(), pending()?.ownershipDocuments)
     }
 
     @Test

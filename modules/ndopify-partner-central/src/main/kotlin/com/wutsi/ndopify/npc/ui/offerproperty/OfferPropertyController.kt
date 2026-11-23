@@ -381,7 +381,10 @@ class OfferPropertyController(
         }
         if (step == STEP_FEATURES) {
             val type = FindPropertyRules.parsePropertyType(answers.propertyType)
-            model.addAttribute("sale", answers.isSale())
+            val sale = answers.isSale()
+            val category = answers.propertyCategory
+            val residential = category == PropertyCategory.RESIDENTIAL
+            model.addAttribute("sale", sale)
             model.addAttribute(
                 "propertyTypes",
                 OfferPropertyRules.propertyTypes(answers.propertyCategory!!, answers.listingType),
@@ -391,12 +394,27 @@ class OfferPropertyController(
             model.addAttribute("currency", formatter().currency())
             model.addAttribute("ownershipDocumentLabels", MandateLabels.byName(MandateLabels.TITLE_DOCUMENT_LABELS))
             model.addAttribute("ownershipDocumentNames", HashSet(answers.ownershipDocuments.map { it.name }))
+            // A sale renders the follow-up questions until its type is known, then only the ones its type needs.
             model.addAttribute(
-                "asksOwnershipDocuments",
-                OfferPropertyRules.ownershipDocumentTypes(answers.listingType, type).isNotEmpty(),
+                "showsRooms",
+                residential && (!sale || type == null || OfferPropertyRules.needsRooms(category, type, answers.listingType)),
             )
-            model.addAttribute("asksArea", !residential(answers.propertyCategory) || answers.isSale())
-            model.addAttribute("landSale", answers.isSale() && type == PropertyType.LAND)
+            model.addAttribute(
+                "requiresRooms",
+                residential && (!sale || (type != null && OfferPropertyRules.needsRooms(category, type, answers.listingType))),
+            )
+            model.addAttribute(
+                "showsParking",
+                residential && (!sale || type == null || OfferPropertyRules.needsParking(category, type, answers.listingType)),
+            )
+            model.addAttribute(
+                "requiresParking",
+                residential && (!sale || (type != null && OfferPropertyRules.needsParking(category, type, answers.listingType))),
+            )
+            // Every sale may declare its documents until its type is known; only a plot of land then keeps them.
+            model.addAttribute("asksOwnershipDocuments", sale && (type == null || type == PropertyType.LAND))
+            model.addAttribute("asksArea", !residential(category) || sale)
+            model.addAttribute("landSale", sale && type == PropertyType.LAND)
         }
         if (step == STEP_AMENITIES) {
             // The owner's wording, as the listing's (road access: one radio, in the mandates' wording)

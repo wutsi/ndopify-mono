@@ -427,6 +427,58 @@ class OfferPropertyTemplateTest {
     }
 
     @Test
+    fun `a sale without a type shows its questions as optional and its documents`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale.copy(propertyType = null))
+
+        val page = render(get("/offer-property?step=features"))
+
+        assertTrue(page.select("input[name=rooms]").isNotEmpty())
+        assertTrue(page.select("input[name=hasParking]").isNotEmpty())
+        assertTrue(page.select("input[name=parkings]").isNotEmpty())
+        assertTrue(page.select("input[name=rooms]").none { it.hasAttr("required") })
+        assertTrue(page.select("input[name=hasParking]").none { it.hasAttr("required") })
+        assertTrue(page.select("input[name=parkings]").none { it.hasAttr("required") })
+        assertFalse(page.selectFirst("[data-group=ownershipDocuments]")!!.hasAttr("hidden"))
+    }
+
+    @Test
+    fun `a land sale asks no rooms nor parking`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale)
+
+        val page = render(get("/offer-property?step=features"))
+
+        assertNull(page.selectFirst("input[name=rooms]"))
+        assertNull(page.selectFirst("input[name=hasParking]"))
+        assertNull(page.selectFirst("input[name=parkings]"))
+        assertFalse(page.selectFirst("[data-group=ownershipDocuments]")!!.hasAttr("hidden"))
+    }
+
+    @Test
+    fun `a house sale requires its rooms and parking and hides the documents`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale.copy(propertyType = "HOUSE", area = null))
+
+        val page = render(get("/offer-property?step=features"))
+
+        assertTrue(page.select("input[name=rooms]").isNotEmpty())
+        assertTrue(page.select("input[name=hasParking]").isNotEmpty())
+        assertTrue(page.select("input[name=parkings]").isNotEmpty())
+        assertTrue(page.select("input[name=rooms]").all { it.hasAttr("required") })
+        assertTrue(page.select("input[name=hasParking]").all { it.hasAttr("required") })
+        assertTrue(page.select("input[name=parkings]").all { it.hasAttr("required") })
+        assertTrue(page.selectFirst("[data-group=ownershipDocuments]")!!.hasAttr("hidden"))
+    }
+
+    @Test
+    fun `a rental requires its questions and shows no documents`() {
+        val page = render(get("/offer-property?step=features"))
+
+        assertTrue(page.select("input[name=rooms]").all { it.hasAttr("required") })
+        assertTrue(page.select("input[name=hasParking]").all { it.hasAttr("required") })
+        assertTrue(page.select("input[name=parkings]").all { it.hasAttr("required") })
+        assertTrue(page.selectFirst("[data-group=ownershipDocuments]")!!.hasAttr("hidden"))
+    }
+
+    @Test
     fun `a rental asks no documents`() {
         val page = render(get("/offer-property?step=features"))
 
