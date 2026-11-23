@@ -17,6 +17,8 @@ import org.springframework.http.HttpStatus
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
 import java.time.Clock
+import java.time.Instant
+import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -44,7 +46,6 @@ class UpdateAgentEndpointTest : AbstractAgentEndpointTest() {
 
     @Test
     fun update() {
-        Thread.sleep(100)
         val request = UpdateAgentRequest(
             whatsappNumber = "+237600000099",
             agentType = AgentType.REAL_ESTATE_AGENT,
@@ -66,7 +67,7 @@ class UpdateAgentEndpointTest : AbstractAgentEndpointTest() {
         assertNeighborhoods(agent.id!!, request.neighborhoodIds!!)
         assertEquals(request.whatsappNumber, agent.whatsappNumber)
         assertEquals(AgentEntity.DEFAULT_RATING, agent.rating) // Read-only: an agent can't rate itself
-        assertTrue(agent.createdAt.time < now)
+        assertEquals(Date.from(Instant.parse("2024-06-10T00:00:00Z")), agent.createdAt)
         assertTrue(agent.modifiedAt.time >= agent.createdAt.time)
 
         // Names are verified by KYC: the party is never updated
