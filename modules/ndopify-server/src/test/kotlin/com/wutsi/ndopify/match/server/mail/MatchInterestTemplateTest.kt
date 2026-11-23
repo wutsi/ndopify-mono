@@ -28,6 +28,8 @@ class MatchInterestTemplateTest {
         "place" to "Bonapriso, Douala",
         "mandate_url" to "https://partner.ndopify.com/mandates/1",
         "whatsapp_url" to "https://wa.me/237600000001",
+        "asset" to "un logement",
+        "price_label" to "Loyer",
     )
 
     @Test
@@ -42,12 +44,25 @@ class MatchInterestTemplateTest {
         assertTrue(html.contains("Contactez-le pour organiser la visite"))
         // The listing may be another agent's (co-brokerage): the agent is never told it published it
         assertTrue(html.contains("intéresse à un logement."))
+        assertTrue(html.contains("<b>Loyer</b>"))
         assertFalse(html.contains("que vous avez publié"))
         assertTrue(html.contains("src=\"https://cdn.ndopify.com/7.jpg\""))
         assertTrue(html.contains("<a href=\"https://partner.ndopify.com/mandates/1\""))
         assertTrue(html.contains("Voir le mandat"))
         assertTrue(html.contains("<a href=\"https://wa.me/237600000001\""))
         assertTrue(html.contains("Contacter sur WhatsApp"))
+    }
+
+    @Test
+    fun `a sale listing's interest speaks of a bien and its price`() {
+        val html = resolver.resolve(
+            MatchInterestMailet.TEMPLATE,
+            context + mapOf("asset" to "un bien", "price_label" to "Prix", "price" to "25 000 000 FCFA"),
+        )
+
+        assertTrue(html.contains("s'intéresse à un bien"))
+        assertTrue(html.contains("<b>Prix</b>"))
+        assertFalse(html.contains("<b>Loyer</b>"))
     }
 
     @Test

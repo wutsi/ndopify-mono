@@ -2,6 +2,7 @@ package com.wutsi.ndopify.match.server.mail
 
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
@@ -34,13 +35,15 @@ class MatchInterestMailet(
     private val locationService: LocationService,
 ) {
     companion object {
-        const val SUBJECT = "{{tenant_name}}: {{customer_name}} s'intéresse à un logement"
+        const val SUBJECT = "{{tenant_name}}: {{customer_name}} s'intéresse à {{asset}}"
         const val TEMPLATE = "/mail/match/interest.mjml"
     }
 
     fun send(agent: AgentEntity, customer: CustomerEntity, mandate: MandateEntity, listing: ListingEntity) {
         val tenant = tenantService.findById(mandate.tenantId!!)
         val formatter = TenantFormatter(tenant)
+        val sale = listing.listingType == ListingType.SALE
+        val asset = if (sale) "un bien" else "un logement"
         val imageUrl = MailImages.imageUrl(listingImageService.cover(listing)?.url, imageService, MailImages.COVER)
         val customerName = customer.party.fullName()
         val agentName = agent.party.fullName()
@@ -49,7 +52,8 @@ class MatchInterestMailet(
             Email(
                 recipient = Receipient(email = agent.party.email, displayName = agentName),
                 subject = SUBJECT.replace("{{tenant_name}}", tenant.name)
-                    .replace("{{customer_name}}", customerName),
+                    .replace("{{customer_name}}", customerName)
+                    .replace("{{asset}}", asset),
                 body = mailBodyResolver.resolve(
                     path = TEMPLATE,
                     context = mapOf(
@@ -57,8 +61,10 @@ class MatchInterestMailet(
                         "tenant_name" to tenant.name,
                         "recipient_name" to agentName,
                         "customer_name" to customerName,
+                        "asset" to asset,
                         "listing_title" to (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"),
                         "image_url" to imageUrl,
+                        "price_label" to (if (sale) "Prix" else "Loyer"),
                         "price" to MandateMailLabels.price(
                             listing.price,
                             listing.currencyCode,

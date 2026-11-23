@@ -9,6 +9,7 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.server.bot.ListingTelegramLabels
 import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
@@ -75,6 +76,20 @@ class MatchInterestBotletTest {
         assertEquals(
             listOf(TelegramButton("Voir le mandat", url = "https://partner.ndopify.com/mandates/5")),
             buttons.firstValue,
+        )
+    }
+
+    @Test
+    fun `a sale listing's line names its price`() {
+        val sale = listing.copy(listingType = ListingType.SALE, pricePeriodicityType = PeriodicityType.NONE)
+
+        botlet.send(agent, customer, mandate.copy(listingType = ListingType.SALE), sale, 1000L)
+
+        val text = argumentCaptor<String>()
+        verify(sender).send(eq(1000L), eq(sale), text.capture(), any())
+        assertEquals(
+            "👀 Ray Sponsible s'intéresse à : Nice apartment (Bastos) — Prix : 150 000 FCFA",
+            text.firstValue,
         )
     }
 

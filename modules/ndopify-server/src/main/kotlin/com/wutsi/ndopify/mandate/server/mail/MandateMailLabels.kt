@@ -66,6 +66,11 @@ internal object MandateMailLabels {
     fun priceLabel(mandate: MandateEntity): String =
         if (mandate.listingType == ListingType.SALE) "Prix" else "Loyer"
 
+    // The amount's label in a sale mandate's Telegram message: the seller's "Prix", the buyer's "Budget". Only for a
+    // SALE mandate: a rental's message keeps its bare amount.
+    fun amountLabel(mandate: MandateEntity): String =
+        if (mandate.mandateType == MandateType.LISTING) "Prix" else "Budget"
+
     fun propertyType(mandate: MandateEntity): String? =
         mandate.propertyType?.let { PROPERTY_TYPES[it] }
 

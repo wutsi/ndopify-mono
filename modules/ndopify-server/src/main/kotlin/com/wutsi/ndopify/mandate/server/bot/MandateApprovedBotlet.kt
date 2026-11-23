@@ -39,10 +39,15 @@ class MandateApprovedBotlet(
     }
 
     private fun text(mandate: MandateEntity, formatter: TenantFormatter): String {
+        val budget = MandateMailLabels.budget(mandate, formatter)
         val property = "${if (mandate.mandateType == MandateType.LISTING) "Bien" else "Recherche"} : " +
             criteria(mandate) +
             (MandateMailLabels.neighbourhoods(mandate, locationService)?.let { " ($it)" } ?: "") +
-            " — ${MandateMailLabels.budget(mandate, formatter)}"
+            if (MandateMailLabels.sale(mandate)) {
+                " — ${MandateMailLabels.amountLabel(mandate)} : $budget"
+            } else {
+                " — $budget"
+            }
         return listOf(
             "✅ Le client a signé le mandat. Il va commencer à recevoir les offres.",
             property,

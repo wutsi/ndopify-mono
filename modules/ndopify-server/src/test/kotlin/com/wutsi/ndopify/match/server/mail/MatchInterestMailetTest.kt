@@ -98,6 +98,8 @@ class MatchInterestMailetTest {
                 "place" to "Bonapriso, Douala",
                 "mandate_url" to "https://partner.ndopify.com/mandates/1",
                 "whatsapp_url" to "https://wa.me/237600000001",
+                "asset" to "un logement",
+                "price_label" to "Loyer",
             ),
             context(),
         )
@@ -108,6 +110,22 @@ class MatchInterestMailetTest {
         assertEquals("Kim Possible", email.firstValue.recipient.displayName)
         assertEquals("Ndopify: Ray Sponsible s'intéresse à un logement", email.firstValue.subject)
         assertEquals("<html>interest</html>", email.firstValue.body)
+    }
+
+    @Test
+    fun `a sale listing's interest mail speaks of a bien and its price`() {
+        val sale = listing.copy(listingType = ListingType.SALE, pricePeriodicityType = PeriodicityType.NONE)
+
+        mailet.send(agent, customer, mandate.copy(listingType = ListingType.SALE), sale)
+
+        val context = context()
+        assertEquals("un bien", context["asset"])
+        assertEquals("Prix", context["price_label"])
+        assertEquals("175 000 FCFA", context["price"])
+
+        val email = argumentCaptor<Email>()
+        verify(mailService).send(email.capture())
+        assertEquals("Ndopify: Ray Sponsible s'intéresse à un bien", email.firstValue.subject)
     }
 
     @Test

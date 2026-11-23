@@ -96,11 +96,59 @@ class MandateOfferBotletTest {
         verify(client).sendMessage(eq(1000L), text.capture(), any())
         assertEquals(
             """
-            📋 Nouveau mandat : Achat - Terrain (Bastos) — 10 000 000 XAF · Financement : Comptant · Documents : Titre foncier · Plan de bornage
+            📋 Nouveau mandat : Achat - Terrain (Bastos) — Budget : 10 000 000 XAF · Financement : Comptant · Documents : Titre foncier · Plan de bornage
             Expire le 15/01/2027 à 09:00.
             """.trimIndent(),
             text.firstValue,
         )
+    }
+
+    @Test
+    fun `a sale search's message names its budget and never a rental`() {
+        val assignment = AssignmentEntity(
+            id = 96L,
+            mandate = MandateEntity(
+                id = 6L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
+                listingType = ListingType.SALE, propertyType = PropertyType.APARTMENT,
+                price = 250_000_000, currencyCode = "XAF", mandateType = MandateType.SEARCH,
+            ),
+            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
+        )
+
+        botlet.send(assignment, agent, 1000L)
+
+        val text = argumentCaptor<String>()
+        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        assertTrue(text.firstValue.startsWith("📋 Nouveau mandat : Achat - Appartement"))
+        assertTrue(text.firstValue.contains(" — Budget : 250 000 000 XAF"))
+        assertNoRentalWord(text.firstValue)
+    }
+
+    @Test
+    fun `a sale listing's message names its price and never a rental`() {
+        val assignment = AssignmentEntity(
+            id = 97L,
+            mandate = MandateEntity(
+                id = 7L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
+                listingType = ListingType.SALE, propertyType = PropertyType.VILLA,
+                price = 250_000_000, currencyCode = "XAF", mandateType = MandateType.LISTING,
+            ),
+            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
+        )
+
+        botlet.send(assignment, agent, 1000L)
+
+        val text = argumentCaptor<String>()
+        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        assertTrue(text.firstValue.startsWith("📋 Nouveau mandat : Vente - Villa"))
+        assertTrue(text.firstValue.contains(" — Prix : 250 000 000 XAF"))
+        assertNoRentalWord(text.firstValue)
+    }
+
+    private fun assertNoRentalWord(text: String) {
+        listOf("location", "loyer", "logement").forEach { word ->
+            assertFalse(text.lowercase().contains(word), "no '$word' in a sale message: $text")
+        }
     }
 
     @Test
@@ -122,7 +170,7 @@ class MandateOfferBotletTest {
         verify(client).sendMessage(eq(1000L), text.capture(), any())
         assertEquals(
             """
-            📋 Nouveau mandat : Vente - Villa (Bastos) — 25 000 000 XAF
+            📋 Nouveau mandat : Vente - Villa (Bastos) — Prix : 25 000 000 XAF
             4 pièces · 250 m² · disponible le 01/12/2026
             Expire le 15/01/2027 à 09:00.
             """.trimIndent(),
@@ -150,7 +198,7 @@ class MandateOfferBotletTest {
         verify(client).sendMessage(eq(1000L), text.capture(), any())
         assertEquals(
             """
-            📋 Nouveau mandat : Vente - Terrain (Bastos) — 45 000 000 XAF
+            📋 Nouveau mandat : Vente - Terrain (Bastos) — Prix : 45 000 000 XAF
             800 m² · disponible le 01/12/2026 · document de propriété : Titre foncier · Plan de bornage
             Expire le 15/01/2027 à 09:00.
             """.trimIndent(),
@@ -196,7 +244,7 @@ class MandateOfferBotletTest {
         verify(client).sendMessage(eq(1000L), text.capture(), any())
         assertEquals(
             """
-            📋 Nouveau mandat : Vente - Villa (Bastos) — 25 000 000 XAF
+            📋 Nouveau mandat : Vente - Villa (Bastos) — Prix : 25 000 000 XAF
             5+ pièces
             Expire le 15/01/2027 à 09:00.
             """.trimIndent(),

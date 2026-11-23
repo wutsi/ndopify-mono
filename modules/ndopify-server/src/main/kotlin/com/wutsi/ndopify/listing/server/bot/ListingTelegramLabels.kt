@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.listing.server.bot
 
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.server.mail.MandateMailLabels
 import com.wutsi.ndopify.refdata.server.service.LocationService
@@ -8,7 +9,8 @@ import org.springframework.stereotype.Service
 
 /**
  * The listing labels the agent Telegram messages share: the property's title, and the one-line
- * `{title} ({neighbourhood}) — {price}` that opens them.
+ * `{title} ({neighbourhood}) — {price}` that opens them. A SALE listing's line reads `— Prix : {price}`: the agent
+ * reads a sale price, not a rent; a rental's keeps its bare amount.
  *
  * A blank title falls back to `Bien n° <id>`; an unknown neighbourhood is left out (no empty `()`); a price that is
  * unset (`< 0`) or in a blank currency is left out (no trailing ` — `). Amounts go through [MandateMailLabels.price],
@@ -24,6 +26,9 @@ class ListingTelegramLabels(private val locationService: LocationService) {
         neighbourhood(listing)?.let { append(" ($it)") }
         if (listing.price >= 0 && listing.currencyCode.isNotBlank()) {
             append(" — ")
+            if (listing.listingType == ListingType.SALE) {
+                append("Prix : ")
+            }
             append(MandateMailLabels.price(listing.price, listing.currencyCode, listing.pricePeriodicityType, formatter))
         }
     }

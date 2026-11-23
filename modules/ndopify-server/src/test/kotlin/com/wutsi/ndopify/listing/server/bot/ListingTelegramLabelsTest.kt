@@ -3,6 +3,7 @@ package com.wutsi.ndopify.listing.server.bot
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
@@ -58,6 +59,13 @@ class ListingTelegramLabelsTest {
 
         assertEquals("Nice apartment — 150 000 FCFA / mois", text)
         assertFalse(text.contains("()"))
+    }
+
+    @Test
+    fun `a sale listing's line names its price`() {
+        val sale = listing.copy(listingType = ListingType.SALE, pricePeriodicityType = PeriodicityType.NONE)
+
+        assertEquals("Nice apartment (Bastos) — Prix : 150 000 FCFA", labels.titleAndPrice(sale, formatter))
     }
 
     @Test

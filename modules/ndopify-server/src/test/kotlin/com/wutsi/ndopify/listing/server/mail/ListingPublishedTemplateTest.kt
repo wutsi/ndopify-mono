@@ -27,6 +27,7 @@ class ListingPublishedTemplateTest {
         "neighbourhood" to "Bastos",
         "listing_url" to "https://www.ndopify.com/yaounde/bastos/listing/1/appartement",
         "image_url" to "https://cdn.ndopify.com/7.jpg",
+        "sale" to false,
     )
 
     @Test
@@ -39,6 +40,8 @@ class ListingPublishedTemplateTest {
         assertTrue(html.contains("Quartier</b>: Bastos"))
         assertTrue(html.contains("https://www.ndopify.com/yaounde/bastos/listing/1/appartement"))
         assertTrue(html.contains("https://cdn.ndopify.com/7.jpg"))
+        assertTrue(html.contains("les candidats"))
+        assertFalse(html.contains("acheteurs"))
     }
 
     @Test
@@ -49,6 +52,21 @@ class ListingPublishedTemplateTest {
         assertTrue(html.contains("Ray Sponsible"))
         assertTrue(html.contains("https://www.ndopify.com/yaounde/bastos/listing/1/appartement"))
         assertTrue(html.contains("https://cdn.ndopify.com/7.jpg"))
+        assertTrue(html.contains("les candidats"))
+        assertFalse(html.contains("acheteurs"))
+    }
+
+    @Test
+    fun `a published sale speaks of buyers`() {
+        val sale = context + mapOf("sale" to true)
+
+        val agent = resolver.resolve(ListingPublishedMailet.TEMPLATE_AGENT, sale)
+        assertTrue(agent.contains("les acheteurs"))
+        assertFalse(agent.contains("candidats"))
+
+        val customer = resolver.resolve(ListingPublishedMailet.TEMPLATE_CUSTOMER, sale)
+        assertTrue(customer.contains("les acheteurs"))
+        assertFalse(customer.contains("candidats"))
     }
 
     @Test

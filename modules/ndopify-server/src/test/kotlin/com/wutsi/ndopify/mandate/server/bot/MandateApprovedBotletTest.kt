@@ -118,10 +118,42 @@ class MandateApprovedBotletTest {
         assertEquals(
             """
             ✅ Le client a signé le mandat. Il va commencer à recevoir les offres.
-            Bien : Vente - Villa (Bastos) — 25 000 000 XAF
+            Bien : Vente - Villa (Bastos) — Prix : 25 000 000 XAF
             """.trimIndent(),
             text.firstValue,
         )
+    }
+
+    @Test
+    fun `a sale search approval names its budget and never a rental`() {
+        val mandate = MandateEntity(
+            id = 3L,
+            tenantId = 1L,
+            agentId = 20L,
+            status = MandateStatus.APPROVED,
+            mandateType = MandateType.SEARCH,
+            cityId = 2370201L,
+            neighborhoodIds = listOf(111L, 222L),
+            listingType = ListingType.SALE,
+            propertyType = PropertyType.HOUSE,
+            price = 250_000_000,
+            currencyCode = "XAF",
+        )
+
+        botlet.send(mandate, agent, 1000L)
+
+        val text = argumentCaptor<String>()
+        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        assertEquals(
+            """
+            ✅ Le client a signé le mandat. Il va commencer à recevoir les offres.
+            Recherche : Achat - Maison (Bastos, Mvan) — Budget : 250 000 000 XAF
+            """.trimIndent(),
+            text.firstValue,
+        )
+        listOf("location", "loyer", "logement").forEach { word ->
+            assertFalse(text.firstValue.lowercase().contains(word), "no '$word' in a sale message")
+        }
     }
 
     @Test

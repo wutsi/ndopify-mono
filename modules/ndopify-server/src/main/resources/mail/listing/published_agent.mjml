@@ -50,9 +50,11 @@
                 <mj-text font-weight="bold" font-size="18px">
                     Prochaine étape :
                 </mj-text>
-                <mj-text>
+                <mj-text>{{^sale}}
                     Partagez le lien de l'annonce et organisez les visites avec les candidats intéressés.
-                </mj-text>
+                {{/sale}}{{#sale}}
+                    Partagez le lien de l'annonce et organisez les visites avec les acheteurs intéressés.
+                {{/sale}}</mj-text>
 
                 {{#listing_url}}
                 <!-- Button with class for CSS injection -->
