@@ -1,9 +1,11 @@
 package com.wutsi.ndopify.match.server.service
 
 import com.wutsi.ndopify.listing.dto.FurnitureType
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
@@ -19,9 +21,10 @@ import java.time.LocalDate
  *    `ROOM` against a housing type other than `STUDIO`, an unknown listed type;
  * 2. the listing is the search customer's own property;
  * 3. other `listingType`, `cityId`, or `propertyCategory` (a `BUILDING` pair is decided by its type instead);
- * 4. with a budget: other `currencyCode` or `pricePeriodicityType`;
- * 5. with a budget: a price over the budget + `priceTolerance`;
- * 6. a housing sibling (ex: a `HOUSE` for an `APARTMENT` search) whose rooms are not the searched count or one more
+ * 4. a land purchase requiring a document the seller didn't declare (any one of the required documents is enough);
+ * 5. with a budget: other `currencyCode` or `pricePeriodicityType`;
+ * 6. with a budget: a price over the budget + `priceTolerance`;
+ * 7. a housing sibling (ex: a `HOUSE` for an `APARTMENT` search) whose rooms are not the searched count or one more
  *    (`rooms` partial under [MIN_SIBLING_ROOMS]); a search without a rooms count keeps every sibling.
  *
  * The score is the weighted sum of its partials multiplied by `typeScore`: 1.0 for the searched type (or none),
@@ -144,6 +147,11 @@ class Matcher(
                 MatchRuleOut.CATEGORY,
                 "search=${search.propertyCategory} listing=${listing.propertyCategory}",
             )
+        documentsMismatch(search, listing) ->
+            MatchResult.RuledOut(
+                MatchRuleOut.TITLE_DOCUMENTS,
+                "required=${search.titleDocuments} declared=${listing.mandate.ownershipDocuments}",
+            )
         search.price > 0 && listing.currencyCode != search.currencyCode ->
             MatchResult.RuledOut(MatchRuleOut.CURRENCY, "search=${search.currencyCode} listing=${listing.currencyCode}")
         search.price > 0 && listing.pricePeriodicityType != search.pricePeriodicityType ->
@@ -168,6 +176,17 @@ class Matcher(
                     search.propertyType == PropertyType.UNKNOWN ||
                     (search.propertyType != PropertyType.BUILDING && listing.propertyType != PropertyType.BUILDING)
                 )
+
+    // Any one of the required documents is enough; only a land sale, where both answers exist, filters at all.
+    private fun documentsMismatch(search: MandateEntity, listing: ListingEntity): Boolean {
+        val required = search.titleDocuments.filter { it != TitleDocumentType.UNKNOWN }
+        return required.isNotEmpty() &&
+            search.listingType == ListingType.SALE &&
+            search.propertyType == PropertyType.LAND &&
+            listing.listingType == ListingType.SALE &&
+            listing.propertyType == PropertyType.LAND &&
+            listing.mandate.ownershipDocuments.none { it != TitleDocumentType.UNKNOWN && it in required }
+    }
 
     // 1.0 for the searched type (or none), 0.8-0.9 for a commercial or housing sibling, 0.0 when incompatible
     private fun typeScore(search: PropertyType?, listing: PropertyType?): Double {

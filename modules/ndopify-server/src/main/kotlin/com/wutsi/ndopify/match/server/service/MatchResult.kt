@@ -6,6 +6,7 @@ enum class MatchRuleOut {
     LISTING_TYPE,
     CITY,
     CATEGORY,
+    TITLE_DOCUMENTS,
     PROPERTY_TYPE,
     SIBLING_ROOMS,
     CURRENCY,

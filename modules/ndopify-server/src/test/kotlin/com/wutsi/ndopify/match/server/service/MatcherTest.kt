@@ -10,6 +10,7 @@ import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import java.time.LocalDate
@@ -95,6 +96,23 @@ class MatcherTest {
     private val commercialListing = listingA.copy(
         propertyCategory = PropertyCategory.COMMERCIAL,
         propertyType = PropertyType.OFFICE,
+    )
+
+    private val landSearch = search.copy(
+        listingType = ListingType.SALE,
+        propertyType = PropertyType.LAND,
+        rooms = null,
+        price = 15_000_000,
+        pricePeriodicityType = PeriodicityType.NONE,
+        titleDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+    )
+    private val landListing = listingA.copy(
+        listingType = ListingType.SALE,
+        propertyType = PropertyType.LAND,
+        rooms = null,
+        price = 12_000_000,
+        pricePeriodicityType = PeriodicityType.NONE,
+        mandate = listingA.mandate.copy(ownershipDocuments = emptyList()),
     )
 
     private fun score(search: MandateEntity, listing: ListingEntity): MatchScore? =
@@ -377,6 +395,74 @@ class MatcherTest {
 
         assertNull(score(search, listing))
         assertEquals(MatchRuleOut.CATEGORY, rule(search, listing))
+    }
+
+    @Test
+    fun `ruled out - the seller declared none of the required documents`() {
+        assertNull(score(landSearch, landListing))
+        assertEquals(MatchRuleOut.TITLE_DOCUMENTS, rule(landSearch, landListing))
+    }
+
+    @Test
+    fun `ruled out - the seller declared only other documents`() {
+        val listing = landListing.copy(
+            mandate = landListing.mandate.copy(ownershipDocuments = listOf(TitleDocumentType.CERTIFICATE_OF_OWNERSHIP)),
+        )
+
+        assertEquals(MatchRuleOut.TITLE_DOCUMENTS, rule(landSearch, listing))
+    }
+
+    @Test
+    fun `one required document is enough`() {
+        val listing = landListing.copy(
+            mandate = landListing.mandate.copy(ownershipDocuments = listOf(TitleDocumentType.SURVEY_PLAN)),
+        )
+
+        assertEquals(score(landSearch.copy(titleDocuments = emptyList()), listing), score(landSearch, listing))
+        assertNull(rule(landSearch, listing))
+    }
+
+    @Test
+    fun `no required document, no filter`() {
+        assertNotNull(score(landSearch.copy(titleDocuments = emptyList()), landListing))
+        assertNull(rule(landSearch.copy(titleDocuments = emptyList()), landListing))
+    }
+
+    @Test
+    fun `an unknown required document is not a requirement`() {
+        assertNull(rule(landSearch.copy(titleDocuments = listOf(TitleDocumentType.UNKNOWN)), landListing))
+    }
+
+    @Test
+    fun `a rental never fires the documents rule`() {
+        assertNull(rule(search.copy(titleDocuments = listOf(TitleDocumentType.LAND_TITLE)), listingA))
+    }
+
+    @Test
+    fun `a non-land sale never fires the documents rule`() {
+        val listing = landListing.copy(propertyType = PropertyType.HOUSE, rooms = 3)
+
+        assertNull(rule(landSearch.copy(propertyType = PropertyType.HOUSE, rooms = "3"), listing))
+    }
+
+    @Test
+    fun `a non-land listing is refused on its type`() {
+        assertEquals(MatchRuleOut.PROPERTY_TYPE, rule(landSearch, landListing.copy(propertyType = PropertyType.VILLA)))
+    }
+
+    @Test
+    fun `the listing type is reported before the documents`() {
+        assertEquals(MatchRuleOut.LISTING_TYPE, rule(landSearch, landListing.copy(listingType = ListingType.RENTAL)))
+    }
+
+    @Test
+    fun `the documents are reported before the budget`() {
+        assertEquals(MatchRuleOut.TITLE_DOCUMENTS, rule(landSearch, landListing.copy(price = 30_000_000)))
+    }
+
+    @Test
+    fun `the customer's explicit interest is never refused on documents`() {
+        assertNotNull(matcher.scoreInterest(landSearch, landListing, distances, TODAY))
     }
 
     @Test
