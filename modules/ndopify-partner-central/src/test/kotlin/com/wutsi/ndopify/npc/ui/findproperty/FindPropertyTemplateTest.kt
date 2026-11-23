@@ -215,6 +215,83 @@ class FindPropertyTemplateTest {
     }
 
     @Test
+    fun `a sale property step offers land and no room nor furniture`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(listingType = ListingType.SALE, propertyType = null, rooms = null),
+        )
+
+        val page = render(get("/find-property?step=property"))
+
+        assertEquals(
+            listOf("STUDIO", "APARTMENT", "HOUSE", "VILLA", "DUPLEX", "LAND", "ANY"),
+            page.select("input[name=propertyType]").map { it.attr("value") },
+        )
+        assertNull(page.selectFirst("[data-group=furnitureType]"))
+        assertNotNull(page.selectFirst("[data-group=rooms]"))
+    }
+
+    @Test
+    fun `a land purchase asks its documents and a required surface`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = "LAND",
+                rooms = null,
+                furnitureType = null,
+                area = null,
+            ),
+        )
+
+        val page = render(get("/find-property?step=property"))
+
+        val documents = assertNotNull(page.selectFirst("[data-group=titleDocuments]"))
+        assertFalse(documents.hasAttr("hidden"))
+        assertEquals(
+            listOf("LAND_TITLE", "SURVEY_PLAN", "CERTIFICATE_OF_OWNERSHIP"),
+            documents.select("input[name=titleDocuments]").map { it.attr("value") },
+        )
+        assertEquals("Surface du terrain", page.selectFirst("[data-area-label]")?.text())
+        assertNull(page.selectFirst("[data-group=area] .field__optional"))
+    }
+
+    @Test
+    fun `a rental and a villa purchase are asked no document`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(
+                listingType = ListingType.RENTAL,
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = "LAND",
+                rooms = null,
+                furnitureType = null,
+                area = null,
+            ),
+        )
+
+        val rental = render(get("/find-property?step=property"))
+
+        assertTrue(rental.selectFirst("[data-group=titleDocuments]")!!.hasAttr("hidden"))
+        assertEquals("Surface du terrain minimale", rental.selectFirst("[data-area-label]")?.text())
+
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
+                propertyType = "VILLA",
+            ),
+        )
+
+        val villa = render(get("/find-property?step=property"))
+
+        assertTrue(villa.selectFirst("[data-group=titleDocuments]")!!.hasAttr("hidden"))
+        assertEquals("Surface minimale", villa.selectFirst("[data-area-label]")?.text())
+    }
+
+    @Test
     fun amenitiesPrefilled() {
         session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
 

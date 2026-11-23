@@ -17,6 +17,7 @@ import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateResponse
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
@@ -407,6 +408,91 @@ class FindPropertyControllerTest {
         assertEquals("4", pending()?.rooms)
         assertEquals("UNFURNISHED", pending()?.furnitureType)
         assertEquals("2", pending()?.parkings)
+        assertNull(pending()?.area)
+    }
+
+    @Test
+    fun `a land purchase requires its surface`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(listingType = ListingType.SALE, propertyType = null, rooms = null),
+        )
+
+        val result = mvc.perform(
+            post("/find-property/property").session(session).param("propertyType", "LAND"),
+        ).andReturn()
+
+        assertEquals("property", model(result)["step"])
+        assertEquals("Indiquez la surface du terrain.", errors(result)["area"])
+        assertNull(pending()?.propertyType)
+    }
+
+    @Test
+    fun `a land purchase keeps any number of documents`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = null,
+                rooms = null,
+                furnitureType = null,
+                area = null,
+            ),
+        )
+
+        val result = mvc.perform(
+            post("/find-property/property").session(session)
+                .param("propertyType", "LAND")
+                .param("area", "400")
+                .param("titleDocuments", "LAND_TITLE", "SURVEY_PLAN"),
+        ).andReturn()
+
+        assertEquals("redirect:/find-property?step=amenities", result.modelAndView?.viewName)
+        assertEquals(
+            listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+            pending()?.titleDocuments,
+        )
+    }
+
+    @Test
+    fun `a villa purchase drops the documents`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(listingType = ListingType.SALE, propertyType = null, rooms = null),
+        )
+
+        mvc.perform(
+            post("/find-property/property").session(session)
+                .param("propertyType", "VILLA")
+                .param("titleDocuments", "LAND_TITLE"),
+        ).andReturn()
+
+        assertEquals(emptyList(), pending()?.titleDocuments)
+    }
+
+    @Test
+    fun `a land rental drops the documents`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(
+                listingType = ListingType.RENTAL,
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = null,
+                rooms = null,
+                furnitureType = null,
+                area = null,
+            ),
+        )
+
+        val result = mvc.perform(
+            post("/find-property/property").session(session)
+                .param("propertyType", "LAND")
+                .param("titleDocuments", "LAND_TITLE"),
+        ).andReturn()
+
+        assertEquals("redirect:/find-property?step=amenities", result.modelAndView?.viewName)
+        assertEquals(emptyList(), pending()?.titleDocuments)
         assertNull(pending()?.area)
     }
 

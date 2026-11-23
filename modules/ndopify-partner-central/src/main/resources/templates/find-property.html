@@ -167,7 +167,9 @@
             <form class="form" data-find-form method="post" novalidate th:action="@{/find-property/property}"
                   th:if="${step == 'property'}">
                 <input name="returnTo" th:if="${returning}" type="hidden" value="review">
-                <fieldset class="step" data-step="property" tabindex="-1">
+                <fieldset class="step" data-step="property" tabindex="-1"
+                          th:with="sale=${#strings.equals(answers.listingType, 'SALE')},
+                                   landSale=${#strings.equals(answers.listingType, 'SALE') and #strings.equals(answers.propertyType, 'LAND')}">
                     <legend class="visually-hidden"
                             th:text="|Étape ${stepNumber} sur ${stepCount} : le bien recherché|">
                         Étape 3 sur 7 : le bien recherché</legend>
@@ -203,7 +205,8 @@
                     </fieldset>
 
                     <fieldset aria-describedby="furnitureType-error" class="choices" data-group="furnitureType"
-                              th:attr="aria-invalid=${errors['furnitureType'] != null ? 'true' : null}">
+                              th:attr="aria-invalid=${errors['furnitureType'] != null ? 'true' : null}"
+                              th:if="${!sale}">
                         <legend class="choices__legend">Meublé&nbsp;?</legend>
                         <div class="choices__grid">
                             <label class="choice"><input name="furnitureType"
@@ -240,8 +243,8 @@
 
                     <div class="field" data-group="area">
                         <label class="field__label" for="area"><span data-area-label
-                                th:text="${answers.propertyType == 'LAND'} ? 'Surface du terrain minimale' : 'Surface minimale'">Surface
-                            minimale</span> <span class="field__optional">(facultatif)</span></label>
+                                th:text="${landSale} ? 'Surface du terrain' : (${answers.propertyType == 'LAND'} ? 'Surface du terrain minimale' : 'Surface minimale')">Surface
+                            minimale</span> <span class="field__optional" th:unless="${landSale}">(facultatif)</span></label>
                         <div class="input-unit">
                             <input aria-describedby="area-error" class="input" id="area" inputmode="numeric" name="area"
                                    th:attr="aria-invalid=${errors['area'] != null ? 'true' : null}"
@@ -251,6 +254,20 @@
                         </div>
                         <p th:replace="~{:: error('area')}"></p>
                     </div>
+
+                    <!--/* Documents the buyer may require, asked only for a land purchase. Rendered even when hidden:
+                         without JS the boxes still post, and the server drops them for anything else. */-->
+                    <fieldset class="choices" data-group="titleDocuments" th:hidden="${!asksTitleDocuments}">
+                        <legend class="choices__legend">Quels documents exigez-vous&nbsp;? <span
+                                class="field__optional">(facultatif)</span></legend>
+                        <div class="choices__grid">
+                            <label class="choice" th:each="document : ${titleDocumentLabels}"><input
+                                    name="titleDocuments" type="checkbox" th:value="${document.key}"> <th:block
+                                    th:text="${document.value}">Titre foncier</th:block></label>
+                        </div>
+                        <p class="hint">Facultatif. Ces documents guident votre agent&nbsp;; ils ne filtrent pas les
+                            biens proposés.</p>
+                    </fieldset>
 
                     <div class="form__actions">
                         <a class="btn btn--outline" data-prev
