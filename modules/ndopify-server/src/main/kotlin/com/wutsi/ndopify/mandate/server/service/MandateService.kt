@@ -81,6 +81,9 @@ class MandateService(
     private val originListingResolver: OriginListingResolver,
 
     @param:Value("\${ndopify.mandate.contract.duration-months}") private val contractDurationMonths: Int,
+
+    // The rate a sale contract gets when the request omits it, like the duration's default
+    @param:Value("\${ndopify.mandate.contract.sale-commission-rate}") private val saleCommissionRate: Int,
 ) {
     companion object {
         // New SEARCH mandates a visitor's page may create for one customer in 24 h (attaching to an existing search
@@ -439,6 +442,9 @@ class MandateService(
      * Not @Transactional: each step is its own transaction.
      */
     fun requestApproval(id: Long, request: RequestMandateApprovalRequest? = null): MandateEntity {
+        request?.commissionRate?.let { commissionRate ->
+            if (commissionRate !in 1..20) throw invalid("commissionRate")
+        }
         request?.durationMonths?.let { durationMonths ->
             if (durationMonths !in 1..36) throw invalid("durationMonths")
         }
@@ -651,15 +657,17 @@ class MandateService(
     private fun createContract(mandate: MandateEntity, request: RequestMandateApprovalRequest?): ContractEntity {
         val customer = customerService.findById(mandate.customerId)
         val agent = agentService.findById(mandate.agentId!!) // An ASSIGNED / PENDING_APPROVAL mandate has an agent
+        val sale = mandate.listingType == ListingType.SALE // A sale has its own contract and states its commission
         return contractService.create(
             CreateContractRequest(
                 type = when (mandate.mandateType) {
-                    MandateType.SEARCH -> ContractType.SEARCH
-                    MandateType.LISTING -> ContractType.LISTING
+                    MandateType.SEARCH -> if (sale) ContractType.SALE_SEARCH else ContractType.SEARCH
+                    MandateType.LISTING -> if (sale) ContractType.SALE_LISTING else ContractType.LISTING
                     else -> throw IllegalArgumentException("Unsupported mandate type: ${mandate.mandateType}")
                 },
                 durationMonths = request?.durationMonths ?: contractDurationMonths,
                 visitFee = request?.visitFee,
+                commissionRate = if (sale) request?.commissionRate ?: saleCommissionRate else null,
                 parties = listOf(
                     CreateContractParty(
                         partyId = customer.party.id ?: -1,
@@ -709,6 +717,7 @@ class MandateService(
         copy(
             durationMonths = request?.durationMonths ?: durationMonths,
             visitFeeAmount = request?.visitFee?.amount ?: visitFeeAmount,
+            commissionRate = request?.commissionRate ?: commissionRate,
         )
 
     /** Returns the content's URL. A new path each time: a content being signed is never overwritten. */
@@ -738,7 +747,7 @@ class MandateService(
 
         // With the content, so that a contract still signable never states terms other than these (a signature since
         // step 1 wins: setTerms then answers 409 and nothing here is saved)
-        contractService.setTerms(contractId, request?.durationMonths, request?.visitFee)
+        contractService.setTerms(contractId, request?.durationMonths, request?.visitFee, request?.commissionRate)
         contractService.setContent(contractId, SetContractRequest(url = url), contentHash)
         val updated = dao.save(
             mandate.copy(

@@ -44,6 +44,7 @@ class MandateServiceCloseDealTest {
         approvedNotifier = mock(),
         originListingResolver = mock(),
         contractDurationMonths = 6,
+        saleCommissionRate = 5,
     )
 
     private val now = 1_800_000_000_000L

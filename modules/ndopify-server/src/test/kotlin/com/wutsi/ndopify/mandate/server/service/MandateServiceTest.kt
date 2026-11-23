@@ -80,6 +80,7 @@ class MandateServiceTest {
         approvedNotifier = approvedNotifier,
         originListingResolver = originListingResolver,
         contractDurationMonths = 6,
+        saleCommissionRate = 5,
     )
 
     private val day = 24L * 60 * 60 * 1000

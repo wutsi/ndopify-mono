@@ -192,9 +192,83 @@ class RequestMandateApprovalEndpointTest : AuthorizationAwareEndpointIntegration
 
         val order = inOrder(contractGenerator, contractService)
         order.verify(contractGenerator).generate(any(), any())
-        order.verify(contractService).setTerms("c-4", 3, Money(5000, "XAF"))
+        order.verify(contractService).setTerms("c-4", 3, Money(5000, "XAF"), null)
         order.verify(contractService).setContent(eq("c-4"), any(), any())
         order.verify(contractService).requestSignature("c-4")
+    }
+
+    @Test
+    fun `request approval - a sale search gets a sale contract and the default commission`() {
+        val response = rest.postForEntity("/v1/mandates/6/request-approval", null, Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+
+        val captured = argumentCaptor<CreateContractRequest>()
+        verify(contractService).create(captured.capture())
+        assertEquals(ContractType.SALE_SEARCH, captured.firstValue.type)
+        assertEquals(5, captured.firstValue.commissionRate) // ndopify.mandate.contract.sale-commission-rate
+    }
+
+    @Test
+    fun `request approval - a sale listing keeps the rate it is sent`() {
+        // The mocked ContractService returns contract1 for every create: c-7 is what this sale's contract is
+        val contract7 = ContractEntity(id = "c-7")
+        doReturn(contract7).whenever(contractService).create(any())
+        doReturn(contract7).whenever(contractService).findById("c-7")
+        doReturn(contract7).whenever(contractService).findByIdForUpdate("c-7")
+
+        val response = rest.postForEntity(
+            "/v1/mandates/7/request-approval",
+            RequestMandateApprovalRequest(durationMonths = 12, commissionRate = 7),
+            Any::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+
+        val request = argumentCaptor<CreateContractRequest>()
+        verify(contractService).create(request.capture())
+        assertEquals(ContractType.SALE_LISTING, request.firstValue.type)
+        assertEquals(7, request.firstValue.commissionRate)
+        assertEquals(12, request.firstValue.durationMonths)
+
+        val generated = argumentCaptor<ContractEntity>()
+        verify(contractGenerator).generate(any(), generated.capture())
+        assertEquals(7, generated.firstValue.commissionRate)
+        verify(contractService).setTerms("c-7", 12, null, 7)
+        verify(contractService).requestSignature("c-7")
+    }
+
+    @Test
+    fun `request approval - a rental keeps no commission`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/1/request-approval",
+            RequestMandateApprovalRequest(commissionRate = 7),
+            Any::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+
+        val captured = argumentCaptor<CreateContractRequest>()
+        verify(contractService).create(captured.capture())
+        assertEquals(ContractType.SEARCH, captured.firstValue.type)
+        assertNull(captured.firstValue.commissionRate)
+        verify(contractService).setTerms("c-1", null, null, 7) // The service stores no rate on a rental
+    }
+
+    @Test
+    fun `request approval - an out-of-range commission is 400`() {
+        for (rate in listOf(0, 21)) {
+            val response = rest.postForEntity(
+                "/v1/mandates/6/request-approval",
+                RequestMandateApprovalRequest(commissionRate = rate),
+                ErrorResponse::class.java,
+            )
+
+            assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+            assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body!!.error.code)
+            assertEquals("commissionRate", response.body!!.error.parameter?.name)
+        }
+        verify(contractService, never()).create(any())
     }
 
     @Test

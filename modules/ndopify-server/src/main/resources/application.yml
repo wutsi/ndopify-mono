@@ -323,6 +323,7 @@ ndopify:
                 cron: "0 */15 * * * ?"     # Every 15 minutes: mandates that came at night, or had no candidate
         contract:
             duration-months: 6             # A mandate's contract is valid for 6 months from its signature
+            sale-commission-rate: 5        # A sale mandate's success commission, in % of the sale price
 
     match:
         price-tolerance: 0.10           # A listing up to 10% over the budget is still a match, scored down
