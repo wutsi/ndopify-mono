@@ -847,18 +847,12 @@ h1.alert__title {
     font-size: var(--step-hint);
 }
 
-/* The contract's terms: one field per line on phones, the duration then the visit fee. */
+/* The contract's terms: one field per line at every width (duration, a sale's commission, the visit fee), so the
+   page reads the same on a phone as on a desktop. */
 .mandate-terms__fields {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-3);
-}
-
-@media (min-width: 640px) {
-    /* The two terms on one line, the fee a little wider for its amount and suffix. */
-    .mandate-terms__fields {
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
-    }
 }
 
 /* The label already says "Frais de visite": the suffix is the currency alone, leaving the amount its room. */
