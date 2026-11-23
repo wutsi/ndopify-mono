@@ -11,9 +11,14 @@
  * the budget is a total price (periodicity NONE, at least MIN_SALE_PRICE), the moving period reads as the buying
  * horizon (same MovingPeriod values) and a financing answer is required (FinancingType). A rental stays as is and
  * sends no financing.
+ *
  * #275 — a plot of land is bought, never rented: a rental offers Terrain under neither use (data-categories is empty
  * in the page), and a posted propertyType=LAND is refused by the rules (the step never completes with it); a purchase
  * keeps it under both. "Indifférent" stays for both projects.
+ *
+ * #278 — once step 1 is answered, every later step (the review included) and the confirmation carry the project
+ * ("Achat" / "Location") as a read-only pill next to the step count / under "Demande envoyée"; step 1 keeps its
+ * choice only. The confirmation's pill is part of the confirmation's data-for pair (applyConfirmation).
  */
 (function () {
     "use strict";
@@ -1086,6 +1091,18 @@
         $("[data-progress-bar]").style.transform = "scaleX(" + (index + 1) / STEPS.length + ")";
     }
 
+    /*
+     * Shows the project's word in the progress header's pill (data-for="RENTAL" / "SALE"): "Location" or "Achat",
+     * rental when no answer is saved yet. The whole pill stays hidden on step 1, whose choice is the control
+     * (#278, AC 2); the confirmation's own pill is filled by applyConfirmation() from the submitted listingType.
+     */
+    function applyProjectPill(listingType) {
+        var project = listingType === "SALE" ? "SALE" : "RENTAL";
+        $all("[data-progress-block] [data-project] [data-for]").forEach(function (el) {
+            el.hidden = el.getAttribute("data-for") !== project;
+        });
+    }
+
     function initFindProperty() {
         var form = $("[data-find-form]");
         var slides = STEPS.map(function (key) {
@@ -1151,6 +1168,9 @@
             });
             current = index;
             setProgress(index);
+            // The project pill (Achat / Location) from step 2 on: step 1 carries the choice itself (#278, AC 2).
+            $("[data-progress-block] [data-project]").hidden = index === 0;
+            applyProjectPill(loadAnswers().listingType);
 
             var next = $("[data-next]", slides[index]);
             if (next) next.textContent = state().returning ? "Revenir à la revue" : "Suivant";

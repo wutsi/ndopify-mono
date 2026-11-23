@@ -46,7 +46,17 @@
         </div>
 
         <div class="progress" data-progress-block>
-            <p class="progress__label" data-progress-label id="progress-label">Étape 1 sur 7</p>
+            <div class="progress__head">
+                <p class="progress__label" data-progress-label id="progress-label">Étape 1 sur 7</p>
+                <!-- v2 (#278, AC 2): the project, from step 2 on, so a visitor knows whether they buy or let. Read-only
+                     text, never a control — step 1's choice stays the control. The word is the page's data-for pair
+                     (find-property.js hides this one on step 1 and shows the saved project); in production the
+                     template renders it from the saved listingType, so it needs no script. -->
+                <p class="project-tag" data-project hidden>
+                    <span class="visually-hidden">Projet&nbsp;: </span><span data-for="RENTAL">Location</span><span
+                        data-for="SALE" hidden>Achat</span>
+                </p>
+            </div>
             <div aria-labelledby="progress-label" aria-valuemax="7" aria-valuemin="1"
                  aria-valuenow="1" aria-valuetext="Étape 1 sur 7" class="progress__track" data-progress
                  role="progressbar">
@@ -771,7 +781,15 @@
                                                                             stroke="currentColor" stroke-width="1.5"/><path
                 d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
                 stroke-width="1.5"/></svg></span>
-            <h2 id="confirmation-title">Demande envoyée</h2>
+            <div class="confirmation__head">
+                <h2 id="confirmation-title">Demande envoyée</h2>
+                <!-- v2 (#278, AC 3): the same read-only project pill as the progress header, under the title, from the
+                     page's data-for pair (find-property.js applies the submitted listingType). -->
+                <p class="project-tag">
+                    <span class="visually-hidden">Projet&nbsp;: </span><span data-for="RENTAL">Location</span><span
+                        data-for="SALE" hidden>Achat</span>
+                </p>
+            </div>
             <p>Merci&nbsp;! Votre demande est enregistrée. Voici la suite&nbsp;:</p>
             <ol class="next-steps">
                 <li>

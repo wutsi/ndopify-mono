@@ -28,8 +28,9 @@
  *    the review repeats it right after the total asking price, before the availability;
  *  - the review of a sale reads its total price in full ("45 000 000 FCFA", never a K/M short form).
  *  - once step 1 is answered, every later step — the review included — and the confirmation carry the project
- *    ("Vente" / "Location") as a read-only pill next to the step count / under "Bien enregistré" (AC 7). Step 1
- *    keeps its choice only; the word is the page's data-for pair, so a land sale reads "Vente" like any other.
+ *    ("Vente" / "Location") as a read-only pill next to the step count / under "Bien enregistré" (#278, AC 1, 3).
+ *    Step 1 keeps its choice only; the word is the page's data-for pair, so a land sale reads "Vente" like any
+ *    other.
  *  - ?sample= shortcuts seed the answers of these states (README › offer-property.html).
  *
  * #275 — a plot of land is sold, never let:
@@ -335,7 +336,7 @@
             answers: { propertyType: "LAND", area: 800, ownershipDocuments: [] }
         },
         // A rental, complete: its review (and each earlier step, walking back) reads "Location" next to the step
-        // count, and the confirmation under "Bien enregistré" — where the sale samples read "Vente" (AC 7).
+        // count, and the confirmation under "Bien enregistré" — where the sale samples read "Vente" (#278, AC 1, 3).
         rental: {
             step: "revue",
             answers: {
@@ -1398,7 +1399,7 @@
             });
             current = index;
             setProgress(index);
-            // The project pill (Vente / Location) from step 2 on: step 1 carries the choice itself (#273, AC 7).
+            // The project pill (Vente / Location) from step 2 on: step 1 carries the choice itself (#278, AC 1).
             // The confirmation's own pill is not [data-project]; applyProject() fills both from the listingType.
             $("[data-progress-block] [data-project]").hidden = index === 0;
 
