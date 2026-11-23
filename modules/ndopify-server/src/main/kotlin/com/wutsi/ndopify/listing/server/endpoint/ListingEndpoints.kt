@@ -87,7 +87,7 @@ class ListingEndpoints(
     fun get(@PathVariable id: Long): GetListingResponse {
         val listing = service.findById(id)
         accessService.ensureCanRead(listing)
-        return GetListingResponse(listing = mapper.toListing(listing, sectionService.summaries(id)))
+        return GetListingResponse(listing = mapper.toListing(listing, sectionService.summaries(listing)))
     }
 
     @PostMapping

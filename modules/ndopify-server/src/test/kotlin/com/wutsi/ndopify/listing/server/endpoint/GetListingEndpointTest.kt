@@ -103,6 +103,36 @@ class GetListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `a building sold as a whole has no amenities section`() {
+        val response = rest.getForEntity("/v1/listings/105", GetListingResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val listing = response.body!!.listing
+        assertEquals(3, listing.levels)
+        assertEquals(12, listing.units)
+        assertEquals(
+            listOf(
+                ListingSection.LOCATION,
+                ListingSection.GPS,
+                ListingSection.PROPERTY,
+                ListingSection.TERMS,
+                ListingSection.PHOTOS,
+                ListingSection.REMARKS,
+            ),
+            listing.sections.map { it.section },
+        )
+        assertTrue(listing.sections.filter { it.section != ListingSection.REMARKS }.all { it.required })
+    }
+
+    @Test
+    fun `a rented building keeps its amenities section`() {
+        val response = rest.getForEntity("/v1/listings/106", GetListingResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(ListingSection.entries.drop(1), response.body!!.listing.sections.map { it.section })
+    }
+
+    @Test
     fun `photos - one rejected`() {
         val response = rest.getForEntity("/v1/listings/101", GetListingResponse::class.java)
 

@@ -24,7 +24,7 @@ INSERT INTO T_AGENT(id, tenant_id, party_id, city_id) VALUES
     (20, 1, 200, 2370201),
     (90, 2, 900, 2370201);
 
--- 1, 2, 3: mandates of agent 20   9: other tenant
+-- 1, 2, 3: mandates of agent 20   9: other tenant   6: a building for sale
 INSERT INTO T_MANDATE(
     id, tenant_id, customer_id, agent_id, property_category, status, mandate_type, listing_type, city_id,
     price, price_periodicity_type, currency_code
@@ -32,7 +32,8 @@ INSERT INTO T_MANDATE(
     (1, 1, 10, 20, 'RESIDENTIAL', 'APPROVED', 'LISTING', 'RENTAL', 2370201, 150000, 'MONTHLY', 'XAF'),
     (2, 1, 10, 20, 'RESIDENTIAL', 'APPROVED', 'LISTING', 'RENTAL', 2370201, 300000, 'MONTHLY', 'XAF'),
     (3, 1, 10, 20, 'RESIDENTIAL', 'APPROVED', 'LISTING', 'SALE', 2220957, 80000000, 'NONE', 'XAF'),
-    (9, 2, 90, 90, 'RESIDENTIAL', 'APPROVED', 'LISTING', 'RENTAL', 2370201, 100000, 'MONTHLY', 'XAF');
+    (9, 2, 90, 90, 'RESIDENTIAL', 'APPROVED', 'LISTING', 'RENTAL', 2370201, 100000, 'MONTHLY', 'XAF'),
+    (6, 1, 10, 20, 'COMMERCIAL', 'APPROVED', 'LISTING', 'SALE', 2220957, 240000000, 'NONE', 'XAF');
 
 -- 100: draft apartment in Bastos   101: draft house in Mvan   102: published, for sale in Douala   900: other tenant
 INSERT INTO T_LISTING(
@@ -77,6 +78,16 @@ INSERT INTO T_LISTING(
      80000000, 'XAF', 'NONE', null, null, null, null,
      '2027-03-01', null, null, null, null,
      '2026-10-01 10:00:00', '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
+    (103, 1, 0, 6, 20, 'COMMERCIAL', 'SALE', 'DRAFT', 2220957, 333,
+     null, null, null, null,
+     'BUILDING', null, null, null, null, null, null, 850, 3, null,
+     false, false, false, false,
+     false, false, false, false,
+     false, false, false,
+     false, false, false,
+     240000000, 'XAF', 'NONE', null, null, null, null,
+     null, null, null, null, null,
+     '2026-10-01 10:00:00', '2026-10-01 10:00:00', null),
     (900, 2, 0, 9, 90, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 111,
      null, null, null, null,
      'APARTMENT', null, 2, 1, 1, 1, null, 70, null, null,

@@ -23,7 +23,7 @@ INSERT INTO T_AGENT(id, tenant_id, party_id, city_id) VALUES
     (20, 1, 200, 2370201),
     (90, 2, 900, 2370201);
 
--- 1, 2, 3: mandates of agent 20   9: other tenant
+-- 1, 2, 3: mandates of agent 20   9: other tenant   6, 7: the two buildings
 INSERT INTO T_MANDATE(
     id, tenant_id, customer_id, agent_id, property_category, status, mandate_type, listing_type, city_id,
     price, price_periodicity_type, currency_code
@@ -33,7 +33,9 @@ INSERT INTO T_MANDATE(
     (3, 1, 10, 20, 'RESIDENTIAL', 'APPROVED', 'LISTING', 'SALE', 2220957, 80000000, 'NONE', 'XAF'),
     (9, 2, 90, 90, 'RESIDENTIAL', 'APPROVED', 'LISTING', 'RENTAL', 2370201, 100000, 'MONTHLY', 'XAF'),
     (4, 1, 10, 20, 'RESIDENTIAL', 'CLOSED', 'LISTING', 'SALE', 2220957, 80000000, 'NONE', 'XAF'),
-    (5, 1, 10, 20, 'RESIDENTIAL', 'CLOSED', 'LISTING', 'RENTAL', 2370201, 150000, 'MONTHLY', 'XAF');
+    (5, 1, 10, 20, 'RESIDENTIAL', 'CLOSED', 'LISTING', 'RENTAL', 2370201, 150000, 'MONTHLY', 'XAF'),
+    (6, 1, 10, 20, 'COMMERCIAL', 'APPROVED', 'LISTING', 'RENTAL', 2370201, 900000, 'MONTHLY', 'XAF'),
+    (7, 1, 10, 20, 'COMMERCIAL', 'APPROVED', 'LISTING', 'SALE', 2220957, 240000000, 'NONE', 'XAF');
 
 -- 100: published apartment in Bastos   101: draft house in Mvan   102: published, for sale in Douala   900: other tenant
 INSERT INTO T_LISTING(
@@ -113,6 +115,22 @@ INSERT INTO T_LISTING(
 INSERT INTO T_LISTING_SECTION(id, tenant_id, listing_id, section, verified_at) VALUES
     (1000, 1, 100, 'LOCATION', '2026-10-02 10:00:00'),
     (1001, 1, 100, 'TERMS', '2026-10-02 11:00:00');
+
+-- 105: a building sold as a whole   106: a rented building, with today's checklist
+INSERT INTO T_LISTING(
+    id, tenant_id, version, mandate_id, agent_id, property_category, listing_type, status, city_id, neighborhood_id,
+    property_type, area, levels, units,
+    price, currency_code, price_periodicity_type,
+    created_at, modified_at, published_at
+) VALUES
+    (105, 1, 0, 7, 20, 'COMMERCIAL', 'SALE', 'PUBLISHED', 2220957, NULL,
+     'BUILDING', 850, 3, 12,
+     240000000, 'XAF', 'NONE',
+     '2026-10-01 10:00:00', '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
+    (106, 1, 0, 6, 20, 'COMMERCIAL', 'RENTAL', 'PUBLISHED', 2370201, 111,
+     'BUILDING', 850, 3, 12,
+     900000, 'XAF', 'MONTHLY',
+     '2026-10-01 10:00:00', '2026-10-01 10:00:00', '2026-10-01 10:00:00');
 
 INSERT INTO T_LISTING_IMAGE(id, tenant_id, listing_id, path, url, status) VALUES
     (1000, 1, 100, 'listings/100/images/1.png', 'https://localhost/listings/100/images/1.png', 'VERIFIED'),
