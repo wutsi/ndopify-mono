@@ -118,7 +118,7 @@ object MandateLabels {
         FinancingType.UNDECIDED to "Pas encore décidé",
     )
 
-    /** The land documents a buyer may require (prototype's TITLE_DOCUMENT_LABELS). */
+    /** The title documents a buyer may require of a purchase, whatever its type (prototype's TITLE_DOCUMENT_LABELS). */
     val TITLE_DOCUMENT_LABELS: Map<TitleDocumentType, String> = linkedMapOf(
         TitleDocumentType.LAND_TITLE to "Titre foncier",
         TitleDocumentType.SURVEY_PLAN to "Plan de bornage",

@@ -145,20 +145,22 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   *Louer / Acheter*; `?type=SALE|RENTAL` preselects it. `GET /find-property` without a `step` is the entry point
   and starts a new run: it drops the session's `PendingMandate` and `SubmittedMandate`, so a previous run's answers
   are never shown (every in-run URL, *Précédent* included, carries its `step`).
-  A purchase drops the *Chambre* type, offers *Terrain* under both usages (residential and commercial) with a required surface, asks
-  no furniture, reads *Budget total* (floor 1 000 000 FCFA, `PeriodicityType.NONE`), the buying horizon and a required financing
-  answer, asks the title documents (*Titre foncier*, *Plan de bornage*, *Certificat de propriété*) for a *Terrain*
-  only, and shows the implied price per m² as the budget is typed — display only, never sent nor stored. The session
+  A purchase drops the *Chambre* type, offers *Terrain* under both usages (residential and commercial) with a required
+  surface, asks the furniture of a residential type, reads *Budget total* (floor 1 000 000 FCFA, `PeriodicityType.NONE`),
+  the buying horizon and a required financing answer, asks the title documents (*Titre foncier*, *Plan de bornage*,
+  *Certificat de propriété*) for every type, optional, and shows the implied price per m² for a *Terrain* (per unit for
+  an *Immeuble*) as the budget is typed — display only, never sent nor stored. The session
   keeps `financingType` and `titleDocuments`; ndopify-server normalizes them on create/update (no financing for a
-  rental, documents only for a land purchase, `UNKNOWN` dropped, an empty list is a valid answer). Since
+  rental, documents for every sale, `UNKNOWN` dropped, an empty list is a valid answer), and the matcher's document veto
+  covers every sale type. Since
   ndopify-server doesn't validate mandates yet, these rules and the city/neighbourhood checks are the only
   validation a mandate gets. "Indifférent" (`ANY`) is a UI-only answer, sent as `null`. Without JS the property step
   shows every follow-up question of the category and the server ignores those that don't apply to the type;
-  `src/main/assets/js/find-property.js` hides them and computes the price per m². A building bought as a whole keeps
-  six steps: its property step asks *Nombre d'étages* and *Nombre d'unités* (both required, each with *Indifférent*
-  stored as `null`) and no rooms nor parkings, the amenities step leaves, and *Précédent* follows that branch (the
-  budget step goes back to the property step, not to the skipped amenities one). Prototype:
-  `src/main/html/v2/find-property.html` (approved 2026-11-22).
+  `src/main/assets/js/find-property.js` hides them and computes the price per m². No rental offers *Immeuble*; a
+  building bought as a whole keeps six steps: its property step asks *Nombre d'étages* and *Nombre d'unités* (both
+  required, each with *Indifférent* stored as `null`) and no rooms nor parkings, the amenities step leaves, and
+  *Précédent* follows that branch (the budget step goes back to the property step, not to the skipped amenities one).
+  Prototype: `src/main/html/v2/find-property.html` (approved 2026-11-22).
 - *Proposer un bien* is `OfferPropertyController` (`ui/offerproperty/`), a **public** wizard for owners offering a
   property to rent or sell, built like *Trouver un bien*: one page (`templates/offer-property.html`), seven steps
   (`property` → `address` → `terms` → `features` → `amenities` → `contact` → `review`), `POST /offer-property/{step}`
@@ -167,18 +169,19 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   preselected from `?type=SALE|RENTAL`) in the tenant's currency (`NdMandateClient` → `POST /v1/mandates`), then
   shows the confirmation while a `SubmittedMandate` is in the session. `GET /offer-property` without a `step` is the
   entry point and starts a new run, dropping the session's `PendingListing` and `SubmittedMandate` like *Trouver un
-  bien*. A sale has a one-off price (`PeriodicityType.NONE`, at least 1 000 000 FCFA), no advance nor deposit, no
-  furnishing, *Terrain* offered under both usages and no *Chambre*; a sold *Terrain* requires its
-  surface, offers the optional *Document de propriété* (*Titre foncier*, *Plan de bornage*, *Certificat de propriété*, several or none,
-  sent only for a SALE · LAND) and shows its implied price per m² as the surface is typed — display only, never sent
+  bien*. A sale has a one-off price (`PeriodicityType.NONE`, at least 1 000 000 FCFA), no advance nor deposit,
+  *Terrain* offered under both usages and no *Chambre*; a sold *Terrain* requires its surface, and a sale offers the
+  optional *Document de propriété* (*Titre foncier*, *Plan de bornage*, *Certificat de propriété*, several or none)
+  whatever its type; a residential sale asks its furniture. The seller shows its implied price per m² for a *Terrain*
+  (per unit for an *Immeuble*) as the surface / unités are typed — display only, never sent
   nor stored. `availableFrom` must be between today and 365 days later, in the tenant's time zone (`Clock`, so a
   saved date can expire). The header's *Quitter* and the confirmation's CTA go to `{publicPortalUrl}/owner` for a
   rental, `{publicPortalUrl}/owner/sell` for a sale (none without a `publicPortalUrl`). Without JS every step posts;
   `src/main/assets/js/offer-property.js` only enhances (city / neighbourhood slim-select over `/locations`,
   "150 000", the project's texts, questions of the type and of the project, the documents, the price per m², E.164
   WhatsApp), mirroring `OfferPropertyRules`. A building sold as a whole keeps six steps too: *Immeuble* is offered
-  under *Commercial* only, its features step requires its *Étages* and *Unités* and asks no parking, the amenities
-  step leaves, and *Précédent* follows that branch. Prototype:
+  under *Commercial* on a sale only (never for rent), its features step requires its *Étages* and *Unités* and asks no
+  parking, the amenities step leaves, and *Précédent* follows that branch. Prototype:
   `src/main/html/v2/offer-property.html` (approved 2026-11-22).
 - KYC is `KycController` (`ui/kyc/`), one page (`templates/kyc.html`), reached from the Espace agent's banner. Wizard steps `front` →
   `back` → `selfie` → `review`: `GET /kyc?step=…` shows a step (never past the first photo the case lacks) and
@@ -280,7 +283,11 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   based on the new version (the profile page does the same with `AGENT_VERSION_CONFLICT`); the city can't change, the
   neighbourhoods are checked by `SectorValidator`, and the rest by `FindPropertyRules` (the only validation a mandate
   gets). A building sale's edit page asks its *Étages* and *Unités* (both rendered so a type change to *Immeuble*
-  reveals them, hidden otherwise) and drops its rooms, parkings and amenities group. The customer's contact block (`.contact-card`) is unboxed: role ("Client" / "Bailleur"), full name, "à appeler"
+  reveals them, hidden otherwise) and drops its rooms, parkings and amenities group. The page asks the one rule set's
+  questions (`FindPropertyRules`), shows a sale's *Document de propriété* / *Documents exigés* (pre-filled, optional)
+  and the sale's rate under the price (per m² for a *Terrain*, per unit for an *Immeuble*); a question it doesn't show
+  keeps the mandate's stored answer, and a stored rental land or building keeps its type and answers while it stays
+  checked. The customer's contact block (`.contact-card`) is unboxed: role ("Client" / "Bailleur"), full name, "à appeler"
   when the mandate has a call window, the number as a `tel:` link with a compact WhatsApp button beside it, and the
   e-mail as a `mailto:` link. Its "Modifier" (only while `MandateRules.CUSTOMER_EDITABLE`, so not on a closed or
   cancelled mandate) opens the customer edit page (`GET|POST /mandates/{id}/customer/edit`,

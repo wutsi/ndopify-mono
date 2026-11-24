@@ -42,7 +42,7 @@ internal object MandateMailLabels {
         FinancingType.UNDECIDED to "Pas encore décidé",
     )
 
-    // The land documents a buyer requires (TitleDocumentType).
+    // The title documents a buyer may require (TitleDocumentType).
     private val TITLE_DOCUMENTS = mapOf(
         TitleDocumentType.LAND_TITLE to "Titre foncier",
         TitleDocumentType.SURVEY_PLAN to "Plan de bornage",
