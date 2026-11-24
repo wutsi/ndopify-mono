@@ -68,9 +68,13 @@ open class AccessTokenService(
         tenantId: Long?,
         ttlSeconds: Int = properties.ttl(application).seconds.toInt(),
         partyId: Long? = null,
-        issuedAt: Instant = Instant.ofEpochMilli(clock.millis()),
-        sessionStartedAt: Instant = issuedAt,
+        // Nullable so that the defaults are computed here, not by the synthetic `$default` method: a test mocks this
+        // service, and that method would read the mock's uninitialized `clock`.
+        issuedAt: Instant? = null,
+        sessionStartedAt: Instant? = null,
     ): String {
+        val issued = issuedAt ?: Instant.ofEpochMilli(clock.millis())
+        val started = sessionStartedAt ?: issued
         val algo = getAlgorithm()
         val builder = JWT.create()
             .withIssuer(ISSUER)
@@ -79,9 +83,9 @@ open class AccessTokenService(
             .withClaim(JwtPrincipal.CLAIM_APPLICATION, application)
             .withArrayClaim(JwtPrincipal.CLAIM_ROLE, roles)
             .withSubject(userId.toString())
-            .withIssuedAt(issuedAt)
-            .withExpiresAt(issuedAt.plusSeconds(ttlSeconds.toLong()))
-            .withClaim(CLAIM_SESSION_STARTED_AT, sessionStartedAt.toEpochMilli())
+            .withIssuedAt(issued)
+            .withExpiresAt(issued.plusSeconds(ttlSeconds.toLong()))
+            .withClaim(CLAIM_SESSION_STARTED_AT, started.toEpochMilli())
 
         if (tenantId != null) {
             builder.withClaim(JwtPrincipal.CLAIM_TENANT_ID, tenantId)
