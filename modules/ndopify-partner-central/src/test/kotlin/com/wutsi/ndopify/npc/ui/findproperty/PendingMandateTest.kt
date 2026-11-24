@@ -78,6 +78,22 @@ class PendingMandateTest {
     }
 
     @Test
+    fun `a commercial search needs no surface, a plot does`() {
+        assertTrue(buildingSale.copy(area = null).isComplete("property"))
+        assertFalse(
+            COMPLETE.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
+                propertyType = "LAND",
+                rooms = null,
+                furnitureType = null,
+                parkings = null,
+                area = null,
+            ).isComplete("property"),
+        )
+    }
+
+    @Test
     fun `a building sale requires both counts unless indifferent`() {
         assertTrue(buildingSale.isComplete("property"))
         assertFalse(buildingSale.copy(levels = null).isComplete("property"))

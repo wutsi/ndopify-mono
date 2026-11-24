@@ -5,6 +5,7 @@ import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.FinancingType
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -88,7 +89,7 @@ data class PendingMandate(
             FindPropertyRules.propertyType(propertyCategory, propertyType, listingType) == null &&
                 (!FindPropertyRules.needsRooms(propertyCategory, type(), listingType) || FindPropertyRules.rooms(rooms) == null) &&
                 (!FindPropertyRules.needsFurniture(propertyCategory, type(), listingType) || FindPropertyRules.furnitureType(furnitureType) == null) &&
-                FindPropertyRules.area(area, FindPropertyRules.needsArea(propertyCategory, type(), listingType)) == null &&
+                FindPropertyRules.area(area, isSale() && type() == PropertyType.LAND) == null &&
                 (!buildingSale() || countsAnswered())
 
         // Every criterion is optional; a building sale skips the step.
