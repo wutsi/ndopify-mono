@@ -14,6 +14,7 @@ import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
+import com.wutsi.ndopify.npc.ui.ScriptFixtures
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
@@ -894,6 +895,19 @@ class FindPropertyTemplateTest {
 
         assertEquals("Achat", page.selectFirst(".confirmation__head [data-project-label]")?.text())
         assertEquals("Demande envoyée", page.selectFirst("#confirmation-title")?.text())
+    }
+
+    @Test
+    fun `renders the steps the page-script test runs find-property js on`() {
+        val residentialSale = complete.copy(listingType = ListingType.SALE, propertyType = null, furnitureType = null)
+        val steps = mapOf(
+            "find-property-residential-sale" to ("property" to residentialSale),
+            "find-budget-building-sale" to ("budget" to buildingSale),
+        )
+        for ((name, step) in steps) {
+            session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, step.second)
+            ScriptFixtures.write(name, render(get("/find-property?step=${step.first}")))
+        }
     }
 
     private fun render(request: MockHttpServletRequestBuilder): Document {

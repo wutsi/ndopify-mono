@@ -477,6 +477,25 @@ class OfferPropertyController(
             )
             model.addAttribute("landSale", sale && type == PropertyType.LAND)
             model.addAttribute("pricePerUnitLabel", pricePerUnitLabel(answers))
+            /*
+             * Which questions the page renders visible (#304 AC 2). Once a type is saved, those it asks. Before, every
+             * question one of the category's types may ask, none required: without JS the visitor sees what the type
+             * they pick will need, and the server checks the answers once the type is posted. offer-property.js hides
+             * them all until a type is chosen, the sale's documents excepted.
+             */
+            val types = OfferPropertyRules.propertyTypes(category, answers.listingType)
+            fun shows(asks: (PropertyType) -> Boolean): Boolean = if (type == null) types.any(asks) else asks(type)
+            model.addAttribute(
+                "showsFurniture",
+                shows { OfferPropertyRules.needsFurniture(category, it, answers.listingType) },
+            )
+            model.addAttribute("showsRooms", shows { OfferPropertyRules.needsRooms(category, it, answers.listingType) })
+            model.addAttribute(
+                "showsParking",
+                shows { OfferPropertyRules.needsParking(category, it, answers.listingType) },
+            )
+            model.addAttribute("showsArea", shows { OfferPropertyRules.needsArea(category, it, answers.listingType) })
+            model.addAttribute("showsCounts", shows { OfferPropertyRules.buildingSale(answers.listingType, it) })
         }
         if (step == STEP_AMENITIES) {
             // The owner's wording, as the listing's (road access: one radio, in the mandates' wording)

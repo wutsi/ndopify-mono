@@ -13,6 +13,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
+import com.wutsi.ndopify.npc.ui.ScriptFixtures
 import com.wutsi.ndopify.npc.ui.findproperty.SubmittedMandate
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.refdata.dto.Location
@@ -411,10 +412,9 @@ class OfferPropertyTemplateTest {
             listOf("APARTMENT", "HOUSE", "STUDIO", "DUPLEX", "LAND"),
             page.select("input[name=propertyType]").map { it.attr("value") },
         )
-        // No follow-up question shows before the type is chosen (#304), the furniture included.
-        assertTrue(page.select("[data-group=furnitureType]").attr("hidden").isNotEmpty())
-        assertTrue(page.select("[data-group=rooms]").attr("hidden").isNotEmpty())
-        assertTrue(page.select("[data-group=hasParking]").attr("hidden").isNotEmpty())
+        // Before a type, without JS, the usage's questions are rendered, none required (#304 AC 2): the furniture too.
+        assertFalse(page.selectFirst("[data-group=furnitureType]")!!.hasAttr("hidden"))
+        assertTrue(page.select("input[name=furnitureType]").none { it.hasAttr("required") })
         assertEquals("Terrain", page.selectFirst("input[name=propertyType][value=LAND]")!!.parent()!!.text())
         assertEquals("SALE", page.selectFirst("form[data-offer-form]")?.attr("data-listing-type"))
     }
@@ -467,25 +467,27 @@ class OfferPropertyTemplateTest {
     }
 
     @Test
-    fun `a sale shows no follow-up question before its type is chosen`() {
+    fun `a sale renders every question of its usage, none required, before its type is chosen`() {
         session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale.copy(propertyType = null))
 
         val page = render(get("/offer-property?step=features"))
 
-        assertTrue(page.select("[data-group=rooms]").attr("hidden").isNotEmpty())
-        assertTrue(page.select("[data-group=hasParking]").attr("hidden").isNotEmpty())
-        assertTrue(page.select("[data-group=parkings]").attr("hidden").isNotEmpty())
-        assertTrue(page.select("[data-group=furnitureType]").attr("hidden").isNotEmpty())
-        assertTrue(page.select("[data-group=area]").attr("hidden").isNotEmpty())
+        // Without JS the visitor must see what the type it picks will ask (#304 AC 2); offer-property.js hides them
+        // until a type is chosen. The server checks them once the type is posted.
+        for (group in listOf("furnitureType", "rooms", "hasParking", "parkings", "area")) {
+            assertFalse(page.selectFirst("[data-group=$group]")!!.hasAttr("hidden"), group)
+        }
+        assertTrue(page.selectFirst("[data-building-counts]")!!.hasAttr("hidden"))
+        assertTrue(page.select("input[name=furnitureType]").none { it.hasAttr("required") })
         assertTrue(page.select("input[name=rooms]").none { it.hasAttr("required") })
         assertTrue(page.select("input[name=hasParking]").none { it.hasAttr("required") })
         assertTrue(page.select("input[name=parkings]").none { it.hasAttr("required") })
-        // The documents are the exception: every sale shows them from the step's first render (#304).
+        assertTrue(page.select("input[name=area]").none { it.hasAttr("required") })
         assertNotNull(page.selectFirst("[data-group=ownershipDocuments]:not([hidden])"))
     }
 
     @Test
-    fun `a commercial sale asks no surface before its type is chosen`() {
+    fun `a commercial sale renders its surface and a building's counts before its type is chosen`() {
         session.setAttribute(
             PendingListing.SESSION_ATTRIBUTE,
             sale.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = null),
@@ -493,9 +495,9 @@ class OfferPropertyTemplateTest {
 
         val page = render(get("/offer-property?step=features"))
 
-        // The category is known at this step, not the type: a commercial property is measured only once one is picked.
-        assertTrue(page.select("[data-group=area]").attr("hidden").isNotEmpty())
+        assertFalse(page.selectFirst("[data-group=area]")!!.hasAttr("hidden"))
         assertTrue(page.select("input[name=area]").none { it.hasAttr("required") })
+        assertFalse(page.selectFirst("[data-building-counts]")!!.hasAttr("hidden"))
         assertNotNull(page.selectFirst("[data-group=ownershipDocuments]:not([hidden])"))
     }
 
@@ -964,6 +966,24 @@ class OfferPropertyTemplateTest {
             SubmittedMandate("ray@gmail.com", "+237670000001", ContactPeriodType.EVENING),
         )
         return render(get("/offer-property?step=confirmation"))
+    }
+
+    @Test
+    fun `renders the steps the page-script test runs offer-property js on`() {
+        val noType = sale.copy(propertyType = null, area = null)
+        val steps = mapOf(
+            "offer-property" to complete,
+            "offer-terms-sale" to sale,
+            "offer-features-residential-sale" to noType,
+            "offer-features-commercial-sale" to noType.copy(propertyCategory = PropertyCategory.COMMERCIAL),
+            "offer-features-residential-rental" to
+                complete.copy(propertyType = null, furnitureType = null, rooms = null, parkings = null),
+        )
+        for ((name, answers) in steps) {
+            session.setAttribute(PendingListing.SESSION_ATTRIBUTE, answers)
+            val step = name.removePrefix("offer-").substringBefore('-')
+            ScriptFixtures.write(name, render(get("/offer-property?step=$step")))
+        }
     }
 
     private fun render(request: MockHttpServletRequestBuilder): Document {
