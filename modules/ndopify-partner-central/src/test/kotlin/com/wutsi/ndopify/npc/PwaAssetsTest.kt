@@ -9,7 +9,6 @@ import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
@@ -53,10 +52,53 @@ class PwaAssetsTest {
     }
 
     @Test
-    fun faviconFilesAreGone() {
-        assertNull(javaClass.classLoader.getResource("public/favicon.ico"))
-        assertNull(javaClass.classLoader.getResource("public/assets/images/favicon-16.png"))
-        assertNull(javaClass.classLoader.getResource("public/assets/images/favicon-32.png"))
+    fun faviconsAreTransparentAroundTheDisc() {
+        listOf(
+            "public/assets/images/favicon.png",
+            "public/assets/images/favicon-16.png",
+            "public/assets/images/favicon-32.png",
+        ).forEach { path ->
+            val icon = image(path)
+            val last = icon.width - 1
+            listOf(0 to 0, last to 0, 0 to last, last to last).forEach { (x, y) ->
+                assertEquals(0, icon.getRGB(x, y) ushr 24, "$path is not transparent at ($x,$y)")
+            }
+            assertEquals(0xFF, icon.getRGB(last / 2, last / 2) ushr 24, "$path has no opaque centre")
+        }
+    }
+
+    @Test
+    fun faviconMasterIsTheSuppliedArtworkWithoutItsBackground() {
+        val master = image("public/assets/images/favicon.png")
+        assertEquals(500 to 500, master.width to master.height)
+        assertEquals(BLUE, rgb(master, 250, 250)) // the disc
+        assertEquals(0x000000, rgb(master, 250, 130)) // the roof
+        assertEquals(BLUE, rgb(master, 250, 60))
+        assertEquals(0, master.getRGB(0, 0) ushr 24) // the source's white square is gone
+        assertEquals(0, master.getRGB(250, 13) ushr 24) // outside the cut (radius 236: the disc starts at y = 14)
+        assertEquals(0xFF, master.getRGB(250, 15) ushr 24) // just inside it: opaque, no white fringe
+    }
+
+    @Test
+    fun faviconFilesHaveTheirSizes() {
+        assertEquals(500 to 500, pngSize(resourceBytes("public/assets/images/favicon.png")))
+        assertEquals(16 to 16, pngSize(resourceBytes("public/assets/images/favicon-16.png")))
+        assertEquals(32 to 32, pngSize(resourceBytes("public/assets/images/favicon-32.png")))
+    }
+
+    @Test
+    fun faviconIcoCarriesThreeTransparentLayers() {
+        val bytes = resourceBytes("public/favicon.ico")
+        assertEquals(listOf(0, 0, 1, 0), bytes.take(4).map { it.toInt() and 0xff }, "not an ICO header")
+        assertEquals(3, bytes[4].toInt() and 0xff, "the ICO must carry 16, 32 and 48")
+        val entries = (0 until 3).map { i ->
+            val at = 6 + 16 * i
+            val size = (bytes[at].toInt() and 0xff) to (bytes[at + 1].toInt() and 0xff)
+            val bitCount = (bytes[at + 6].toInt() and 0xff) or ((bytes[at + 7].toInt() and 0xff) shl 8)
+            size to bitCount
+        }
+        assertEquals(listOf(16 to 16, 32 to 32, 48 to 48), entries.map { it.first })
+        assertEquals(listOf(32, 32, 32), entries.map { it.second }, "a layer without alpha (32 bpp) loses the transparency")
     }
 
     @Test
