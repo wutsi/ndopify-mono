@@ -188,13 +188,14 @@ class ListingSectionController(
         model.addAttribute("error", error)
         model.addAttribute("ownerHints", ListingViews.ownerHints(answers, mandate, locations, formatter))
         model.addAttribute("currency", formatter.currency())
-        model.addAttribute("sale", listing.listingType == ListingType.SALE)
+        val sale = listing.listingType == ListingType.SALE
+        model.addAttribute("sale", sale)
         when (section) {
             ListingSection.LOCATION -> {
                 model.addAttribute("city", locations[listing.cityId]?.name)
                 model.addAttribute("neighborhoods", neighborhoods(listing, locations))
             }
-            ListingSection.PROPERTY -> model.addAttribute("types", ListingViews.TYPES)
+            ListingSection.PROPERTY -> model.addAttribute("types", ListingViews.types(sale))
             ListingSection.AMENITIES -> model.addAttribute("amenityLabels", ListingViews.AMENITY_LABELS)
             ListingSection.TERMS -> {
                 val today = formatter.today(clock)

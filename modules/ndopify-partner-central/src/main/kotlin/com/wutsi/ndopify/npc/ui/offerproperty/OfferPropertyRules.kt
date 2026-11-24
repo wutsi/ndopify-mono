@@ -19,8 +19,8 @@ import java.time.format.DateTimeParseException
  * advance range only, so the other rules here are the only validation a listing gets.
  *
  * The wizard serves two projects: a rental ([ListingType.RENTAL]) and a sale ([ListingType.SALE]). A rental offers no
- * land; a sale offers it for both uses and no room, asks no furniture, requires the surface of a plot of land and its
- * optional documents, has its own price floor, and has no advance nor deposit.
+ * land; a sale offers it under the residential use only and no room, asks no furniture, requires the surface of a plot
+ * of land and its optional documents, has its own price floor, and has no advance nor deposit.
  */
 object OfferPropertyRules {
     const val STEP_PROPERTY = "property"
@@ -89,12 +89,12 @@ object OfferPropertyRules {
         PropertyType.INDUSTRIAL to PropertyCategory.COMMERCIAL,
     )
 
-    // A sale drops the room type and offers land for both uses (a plot to build on is residential too); a rental
-    // never offers land.
+    // A sale drops the room type and offers land under the residential use only (a plot to build on is residential);
+    // a rental never offers land.
     private val SALE_CATEGORIES_BY_TYPE: Map<PropertyType, Set<PropertyCategory>> =
         (CATEGORIES_BY_TYPE - PropertyType.ROOM)
             .mapValues { (_, category) -> setOf(category) } +
-            (PropertyType.LAND to setOf(PropertyCategory.RESIDENTIAL, PropertyCategory.COMMERCIAL))
+            (PropertyType.LAND to setOf(PropertyCategory.RESIDENTIAL))
 
     private val WITHOUT_ROOMS = setOf(PropertyType.ROOM, PropertyType.STUDIO, PropertyType.BUILDING)
 

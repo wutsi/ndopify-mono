@@ -103,7 +103,7 @@
         OFFICE: { label: "Bureau", categories: ["COMMERCIAL"] },
         RETAIL: { label: "Commerce, boutique", categories: ["COMMERCIAL"] },
         INDUSTRIAL: { label: "Entrepôt, local industriel", categories: ["COMMERCIAL"] },
-        LAND: { label: "Terrain", categories: ["COMMERCIAL"] }
+        LAND: { label: "Terrain", categories: [] }
     };
 
     var ROOM_LABELS = { "1": "1 chambre", "2": "2 chambres", "3": "3 chambres", "4": "4 chambres", "5+": "5 chambres et +" };

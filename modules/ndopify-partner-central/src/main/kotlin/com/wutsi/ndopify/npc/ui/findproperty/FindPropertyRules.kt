@@ -17,8 +17,9 @@ import com.wutsi.ndopify.web.core.service.TenantFormatter
  * any of this yet, so these rules are the only validation a mandate gets.
  *
  * The wizard serves two projects: a rental ([ListingType.RENTAL]) and a purchase ([ListingType.SALE]). Land is
- * bought, never rented: only a purchase offers it, for both uses and no room, asks no furniture, requires the
- * surface of a plot of land and its optional documents, has its own budget floor and asks how the buyer will pay.
+ * bought, never rented: only a purchase offers it, under the residential use only and no room, asks no furniture,
+ * requires the surface of a plot of land and its optional documents, has its own budget floor and asks how the buyer
+ * will pay.
  */
 object FindPropertyRules {
     const val MAX_NEIGHBORHOODS = 3
@@ -59,11 +60,11 @@ object FindPropertyRules {
         PropertyType.BUILDING to setOf(PropertyCategory.COMMERCIAL),
     )
 
-    // A purchase drops the room type and offers land for both uses (a plot to build on is residential too); a rental
-    // never offers land.
+    // A purchase drops the room type and offers land under the residential use only (a plot to build on is
+    // residential); a rental never offers land.
     private val SALE_CATEGORIES_BY_TYPE: Map<PropertyType, Set<PropertyCategory>> =
         RENTAL_CATEGORIES_BY_TYPE - PropertyType.ROOM +
-            (PropertyType.LAND to setOf(PropertyCategory.RESIDENTIAL, PropertyCategory.COMMERCIAL))
+            (PropertyType.LAND to setOf(PropertyCategory.RESIDENTIAL))
 
     private val RENTAL_WITHOUT_ROOMS = setOf(PropertyType.STUDIO, PropertyType.ROOM)
     private val SALE_WITH_ROOMS =
@@ -97,9 +98,12 @@ object FindPropertyRules {
     private fun categoriesByType(listingType: ListingType?): Map<PropertyType, Set<PropertyCategory>> =
         if (isSale(listingType)) SALE_CATEGORIES_BY_TYPE else RENTAL_CATEGORIES_BY_TYPE
 
-    /** A home's bedrooms are asked whatever its type (none and "Indifférent" included), except a studio or a room. */
+    /**
+     * A home's bedrooms are asked whatever its type (none and "Indifférent" included), except a plot of land, a
+     * studio or a room.
+     */
     fun needsRooms(category: PropertyCategory?, type: PropertyType?, listingType: ListingType?): Boolean {
-        if (category != PropertyCategory.RESIDENTIAL) return false
+        if (category != PropertyCategory.RESIDENTIAL || type == PropertyType.LAND) return false
         if (isSale(listingType)) return type == null || type in SALE_WITH_ROOMS
         return type !in RENTAL_WITHOUT_ROOMS
     }

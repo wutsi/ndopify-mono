@@ -45,7 +45,7 @@ object ListingRules {
     val LEASE_TERMS = listOf(6, 12, 24, 36)
     val NOTICE_PERIODS = 1..3
 
-    /** The types of each category (the prototype's `data-categories`: LAND is commercial, BUILDING residential). */
+    /** The types of each category (the prototype's `data-categories`: LAND and BUILDING are residential). */
     val TYPES: Map<PropertyCategory, List<PropertyType>> = linkedMapOf(
         PropertyCategory.RESIDENTIAL to listOf(
             PropertyType.APARTMENT,
@@ -55,12 +55,12 @@ object ListingRules {
             PropertyType.STUDIO,
             PropertyType.ROOM,
             PropertyType.BUILDING,
+            PropertyType.LAND,
         ),
         PropertyCategory.COMMERCIAL to listOf(
             PropertyType.OFFICE,
             PropertyType.RETAIL,
             PropertyType.INDUSTRIAL,
-            PropertyType.LAND,
         ),
     )
 
@@ -244,11 +244,12 @@ object ListingRules {
         if (type == null) return false
         val residential = category == PropertyCategory.RESIDENTIAL
         return when (question) {
-            "furniture" -> residential && type != PropertyType.BUILDING
-            "rooms" -> residential && type !in setOf(PropertyType.ROOM, PropertyType.STUDIO, PropertyType.BUILDING)
+            "furniture" -> residential && type !in setOf(PropertyType.BUILDING, PropertyType.LAND)
+            "rooms" -> residential &&
+                type !in setOf(PropertyType.ROOM, PropertyType.STUDIO, PropertyType.BUILDING, PropertyType.LAND)
             "bathrooms" -> type != PropertyType.LAND
-            "kitchens" -> residential && type !in setOf(PropertyType.ROOM, PropertyType.BUILDING)
-            "parkings" -> type != PropertyType.ROOM
+            "kitchens" -> residential && type !in setOf(PropertyType.ROOM, PropertyType.BUILDING, PropertyType.LAND)
+            "parkings" -> type !in setOf(PropertyType.ROOM, PropertyType.LAND)
             "levels" -> type in setOf(PropertyType.HOUSE, PropertyType.DUPLEX, PropertyType.BUILDING)
             "floorLevel" -> type in setOf(
                 PropertyType.ROOM,
@@ -261,8 +262,12 @@ object ListingRules {
         }
     }
 
-    fun typeFits(category: PropertyCategory?, type: PropertyType?): Boolean =
-        category != null && type != null && type in TYPES[category].orEmpty()
+    /** The types of [category] a project may choose: a plot of land is sold, never let (#275). */
+    fun types(category: PropertyCategory?, sale: Boolean): List<PropertyType> =
+        TYPES[category].orEmpty().filter { sale || it != PropertyType.LAND }
+
+    fun typeFits(category: PropertyCategory?, type: PropertyType?, sale: Boolean): Boolean =
+        category != null && type != null && type in types(category, sale)
 
     /**
      * The errors of a section's answers, by field: messages of the prototype's `LISTING_RULES`. The questions of
@@ -303,7 +308,7 @@ object ListingRules {
                 val category = category(form.propertyCategory)
                 val type = type(form.propertyType)
                 if (category == null) errors["propertyCategory"] = "Choisissez l'usage du bien."
-                if (type == null || (category != null && !typeFits(category, type))) {
+                if (type == null || (category != null && !typeFits(category, type, sale))) {
                     errors["propertyType"] = "Choisissez le type de bien."
                 }
                 if (type != null) {

@@ -276,7 +276,7 @@
             return $('[data-group="' + name + '"]', form);
         }
 
-        // #275: a sale offers a plot of land under both uses (data-categories); a rental offers none, except the one
+        // #275: a sale offers a plot of land under Résidentiel (data-categories); a rental offers none, except the one
         // a stored mandate already answered (data-rental-categories), kept in its saved category while it is still
         // checked, and no longer offered once another type is picked.
         var sale = form.getAttribute("data-sale") === "true";

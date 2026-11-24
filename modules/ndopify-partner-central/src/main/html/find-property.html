@@ -182,8 +182,9 @@
                         <label class="choice" data-categories="COMMERCIAL"><input name="propertyType"
                                                                                   type="radio" value="BUILDING">
                             Immeuble</label>
-                        <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio"
-                                                                                              value="LAND">
+                        <!-- A plot of land is residential and sold only: this rental wizard offers it under no use. -->
+                        <label class="choice" data-categories=""><input name="propertyType" type="radio"
+                                                                        value="LAND">
                             Terrain</label>
                         <label class="choice" data-categories="RESIDENTIAL COMMERCIAL"><input name="propertyType"
                                                                                               type="radio" value="ANY">

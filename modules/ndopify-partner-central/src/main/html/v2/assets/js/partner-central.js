@@ -1585,7 +1585,7 @@
             fields: {
                 city: "Douala",
                 neighbourhoods: ["Japoma"],
-                propertyCategory: "COMMERCIAL",
+                propertyCategory: "RESIDENTIAL",
                 propertyType: "LAND",
                 area: 600,
                 amenities: ["waterMeter", "roadPaved", "securedFenced"],
@@ -1608,7 +1608,7 @@
             fields: {
                 city: "Douala",
                 neighbourhoods: ["Logbessou"],
-                propertyCategory: "COMMERCIAL",
+                propertyCategory: "RESIDENTIAL",
                 propertyType: "LAND",
                 area: 800,
                 amenities: ["waterMeter", "electricityMeter", "trackAccessibleByCar", "securedFenced"],
@@ -1853,7 +1853,7 @@
             fields: {
                 city: "Douala",
                 neighbourhoods: ["Japoma"],
-                propertyCategory: "COMMERCIAL",
+                propertyCategory: "RESIDENTIAL",
                 propertyType: "LAND",
                 area: 400,
                 amenities: ["trackAccessibleByCar", "electricityMeter"],
@@ -5109,7 +5109,8 @@
 
     /* listing/*.html: one section of the checklist. Its form only holds the section's fields. */
 
-    // The questions of "Le bien" that apply to a property type (as offer-property.js: LAND is commercial).
+    // The questions of "Le bien" that apply to a property type (as offer-property.js: a plot of land is residential,
+    // sold only, and asks neither rooms, bathrooms, kitchens nor parking — #273, #275).
     var LISTING_APPLIES = {
         furniture: function (a) {
             // v2: furniture is a rental question only
@@ -5338,12 +5339,10 @@
         function sync() {
             var category = ($('[name="propertyCategory"]:checked', form) || {}).value;
             $all('[name="propertyType"]', form).forEach(function (radio) {
-                // v2 (#287): land is sold under both uses (#275), so a sale offers *Terrain* under Résidentiel too;
-                // a saved type the category no longer offers stays readable (a rental land stored before #275),
-                // and disappears once another type is picked.
+                // v2 (#275): a plot of land is residential and sold, never let, so a sale offers *Terrain* under
+                // Résidentiel and a rental offers it at all — a rental land stored before #275 is hidden too.
                 var fits = radio.closest("[data-categories]").getAttribute("data-categories").split(" ")
-                    .indexOf(category) !== -1 ||
-                    (radio.value === "LAND" && (currentListingSale || radio.checked));
+                    .indexOf(category) !== -1 && (radio.value !== "LAND" || currentListingSale);
                 radio.closest(".choice").hidden = !fits;
                 if (!fits) radio.checked = false;
             });
