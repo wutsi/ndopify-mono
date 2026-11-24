@@ -123,7 +123,7 @@ git commit -m "feat(dto): levels and units on the mandate and the listing, build
 ### Task 2: The mandate stores the two counts
 
 **Files:**
-- Create: `modules/ndopify-server/src/main/resources/db/migration/common/V7_2__mandate-levels-units.sql`
+- Create: `modules/ndopify-server/src/main/resources/db/migration/common/V18_0__mandate-levels-units.sql`
 - Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/mandate/server/domain/MandateEntity.kt`
 - Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/mandate/server/mapper/MandateMapper.kt`
 - Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/mandate/server/service/MandateService.kt:175-300` (`create`) and `:310-390` (`update`)
@@ -137,7 +137,7 @@ git commit -m "feat(dto): levels and units on the mandate and the listing, build
 
 - [ ] **Step 1: Write the migration**
 
-`V7_2__mandate-levels-units.sql`:
+`V18_0__mandate-levels-units.sql`:
 
 ```sql
 ALTER TABLE T_MANDATE
@@ -204,7 +204,7 @@ git commit -m "feat(server): store a building's levels and units on its mandate"
 ### Task 3: The listing stores the counts, and a building has no amenities section
 
 **Files:**
-- Create: `modules/ndopify-server/src/main/resources/db/migration/common/V8_3__listing-units.sql`
+- Create: `modules/ndopify-server/src/main/resources/db/migration/common/V18_1__listing-units.sql`
 - Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/listing/server/domain/ListingEntity.kt`
 - Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/listing/server/mapper/ListingMapper.kt`
 - Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/listing/server/service/ListingService.kt:130-190` (`create`), `:205-250` (`PROPERTY` branch), `:240-265` (`AMENITIES` branch), `:290-300` (`verify`)
@@ -220,7 +220,7 @@ git commit -m "feat(server): store a building's levels and units on its mandate"
 
 - [ ] **Step 1: Write the migration**
 
-`V8_3__listing-units.sql`:
+`V18_1__listing-units.sql`:
 
 ```sql
 ALTER TABLE T_LISTING
@@ -290,7 +290,7 @@ git commit -m "feat(server): store a building's units, and drop its amenities se
 ### Task 4: The building pair in the matcher
 
 **Files:**
-- Create: `modules/ndopify-server/src/main/resources/db/migration/common/V9_3__match-building-scores.sql`
+- Create: `modules/ndopify-server/src/main/resources/db/migration/common/V18_2__match-building-scores.sql`
 - Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/match/server/service/MatchScore.kt`
 - Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/match/server/service/Matcher.kt`
 - Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/match/server/domain/MatchEntity.kt`
@@ -305,7 +305,7 @@ git commit -m "feat(server): store a building's units, and drop its amenities se
 
 - [ ] **Step 1: Write the migration**
 
-`V9_3__match-building-scores.sql`:
+`V18_2__match-building-scores.sql`:
 
 ```sql
 ALTER TABLE T_MATCH
