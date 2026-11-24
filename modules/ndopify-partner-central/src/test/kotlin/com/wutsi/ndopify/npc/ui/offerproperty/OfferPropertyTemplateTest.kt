@@ -485,6 +485,21 @@ class OfferPropertyTemplateTest {
     }
 
     @Test
+    fun `a commercial sale asks no surface before its type is chosen`() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            sale.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = null),
+        )
+
+        val page = render(get("/offer-property?step=features"))
+
+        // The category is known at this step, not the type: a commercial property is measured only once one is picked.
+        assertTrue(page.select("[data-group=area]").attr("hidden").isNotEmpty())
+        assertTrue(page.select("input[name=area]").none { it.hasAttr("required") })
+        assertNotNull(page.selectFirst("[data-group=ownershipDocuments]:not([hidden])"))
+    }
+
+    @Test
     fun `a sold villa asks its furniture, its rooms and shows its documents`() {
         session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale.copy(propertyType = null))
 

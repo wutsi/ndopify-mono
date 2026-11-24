@@ -471,7 +471,10 @@ class OfferPropertyController(
             )
             // Every sale asks its documents whatever its type (#304), from the step's first render; a rental never does.
             model.addAttribute("asksOwnershipDocuments", sale)
-            model.addAttribute("asksArea", OfferPropertyRules.needsArea(category, type, answers.listingType))
+            model.addAttribute(
+                "asksArea",
+                type != null && OfferPropertyRules.needsArea(category, type, answers.listingType),
+            )
             model.addAttribute("landSale", sale && type == PropertyType.LAND)
             model.addAttribute("pricePerUnitLabel", pricePerUnitLabel(answers))
         }

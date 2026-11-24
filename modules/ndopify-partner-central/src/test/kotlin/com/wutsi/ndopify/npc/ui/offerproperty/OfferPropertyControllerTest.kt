@@ -550,6 +550,17 @@ class OfferPropertyControllerTest {
         assertEquals(false, first["asksArea"])
         assertEquals(true, first["asksOwnershipDocuments"])
 
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            sale.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = null),
+        )
+        val commercial = model(mvc.perform(get("/offer-property?step=features").session(session)).andReturn())
+        assertEquals(false, commercial["needsFurniture"])
+        assertEquals(false, commercial["requiresRooms"])
+        assertEquals(false, commercial["requiresParking"])
+        assertEquals(false, commercial["asksArea"])
+        assertEquals(true, commercial["asksOwnershipDocuments"])
+
         session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale)
         val land = model(mvc.perform(get("/offer-property?step=features").session(session)).andReturn())
         assertEquals(false, land["needsFurniture"])
