@@ -371,6 +371,10 @@
                                    th:attr="aria-invalid=${errors['units'] != null ? 'true' : null}"
                                    th:value="${answers.units}">
                             <p th:replace="~{:: error('units')}"></p>
+                            <!--/* The implied price of a unit (#304), asking price ÷ unités, rounded to the nearest 100:
+                                 display only, never stored nor sent. Hidden until a usable price and count exist;
+                                 computed by offer-property.js. */-->
+                            <p class="field__counter" data-price-per-unit hidden></p>
                         </div>
                     </div>
 

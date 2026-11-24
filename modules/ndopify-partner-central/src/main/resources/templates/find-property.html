@@ -419,6 +419,9 @@
                         <!--/* Price per m², derived from the total budget and the surface (land purchase only): display
                              only, never stored. Hidden until both exist; computed by find-property.js. */-->
                         <p class="field__counter" data-price-per-sqm hidden></p>
+                        <!--/* Price per unit (#304), derived from the total budget and the unités (a building
+                             purchase), hidden while the units are "Indifférent": display only, never stored. */-->
+                        <p class="field__counter" data-price-per-unit hidden></p>
                     </div>
                     <fieldset aria-describedby="movingPeriod-error" class="choices" data-group="movingPeriod"
                               th:attr="aria-invalid=${errors['movingPeriod'] != null ? 'true' : null}">
