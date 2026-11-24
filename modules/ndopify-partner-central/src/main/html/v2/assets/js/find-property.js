@@ -7,15 +7,27 @@
  * (CreateMandateRequest, ndopify-dto — see toRequest). Server calls are simulated; every simulation is marked
  * "PROTOTYPE".
  * v2 — sales: step 1 asks listingType (Louer = RENTAL, Acheter = SALE), preselected from ?type= when nothing is
- * saved. For a SALE: no room ("Chambre") to buy, land ("Terrain") is offered under Résidentiel and Commercial,
- * furniture isn't asked, the budget is a total price (periodicity NONE, at least MIN_SALE_PRICE), the moving period
- * reads as the buying horizon (same MovingPeriod values) and a financing answer is required (FinancingType). A rental
- * stays as is and sends no financing.
+ * saved. For a SALE: no room ("Chambre") to buy, land ("Terrain") is offered under Résidentiel and Commercial, the
+ * budget is a total price (periodicity NONE, at least MIN_SALE_PRICE), the moving period reads as the buying horizon
+ * (same MovingPeriod values) and a financing answer is required (FinancingType). A rental stays as is and sends no
+ * financing.
  *
- * #275 — a plot of land is bought, never rented: a rental offers Terrain under neither use (data-categories is empty
- * in the page), and a posted propertyType=LAND is refused by the rules (the step never completes with it). #293 — a
- * purchase offers it under Résidentiel and Commercial alike: one choice, whichever use the buyer picked. "Indifférent"
- * stays for both projects.
+ * #304 — one rule set with Proposer un bien and mandate/edit.html, read from NdUtil.propertyRules (util.js):
+ *  - every purchase asks "Documents exigés" whatever its type (optional, several or none, "Aucun document exigé" on
+ *    the review when none is ticked); a rental never asks nor sends them. The buyer declares no ownership document;
+ *  - a residential type asks its furniture on a purchase too (the buyer keeps "Indifférent"), its parkings (a room
+ *    included) and no surface; a commercial type asks its surface, a building and a plot of land ask neither
+ *    furniture nor parking;
+ *  - a building and a plot of land are bought only: a rental offers neither;
+ *  - a purchase of a plot shows its implied price per m² beside the budget, a purchase of a building its price per
+ *    unit ("Soit ≈ 20,83M FCFA/unité pour 12 unités"), hidden while the units are "Indifférent". Display only,
+ *    rounded to the nearest 100 FCFA, never sent nor stored; the review repeats the same line under the budget;
+ *  - the budget and the surface are grouped by thousands as typed, with the caret kept after the same digit.
+ *
+ * #275 — a plot of land is bought, never rented: a rental offers Terrain under neither use (the shared rule table's
+ * rental categories are empty), and a posted propertyType=LAND is refused by the rules (the step never completes
+ * with it). #293 — a purchase offers it under Résidentiel and Commercial alike: one choice, whichever use the buyer
+ * picked. "Indifférent" stays for both projects.
  *
  * #278 — once step 1 is answered, every later step (the review included) and the confirmation carry the project
  * ("Achat" / "Location") as a read-only pill next to the step count / under "Demande envoyée"; step 1 keeps its
@@ -129,23 +141,22 @@
     /* ---------- Labels (enum values from ndopify-dto) ---------- */
     var CATEGORY_LABELS = { RESIDENTIAL: "usage résidentiel", COMMERCIAL: "usage commercial" };
 
+    // The property-type rules shared by the three pages (#304): categories per project, and the questions of a type.
+    var RULES = window.NdUtil.propertyRules;
+
     var PROPERTY_TYPES = {
-        ROOM: { label: "Chambre", categories: ["RESIDENTIAL"] },
-        STUDIO: { label: "Studio", categories: ["RESIDENTIAL"] },
-        APARTMENT: { label: "Appartement", categories: ["RESIDENTIAL"] },
-        HOUSE: { label: "Maison", categories: ["RESIDENTIAL"] },
-        VILLA: { label: "Villa", categories: ["RESIDENTIAL"] },
-        DUPLEX: { label: "Duplex", categories: ["RESIDENTIAL"] },
-        RETAIL: { label: "Boutique, local commercial", categories: ["COMMERCIAL"] },
-        OFFICE: { label: "Bureau", categories: ["COMMERCIAL"] },
-        INDUSTRIAL: { label: "Entrepôt, local industriel", categories: ["COMMERCIAL"] },
-        BUILDING: { label: "Immeuble", categories: ["COMMERCIAL"] },
-        // A plot of land is bought, never rented (#275): no rental category offers it; a purchase, Résidentiel and
-        // Commercial (#293), whichever use the buyer picked.
-        LAND: { label: "Terrain", categories: [], saleCategories: ["RESIDENTIAL", "COMMERCIAL"] }
+        ROOM: { label: "Chambre" },
+        STUDIO: { label: "Studio" },
+        APARTMENT: { label: "Appartement" },
+        HOUSE: { label: "Maison" },
+        VILLA: { label: "Villa" },
+        DUPLEX: { label: "Duplex" },
+        RETAIL: { label: "Boutique, local commercial" },
+        OFFICE: { label: "Bureau" },
+        INDUSTRIAL: { label: "Entrepôt, local industriel" },
+        BUILDING: { label: "Immeuble" },
+        LAND: { label: "Terrain" }
     };
-    // Types that can't be bought: a room is only rented.
-    var RENTAL_ONLY_TYPES = ["ROOM"];
 
     var ROOM_LABELS = { "1": "1 chambre", "2": "2 chambres", "3": "3 chambres", "4": "4 chambres", "5+": "5 chambres et +" };
     // ANY ("Indifférent") is only a UI answer: it is sent as furnitureType = null.
@@ -171,15 +182,14 @@
         TRANSFER_FROM_ABROAD: "Transfert depuis l'étranger",
         UNDECIDED: "Pas encore décidé"
     };
-    // The land documents a buyer may specify (optional): asked only for a land purchase, and a rental or a building
-    // never asks nor sends them. "Titre foncier" is the land title, "Plan de bornage" the survey plan that delimits
-    // the parcel, "Certificat de propriété" the certificate of ownership. The search stays simple — "land title
+    // The documents a buyer may require (optional, every purchase): the shared table's three, never the seller's
+    // ownership documents. "Titre foncier" is the land title, "Plan de bornage" the survey plan that delimits the
+    // parcel, "Certificat de propriété" the certificate of ownership. The search stays simple — "land title
     // available" is just ticking "Titre foncier".
-    var TITLE_DOCUMENT_LABELS = {
-        LAND_TITLE: "Titre foncier",
-        SURVEY_PLAN: "Plan de bornage",
-        CERTIFICATE_OF_OWNERSHIP: "Certificat de propriété"
-    };
+    var TITLE_DOCUMENT_LABELS = RULES.DOCUMENTS.reduce(function (labels, document) {
+        labels[document.value] = document.label;
+        return labels;
+    }, {});
 
     // The boolean criteria of CreateMandateRequest, in form order.
     var AMENITIES = [
@@ -200,47 +210,54 @@
     ];
 
     /*
-     * Which follow-up questions of the "bien" step apply, given the project and the property type. The type is optional:
-     * none, or ANY ("Indifférent", a UI answer sent as propertyType = null), asks every question that fits most types.
+     * Which follow-up questions of the "bien" step apply, given the project and the property type, from the shared
+     * rule table (#304). The type is optional: none, or ANY ("Indifférent", a UI answer sent as propertyType = null),
+     * asks every question its usage may ask.
      */
     function propertyTypeOf(a) {
         return PROPERTY_TYPES[a.propertyType] ? a.propertyType : null;
     }
 
+    // "Indifférent" or no type: the questions of the usage itself, not of one type.
+    function isAnyType(a) {
+        return !a.propertyType || a.propertyType === "ANY";
+    }
+
     function typeFits(a) {
-        var type = PROPERTY_TYPES[a.propertyType];
-        if (!type) return !a.propertyType || a.propertyType === "ANY";
-        if (isSale(a) && RENTAL_ONLY_TYPES.indexOf(a.propertyType) !== -1) return false;
-        var categories = isSale(a) && type.saleCategories ? type.saleCategories : type.categories;
-        return categories.indexOf(a.propertyCategory) !== -1;
+        if (isAnyType(a)) return true;
+        return RULES.categories(a.propertyType, a.listingType).indexOf(a.propertyCategory) !== -1;
     }
 
     function needsRooms(a) {
-        // v2: a plot of land has no rooms, whether the purchase is residential or commercial (#293).
-        return a.propertyCategory === "RESIDENTIAL" && ["STUDIO", "ROOM", "LAND"].indexOf(a.propertyType) === -1;
+        if (a.propertyCategory !== "RESIDENTIAL") return false;
+        if (isAnyType(a)) return true;
+        return RULES.asks(a.propertyType, a.listingType, "rooms");
     }
 
+    // Furniture is asked for every residential type, on a purchase as on a rental (#304); the buyer keeps
+    // "Indifférent". A commercial type, a building and a plot of land ask none.
     function needsFurniture(a) {
-        // A purchase isn't searched by its furniture: the buyer discusses it with the seller.
-        if (isSale(a)) return false;
-        return ["LAND", "BUILDING", "INDUSTRIAL"].indexOf(a.propertyType) === -1;
+        if (a.propertyCategory !== "RESIDENTIAL") return false;
+        if (isAnyType(a)) return true;
+        return RULES.asks(a.propertyType, a.listingType, "furniture");
     }
 
+    // Every residential type has its parking, a room included (#304); no commercial type, building nor plot does.
     function asksParkings(a) {
-        // v2 (#274): a building bought as a whole has no parking to search for; a rental building keeps the question.
-        return ["LAND", "ROOM"].indexOf(a.propertyType) === -1 && !isBuildingSale(a);
+        if (isAnyType(a)) return a.propertyCategory === "RESIDENTIAL";
+        return RULES.asks(a.propertyType, a.listingType, "parkings");
     }
 
     // v2 (#274): a building purchase asks its two counts, and no amenities step.
     function needsBuildingCounts(a) {
-        return isBuildingSale(a);
+        return RULES.asks(a.propertyType, a.listingType, "counts");
     }
 
     function needsAmenities(a) {
         return !isBuildingSale(a);
     }
 
-    // A plot of land bought (the only property whose surface and documents matter): sale, type LAND.
+    // A plot of land bought (the only property whose surface is required): sale, type LAND.
     function isLandSale(a) {
         return isSale(a) && a.propertyType === "LAND";
     }
@@ -250,10 +267,17 @@
         return isLandSale(a);
     }
 
-    // Land is the only property whose documents a buyer may specify (titre foncier, plan de bornage…): optional,
-    // sale only, and never for a rental, a building or an unspecified type.
+    // A residential type asks no surface (#304); a commercial type, a building and a plot of land do. An
+    // "Indifférent" answer keeps the field when the search may still match one of them: every commercial search, and
+    // a residential purchase (it may be a plot of land); a residential rental never matches land.
+    function showsArea(a) {
+        if (isAnyType(a)) return a.propertyCategory === "COMMERCIAL" || isSale(a);
+        return RULES.asks(a.propertyType, a.listingType, "area");
+    }
+
+    // Every purchase asks its title documents (optional, several or none); a rental never asks nor sends them.
     function asksTitleDocuments(a) {
-        return isLandSale(a);
+        return RULES.asksDocuments(a.listingType);
     }
 
     /* ---------- Storage (fails soft: private mode, quota) ---------- */
@@ -304,12 +328,51 @@
     }
 
     /*
-     * PROTOTYPE: ?sample= shortcuts for the states of #274 (README › find-property.html). Each seeds the answers of
-     * the steps before the one it opens; the page then opens there (a step only opens once the earlier ones are
-     * complete). A sample already seeded isn't seeded again, so the reviewer can keep walking the wizard.
+     * PROTOTYPE: ?sample= shortcuts for the states of #274 and #304 (README › find-property.html). Each seeds the
+     * answers of the steps before the one it opens; the page then opens there (a step only opens once the earlier
+     * ones are complete). A sample already seeded isn't seeded again, so the reviewer can keep walking the wizard.
      */
     var SAMPLES = {
-        // A purchase of a building, its counts still to answer: the step asks Étages and Unités, six steps in all.
+        // #304: a purchase whose type isn't chosen yet: every question of the residential usage shows (rooms,
+        // furniture, parkings, surface), the documents show, none required.
+        "sale-pending": {
+            step: "bien",
+            answers: { propertyCategory: "RESIDENTIAL", area: null }
+        },
+        // #304: a rental whose type isn't chosen yet: rooms, furniture and parkings show, no surface, no documents;
+        // its type list offers no Immeuble.
+        "rental-pending": {
+            step: "bien",
+            answers: {
+                listingType: "RENTAL", propertyCategory: "RESIDENTIAL", propertyType: null, priceAmount: 250000,
+                financingType: null
+            }
+        },
+        // #304: a house bought with its furniture (and parkings): no surface, its documents (optional, none here).
+        house: {
+            step: "bien",
+            answers: {
+                propertyCategory: "RESIDENTIAL", propertyType: "HOUSE", rooms: "4",
+                furnitureType: "UNFURNISHED", parkings: "2"
+            }
+        },
+        // #304: a room let — no rooms asked, its parking and its furniture are; no surface, no documents.
+        "rental-room": {
+            step: "bien",
+            answers: {
+                listingType: "RENTAL", propertyCategory: "RESIDENTIAL", propertyType: "ROOM",
+                furnitureType: "UNFURNISHED", parkings: "1", priceAmount: 60000
+            }
+        },
+        // #304: a complete rental's review: house, its rooms, furniture and parking, no documents, no rate line.
+        rental: {
+            step: "revue",
+            answers: {
+                listingType: "RENTAL", propertyCategory: "RESIDENTIAL", propertyType: "HOUSE", rooms: "3",
+                furnitureType: "UNFURNISHED", parkings: "1", priceAmount: 250000
+            }
+        },
+        // #274: a purchase of a building, its counts still to answer: the step asks Étages and Unités, six steps in all.
         building: {
             step: "bien",
             answers: { propertyType: "BUILDING", area: 850 }
@@ -319,7 +382,23 @@
             step: "bien",
             answers: { propertyType: "BUILDING", area: 850, levelsAny: true, unitsAny: true }
         },
-        // The review of that purchase: Étages 3, Unités 12, six steps, no amenities line.
+        // #304: the budget step of that purchase, 10 units and 250M: the price per unit under the budget.
+        "building-budget": {
+            step: "budget",
+            answers: {
+                propertyType: "BUILDING", levels: 3, units: 12, area: 850,
+                priceAmount: 250000000, movingPeriod: "WITHIN_3_MONTHS", financingType: "CASH"
+            }
+        },
+        // The same with the units "Indifférent": no price per unit.
+        "building-budget-any": {
+            step: "budget",
+            answers: {
+                propertyType: "BUILDING", levelsAny: true, unitsAny: true, area: 850,
+                priceAmount: 250000000, movingPeriod: "WITHIN_3_MONTHS", financingType: "CASH"
+            }
+        },
+        // The review of that purchase: Étages 3, Unités 12, six steps, no amenities line, the price per unit.
         "building-review": {
             step: "revue",
             answers: {
@@ -335,13 +414,41 @@
                 priceAmount: 250000000, movingPeriod: "WITHIN_3_MONTHS", financingType: "CASH"
             }
         },
-        // A rental building is unchanged: seven steps, its parking and amenities questions, no count of units.
+        // #304: a rental posted with Immeuble, now sale-only — the type isn't offered, the answer dropped, no count
+        // and no parking; a rental's list offers no Immeuble.
         "rental-building": {
+            step: "bien",
+            answers: {
+                listingType: "RENTAL", propertyCategory: "COMMERCIAL", propertyType: "BUILDING",
+                area: null, priceAmount: 900000, financingType: null
+            }
+        },
+        // #304: a plot of land bought, its surface required: the budget step shows its price per m².
+        land: {
+            step: "budget",
+            answers: { propertyCategory: "COMMERCIAL", propertyType: "LAND", area: 800, priceAmount: 250000000 }
+        },
+        // The review of that purchase: its documents and its price per m² under the budget.
+        "land-review": {
             step: "revue",
             answers: {
-                listingType: "RENTAL", propertyType: "BUILDING", parkings: "ANY",
-                priceAmount: 900000, movingPeriod: "WITHIN_3_MONTHS",
-                waterMeter: true, electricityMeter: true
+                propertyCategory: "COMMERCIAL", propertyType: "LAND", area: 800, priceAmount: 250000000,
+                titleDocuments: ["LAND_TITLE", "SURVEY_PLAN"]
+            }
+        },
+        // #304: a house bought with its three documents — and the same requiring none ("Aucun document exigé").
+        "purchase-review-docs": {
+            step: "revue",
+            answers: {
+                propertyCategory: "RESIDENTIAL", propertyType: "HOUSE", rooms: "4", furnitureType: "UNFURNISHED",
+                parkings: "2", titleDocuments: ["LAND_TITLE", "SURVEY_PLAN", "CERTIFICATE_OF_OWNERSHIP"]
+            }
+        },
+        "purchase-review-none": {
+            step: "revue",
+            answers: {
+                propertyCategory: "RESIDENTIAL", propertyType: "HOUSE", rooms: "4", furnitureType: "UNFURNISHED",
+                parkings: "2", titleDocuments: []
             }
         }
     };
@@ -648,6 +755,39 @@
     }
 
     /*
+     * The implied rate of a land purchase: total budget ÷ surface, rounded to the nearest 100 FCFA (#273). 0 when
+     * the answers aren't a land purchase, or when the budget or the surface is missing or unusable. Display only: it
+     * is never stored, never sent.
+     */
+    function ratePerSqmOf(a, budget, surface) {
+        if (!isLandSale(a) || !(Number(budget) > 0) || !areaValid(surface) || !(Number(surface) > 0)) return 0;
+        return Math.round((Number(budget) / surface) / 100) * 100;
+    }
+
+    // "≈ 312,5K FCFA/m² pour 800 m²": a rate to read, short like every displayed amount (#292), the surface a plain
+    // grouped count (the budget step prepends "Soit "). The prototype hard-codes FCFA; production formats it with the
+    // tenant's formatter.
+    function ratePerSqmText(rate, surface) {
+        return "≈ " + formatPrice(rate) + "\u00A0FCFA/m² pour " + formatNumber(surface) + " m²";
+    }
+
+    /*
+     * The implied price of a unit of a building purchase: total budget ÷ unités, rounded to the nearest 100 FCFA
+     * (#304). 0 when the answers aren't a building purchase, when the units are "Indifférent" (null), or when the
+     * budget or the count is missing or unusable. Display only: it is never stored, never sent.
+     */
+    function ratePerUnitOf(a, budget, units) {
+        if (!isBuildingSale(a) || a.unitsAny || !(Number(budget) > 0) || !countValid(units, MAX_UNITS)) return 0;
+        return Math.round((Number(budget) / units) / 100) * 100;
+    }
+
+    // "≈ 20,83M FCFA/unité pour 12 unités": the rate reads short like every displayed amount (#292); the unit count
+    // stays a plain count. The prototype hard-codes FCFA; production formats it with the tenant's formatter.
+    function ratePerUnitText(rate, units) {
+        return "≈ " + formatPrice(rate) + "\u00A0FCFA/unité pour " + units + (Number(units) > 1 ? " unités" : " unité");
+    }
+
+    /*
      * Whether a step's saved answers are complete. This is what guards the wizard: a step opens only when
      * every step before it is complete, whatever the URL says. The BFF must re-check all of it server side.
      */
@@ -675,7 +815,9 @@
                     (!needsFurniture(a) || !!FURNITURE_LABELS[a.furnitureType]) &&
                     // v2 (#274): a building's two counts are required, each "Indifférent" included.
                     (!needsBuildingCounts(a) || (countAnswered(a, "levels") && countAnswered(a, "units"))) &&
-                    (needsLandArea(a) ? a.area != null && areaValid(a.area) : areaValid(a.area));
+                    // #304: a residential type has no surface; a plot of land's is required.
+                    (!showsArea(a) || areaValid(a.area)) &&
+                    (!needsLandArea(a) || (a.area != null && areaValid(a.area)));
             case "equipements":
                 return true; // every criterion is optional
             case "budget":
@@ -730,8 +872,10 @@
             // v2 (#274): a building's two counts; "Indifférent" is sent as null, and no other type sends one.
             levels: needsBuildingCounts(a) && !a.levelsAny ? a.levels : null,
             units: needsBuildingCounts(a) && !a.unitsAny ? a.units : null,
-            area: a.area || null,
-            // A land sale sends the documents the buyer wants (optional); anything else sends none (null).
+            // #304: a residential type has no surface, so a saved area isn't sent for one.
+            area: showsArea(a) ? a.area || null : null,
+            // Every purchase sends the documents it requires (optional, none is valid); a rental sends none, and the
+            // buyer never declares the seller's ownership documents (#304).
             titleDocuments: asksTitleDocuments(a) ? (a.titleDocuments || []) : null,
             price: {
                 amount: a.priceAmount,
@@ -974,8 +1118,9 @@
                 rooms: needsRooms(a),
                 furnitureType: needsFurniture(a),
                 parkings: asksParkings(a),
-                area: true,
-                // The documents are asked for a land purchase only (and optional); never for a rental or a building.
+                // #304: a residential type has no surface; a commercial type, a building and a plot do.
+                area: showsArea(a),
+                // Every purchase asks its documents (optional); a rental never asks nor shows them.
                 titleDocuments: asksTitleDocuments(a)
             };
             Object.keys(groups).forEach(function (key) {
@@ -999,17 +1144,15 @@
         });
 
         return {
-            // Step 1 may have changed the category since this step was last shown: offer only its types.
+            // Step 1 may have changed the category since this step was last shown: offer only its types. The shared
+            // rule table says which ones (#304): a building and a plot of land are bought only, a room is let only.
             onShow: function () {
                 var saved = loadAnswers();
                 var category = saved.propertyCategory;
-                var sale = isSale(saved);
                 $all('[data-group="propertyType"] .choice').forEach(function (choice) {
-                    var categories = (sale && choice.getAttribute("data-sale-categories")) ||
-                        choice.getAttribute("data-categories");
-                    var fits = categories.split(" ").indexOf(category) !== -1 &&
-                        !(sale && choice.hasAttribute("data-rental-only"));
                     var input = $("input", choice);
+                    var fits = input.value === "ANY" ||
+                        RULES.categories(input.value, saved.listingType).indexOf(category) !== -1;
                     choice.hidden = !fits;
                     input.disabled = !fits;
                     if (!fits) input.checked = false;
@@ -1055,7 +1198,8 @@
                     units: needsBuildingCounts(a) && !unitAny.checked && unitInput.value.trim()
                         ? Number(unitInput.value.trim()) : null,
                     unitsAny: needsBuildingCounts(a) && unitAny.checked,
-                    area: areaValue(),
+                    // #304: a residential type has no surface, so a saved area is cleared with its type.
+                    area: showsArea(a) ? areaValue() : null,
                     titleDocuments: asksTitleDocuments(a) ? checkedValues("titleDocuments") : null
                 };
             }
@@ -1084,6 +1228,7 @@
         var price = $("#priceAmount");
         var financing = $('[data-group="financingType"]');
         var perSqm = $("[data-price-per-sqm]");
+        var perUnit = $("[data-price-per-unit]");
         price.value = formatNumber(answers.priceAmount);
         setChecked("movingPeriod", answers.movingPeriod);
         setChecked("financingType", answers.financingType);
@@ -1094,23 +1239,38 @@
         function updatePerSqm() {
             var a = loadAnswers();
             var budget = numberValue(price);
-            var area = a.area != null ? Number(a.area) : 0;
-            var show = isLandSale(a) && areaValid(a.area) && area > 0 && budget > 0;
-            if (!show) {
-                perSqm.hidden = true;
-                perSqm.textContent = "";
-                return;
-            }
-            var rate = Math.round((budget / area) / 100) * 100;
+            var rate = ratePerSqmOf(a, budget, a.area);
             if (rate <= 0) {
                 perSqm.hidden = true;
                 perSqm.textContent = "";
                 return;
             }
-            perSqm.textContent = "Soit ≈ " + formatPrice(rate) + "\u00A0FCFA/m² pour " + formatNumber(area) + " m²";
+            perSqm.textContent = "Soit " + ratePerSqmText(rate, a.area);
             perSqm.hidden = false;
         }
-        price.addEventListener("input", updatePerSqm);
+
+        // The implied price of a unit, for a building purchase (#304): total budget ÷ unités, rounded to the nearest
+        // 100 FCFA. Display only — never stored, never validated. Hidden until both a budget and a unit count exist,
+        // and while the units are "Indifférent" (null).
+        function updatePerUnit() {
+            var a = loadAnswers();
+            var units = a.unitsAny ? null : a.units;
+            var rate = ratePerUnitOf(a, numberValue(price), units);
+            if (rate <= 0) {
+                perUnit.hidden = true;
+                perUnit.textContent = "";
+                return;
+            }
+            perUnit.textContent = "Soit " + ratePerUnitText(rate, units);
+            perUnit.hidden = false;
+        }
+
+        function updateRates() {
+            updatePerSqm();
+            updatePerUnit();
+        }
+
+        price.addEventListener("input", updateRates);
 
         // The rental wording, put back when the visitor goes back to step 1 and switches from Acheter to Louer.
         var rentalTexts = ["[data-price-label]", "[data-price-suffix]", "[data-budget-intro]", "[data-price-hint]"]
@@ -1122,7 +1282,7 @@
             onShow: function () {
                 var a = loadAnswers();
                 var sale = isSale(a);
-                updatePerSqm();
+                updateRates();
                 // Financing is asked for a purchase only; a rental hides it and never has it in error.
                 financing.hidden = !sale;
                 if (!sale) setFieldError(financing, $("#financingType-error"), "");
@@ -1217,8 +1377,33 @@
             if (needsRooms(a) && ROOM_LABELS[a.rooms]) parts.push(ROOM_LABELS[a.rooms]);
             if (needsFurniture(a) && FURNITURE_LABELS[a.furnitureType]) parts.push(FURNITURE_LABELS[a.furnitureType]);
             if (asksParkings(a) && PARKING_LABELS[a.parkings]) parts.push(PARKING_LABELS[a.parkings]);
-            if (a.area) parts.push(formatNumber(a.area) + " m² minimum");
+            // v2 (#274, #304): a building's two counts read in the description line, before the surface — "Indifférent"
+            // when the visitor left one blank. The review no longer repeats them in their own rows.
+            if (needsBuildingCounts(a)) {
+                if (a.levelsAny) parts.push("étages indifférents");
+                else if (a.levels != null) {
+                    parts.push(a.levels + (Number(a.levels) > 1 ? " étages" : " étage"));
+                }
+                if (a.unitsAny) parts.push("unités indifférentes");
+                else if (a.units != null) {
+                    parts.push(a.units + (Number(a.units) > 1 ? " unités" : " unité"));
+                }
+            }
+            // #304: a residential type has no surface, whatever its project.
+            if (showsArea(a) && a.area) parts.push(formatNumber(a.area) + " m² minimum");
             return parts.join(" · ");
+        }
+
+        // The budget, then the implied rate of a land or of a building purchase on its own line (#273, #304): display
+        // only, computed here as the budget step computes it.
+        function describeBudget(a) {
+            if (!isStepComplete("budget", a)) return "";
+            var lines = [formatPrice(a.priceAmount) + (isSale(a) ? "\u00A0FCFA" : "\u00A0FCFA par mois")];
+            var perSqm = ratePerSqmOf(a, a.priceAmount, a.area);
+            if (perSqm > 0) lines.push(ratePerSqmText(perSqm, a.area));
+            var perUnit = ratePerUnitOf(a, a.priceAmount, a.unitsAny ? null : a.units);
+            if (perUnit > 0) lines.push(ratePerUnitText(perUnit, a.units));
+            return lines.join("\n");
         }
 
         function render(a) {
@@ -1233,18 +1418,12 @@
                         : "tous les quartiers")
                     : "",
                 property: describeProperty(a),
-                // v2 (#274): a building's two counts; "Indifférent" when the visitor left it blank, never a missing line.
-                levels: needsBuildingCounts(a)
-                    ? (a.levelsAny ? "Indifférent" : a.levels != null ? String(a.levels) : "") : "",
-                units: needsBuildingCounts(a)
-                    ? (a.unitsAny ? "Indifférent" : a.units != null ? String(a.units) : "") : "",
                 titleDocuments: asksTitleDocuments(a)
                     ? ((a.titleDocuments || []).map(function (id) {
                         return TITLE_DOCUMENT_LABELS[id];
                     }).filter(Boolean).join(" · ") || "Aucun document exigé")
                     : "",
-                price: isStepComplete("budget", a)
-                    ? formatPrice(a.priceAmount) + (isSale(a) ? "\u00A0FCFA" : "\u00A0FCFA par mois") : "",
+                price: describeBudget(a),
                 movingPeriod: MOVE_IN_LABELS[a.movingPeriod] || "",
                 financing: FINANCING_LABELS[a.financingType] || "",
                 contact: isStepComplete("contact", a)
@@ -1258,9 +1437,7 @@
             $("[data-review-price-term]").textContent = isSale(a) ? "Budget total" : "Budget mensuel";
             $("[data-review-titleDocuments]").hidden = !asksTitleDocuments(a);
             $("[data-review-financing]").hidden = !isSale(a);
-            // v2 (#274): a building purchase shows its two counts and no amenities line.
-            $("[data-review-levels]").hidden = !needsBuildingCounts(a);
-            $("[data-review-units]").hidden = !needsBuildingCounts(a);
+            // v2 (#274): a building purchase shows no amenities line.
             $("[data-review-amenities]").hidden = !needsAmenities(a);
             Object.keys(values).forEach(function (key) {
                 var valueEl = $('[data-review-value="' + key + '"]');

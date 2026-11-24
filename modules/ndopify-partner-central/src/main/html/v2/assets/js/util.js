@@ -136,11 +136,117 @@
         return visible + "•••@" + parts[1];
     }
 
+    /*
+     * The property-type rules the three pages that ask them share (offer-property.html, find-property.html,
+     * mandate/edit.html). The server's rules are the source of truth (OfferPropertyRules, FindPropertyRules,
+     * MandateEditRules); these tables only mirror them, so no script keeps a fourth copy.
+     *
+     * Per type: the categories it is offered under for a rental and for a sale ([]: never offered), and the
+     * follow-up questions it asks — rooms, parkings, furniture, area, counts (a building's étages and unités).
+     * - A residential type asks no surface; rooms unless it is a studio or a room; parkings (a room included);
+     *   furniture on both projects; its documents on a sale.
+     * - A commercial type asks its surface and, on a sale, its documents.
+     * - A building and a plot of land are sold only. A building asks its étages, its unités and its surface; a plot
+     *   of land its surface (required on a sale).
+     * Documents: every sale asks them, optional, several or none; a rental never asks them.
+     */
+    var PROPERTY_RULES = {
+        ROOM: {
+            rental: ["RESIDENTIAL"], sale: [],
+            rooms: false, parkings: true, furniture: true, area: false, counts: false
+        },
+        STUDIO: {
+            rental: ["RESIDENTIAL"], sale: ["RESIDENTIAL"],
+            rooms: false, parkings: true, furniture: true, area: false, counts: false
+        },
+        APARTMENT: {
+            rental: ["RESIDENTIAL"], sale: ["RESIDENTIAL"],
+            rooms: true, parkings: true, furniture: true, area: false, counts: false
+        },
+        HOUSE: {
+            rental: ["RESIDENTIAL"], sale: ["RESIDENTIAL"],
+            rooms: true, parkings: true, furniture: true, area: false, counts: false
+        },
+        VILLA: {
+            rental: ["RESIDENTIAL"], sale: ["RESIDENTIAL"],
+            rooms: true, parkings: true, furniture: true, area: false, counts: false
+        },
+        DUPLEX: {
+            rental: ["RESIDENTIAL"], sale: ["RESIDENTIAL"],
+            rooms: true, parkings: true, furniture: true, area: false, counts: false
+        },
+        RETAIL: {
+            rental: ["COMMERCIAL"], sale: ["COMMERCIAL"],
+            rooms: false, parkings: false, furniture: false, area: true, counts: false
+        },
+        OFFICE: {
+            rental: ["COMMERCIAL"], sale: ["COMMERCIAL"],
+            rooms: false, parkings: false, furniture: false, area: true, counts: false
+        },
+        INDUSTRIAL: {
+            rental: ["COMMERCIAL"], sale: ["COMMERCIAL"],
+            rooms: false, parkings: false, furniture: false, area: true, counts: false
+        },
+        BUILDING: {
+            rental: [], sale: ["COMMERCIAL"],
+            rooms: false, parkings: false, furniture: false, area: true, counts: true
+        },
+        LAND: {
+            rental: [], sale: ["RESIDENTIAL", "COMMERCIAL"],
+            rooms: false, parkings: false, furniture: false, area: true, counts: false
+        }
+    };
+
+    // The three documents a sale may declare (TitleDocumentType, ndopify-dto), in form order.
+    var PROPERTY_DOCUMENTS = [
+        { value: "LAND_TITLE", label: "Titre foncier" },
+        { value: "SURVEY_PLAN", label: "Plan de bornage" },
+        { value: "CERTIFICATE_OF_OWNERSHIP", label: "Certificat de propriété" }
+    ];
+
+    function propertyRule(type) {
+        return Object.prototype.hasOwnProperty.call(PROPERTY_RULES, type) ? PROPERTY_RULES[type] : null;
+    }
+
+    // The categories a type is offered under, for a sale when listingType is SALE, for a rental otherwise.
+    function typeCategories(type, listingType) {
+        var rule = propertyRule(type);
+        if (!rule) return [];
+        return (listingType === "SALE" ? rule.sale : rule.rental).slice();
+    }
+
+    // Whether the type is offered at all for the project (a building and a plot of land are sold only).
+    function typeOffered(type, listingType) {
+        return typeCategories(type, listingType).length > 0;
+    }
+
+    // Whether [field] is asked for this type: rooms, parkings, furniture, area, counts. A building's counts are
+    // asked on a sale only; every other question is the same on both projects.
+    function typeAsks(type, listingType, field) {
+        var rule = propertyRule(type);
+        if (!rule) return false;
+        if (field === "counts") return rule.counts && listingType === "SALE";
+        return !!rule[field];
+    }
+
+    // A sale asks its ownership documents (optional, several or none); a rental never asks any.
+    function asksDocuments(listingType) {
+        return listingType === "SALE";
+    }
+
     window.NdUtil = {
         phoneReady: phoneReady,
         bindPhone: bindPhone,
         toE164: toE164,
         formatPhone: formatPhone,
-        maskEmail: maskEmail
+        maskEmail: maskEmail,
+        propertyRules: {
+            TYPES: PROPERTY_RULES,
+            DOCUMENTS: PROPERTY_DOCUMENTS,
+            categories: typeCategories,
+            offers: typeOffered,
+            asks: typeAsks,
+            asksDocuments: asksDocuments
+        }
     };
 })();

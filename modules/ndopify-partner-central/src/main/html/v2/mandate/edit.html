@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="../assets/css/rejoindre.css">
     <link rel="stylesheet" href="../assets/css/find-property.css">
     <link rel="stylesheet" href="../assets/css/home.css">
+    <script src="../assets/js/util.js" defer></script>
     <script src="../assets/js/partner-central.js" defer></script>
 </head>
 <!--
@@ -27,14 +28,23 @@
     contract). Wording follows the party: a client's search (Budget, Emménagement, "Indifférent" choices) or a
     landlord's property (Loyer, Disponibilité, no "Indifférent").
     v2: a SALE mandate (?id=104 once accepted) reads data-label-sale-tenant / data-label-sale-owner when set (Budget,
-    Prix, Achat prévu), its price has no "/ mois" (data-sale-text) and furniture isn't asked.
+    Prix, Achat prévu), its price has no "/ mois" (data-sale-text) and furniture is asked, as for a rental.
     #275: a plot of land is sold, never let. A rental no longer offers Terrain, but a stored one keeps its saved
-    answer: the type stays checked and readable in its saved category (data-rental-categories=""), and a save keeps
-    it. #293: a sale offers Terrain under Résidentiel and Commercial alike (data-categories, one choice), and the
-    stored usage is whatever was picked. 208 (a renter's search) and
-    209 (a landlord's property) are those rental mandates, opened by id; 201 the ordinary rental without one.
-    PROTOTYPE: ?id=101 to 103 once accepted, 201, 202, 208 or 209; any other mandate, or one approved since, shows the
-    locked view.
+    answer: the type stays checked and readable in its saved category, and a save keeps it. #293: a sale offers
+    Terrain under Résidentiel and Commercial alike (one choice), and the stored usage is whatever was picked.
+    #304: the rules of the two wizards come from NdUtil.propertyRules (util.js): a residential non-land property asks
+    no surface (sale included), furniture is asked on a sale too, parkings for every residential type (Chambre
+    included) and not for a commercial one, a sold building keeps its Étages / Unités and no rooms, parkings nor
+    amenities, and Immeuble is sold only (a stored rental building keeps its type, like a stored rental Terrain, with
+    the surface and the furniture it had as a rental). A question the page doesn't ask keeps the mandate's stored
+    answer (the surface of a residential non-land mandate, the furniture of a stored rental building, the count of
+    another type, the documents of a rental): a hidden field is never cleared. A sale shows its *Document de
+    propriété* (LISTING) / *Documents exigés* (SEARCH), optional and pre-filled, and its price per m² (LAND) or per
+    unit (BUILDING) under the price; the price and the surface are grouped as typed.
+    208 (a renter's search) and 209 (a landlord's property) are those stored rental plots, 210 a stored rental
+    building, 310 a land seller with three documents; 201 the ordinary rental.
+    PROTOTYPE: ?id=101 to 103 once accepted, 201, 202, 208, 209, 210, 305 or 310; any other mandate, or one approved
+    since, shows the locked view.
     The changes are kept in the session (KEYS.mandates, the mandate's "fields").
 -->
 <body data-page="mandate-edit">
@@ -144,25 +154,23 @@
                                 <fieldset class="choices">
                                     <legend class="choices__legend">Type de bien <span class="field__optional" data-tenant-only>(facultatif)</span></legend>
                                     <!-- One type per row at every width (a plain .choices__grid, as the wizards' type step): the
-                                         full-width row is an easier target than a two-column grid, and a type's name can wrap. -->
+                                         full-width row is an easier target than a two-column grid, and a type's name can wrap.
+                                         Which types the project and usage offer is NdUtil.propertyRules' call (#304); a stored
+                                         type the rules no longer offer (a rental plot, a rental building) stays visible and
+                                         checked in its saved category until another type is picked. -->
                                     <div class="choices__grid">
-                                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="ROOM"> Chambre</label>
-                                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="STUDIO"> Studio</label>
-                                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="APARTMENT"> Appartement</label>
-                                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="HOUSE"> Maison</label>
-                                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="VILLA"> Villa</label>
-                                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="DUPLEX"> Duplex</label>
-                                        <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="RETAIL"> Boutique, local commercial</label>
-                                        <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="OFFICE"> Bureau</label>
-                                        <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="INDUSTRIAL"> Entrepôt, local industriel</label>
-                                        <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="BUILDING"> Immeuble</label>
-                                        <!-- #275: a plot of land is sold, never let. A rental offers no Terrain, except
-                                             the one a stored mandate already answered: partner-central.js keeps it
-                                             visible and checked in its saved category. #293: a sale offers it under
-                                             Résidentiel and Commercial alike (data-categories, one choice), and the
-                                             usage is saved as the user picked it. -->
-                                        <label class="choice" data-categories="RESIDENTIAL COMMERCIAL" data-rental-categories=""><input name="propertyType" type="radio" value="LAND"> Terrain</label>
-                                        <label class="choice" data-categories="RESIDENTIAL COMMERCIAL" data-tenant-only><input name="propertyType" type="radio" value="ANY"> Indifférent</label>
+                                        <label class="choice"><input name="propertyType" type="radio" value="ROOM"> Chambre</label>
+                                        <label class="choice"><input name="propertyType" type="radio" value="STUDIO"> Studio</label>
+                                        <label class="choice"><input name="propertyType" type="radio" value="APARTMENT"> Appartement</label>
+                                        <label class="choice"><input name="propertyType" type="radio" value="HOUSE"> Maison</label>
+                                        <label class="choice"><input name="propertyType" type="radio" value="VILLA"> Villa</label>
+                                        <label class="choice"><input name="propertyType" type="radio" value="DUPLEX"> Duplex</label>
+                                        <label class="choice"><input name="propertyType" type="radio" value="RETAIL"> Boutique, local commercial</label>
+                                        <label class="choice"><input name="propertyType" type="radio" value="OFFICE"> Bureau</label>
+                                        <label class="choice"><input name="propertyType" type="radio" value="INDUSTRIAL"> Entrepôt, local industriel</label>
+                                        <label class="choice"><input name="propertyType" type="radio" value="BUILDING"> Immeuble</label>
+                                        <label class="choice"><input name="propertyType" type="radio" value="LAND"> Terrain</label>
+                                        <label class="choice" data-tenant-only><input name="propertyType" type="radio" value="ANY"> Indifférent</label>
                                     </div>
                                 </fieldset>
                                 <fieldset class="choices" aria-describedby="rooms-error" data-group="rooms">
@@ -216,6 +224,24 @@
                                     </div>
                                     <p class="field__error" id="area-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
                                 </div>
+                                <!-- #304: the documents of a sale, whatever its type — *Document de propriété* for a
+                                     landlord's property (ownershipDocuments), *Documents exigés* for a client's search
+                                     (titleDocuments). Optional, several or none, pre-filled from the mandate; a
+                                     rental never shows them nor saves any. The checkboxes carry one name, the script
+                                     writes the mandate's own key. -->
+                                <fieldset class="choices" data-group="documents" hidden>
+                                    <legend class="choices__legend"><span data-label-tenant="Documents exigés" data-label-owner="Document de propriété">Document de propriété</span>
+                                        <span class="field__optional">(facultatif)</span></legend>
+                                    <div class="choices__grid">
+                                        <label class="choice"><input name="documents" type="checkbox" value="LAND_TITLE"> Titre foncier</label>
+                                        <label class="choice"><input name="documents" type="checkbox" value="SURVEY_PLAN"> Plan de bornage</label>
+                                        <label class="choice"><input name="documents" type="checkbox" value="CERTIFICATE_OF_OWNERSHIP"> Certificat de propriété</label>
+                                    </div>
+                                    <div class="hint">
+                                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                                        <p>Facultatif&nbsp;: plusieurs documents, ou aucun.</p>
+                                    </div>
+                                </fieldset>
                         </div>
                     </details>
 
@@ -276,6 +302,10 @@
                                         <span aria-hidden="true" class="input-unit__suffix" data-sale-text="FCFA">FCFA / mois</span>
                                     </div>
                                     <p class="field__error" id="price-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                                    <!-- #304: a sale's read-only rate, price per m² (LAND, with the surface) or per unit
+                                         (BUILDING, with the unités). Display only, never posted; computed by
+                                         partner-central.js as the price, the surface or the units change. -->
+                                    <p class="field__counter" data-rate hidden></p>
                                 </div>
                                 <fieldset class="choices" aria-describedby="movingPeriod-error">
                                     <legend class="choices__legend" data-label-tenant="Date d'emménagement souhaitée" data-label-owner="Disponibilité du bien" data-label-sale-tenant="Quand souhaitez-vous acheter ?">Date d'emménagement souhaitée</legend>

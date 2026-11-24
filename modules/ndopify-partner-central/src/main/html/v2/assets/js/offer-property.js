@@ -10,21 +10,20 @@
  * v2 — sales. Step 1 asks the project, listingType: RENTAL ("Mettre en location") or SALE ("Vendre"), preselected
  * from ?type=SALE|RENTAL (the public site's links) while no answer is saved. A sale:
  *  - asks a "Prix de vente" in FCFA, sent with periodicity NONE, of at least MIN_SALE_PRICE;
- *  - has no advance nor deposit (hidden, sent as null) and no furnishing question; availableFrom is kept
- *    ("Disponible à partir du" reads as well for a sale);
- *  - offers no room (ROOM), and a plot (LAND) under Résidentiel and Commercial, whichever use is picked
- *    (data-sale-categories in the page);
- *  - asks the ownership documents (ownershipDocuments) of a plot of land only (Titre foncier / Plan de bornage /
- *    Certificat de propriété, optional and several, none being a valid answer), sent only for a SALE · LAND and
- *    shown on the review as "Document de propriété";
+ *  - has no advance nor deposit (hidden, sent as null); availableFrom is kept ("Disponible à partir du" reads as
+ *    well for a sale);
+ *  - offers no room (ROOM); a plot (LAND) and a building (BUILDING) are sold only (#304), a plot under Résidentiel
+ *    and Commercial, a building under Commercial (the shared rule table says so, see util.js);
+ *  - asks its ownership documents (ownershipDocuments) whatever its type (Titre foncier / Plan de bornage /
+ *    Certificat de propriété, optional and several, none being a valid answer), shown on the review as "Document de
+ *    propriété" with "Aucun document déclaré" when none is ticked (#304);
  *  - shows the page's data-for="SALE" texts instead of the data-for="RENTAL" ones (applyProject), and its
  *    Quitter / confirmation links go to {publicPortalUrl}/owner/sell instead of /owner.
  *
  * #273 — a sale's follow-up questions and a plot's rate:
- *  - before the type is saved, a sale shows the page's follow-up questions (rooms, parking, places) but doesn't
- *    require them; once it is saved as Terrain they are gone (a plot has no bedroom nor parking);
- *  - the ownership documents are visible for every sale from the step's first render, and hidden once the type is
- *    saved as another one;
+ *  - #304 removed the old preview: a follow-up question shows only once its type is chosen, a sale and a rental
+ *    alike (the ownership documents excepted, asked by every sale from the step's first render);
+ *  - the ownership documents are visible for every sale, from the step's first render (#304);
  *  - a sold plot shows its implied rate under its surface, short ("Soit ≈ 56,3K FCFA/m² pour 800 m²", display only)
  *    and the review repeats it right after the total asking price, before the availability;
  *  - the review of a sale reads its total price short like every displayed amount ("45M FCFA", #292 overriding
@@ -36,15 +35,26 @@
  *  - ?sample= shortcuts seed the answers of these states (README › offer-property.html).
  *
  * #275 — a plot of land is sold, never let:
- *  - a rental offers Terrain under neither category (data-categories is empty in the page): a posted
+ *  - a rental offers Terrain under neither category (the rule table's rental categories are empty): a posted
  *    propertyType=LAND is refused by the rules ("Choisissez le type de bien."), as the BFF does;
- *  - a sale offers it under Résidentiel and Commercial (#293, data-sale-categories, SALE_CATEGORIES), with its
- *    documents, surface and rate; it is one choice, kept when the use changes.
+ *  - a sale offers it under Résidentiel and Commercial (#293), with its documents, surface and rate; it is one
+ *    choice, kept when the use changes.
  *
  * #274 — a building sold as a whole is captured by two counts, its levels and its units (whole numbers, both
  * required), in place of the rooms and the parking, and without the amenities step: six steps for that branch (the
- * progress, its labels, the arrows and ?etape= follow it), seven otherwise. Its listing is offered under Commercial
- * for a sale only, under Résidentiel for a rental; ?sample= shortcuts open those states.
+ * progress, its labels, the arrows and ?etape= follow it), seven otherwise.
+ *
+ * #304 — one rule set with Trouver un bien and mandate/edit.html, read from NdUtil.propertyRules (util.js):
+ *  - a building and a plot of land are sold only: a rental offers neither;
+ *  - a follow-up question shows only once a type is chosen, a sale and a rental alike (the ownership documents
+ *    excepted, every sale);
+ *  - a sale asks its ownership documents whatever the type (optional, several or none, "Aucun document déclaré"
+ *    on the review when none is declared), a rental never asks nor sends them;
+ *  - a residential type asks its furniture on a sale too (and a room its parking), and no surface at all;
+ *  - a sold building shows its price per unit under its unités ("Soit ≈ 12,5M FCFA/unité pour 8 unités"), a sold plot
+ *    its price per m² under its surface; the review repeats the same line after the price. Display only, rounded to
+ *    the nearest 100 FCFA, never sent nor stored;
+ *  - the price and the surface are grouped by thousands as typed, with the caret kept after the same digit.
  */
 (function () {
     "use strict";
@@ -140,19 +150,21 @@
     /* ---------- Labels (enum values from ndopify-dto) ---------- */
     var CATEGORY_LABELS = { RESIDENTIAL: "usage résidentiel", COMMERCIAL: "usage commercial" };
 
+    // The property-type rules shared by the three pages (#304): categories per project, and the questions of a type.
+    var RULES = window.NdUtil.propertyRules;
+
     // "Villa, maison" is one answer, as in the specs: it is sent as HOUSE.
     var PROPERTY_TYPES = {
-        APARTMENT: { label: "Appartement", categories: ["RESIDENTIAL"] },
-        HOUSE: { label: "Villa, maison", categories: ["RESIDENTIAL"] },
-        ROOM: { label: "Chambre", categories: ["RESIDENTIAL"] },
-        STUDIO: { label: "Studio", categories: ["RESIDENTIAL"] },
-        DUPLEX: { label: "Duplex", categories: ["RESIDENTIAL"] },
-        BUILDING: { label: "Immeuble entier", categories: ["RESIDENTIAL"] },
-        OFFICE: { label: "Bureau", categories: ["COMMERCIAL"] },
-        RETAIL: { label: "Commerce, boutique", categories: ["COMMERCIAL"] },
-        INDUSTRIAL: { label: "Entrepôt, local industriel", categories: ["COMMERCIAL"] },
-        // A plot of land is sold, never let (#275): no rental category offers it; a sale, both.
-        LAND: { label: "Terrain", categories: [] }
+        APARTMENT: { label: "Appartement" },
+        HOUSE: { label: "Villa, maison" },
+        ROOM: { label: "Chambre" },
+        STUDIO: { label: "Studio" },
+        DUPLEX: { label: "Duplex" },
+        BUILDING: { label: "Immeuble entier" },
+        OFFICE: { label: "Bureau" },
+        RETAIL: { label: "Commerce, boutique" },
+        INDUSTRIAL: { label: "Entrepôt, local industriel" },
+        LAND: { label: "Terrain" }
     };
 
     var ROOM_LABELS = { "1": "1 chambre", "2": "2 chambres", "3": "3 chambres", "4": "4 chambres", "5+": "5 chambres et +" };
@@ -160,14 +172,12 @@
     var PARKING_LABELS = { "1": "1 place de parking", "2": "2 places de parking", "3+": "3 places de parking et +" };
     var PERIOD_LABELS = { MORNING: "le matin", AFTERNOON: "l'après-midi", EVENING: "le soir" };
 
-    // The ownership documents a seller may declare (optional, several): asked only for a SALE · LAND. "Titre foncier"
-    // is the land title, "Plan de bornage" the survey plan that delimits the parcel, "Certificat de propriété" the
-    // certificate of ownership. An owner with none can continue: the agent checks the documents at the audit.
-    var OWNERSHIP_DOCUMENT_LABELS = {
-        LAND_TITLE: "Titre foncier",
-        SURVEY_PLAN: "Plan de bornage",
-        CERTIFICATE_OF_OWNERSHIP: "Certificat de propriété"
-    };
+    // The documents a seller may declare (optional, several): asked for every sale (#304). An owner with none can
+    // continue: the agent checks the documents at the audit.
+    var OWNERSHIP_DOCUMENT_LABELS = RULES.DOCUMENTS.reduce(function (labels, document) {
+        labels[document.value] = document.label;
+        return labels;
+    }, {});
 
     // The road access is one answer (a radio), sent as the matching boolean of CreateMandateRequest.
     var ROAD_ACCESS = {
@@ -191,10 +201,8 @@
         ["securedFenced", "Barrière, clôture sécurisée"]
     ];
 
-    // For a sale, a room isn't offered, a plot is offered under Résidentiel and Commercial (#293) and a building
-    // under Commercial only (#274), as data-sale-categories says in the page; a rental offers no plot at all (#275).
-    var SALE_CATEGORIES = { ROOM: [], LAND: ["RESIDENTIAL", "COMMERCIAL"], BUILDING: ["COMMERCIAL"] };
-
+    // The categories of a type come from the shared table (#304): a sale offers a plot of land under Résidentiel
+    // and Commercial, a building under Commercial only; a rental offers neither.
     function isSale(a) {
         return a.listingType === "SALE";
     }
@@ -211,63 +219,60 @@
 
     /*
      * Which questions of the "caracteristiques" step apply, given the project and category (step 1) and the property
-     * type. A residential property has its furnishing, rooms and parking (a room only its furnishing); a commercial
-     * one, or a plot, only its surface. A sale never asks the furnishing.
+     * type. The shared table (#304) says what each type asks; a type offered under neither category of the step fits
+     * none. A sale no longer asks a surface to a residential type, and asks its furniture like a rental.
      */
     function categoriesOf(a) {
-        var type = PROPERTY_TYPES[a.propertyType];
-        if (!type) return [];
-        return isSale(a) && SALE_CATEGORIES[a.propertyType] ? SALE_CATEGORIES[a.propertyType] : type.categories;
+        return RULES.categories(a.propertyType, a.listingType);
     }
 
     function typeFits(a) {
         return categoriesOf(a).indexOf(a.propertyCategory) !== -1;
     }
 
-    function isResidential(a) {
-        return a.propertyCategory === "RESIDENTIAL";
-    }
-
     /*
-     * Whether the type being chosen is saved and offered by the step-1 category. Until then a sale's questions are
-     * provisional: rendered, but not required (#273).
+     * Whether the type being chosen is chosen and offered by the step-1 category. A follow-up question shows only
+     * once it is (#304, replacing #273's preview).
      */
     function isKnown(a) {
         return !!PROPERTY_TYPES[a.propertyType] && typeFits(a);
     }
 
-    // A whole building is let as it is, furnished or not flat by flat: the agent sees it during the audit.
+    // A whole building is counted by its units: it asks no furniture, no room nor parking.
     function needsFurniture(a) {
-        return isKnown(a) && !isSale(a) && isResidential(a) && ["BUILDING", "LAND"].indexOf(a.propertyType) === -1;
+        return isKnown(a) && RULES.asks(a.propertyType, a.listingType, "furniture");
     }
 
     function needsRooms(a) {
-        return isKnown(a) && isResidential(a) && ["ROOM", "STUDIO", "BUILDING", "LAND"].indexOf(a.propertyType) === -1;
+        return isKnown(a) && RULES.asks(a.propertyType, a.listingType, "rooms");
     }
 
-    // A room is let in a shared home: its parking, if any, isn't its own. A plot has none yet; neither has a
-    // building sold as a whole (#274).
+    // A room asks its parking like every residential type (#304, settled 2026-11-24). A plot and a building have none.
     function needsParking(a) {
-        return isKnown(a) && isResidential(a) && ["ROOM", "LAND"].indexOf(a.propertyType) === -1 &&
-            !isBuildingSale(a);
+        return isKnown(a) && RULES.asks(a.propertyType, a.listingType, "parkings");
     }
 
     // v2 (#274): a building sold asks its two counts, and no amenities step.
     function needsBuildingCounts(a) {
-        return isKnown(a) && isBuildingSale(a);
+        return isKnown(a) && RULES.asks(a.propertyType, a.listingType, "counts");
     }
 
     function needsAmenities(a) {
         return !isBuildingSale(a);
     }
 
+    // A plot, a commercial type and a sold building have a surface; a residential type has none (#304).
     function needsArea(a) {
-        return isKnown(a) && (a.propertyCategory === "COMMERCIAL" || a.propertyType === "LAND");
+        return isKnown(a) && RULES.asks(a.propertyType, a.listingType, "area");
     }
 
-    // A plot of land sold: the only property whose ownership documents are asked (optional, sent only for a SALE · LAND).
-    function needsOwnershipDocuments(a) {
-        return isKnown(a) && isSale(a) && a.propertyType === "LAND";
+    // A sale asks its ownership documents whatever its type (optional, several or none); a rental never asks them.
+    function asksDocuments(a) {
+        return RULES.asksDocuments(a.listingType);
+    }
+
+    function isLandSale(a) {
+        return isSale(a) && a.propertyType === "LAND";
     }
 
     /*
@@ -343,14 +348,29 @@
      * ones are complete). A sample already seeded isn't seeded again, so the reviewer can keep walking the wizard.
      */
     var SAMPLES = {
-        // A sale whose type isn't chosen yet: the follow-up questions show, not required; the documents show.
+        // A sale whose type isn't chosen yet: the type choices and the *Document de propriété* only — no follow-up
+        // question before a type is chosen (#304).
         sale: { step: "caracteristiques" },
+        // A rental whose type isn't chosen yet: the type choices only — no follow-up question, no documents, no rate.
+        "rental-pending": {
+            step: "caracteristiques",
+            answers: {
+                listingType: "RENTAL",
+                propertyType: null,
+                priceAmount: 250000,
+                advanceRent: 2,
+                securityDeposit: 2
+            }
+        },
         // A sold plot of land: no rooms nor parking, the documents, its surface and the implied rate per m².
         land: { step: "caracteristiques", answers: { propertyType: "LAND", area: 800 } },
         // The same without its surface: the step refuses it ("Indiquez la surface du terrain.").
         "land-no-area": { step: "caracteristiques", answers: { propertyType: "LAND" } },
-        // A villa sold: the documents are hidden, the rooms and parking asked, no rate.
-        house: { step: "caracteristiques", answers: { propertyType: "HOUSE", rooms: "3", parkings: "2" } },
+        // A villa sold: furniture, rooms and parking, its documents (optional, none here), no surface nor rate.
+        house: {
+            step: "caracteristiques",
+            answers: { propertyType: "HOUSE", rooms: "3", parkings: "2", furnitureType: "UNFURNISHED" }
+        },
         // The review of the sold plot, its two documents declared.
         "land-review": {
             step: "revue",
@@ -360,6 +380,28 @@
         "land-review-none": {
             step: "revue",
             answers: { propertyType: "LAND", area: 800, ownershipDocuments: [] }
+        },
+        // A villa sold with its three documents: the review lists them all ("Titre foncier · Plan de bornage ·
+        // Certificat de propriété"); the same without any reads "Aucun document déclaré".
+        "house-review-docs": {
+            step: "revue",
+            answers: {
+                propertyType: "HOUSE",
+                rooms: "4",
+                parkings: "2",
+                furnitureType: "FULLY_FURNISHED",
+                ownershipDocuments: ["LAND_TITLE", "SURVEY_PLAN", "CERTIFICATE_OF_OWNERSHIP"]
+            }
+        },
+        "house-review-none": {
+            step: "revue",
+            answers: {
+                propertyType: "HOUSE",
+                rooms: "4",
+                parkings: "2",
+                furnitureType: "FULLY_FURNISHED",
+                ownershipDocuments: []
+            }
         },
         // A rental, complete: its review (and each earlier step, walking back) reads "Location" next to the step
         // count, and the confirmation under "Bien enregistré" — where the sale samples read "Vente" (#278, AC 1, 3).
@@ -376,15 +418,53 @@
                 securityDeposit: 2
             }
         },
+        // #304: a room let — no rooms asked, but its parking and its furniture are; no surface, no documents.
+        "rental-room": {
+            step: "caracteristiques",
+            answers: {
+                listingType: "RENTAL",
+                propertyType: "ROOM",
+                furnitureType: "UNFURNISHED",
+                parkings: "1",
+                priceAmount: 60000,
+                advanceRent: 1,
+                securityDeposit: 2
+            }
+        },
+        // #304: a studio let — no rooms asked, its parking (none) and its furniture are; no surface, no documents.
+        "rental-studio": {
+            step: "caracteristiques",
+            answers: {
+                listingType: "RENTAL",
+                propertyType: "STUDIO",
+                furnitureType: "FULLY_FURNISHED",
+                parkings: "0",
+                priceAmount: 90000,
+                advanceRent: 1,
+                securityDeposit: 1
+            }
+        },
         // #275: a rental posted with a plot of land. Terrain isn't offered for a rental any more: the step shows
         // the commercial types alone and the answer is refused ("Choisissez le type de bien.", on *Suivant*), as
-        // the BFF's form re-rendered after the POST does.
+        // the BFF's form re-rendered after the POST does. #304 keeps a building out of a rental too.
         "rental-land": {
             step: "caracteristiques",
             answers: {
                 listingType: "RENTAL",
                 propertyCategory: "COMMERCIAL",
                 propertyType: "LAND",
+                advanceRent: 1,
+                securityDeposit: 2
+            }
+        },
+        // #304: a rental posted with a building, now sale-only: the type isn't offered, the answer dropped; the
+        // step shows no type checked and no count.
+        "rental-building": {
+            step: "caracteristiques",
+            answers: {
+                listingType: "RENTAL",
+                propertyCategory: "COMMERCIAL",
+                propertyType: "BUILDING",
                 advanceRent: 1,
                 securityDeposit: 2
             }
@@ -401,7 +481,20 @@
                 priceAmount: 250000000
             }
         },
-        // The review of that building sale: Étages 3, Unités 12, no equipment line, six steps.
+        // #304: the same building with its 3 étages and 12 unités, and the price per unit under them.
+        "building-filled": {
+            step: "caracteristiques",
+            answers: {
+                listingType: "SALE",
+                propertyCategory: "COMMERCIAL",
+                propertyType: "BUILDING",
+                levels: 3,
+                units: 12,
+                area: 850,
+                priceAmount: 250000000
+            }
+        },
+        // The review of that building sale: Étages 3, Unités 12, the price per unit, no equipment line, six steps.
         "building-review": {
             step: "revue",
             answers: {
@@ -768,7 +861,7 @@
      * it is never stored, never sent.
      */
     function rateOf(a, price, surface) {
-        if (!needsOwnershipDocuments(a) || !(Number(price) > 0) || !areaValid(surface)) return 0;
+        if (!isLandSale(a) || !(Number(price) > 0) || !areaValid(surface)) return 0;
         return Math.round((Number(price) / surface) / 100) * 100;
     }
 
@@ -779,6 +872,22 @@
      */
     function rateText(rate, surface) {
         return "≈ " + formatPrice(rate) + "\u00A0FCFA/m² pour " + formatNumber(surface) + " m²";
+    }
+
+    /*
+     * The implied price of a building's unit: sale price ÷ unités, rounded to the nearest 100 FCFA (#304). 0 when
+     * the answers aren't a building sale, or when the price or the count is missing or unusable. Display only: it is
+     * never stored, never sent.
+     */
+    function ratePerUnitOf(a, price, units) {
+        if (!isBuildingSale(a) || !(Number(price) > 0) || !countValid(units, MAX_UNITS)) return 0;
+        return Math.round((Number(price) / units) / 100) * 100;
+    }
+
+    // "≈ 20,83M FCFA/unité pour 12 unités": the rate reads short like every displayed amount (#292); the unit count
+    // stays a plain count. The prototype hard-codes FCFA; production uses the tenant's currency symbol.
+    function ratePerUnitText(rate, units) {
+        return "≈ " + formatPrice(rate) + "\u00A0FCFA/unité pour " + units + (Number(units) > 1 ? " unités" : " unité");
     }
 
     // A question is required only while it applies: the page marks the normal state with `required`, and the script
@@ -875,7 +984,8 @@
             levels: needsBuildingCounts(a) ? a.levels : null,
             units: needsBuildingCounts(a) ? a.units : null,
             area: needsArea(a) ? a.area : null,
-            ownershipDocuments: needsOwnershipDocuments(a) ? (a.ownershipDocuments || []) : null,
+            // A sale keeps its ownership documents whatever its type; a rental sends none (#304).
+            ownershipDocuments: asksDocuments(a) ? (a.ownershipDocuments || []) : null,
             price: {
                 amount: a.priceAmount,
                 currency: CURRENCY,
@@ -1101,6 +1211,7 @@
         var answers = loadAnswers();
         var area = $("#area");
         var perSqm = $("[data-price-per-sqm]");
+        var perUnit = $("[data-price-per-unit]");
         var counts = $("[data-building-counts]");
         var levelInput = $("#levels");
         var unitInput = $("#units");
@@ -1126,6 +1237,7 @@
         // v2 (#274): the building's two counts (whole numbers, both required).
         levelInput.value = answers.levels != null ? String(answers.levels) : "";
         unitInput.value = answers.units != null ? String(answers.units) : "";
+        unitInput.addEventListener("input", updatePricePerUnit);
 
         // The category from step 1 (saved) with the type being chosen now (live).
         function live() {
@@ -1145,17 +1257,10 @@
             return area.value.trim() ? numberValue(area) : null;
         }
 
-        // A sale whose type isn't saved yet: its follow-up questions are shown, but not required (#273). A rental
-        // waits for its type, as before.
-        function provisional() {
-            var a = live();
-            return isSale(a) && !a.propertyType && isResidential(a);
-        }
-
-        // A plot of land sold (the same case as its ownership documents): its implied price per m², asking price ÷
-        // surface rounded to the nearest 100 FCFA. Display only — never stored, never sent. Hidden until both a valid
-        // asking price (conditions step) and a valid surface exist; also hidden for a rental or another type. The
-        // price is read from the saved answers, the surface as typed.
+        // A plot of land sold (#273) or a building sold (#304): its implied price per m² or per unit, rounded to the
+        // nearest 100 FCFA. Display only — never stored, never sent. Hidden until both a valid asking price
+        // (conditions step) and a valid surface / unit count exist; also hidden for a rental or another type. The
+        // price is read from the saved answers, the surface and the count as typed.
         function updatePricePerSqm() {
             var surface = areaValue();
             var rate = rateOf(live(), loadAnswers().priceAmount, surface);
@@ -1166,6 +1271,18 @@
             }
             perSqm.textContent = "Soit " + rateText(rate, surface);
             perSqm.hidden = false;
+        }
+
+        function updatePricePerUnit() {
+            var units = unitInput.value.trim() ? Number(unitInput.value) : null;
+            var rate = ratePerUnitOf(live(), loadAnswers().priceAmount, units);
+            if (rate <= 0) {
+                perUnit.hidden = true;
+                perUnit.textContent = "";
+                return;
+            }
+            perUnit.textContent = "Soit " + ratePerUnitText(rate, units);
+            perUnit.hidden = false;
         }
 
         // A count: a whole number within its bounds; both of a building's counts are required (#274).
@@ -1189,30 +1306,29 @@
             };
         }
 
-        // Shows only the questions that apply; a hidden question is never in error.
+        // Shows only the questions of the chosen type; nothing follows while no type is chosen (#304 removed #273's
+        // seller preview). A hidden question is never in error; the ownership documents excepted — every sale asks
+        // them, optional, before and after the type.
         function updateQuestions() {
             var a = live();
-            var known = isKnown(a);
-            var before = provisional();
             var shown = {
-                furnitureType: known && needsFurniture(a),
-                rooms: (known && needsRooms(a)) || before,
-                hasParking: (known && needsParking(a)) || before,
-                parkings: (known && asksPlaces()) || (before && checkedValue("hasParking") !== "NO"),
-                area: known && needsArea(a),
-                // Visible for every sale from the first render, hidden once the type is saved as another one (#273).
-                ownershipDocuments: isSale(a) && (!known || needsOwnershipDocuments(a))
+                furnitureType: needsFurniture(a),
+                rooms: needsRooms(a),
+                hasParking: needsParking(a),
+                parkings: asksPlaces(),
+                area: needsArea(a),
+                // Every sale asks its ownership documents, optional; a rental never shows them (#304).
+                ownershipDocuments: asksDocuments(a)
             };
             Object.keys(groups).forEach(function (key) {
                 groups[key].hidden = !shown[key];
                 if (!shown[key]) setFieldError(groups[key], $("#" + key + "-error"), "");
             });
-            // A question shown before the type is saved isn't required yet; the documents are always optional.
-            setRequired("furnitureType", shown.furnitureType);
-            setRequired("rooms", known && needsRooms(a));
-            setRequired("hasParking", known && needsParking(a));
-            setRequired("parkings", known && asksPlaces());
-            setRequired("area", shown.area);
+            setRequired("furnitureType", needsFurniture(a));
+            setRequired("rooms", needsRooms(a));
+            setRequired("hasParking", needsParking(a));
+            setRequired("parkings", asksPlaces());
+            setRequired("area", needsArea(a));
             // v2 (#274): a building's levels and units replace the rooms and the parking.
             counts.hidden = !needsBuildingCounts(a);
             if (counts.hidden) {
@@ -1221,6 +1337,7 @@
             }
             $("[data-area-label]").textContent = a.propertyType === "LAND" ? "Surface du terrain estimée" : "Surface estimée";
             updatePricePerSqm();
+            updatePricePerUnit();
         }
 
         $all('input[name="propertyType"], input[name="hasParking"]').forEach(function (input) {
@@ -1232,14 +1349,13 @@
 
         return {
             // Step 1 may have changed the project or category since this step was last shown: offer only its types.
+            // The shared rule table says which ones (#304): a building and a plot of land are sold only.
             onShow: function () {
                 var saved = loadAnswers();
                 var category = saved.propertyCategory;
                 $all('[data-group="propertyType"] .choice').forEach(function (choice) {
-                    var attribute = isSale(saved) && choice.hasAttribute("data-sale-categories")
-                        ? "data-sale-categories" : "data-categories";
-                    var fits = choice.getAttribute(attribute).split(" ").indexOf(category) !== -1;
                     var input = $("input", choice);
+                    var fits = RULES.categories(input.value, saved.listingType).indexOf(category) !== -1;
                     choice.hidden = !fits;
                     input.disabled = !fits;
                     if (!fits) input.checked = false;
@@ -1294,7 +1410,8 @@
                     units: needsBuildingCounts(a) && unitInput.value.trim()
                         ? Number(unitInput.value.trim()) : null,
                     area: needsArea(a) ? areaValue() : null,
-                    ownershipDocuments: needsOwnershipDocuments(a) ? checkedValues("ownershipDocuments") : null
+                    // Every sale keeps its ownership documents, optional (#304); a rental sends none.
+                    ownershipDocuments: asksDocuments(a) ? checkedValues("ownershipDocuments") : null
                 };
             }
         };
@@ -1378,11 +1495,13 @@
             var availability = formatAvailability(a.availableFrom);
             if (isSale(a)) {
                 // The total asking price, short like every displayed amount (#292, overriding #273's full amount),
-                // then — for a sold plot of land only — its implied rate per m², right after it, before the
-                // availability.
+                // then its implied rate right after it, before the availability: per m² for a sold plot (#273), per
+                // unit for a sold building (#304). Computed server-side in production.
                 var lines = [formatPrice(a.priceAmount) + "\u00A0FCFA"];
                 var rate = rateOf(a, a.priceAmount, a.area);
                 if (rate > 0) lines.push(rateText(rate, a.area));
+                var unitRate = ratePerUnitOf(a, a.priceAmount, a.units);
+                if (unitRate > 0) lines.push(ratePerUnitText(unitRate, a.units));
                 lines.push(availability);
                 return lines.join("\n");
             }
@@ -1411,11 +1530,10 @@
                 location: describeLocation(a),
                 conditions: describeConditions(a),
                 property: describeProperty(a),
-                // v2 (#274): a building's two counts, in their own rows; no amenities line.
-                levels: needsBuildingCounts(a) && a.levels != null ? String(a.levels) : "",
-                units: needsBuildingCounts(a) && a.units != null ? String(a.units) : "",
                 amenities: describeAmenities(a),
-                ownershipDocuments: needsOwnershipDocuments(a)
+                // A sale shows its ownership documents whatever its type; none declared reads "Aucun document
+                // déclaré" (#304). A rental has no row.
+                ownershipDocuments: asksDocuments(a)
                     ? ((a.ownershipDocuments || []).map(function (id) {
                         return OWNERSHIP_DOCUMENT_LABELS[id];
                     }).filter(Boolean).join(" · ") || "Aucun document déclaré")
@@ -1426,11 +1544,9 @@
                     : ""
             };
             var complete = firstIncompleteStep(a) === reviewIndexOf(a);
-            // A sale of a plot of land only: its ownership documents, on the review as "Document de propriété".
-            $("[data-review-ownershipDocuments]").hidden = !needsOwnershipDocuments(a);
-            // v2 (#274): a building sale shows its two counts and no equipment line.
-            $("[data-review-levels]").hidden = !needsBuildingCounts(a);
-            $("[data-review-units]").hidden = !needsBuildingCounts(a);
+            // Every sale shows its documents on the review as "Document de propriété"; a rental never does (#304).
+            $("[data-review-ownershipDocuments]").hidden = !asksDocuments(a);
+            // v2 (#274): a building sale shows no equipment line.
             $("[data-review-amenities]").hidden = !needsAmenities(a);
             Object.keys(values).forEach(function (key) {
                 var valueEl = $('[data-review-value="' + key + '"]');

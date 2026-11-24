@@ -1619,6 +1619,37 @@
                 advanceRent: 2
             }
         },
+        // #304: a rental building stored before Immeuble became sale-only. Its type stays checked and enabled in
+        // Commercial, its usage saved as stored, and a save keeps it; its surface and its furniture stay the rental
+        // questions it had (no count, no document), while its rooms and parking, no longer asked, keep their stored
+        // value. No card on index.html: opened by URL.
+        210: {
+            party: "bailleur",
+            createdAt: -40,
+            initial: { status: "ASSIGNED", acceptedAt: -8 },
+            contact: {
+                firstName: "Solange",
+                lastName: "Etoundi",
+                whatsapp: "+237677554433",
+                email: "s.etoundi@example.com",
+                period: "Matin"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonapriso"],
+                propertyCategory: "COMMERCIAL",
+                propertyType: "BUILDING",
+                // A rental building keeps the rental questions it had: its surface and its furniture.
+                area: 300,
+                furnitureType: "UNFURNISHED",
+                amenities: ["dedicatedWaterMeter", "dedicatedElectricityMeter", "generatorSet", "roadPaved",
+                    "securedFenced", "securityGuard"],
+                price: 900000,
+                movingPeriod: "WITHIN_3_MONTHS",
+                securityDeposit: 3,
+                advanceRent: 2
+            }
+        },
         // v2: a seller's villa (LISTING · SALE), signed: its listing is still to create. A sale price, no rental terms.
         301: {
             party: "bailleur",
@@ -1863,6 +1894,34 @@
                 // #287: the seller declared no document at all (the section's empty state).
                 ownershipDocuments: [],
                 comments: "Terrain non titré, papiers en cours."
+            }
+        },
+        // #304: a land seller (LISTING · SALE) whose three ownership documents and grouped 1 200 m² surface show the
+        // edit page's documents fieldset and its price per m². Its area is grouped as stored ("1 200"). No card on
+        // index.html: opened by URL.
+        310: {
+            party: "bailleur",
+            listingType: "SALE",
+            createdAt: -22,
+            initial: { status: "ASSIGNED", acceptedAt: -9 },
+            contact: {
+                firstName: "Lucie",
+                lastName: "Ngo Mballa",
+                whatsapp: "+237699223344",
+                email: "l.ngombella@example.com",
+                period: "Après-midi"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Japoma"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "LAND",
+                area: 1200,
+                amenities: ["roadPaved", "securedFenced"],
+                price: 60000000,
+                movingPeriod: "WITHIN_3_MONTHS",
+                ownershipDocuments: ["LAND_TITLE", "SURVEY_PLAN", "CERTIFICATE_OF_OWNERSHIP"],
+                comments: "Terrain borné, vendu avec titre foncier et plan de bornage."
             }
         }
     };
@@ -4156,25 +4215,27 @@
     }
 
     var MAX_AMOUNT_DIGITS = 12;
+    // A surface is at most 1 000 000 m² (7 digits), as in the two wizards.
+    var MAX_AREA_DIGITS = 7;
 
     function digitsOf(value) {
         return String(value || "").replace(/\D/g, "").replace(/^0+(?=\d)/, "");
     }
 
-    // "5000" → "5 000": the digits grouped by thousands, capped like the server's amount.
-    function formatAmount(value) {
-        var digits = digitsOf(value).slice(0, MAX_AMOUNT_DIGITS);
+    // "5000" → "5 000": the digits grouped by thousands, capped like the server's amount (or [maxDigits]).
+    function formatAmount(value, maxDigits) {
+        var digits = digitsOf(value).slice(0, maxDigits || MAX_AMOUNT_DIGITS);
         return digits ? Number(digits).toLocaleString("fr-FR") : "";
     }
 
     // Regroups an amount's digits by thousands while typing, keeping the caret after the same digit.
     // A value made of anything else ("abc", "5.5") is left for the server to refuse, as typed.
-    function bindAmount(input) {
+    function bindAmount(input, maxDigits) {
         if (!input) return;
-        if (/^[\d\s\u00a0\u202f]*$/.test(input.value)) input.value = formatAmount(input.value);
+        if (/^[\d\s\u00a0\u202f]*$/.test(input.value)) input.value = formatAmount(input.value, maxDigits);
         input.addEventListener("input", function () {
             var caretDigits = digitsOf(input.value.slice(0, input.selectionStart)).length;
-            var formatted = formatAmount(input.value);
+            var formatted = formatAmount(input.value, maxDigits);
             var pos = 0;
             for (var seen = 0; pos < formatted.length && seen < caretDigits; pos++) {
                 if (/\d/.test(formatted.charAt(pos))) seen++;
@@ -4182,6 +4243,25 @@
             input.value = formatted;
             input.setSelectionRange(pos, pos);
         });
+    }
+
+    // A sale's read-only rate: price ÷ surface for a plot (per m²), price ÷ unités for a building (per unit), rounded
+    // to the nearest 100 FCFA (#304). 0 when the price or the second term is missing or unusable; display only.
+    function rateOfSale(sale, type, price, divisor) {
+        var measured = type === "LAND" || type === "BUILDING";
+        if (!sale || !measured || !(Number(price) > 0) || !(Number(divisor) > 0)) return 0;
+        return Math.round((Number(price) / Number(divisor)) / 100) * 100;
+    }
+
+    // "≈ 56,3K FCFA/m² pour 800 m²" / "≈ 20,83M FCFA/unité pour 12 unités": a rate to read, short like every displayed
+    // amount (#292); the surface stays a grouped count, the unit count a plain count. formatMoney carries the
+    // prototype's FCFA; production uses the tenant's currency symbol.
+    function rateText(rate, divisor, type) {
+        if (type === "LAND") {
+            return "≈ " + formatMoney(rate) + "/m² pour " + formatAmount(divisor) + " m²";
+        }
+        return "≈ " + formatMoney(rate) + "/unité pour " + divisor +
+            (Number(divisor) > 1 ? " unités" : " unité");
     }
 
     function initMandateEdit() {
@@ -4207,6 +4287,13 @@
         var f = fieldsOf(id);
         var form = $("[data-edit-form]");
         var submit = $("[data-edit-submit]", form);
+        // The shared type rules (#304), and the mandate's own document field: a landlord declares its ownership
+        // documents, a client search the documents it requires from the seller.
+        var RULES = window.NdUtil.propertyRules;
+        var listingType = isSale(id) ? "SALE" : "RENTAL";
+        var documentKey = owner ? "ownershipDocuments" : "titleDocuments";
+        var savedDocuments = f[documentKey] || [];
+        var rateLine = $("[data-rate]", form);
 
         document.title = "Modifier le mandat " + id + " — Ndopify Partner Central";
         $("[data-edit-title]").textContent = titleOf(id);
@@ -4253,14 +4340,22 @@
         check("rooms", f.rooms);
         check("furnitureType", f.furnitureType);
         check("parkings", f.parkings);
-        field("area").value = f.area || "";
+        // #304: the price and the surface are grouped as stored, and regrouped as typed (the caret kept after the
+        // same digit); the surface is a 7-digit count, like the wizards'.
+        field("price").value = formatAmount(f.price);
+        bindAmount(field("price"));
+        field("area").value = formatAmount(f.area, MAX_AREA_DIGITS);
+        bindAmount(field("area"), MAX_AREA_DIGITS);
         // v2 (#274): a building's two counts, prefilled; no other type shows nor sends them.
         field("levels").value = f.levels == null ? "" : String(f.levels);
         field("units").value = f.units == null ? "" : String(f.units);
         f.amenities.forEach(function (key) {
             field(key).checked = true;
         });
-        field("price").value = f.price.toLocaleString("fr-FR");
+        savedDocuments.forEach(function (document) {
+            var box = $('[name="documents"][value="' + document + '"]', form);
+            if (box) box.checked = true;
+        });
         check("movingPeriod", f.movingPeriod);
         field("comments").value = f.comments || "";
 
@@ -4279,36 +4374,82 @@
             counter.textContent = count + " sur " + MAX_NEIGHBOURHOODS + (count > 1 ? " sélectionnés" : " sélectionné");
         }
 
-        // The types of the category; rooms for a home, furniture and parking for anything but a plot of land.
-        // #275: a rental offers no plot of land (data-rental-categories="" in the page, a sale its data-categories
-        // ones), except the plot a stored mandate already answered: it stays visible and checked in its saved
-        // category, and is no longer offered once another type is picked (the exception needs it still checked).
-        var savedLand = !sale && f.propertyType === "LAND";
+        /*
+         * The shared rule table says what each type asks (#304). A stored rental type the rules no longer offer (a
+         * plot of land, #275, or a building) stays visible and checked in its saved usage, and is no longer offered
+         * once another type is picked (the exception needs it still checked).
+         */
+        var savedLegacy = !sale && !!f.propertyType && !RULES.offers(f.propertyType, "RENTAL");
+
+        function typeFits(type, category) {
+            return type === "ANY" || RULES.categories(type, listingType).indexOf(category) !== -1;
+        }
+
+        // A stored rental building is no longer offered, but while it stays the saved answer it keeps the questions it
+        // had as a rental: its surface and its furniture (a rental rule #304 doesn't name, so unchanged), no count
+        // (a sale's), nor parking (a building is counted by its units).
+        function savedRentalBuilding() {
+            return !sale && f.propertyType === "BUILDING" && checked("propertyType") === "BUILDING" &&
+                checked("propertyCategory") === f.propertyCategory;
+        }
+
+        /*
+         * Whether a question applies to the type being chosen. "Indifférent" (a client's answer) keeps the questions
+         * of its usage: rooms, furniture and parking for a residential one, the surface for a commercial one — or for
+         * any purchase, which may match a plot of land.
+         */
+        function asks(name) {
+            var type = checked("propertyType");
+            var category = checked("propertyCategory");
+            if (name === "documents") return RULES.asksDocuments(listingType);
+            if (name === "furnitureType" && savedRentalBuilding()) return true;
+            if (!type || type === "ANY") {
+                if (name === "area") return category === "COMMERCIAL" || sale;
+                if (name === "counts") return false;
+                return category === "RESIDENTIAL" &&
+                    (name === "rooms" || name === "furnitureType" || name === "parkings");
+            }
+            return RULES.asks(type, listingType, name);
+        }
+
         function syncProperty() {
             var category = checked("propertyCategory");
-            var attribute = sale ? "data-sale-categories" : "data-rental-categories";
             $all('[name="propertyType"]', form).forEach(function (input) {
                 var label = input.closest("label");
-                var categories = label.hasAttribute(attribute)
-                    ? label.getAttribute(attribute) : label.getAttribute("data-categories");
-                var keep = savedLand && input.value === "LAND" && input.checked &&
+                var keep = savedLegacy && input.value === f.propertyType && input.checked &&
                     category === f.propertyCategory;
-                var fits = categories.split(" ").indexOf(category) !== -1 || keep;
+                var fits = typeFits(input.value, category) || keep;
                 label.hidden = !fits;
                 if (!fits) input.checked = false;
             });
-            var type = checked("propertyType");
-            var land = type === "LAND";
-            // v2 (#274): a building sold is captured by its levels and its units; it is asked no rooms nor parking,
-            // and its amenities group leaves the page (a building's utilities aren't checked).
-            var building = sale && type === "BUILDING";
-            $('[data-group="rooms"]', form).hidden = category !== "RESIDENTIAL" || land || building;
-            // v2: furniture is a rental question only
-            $('[data-group="furnitureType"]', form).hidden = land || sale;
-            $('[data-group="parkings"]', form).hidden = land || building;
-            $('[data-group="levels"]', form).hidden = !building;
-            $('[data-group="units"]', form).hidden = !building;
+            // v2 (#274): a building sold keeps its levels and units, no rooms nor parking, and its amenities group
+            // leaves the page (a building's utilities aren't checked).
+            var building = sale && checked("propertyType") === "BUILDING";
+            $('[data-group="rooms"]', form).hidden = !asks("rooms");
+            $('[data-group="furnitureType"]', form).hidden = !asks("furnitureType");
+            $('[data-group="parkings"]', form).hidden = !asks("parkings");
+            $('[data-group="area"]', form).hidden = !asks("area");
+            $('[data-group="documents"]', form).hidden = !asks("documents");
+            $('[data-group="levels"]', form).hidden = !asks("counts");
+            $('[data-group="units"]', form).hidden = !asks("counts");
             $('[data-edit-group="amenities"]', form).hidden = building;
+            syncRate();
+        }
+
+        // A sale's rate under the price, computed as the price, the surface or the units change (#304): the surface
+        // of a plot (per m²) or the units of a building (per unit). Display only, never posted.
+        function syncRate() {
+            var type = checked("propertyType");
+            var price = parseAmount(field("price").value);
+            var divisor = type === "LAND" ? parseAmount(field("area").value) : parseCount(field("units").value);
+            var rate = rateOfSale(sale, type, price, divisor);
+            if (rate <= 0) {
+                rateLine.hidden = true;
+                rateLine.textContent = "";
+                return;
+            }
+            rateLine.textContent = "Soit " + rateText(rate, divisor, type);
+            rateLine.hidden = false;
         }
 
         function visible(name) {
@@ -4338,8 +4479,9 @@
                 if (levels > 0) parts.push(levels + (levels > 1 ? " étages" : " étage"));
                 var units = visible("units") && parseCount(field("units").value);
                 if (units > 0) parts.push(units + (units > 1 ? " unités" : " unité"));
-                var area = parseAmount(field("area").value);
-                if (area > 0) parts.push(area + " m²");
+                // #304: a residential non-land property asks no surface, so a hidden one isn't summarised either.
+                var area = visible("area") && parseAmount(field("area").value);
+                if (area > 0) parts.push(formatAmount(area, MAX_AREA_DIGITS) + " m²");
                 return parts.join(" · ");
             },
             amenities: function () {
@@ -4407,7 +4549,8 @@
             if (!checked("movingPeriod")) invalid.push("movingPeriod");
             if (visible("rooms") && !checked("rooms")) invalid.push("rooms");
             if (visible("furnitureType") && !checked("furnitureType")) invalid.push("furnitureType");
-            if (isNaN(parseAmount(field("area").value))) invalid.push("area");
+            // #304: a hidden surface (a residential non-land property) is never in error.
+            if (visible("area") && isNaN(parseAmount(field("area").value))) invalid.push("area");
             Object.keys(ERRORS).forEach(function (name) {
                 setFieldError(errorTarget(name), $("#" + name + "-error", form),
                     invalid.indexOf(name) !== -1 ? ERRORS[name] : null);
@@ -4425,12 +4568,17 @@
             if (name === "neighbourhoods") syncNeighbourhoods();
             if (name === "propertyCategory" || name === "propertyType") syncProperty();
             if (ERRORS[name] || $("#" + name + "-error", form)) clearError(name);
+            syncRate();
             syncSummaries();
         });
 
         form.addEventListener("input", function (event) {
             if (ERRORS[event.target.name] || $("#" + event.target.name + "-error", form)) {
                 clearError(event.target.name);
+            }
+            if (event.target.name === "price" || event.target.name === "area" ||
+                event.target.name === "units" || event.target.name === "levels") {
+                syncRate();
             }
             syncSummaries();
         });
@@ -4447,7 +4595,13 @@
                 return;
             }
 
-            var area = parseAmount(field("area").value);
+            // A question the page doesn't show keeps the mandate's stored answer: a hidden field is never cleared
+            // (#304 correction). A field the page shows saves the agent's answer.
+            function stored(key) {
+                return f[key] == null ? null : f[key];
+            }
+
+            var area = visible("area") ? parseAmount(field("area").value) : null;
             var fields = {
                 city: f.city,
                 neighbourhoods: $all('[name="neighbourhoods"]:checked', form).map(function (b) {
@@ -4455,23 +4609,37 @@
                 }),
                 propertyCategory: checked("propertyCategory"),
                 propertyType: checked("propertyType"),
-                furnitureType: visible("furnitureType") ? checked("furnitureType") : null,
-                rooms: visible("rooms") ? checked("rooms") : null,
-                parkings: visible("parkings") ? checked("parkings") : null,
+                furnitureType: visible("furnitureType") ? checked("furnitureType") : stored("furnitureType"),
+                rooms: visible("rooms") ? checked("rooms") : stored("rooms"),
+                parkings: visible("parkings") ? checked("parkings") : stored("parkings"),
                 // v2 (#274): a building keeps its two counts; no other type saves one.
-                levels: visible("levels") ? parseCount(field("levels").value) : null,
-                units: visible("units") ? parseCount(field("units").value) : null,
-                area: area || null,
+                levels: visible("levels") ? parseCount(field("levels").value) : stored("levels"),
+                units: visible("units") ? parseCount(field("units").value) : stored("units"),
+                area: visible("area") ? area || null : stored("area"),
                 amenities: amenitiesShown() ? AMENITY_KEYS.filter(function (key) {
                     return field(key).checked;
-                }) : [],
+                }) : (f.amenities || []),
                 price: parseAmount(field("price").value),
                 movingPeriod: checked("movingPeriod"),
                 comments: field("comments").value.trim() || null
             };
-            // v2 (#253): not editable on this page, but the search keeps the documents it requires (the note of #256
-            // depends on them).
-            if (f.titleDocuments) fields.titleDocuments = f.titleDocuments;
+            // #304: the documents of a sale, saved into the mandate's own field (ownershipDocuments for a landlord's
+            // property, titleDocuments for a client's search); a rental keeps whatever the mandate already had.
+            fields[documentKey] = sale && visible("documents")
+                ? $all('[name="documents"]:checked', form).map(function (box) {
+                    return box.value;
+                })
+                : (f[documentKey] || []);
+            // The other document list isn't edited here: it travels unchanged (as the production UpdateMandateRequest
+            // does for the documents the page doesn't own).
+            var otherDocuments = owner ? "titleDocuments" : "ownershipDocuments";
+            if (f[otherDocuments] && f[otherDocuments].length) fields[otherDocuments] = f[otherDocuments];
+            // Not on this page either: the purchase's financing and the rental's lease terms travel unchanged, or
+            // the update would clear them (as the production MandateEditRules.request does).
+            ["financingType", "securityDeposit", "advanceRent", "availableFrom", "leaseTerm", "noticePeriod"]
+                .forEach(function (key) {
+                    if (Object.prototype.hasOwnProperty.call(f, key)) fields[key] = f[key];
+                });
 
             // PROTOTYPE: simulates POST /v1/mandates/{id} with the whole search (UpdateMandateRequest).
             setActive(submit, false);
