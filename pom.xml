@@ -50,7 +50,7 @@
 
     <properties>
         <ndopify-dto.version>0.0.105</ndopify-dto.version>
-        <ndopify-web-core.version>0.0.10</ndopify-web-core.version>
+        <ndopify-web-core.version>0.0.11</ndopify-web-core.version>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
