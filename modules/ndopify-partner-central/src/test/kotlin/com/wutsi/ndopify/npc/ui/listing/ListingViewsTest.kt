@@ -1167,4 +1167,48 @@ class ListingViewsTest {
         assertEquals("0 sections sur 5 vérifiées", view.progress)
         assertEquals("Immeuble · 3 étages · 12 unités · 850 m²", row(view, ListingSection.PROPERTY).summary)
     }
+
+    @Test
+    fun `a building sale's label reads its units and its étages`() {
+        assertEquals(
+            "Immeuble · 12 unités · 3 étages",
+            ListingViews.label(PropertyType.BUILDING, null, 12, 3, ListingType.SALE),
+        )
+        assertEquals(
+            "Immeuble · 1 unité · 1 étage",
+            ListingViews.label(PropertyType.BUILDING, null, 1, 1, ListingType.SALE),
+        )
+        assertEquals(
+            "Immeuble · Nombre d'unités non précisé · 3 étages",
+            ListingViews.label(PropertyType.BUILDING, null, null, 3, ListingType.SALE),
+        )
+        assertEquals(
+            "Appartement · 2 chambres",
+            ListingViews.label(PropertyType.APARTMENT, 2, null, null, ListingType.RENTAL),
+        )
+        // A rented building keeps today's rooms
+        assertEquals(
+            "Immeuble · 3 chambres",
+            ListingViews.label(PropertyType.BUILDING, 3, null, null, ListingType.RENTAL),
+        )
+    }
+
+    @Test
+    fun `listing labels read a building's counts and place`() {
+        assertEquals(
+            "Immeuble · 12 unités · 3 étages · Bonapriso",
+            ListingViews.listingLabel(
+                ListingSummary(
+                    id = 501,
+                    listingType = ListingType.SALE,
+                    cityId = 1000,
+                    neighborhoodId = 1001,
+                    propertyType = PropertyType.BUILDING,
+                    units = 12,
+                    levels = 3,
+                ),
+                mapOf(1001L to Location(id = 1001, name = "Bonapriso")),
+            ),
+        )
+    }
 }

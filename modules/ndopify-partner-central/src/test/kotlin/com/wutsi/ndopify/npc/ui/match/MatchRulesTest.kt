@@ -18,6 +18,8 @@ import com.wutsi.ndopify.npc.ui.match.MatchFixtures.MANDATE
 import com.wutsi.ndopify.npc.ui.match.MatchFixtures.MATCH_A
 import com.wutsi.ndopify.npc.ui.match.MatchFixtures.MATCH_B
 import com.wutsi.ndopify.npc.ui.match.MatchFixtures.MATCH_C
+import com.wutsi.ndopify.refdata.dto.Money
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.Date
@@ -273,6 +275,98 @@ class MatchRulesTest {
 
         assertEquals(1.0, match.typeScore)
         assertTrue("Appartement, comme demandé" in MatchRules.fit(match, MANDATE, LISTING_A).map { it.text })
+    }
+
+    // A buyer's search for a building sold as a whole: 10 units over 3 levels.
+    private val buildingSearch = MANDATE.copy(
+        listingType = ListingType.SALE,
+        propertyCategory = PropertyCategory.COMMERCIAL,
+        propertyType = PropertyType.BUILDING,
+        rooms = null,
+        units = 10,
+        levels = 3,
+        price = Money(250_000_000, "XAF", PeriodicityType.NONE),
+        furnitureType = null,
+        generatorSet = false,
+        securedFenced = false,
+        waterTank = false,
+    )
+
+    private fun building(units: Int?, levels: Int?) = LISTING_A.copy(
+        propertyType = PropertyType.BUILDING,
+        propertyCategory = PropertyCategory.COMMERCIAL,
+        rooms = null,
+        units = units,
+        levels = levels,
+    )
+
+    @Test
+    fun `a building pair's fit reads its units and its étages, not its rooms nor amenities`() {
+        val fit = MatchRules.fit(MATCH_A, buildingSearch.copy(waterTank = true), building(units = 12, levels = 3))
+
+        assertEquals(
+            listOf(
+                FitLine(true, "Dans le secteur recherché"),
+                FitLine(true, "Dans le budget"),
+                FitLine(true, "12 unités, comme demandé"),
+                FitLine(true, "3 étages, comme demandé"),
+                FitLine(true, "Disponible avant votre achat"),
+            ),
+            fit,
+        )
+        assertTrue(fit.none { it.text.contains("chambre") || it.text.contains("équipement") || it.text.contains("meublé") })
+    }
+
+    @Test
+    fun `a building's counts word their closeness and the singular`() {
+        assertEquals(
+            FitLine(false, "12 unités au lieu de 10"),
+            MatchRules.fit(MATCH_A.copy(unitsScore = 0.8), buildingSearch, building(units = 12, levels = 3))[2],
+        )
+        assertEquals(
+            FitLine(false, "4 étages au lieu de 3"),
+            MatchRules.fit(MATCH_A.copy(levelsScore = 0.5), buildingSearch, building(units = 12, levels = 4))[3],
+        )
+        assertEquals(
+            FitLine(false, "1 unité au lieu de 10"),
+            MatchRules.fit(MATCH_A.copy(unitsScore = 0.1), buildingSearch, building(units = 1, levels = 3))[2],
+        )
+        assertEquals(
+            FitLine(true, "1 étage, comme demandé"),
+            MatchRules.fit(MATCH_A, buildingSearch.copy(levels = 1), building(units = 10, levels = 1))[3],
+        )
+    }
+
+    @Test
+    fun `a building without a count says so and a search without one has no line`() {
+        assertEquals(
+            FitLine(false, "Nombre d'unités non précisé"),
+            MatchRules.fit(MATCH_A, buildingSearch, building(units = null, levels = 3))[2],
+        )
+        assertEquals(
+            FitLine(false, "Nombre d'étages non précisé"),
+            MatchRules.fit(MATCH_A, buildingSearch, building(units = 12, levels = null))[3],
+        )
+        val fit = MatchRules.fit(MATCH_A, buildingSearch.copy(units = null, levels = null), building(units = 12, levels = 3))
+        assertEquals(3, fit.size)
+        assertTrue(fit.none { it.text.contains("unité") || it.text.contains("étage") })
+    }
+
+    @Test
+    fun `a sale villa keeps today's fit`() {
+        val search = MANDATE.copy(
+            listingType = ListingType.SALE,
+            propertyType = PropertyType.VILLA,
+            rooms = "3",
+            price = Money(250_000_000, "XAF", PeriodicityType.NONE),
+        )
+        val listing = LISTING_A.copy(propertyType = PropertyType.VILLA, units = 12, levels = 3)
+
+        val fit = MatchRules.fit(MATCH_A, search, listing)
+
+        assertEquals(7, fit.size)
+        assertEquals(FitLine(true, "3 chambres, comme demandé"), fit[2])
+        assertTrue(fit.none { it.text.contains("unité") || it.text.contains("étage") })
     }
 
     @Test

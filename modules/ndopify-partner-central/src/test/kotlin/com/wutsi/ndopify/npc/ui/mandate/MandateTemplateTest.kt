@@ -9,7 +9,9 @@ import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
@@ -1164,6 +1166,60 @@ class MandateTemplateTest {
             MatchFixtures.MATCH_C.copy(id = 9006, mandateId = 201, status = MatchStatus.DISMISSED),
         )
         doReturn(visits.toList()).whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
+    }
+
+    @Test
+    fun `a building search's cards read its units and its étages`() {
+        val search = APPROVED.copy(
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.BUILDING,
+            rooms = null,
+            levels = 10,
+            units = 10,
+            price = Money(250_000_000, "XAF", PeriodicityType.NONE),
+        )
+        doReturn(listOf(MatchFixtures.MATCH_A.copy(mandateId = 201))).whenever(matchClient).search(any(), any(), any())
+        doReturn(
+            listOf(
+                ListingSummary(
+                    id = 3012,
+                    listingType = ListingType.SALE,
+                    propertyCategory = PropertyCategory.COMMERCIAL,
+                    propertyType = PropertyType.BUILDING,
+                    cityId = DOUALA,
+                    neighborhoodId = BONAPRISO,
+                    units = 12,
+                    levels = 3,
+                    price = 240_000_000,
+                    currencyCode = "XAF",
+                    pricePeriodicityType = PeriodicityType.NONE,
+                ),
+            ),
+        ).whenever(listingClient).searchByIds(any())
+
+        val page = render(search)
+
+        val card = page.selectFirst("[data-match-id=9001]")!!
+        assertEquals("Immeuble · 12 unités · 3 étages", card.selectFirst("[data-match-title]")?.text())
+        assertEquals(
+            listOf(
+                "Oui : Dans le secteur recherché",
+                "Oui : Dans le budget",
+                "Oui : 12 unités, comme demandé",
+                "Oui : 3 étages, comme demandé",
+                "Oui : Disponible avant votre achat",
+            ),
+            card.select("[data-match-fit] li").map { it.text() },
+        )
+        assertFalse(card.text().contains("chambre"))
+        assertFalse(card.text().contains("équipement"))
+
+        val rows = page.select("[data-mandate-key-criteria] .review__item") +
+            page.select("[data-mandate-criteria] .review__item")
+        assertTrue(rows.any { it.selectFirst("dt")?.text() == "Étages" && it.selectFirst("dd")?.text() == "10" })
+        assertTrue(rows.any { it.selectFirst("dt")?.text() == "Unités" && it.selectFirst("dd")?.text() == "10" })
+        assertFalse(rows.any { it.selectFirst("dt")?.text() == "Accès à l'eau" })
     }
 
     @Test

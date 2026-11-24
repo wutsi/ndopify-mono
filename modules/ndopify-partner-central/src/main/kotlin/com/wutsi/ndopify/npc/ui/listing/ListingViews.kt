@@ -177,21 +177,66 @@ object ListingViews {
 
     /** "Appartement 2 chambres · Bonapriso": the listing's line on the co-brokerage blocks. */
     fun listingLabel(summary: ListingSummary, locations: Map<Long, Location>): String =
-        label(summary.propertyType, summary.rooms, summary.neighborhoodId, summary.cityId, locations)
+        label(
+            summary.propertyType,
+            summary.rooms,
+            summary.units,
+            summary.levels,
+            summary.listingType,
+            summary.neighborhoodId,
+            summary.cityId,
+            locations,
+        )
 
     fun listingLabel(listing: Listing, locations: Map<Long, Location>): String =
-        label(listing.propertyType, listing.rooms, listing.neighborhoodId, listing.cityId, locations)
+        label(
+            listing.propertyType,
+            listing.rooms,
+            listing.units,
+            listing.levels,
+            listing.listingType,
+            listing.neighborhoodId,
+            listing.cityId,
+            locations,
+        )
+
+    /**
+     * "Appartement · 3 chambres"; a building sold as a whole reads "Immeuble · 12 unités · 3 étages" instead, and a
+     * count it states none of says so rather than showing nothing. A rented building keeps its rooms.
+     */
+    fun label(type: PropertyType?, rooms: Int?, units: Int?, levels: Int?, listingType: ListingType?): String {
+        val typeLabel = MandateLabels.shortPropertyType(type) ?: "Bien"
+        if (type == PropertyType.BUILDING && listingType == ListingType.SALE) {
+            return listOf(
+                typeLabel,
+                units?.let { MatchRules.units(it) } ?: "Nombre d'unités non précisé",
+                levels?.let { MatchRules.levels(it) } ?: "Nombre d'étages non précisé",
+            ).joinToString(" · ")
+        }
+        return listOfNotNull(typeLabel, rooms?.let { MatchRules.rooms(it) }).joinToString(" · ")
+    }
 
     private fun label(
         type: PropertyType?,
         rooms: Int?,
+        units: Int?,
+        levels: Int?,
+        listingType: ListingType?,
         neighborhoodId: Long?,
         cityId: Long?,
         locations: Map<Long, Location>,
     ): String {
         val typeLabel = MandateLabels.shortPropertyType(type) ?: "Bien"
-        val roomsLabel = rooms?.let { MatchRules.rooms(it) }
         val place = listOfNotNull(neighborhoodId, cityId).firstNotNullOfOrNull { locations[it]?.name }
+        if (type == PropertyType.BUILDING && listingType == ListingType.SALE) {
+            return listOf(
+                typeLabel,
+                units?.let { MatchRules.units(it) } ?: "Nombre d'unités non précisé",
+                levels?.let { MatchRules.levels(it) } ?: "Nombre d'étages non précisé",
+                place,
+            ).filterNotNull().joinToString(" · ")
+        }
+        val roomsLabel = rooms?.let { MatchRules.rooms(it) }
         return listOfNotNull(typeLabel, roomsLabel, place?.let { "· $it" }).joinToString(" ")
     }
 

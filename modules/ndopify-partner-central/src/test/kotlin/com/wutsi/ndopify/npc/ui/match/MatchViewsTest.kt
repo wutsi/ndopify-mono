@@ -2,6 +2,8 @@ package com.wutsi.ndopify.npc.ui.match
 
 import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import com.wutsi.ndopify.npc.ui.agent.AgentCardView
@@ -300,6 +302,64 @@ class MatchViewsTest {
         )
 
         assertEquals("1 refusé · 1 sans réponse", section.outcomes)
+    }
+
+    @Test
+    fun `a building card's title reads its units and its étages`() {
+        val search = MANDATE.copy(
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.BUILDING,
+            rooms = null,
+            units = 10,
+            levels = 3,
+        )
+        val listing = LISTING_A.copy(
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.BUILDING,
+            rooms = null,
+            units = 12,
+            levels = 3,
+        )
+
+        val view = MatchViews
+            .section(search, listOf(MATCH_A), mapOf(listing.id to listing), emptyMap(), LOCATIONS, TODAY, FORMATTER)
+            .matches
+            .single()
+
+        assertEquals("Immeuble · 12 unités · 3 étages", view.title)
+        assertEquals(
+            listOf("12 unités, comme demandé", "3 étages, comme demandé"),
+            view.fit.map { it.text }.filter { it.contains("unité") || it.contains("étage") },
+        )
+    }
+
+    @Test
+    fun `a building card without a count says so`() {
+        val search = MANDATE.copy(
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.BUILDING,
+            rooms = null,
+            units = 10,
+            levels = 3,
+        )
+        val listing = LISTING_A.copy(
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.BUILDING,
+            rooms = null,
+            units = null,
+            levels = 3,
+        )
+
+        val view = MatchViews
+            .section(search, listOf(MATCH_A), mapOf(listing.id to listing), emptyMap(), LOCATIONS, TODAY, FORMATTER)
+            .matches
+            .single()
+
+        assertEquals("Immeuble · Nombre d'unités non précisé · 3 étages", view.title)
     }
 
     @Test
