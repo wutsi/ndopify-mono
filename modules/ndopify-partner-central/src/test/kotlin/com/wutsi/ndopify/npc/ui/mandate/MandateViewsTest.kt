@@ -223,6 +223,7 @@ class MandateViewsTest {
     @Test
     fun `closed - one day`() {
         assertEquals("1 jour", view(APPROVED.copy(status = MandateStatus.CLOSED, age = 1)).age)
+        assertTrue(view(APPROVED.copy(status = MandateStatus.CLOSED)).steps.none { it.cancelled })
     }
 
     @Test
@@ -240,6 +241,7 @@ class MandateViewsTest {
         assertEquals(3, view.currentStep)
         assertEquals("Annulé", view.steps.last().label)
         assertEquals(listOf(true, true, false, true), view.steps.map { it.done })
+        assertEquals(listOf(false, false, false, true), view.steps.map { it.cancelled })
         assertEquals("Étape 4 sur 4 · Annulé, le 19 oct. 2026", view.stepSummary)
         assertEquals("changement de projet", view.cancellation)
         assertEquals("Il reste chez lui", view.cancellationReason)

@@ -71,6 +71,8 @@ data class StepView(
     val label: String,
     val date: String?,
     val done: Boolean,
+    /** The last step of a cancelled mandate ("Annulé"): its mark is red, not green. */
+    val cancelled: Boolean = false,
 )
 
 data class ContactView(

@@ -78,6 +78,7 @@ object MandateViews {
                 date = if (i <= current) format(dates[i]) else null,
                 // A mandate ended without a lease may have skipped steps (ex: cancelled before its approval).
                 done = if (ended) i == current || dates[i] != null else i < current,
+                cancelled = step == MandateStatus.CLOSED && status == MandateStatus.CANCELLED,
             )
         }
         val (key, more) = criteria(mandate, locations, formatter)

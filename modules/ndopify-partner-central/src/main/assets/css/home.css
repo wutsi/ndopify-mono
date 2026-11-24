@@ -767,6 +767,12 @@ h1.alert__title {
     background: var(--color-success-fg);
 }
 
+/* A cancelled mandate's last step ("Annulé") is red, not green. */
+.mandate-steps li.mandate-steps__step--cancelled .tracker__mark {
+    border-color: var(--color-error-fg);
+    background: var(--color-error-fg);
+}
+
 .mandate-steps__text {
     position: absolute;
     width: 1px;

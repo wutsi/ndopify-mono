@@ -197,6 +197,7 @@ class MandateTemplateTest {
         val steps = page.select("[data-mandate-steps] li")
         assertEquals(listOf("ASSIGNED", "PENDING_APPROVAL", "APPROVED", "CLOSED"), steps.map { it.attr("data-step") })
         assertEquals(listOf("done", "current", "todo", "todo"), steps.map { it.attr("data-state") })
+        assertTrue(steps.none { it.hasClass("mandate-steps__step--cancelled") })
         assertEquals(listOf("", "step", "", ""), steps.map { it.attr("aria-current") })
         assertNull(steps[0].selectFirst(".tracker__mark svg"))
         assertEquals("Terminé", steps[0].selectFirst(".tracker__mark .visually-hidden")?.text())
@@ -785,6 +786,7 @@ class MandateTemplateTest {
         val steps = page.select("[data-mandate-steps] li")
         assertEquals(listOf("done", "done", "todo", "done"), steps.map { it.attr("data-state") })
         assertNull(steps[2].selectFirst(".tracker__mark svg"))
+        assertEquals(listOf(false, false, false, true), steps.map { it.hasClass("mandate-steps__step--cancelled") })
         assertNull(steps[2].selectFirst(".tracker__mark .visually-hidden"))
     }
 
