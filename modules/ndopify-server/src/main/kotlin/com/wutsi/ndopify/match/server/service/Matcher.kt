@@ -23,7 +23,8 @@ import kotlin.math.abs
  * 2. the listing is the search customer's own property;
  * 3. other `listingType`, `cityId`, or `propertyCategory` (a `BUILDING` or `LAND` pair is decided by its type
  *    instead);
- * 4. a land purchase requiring a document the seller didn't declare (any one of the required documents is enough);
+ * 4. a sale requiring a document the seller didn't declare (any one of the required documents is enough, whatever the
+ *    two property types; a search requiring none, or an `UNKNOWN`-only requirement, never rules a pair out);
  * 5. with a budget: other `currencyCode` or `pricePeriodicityType`;
  * 6. with a budget: a price over the budget + `priceTolerance`;
  * 7. a housing sibling (ex: a `HOUSE` for an `APARTMENT` search) whose rooms are not the searched count or one more
@@ -217,14 +218,12 @@ class Matcher(
                         )
                 )
 
-    // Any one of the required documents is enough; only a land sale, where both answers exist, filters at all.
+    // Any one of the required documents is enough; a sale is where both answers exist, whatever the property type.
     private fun documentsMismatch(search: MandateEntity, listing: ListingEntity): Boolean {
         val required = search.titleDocuments.filter { it != TitleDocumentType.UNKNOWN }
         return required.isNotEmpty() &&
             search.listingType == ListingType.SALE &&
-            search.propertyType == PropertyType.LAND &&
             listing.listingType == ListingType.SALE &&
-            listing.propertyType == PropertyType.LAND &&
             listing.mandate.ownershipDocuments.none { it != TitleDocumentType.UNKNOWN && it in required }
     }
 
