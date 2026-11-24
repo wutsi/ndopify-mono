@@ -13,7 +13,7 @@
   "cityId" the city whose neighbourhoods join.js-style slim-select searches; "mandateId" the id of the URL.
   "locked" is "unavailable" or "approved" for the locked view (no form).
 */-->
-<body data-page="mandate-edit" th:attr="data-currency=${currency}">
+<body data-page="mandate-edit" th:attr="data-currency=${currency},data-decimal-separator=${decimalSeparator}">
     <th:block th:replace="~{fragments/site-header :: header(@{/}, true)}"></th:block>
     <main id="main" class="page">
         <div class="column">

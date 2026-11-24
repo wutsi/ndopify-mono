@@ -330,6 +330,7 @@ class MandateController(
         model.addAttribute("errors", errors)
         model.addAttribute("error", error)
         model.addAttribute("currency", formatter().currency())
+        model.addAttribute("decimalSeparator", formatter().decimalSeparator())
         model.addAttribute("categoryLabels", MandateLabels.byName(MandateLabels.CATEGORY_LABELS))
         model.addAttribute("propertyTypeLabels", MandateLabels.byName(MandateLabels.PROPERTY_TYPE_LABELS))
         model.addAttribute("furnitureLabels", MandateLabels.byName(MandateLabels.FURNITURE_TYPE_LABELS))

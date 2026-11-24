@@ -511,6 +511,7 @@
         var landSale = sale && form.getAttribute("data-property-type") === "LAND";
         var area = Number(form.getAttribute("data-area") || 0);
         var currency = form.getAttribute("data-currency") || "";
+        var decimalSeparator = form.getAttribute("data-decimal-separator") || ",";
 
         function update() {
             var budget = Number(digitsOf(price.value) || 0);
@@ -525,8 +526,8 @@
                 perSqm.textContent = "";
                 return;
             }
-            perSqm.textContent = "Soit ≈ " + window.NdUtil.compactNumber(rate) + "\u00a0" + currency + "/m² pour " +
-                formatNumber(area) + " m²";
+            perSqm.textContent = "Soit ≈ " + window.NdUtil.compactNumber(rate, decimalSeparator) + "\u00a0" + currency +
+                "/m² pour " + formatNumber(area) + " m²";
             perSqm.hidden = false;
         }
 

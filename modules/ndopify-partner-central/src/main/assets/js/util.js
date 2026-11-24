@@ -130,9 +130,11 @@
      * An amount as a page shows it (#292): "500", "150K", "1,25M", "1,5G". K keeps at most one decimal, M and G
      * two, half-up, trailing zeros dropped; the unit is the smallest whose rounded value reads under 1000
      * ("1M", never "1000K"). Integer scaling, so no double rounding drifts at a boundary.
-     * The caller adds the currency (the tenant's, from the body's data-currency).
+     * The caller adds the currency (the tenant's, from the body's or form's data-currency) and passes the tenant's
+     * decimal separator (its data-decimal-separator), so an English tenant's page keeps its dot.
      */
-    function compactNumber(value) {
+    function compactNumber(value, decimalSeparator) {
+        var separator = decimalSeparator || ",";
         var n = Math.abs(Math.round(Number(value) || 0));
         var sign = Number(value) < 0 ? "-" : "";
         var units = [["K", 3, 1], ["M", 6, 2], ["G", 9, 2]];
@@ -142,7 +144,7 @@
             var factor = Math.pow(10, decimals);
             var scaled = Math.round(n * factor / Math.pow(10, shift));
             if (scaled < 1000 * factor || i === units.length - 1) {
-                return sign + (scaled / factor).toFixed(decimals).replace(/\.?0+$/, "").replace(".", ",") + suffix;
+                return sign + (scaled / factor).toFixed(decimals).replace(/\.?0+$/, "").replace(".", separator) + suffix;
             }
         }
     }

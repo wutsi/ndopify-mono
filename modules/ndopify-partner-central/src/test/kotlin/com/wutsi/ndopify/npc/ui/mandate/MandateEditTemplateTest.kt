@@ -431,6 +431,7 @@ class MandateEditTemplateTest {
         assertNotNull(page.selectFirst("script[src*=slim-select@4.3.0]"))
         assertNotNull(page.selectFirst("link[href*=slim-select@4.3.0]"))
         assertEquals("mandate-edit", page.body().attr("data-page"))
+        assertEquals(",", page.body().attr("data-decimal-separator"))
         val form = page.selectFirst("form[data-edit-form]")!!
         assertEquals("/locations", form.attr("data-locations-url"))
         assertEquals(11, form.select("[data-categories]").size)

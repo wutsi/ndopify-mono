@@ -411,6 +411,7 @@ class FindPropertyController(
         }
         if (step == STEP_BUDGET) {
             model.addAttribute("currency", formatter().currency())
+            model.addAttribute("decimalSeparator", formatter().decimalSeparator())
             model.addAttribute("movingPeriodLabels", MandateLabels.byName(MandateLabels.MOVE_IN_LABELS))
             model.addAttribute("financingLabels", MandateLabels.byName(MandateLabels.FINANCING_LABELS))
             model.addAttribute(

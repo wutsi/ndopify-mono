@@ -554,6 +554,7 @@ class FindPropertyTemplateTest {
         assertEquals("400", form(page).attr("data-area"))
         assertEquals("LAND", form(page).attr("data-property-type"))
         assertEquals("FCFA", form(page).attr("data-currency"))
+        assertEquals(",", form(page).attr("data-decimal-separator"))
     }
 
     @Test

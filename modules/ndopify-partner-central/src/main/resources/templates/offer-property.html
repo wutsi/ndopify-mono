@@ -252,7 +252,7 @@
             <!--/* Step 4: features (POST /offer-property/features) */-->
             <form class="form" data-offer-form method="post"
                   th:attrappend="data-listing-type=${answers.listingType != null ? answers.listingType.name() : 'RENTAL'}"
-                  th:attr="data-price-amount=${answers.priceAmount}, data-currency=${currency}" novalidate
+                  th:attr="data-price-amount=${answers.priceAmount}, data-currency=${currency}, data-decimal-separator=${decimalSeparator}" novalidate
                   th:action="@{/offer-property/features}"
                   th:if="${step == 'features'}"
                   th:with="residential=${answers.propertyCategory != null and answers.propertyCategory.name() == 'RESIDENTIAL'}">

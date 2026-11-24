@@ -529,6 +529,7 @@ class OfferPropertyTemplateTest {
 
         val hook = assertNotNull(page.selectFirst("[data-price-per-sqm]"))
         assertTrue(hook.text().isBlank())
+        assertEquals(",", page.selectFirst("form[data-offer-form]")?.attr("data-decimal-separator"))
     }
 
     @Test
