@@ -390,10 +390,47 @@ a.checklist__row:focus-visible {
 }
 
 .photo--pending {
-    align-items: center;
-    justify-content: center;
-    aspect-ratio: 1;
     font-size: var(--step-hint);
+}
+
+/* A photo waiting or being sent: its preview dimmed, its state as the note. */
+.photo--pending img {
+    opacity: 0.45;
+}
+
+.photo--sending .photo__note {
+    font-weight: 600;
+}
+
+/* The batch being sent: "Envoi de la photo 2 sur 5…" over a bar. */
+.upload-progress {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-3);
+    border: 1px solid var(--color-info-border);
+    background: var(--color-info-bg);
+    color: var(--color-info-fg);
+}
+
+.upload-progress[hidden] {
+    display: none;
+}
+
+.upload-progress__text {
+    margin: 0;
+    font-weight: 600;
+}
+
+.upload-progress__bar {
+    width: 100%;
+    height: 0.5rem;
+    accent-color: var(--color-accent);
+}
+
+.photo-actions .btn[aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .photo--rejected {

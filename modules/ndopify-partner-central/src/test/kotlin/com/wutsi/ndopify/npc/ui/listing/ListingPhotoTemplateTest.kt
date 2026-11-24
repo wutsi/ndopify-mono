@@ -10,6 +10,7 @@ import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
+import com.wutsi.ndopify.npc.ui.ScriptFixtures
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdviceTest
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.IMAGES
@@ -107,6 +108,15 @@ class ListingPhotoTemplateTest {
         assertEquals("2 photos · supprimez la photo refusée et reprenez-la", page.selectFirst("[data-photo-count]")?.text())
         assertEquals("Terminé", page.selectFirst(".form__actions a")?.text())
         assertTrue(page.selectFirst("#photos-error")!!.hasAttr("hidden"))
+        // listing.js shows the upload's progress here; without JS it stays hidden
+        val progress = page.selectFirst("[data-photo-progress]")!!
+        assertTrue(progress.hasAttr("hidden"))
+        assertNotNull(progress.selectFirst("progress[data-photo-progress-bar]"))
+    }
+
+    @Test
+    fun `renders the page the page-script test runs listing js on`() {
+        ScriptFixtures.write("listing-photos", render())
     }
 
     @Test
@@ -184,6 +194,7 @@ class ListingPhotoTemplateTest {
         assertNull(page.selectFirst("form[data-photo-form]"))
         assertNull(page.selectFirst(".photo-tips"))
         assertNull(page.selectFirst("form[data-photo-delete-form]"))
+        assertNull(page.selectFirst("[data-photo-progress]"))
         assertEquals("2 photos", page.selectFirst("[data-photo-count]")?.text())
         assertEquals("Retour à l'annonce", page.selectFirst(".form__actions a")?.text())
     }

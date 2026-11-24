@@ -6,7 +6,9 @@
   the SectionView (absent when "locked" or "unavailable"), "photos" the PhotosView, "photoError" why the last upload
   or deletion failed. Without JS, the photos taken or chosen are sent with "Envoyer les photos" (POST, multipart, one
   or several "photo" files); listing.js shrinks each and sends it as soon as it's chosen, straight to the storage
-  through direct-upload.js when it's loaded (presign, PUT, attach), else with the multipart post. Each photo is
+  through direct-upload.js when it's loaded (presign, PUT, attach), else with the multipart post; meanwhile it shows
+  the progress ("data-photo-progress", "Envoi de la photo 2 sur 5…"), a dimmed tile per photo chosen, and keeps the
+  two buttons inactive. Each photo is
   deleted with its own form, and opens full size in a new tab (listing.js: in a full-screen viewer instead). Once
   sent ("section.editable" false), the photos are only shown.
 */-->
@@ -71,6 +73,13 @@
                 <p class="field__error" id="photos-error" role="alert" th:hidden="${photoError == null}">
                     <svg th:replace="~{fragments/icon :: close}"></svg>
                     <span data-error-text th:text="${photoError}"></span></p>
+
+                <!-- listing.js only: while the photos chosen are shrunk then sent, which one out of how many, over a bar
+                     (no count on the multipart post, which can't report it). Hidden without JS. -->
+                <div class="upload-progress" hidden th:if="${e}" data-photo-progress>
+                    <p class="upload-progress__text" data-photo-progress-text></p>
+                    <progress class="upload-progress__bar" max="1" data-photo-progress-bar></progress>
+                </div>
 
                 <p class="checklist__progress" th:text="${p.count}" data-photo-count>0 photo · encore 5 au moins</p>
                 <p class="visually-hidden" aria-live="polite" data-photo-live></p>

@@ -29,7 +29,17 @@ async function load(name) {
     const errors = [];
     const virtualConsole = new VirtualConsole();
     virtualConsole.on("jsdomError", (error) => errors.push(error.message));
-    const dom = new JSDOM(html, { url: "http://localhost:8081/", runScripts: "dangerously", virtualConsole });
+    const dom = new JSDOM(html, {
+        url: "http://localhost:8081/",
+        runScripts: "dangerously",
+        virtualConsole,
+        // jsdom has no matchMedia, which every browser has (listing.js's viewer reads prefers-reduced-motion)
+        beforeParse(window) {
+            window.matchMedia = (query) => ({
+                matches: false, media: query, addEventListener() {}, removeEventListener() {}
+            });
+        }
+    });
     if (dom.window.document.readyState !== "complete") {
         await new Promise((resolve) => dom.window.addEventListener("load", resolve));
     }
@@ -60,7 +70,8 @@ function type(page, selector, text) {
 
 const ALL_FIXTURES = [
     "offer-property", "offer-terms-sale", "offer-features-residential-sale", "offer-features-commercial-sale",
-    "offer-features-residential-rental", "find-property-residential-sale", "find-budget-building-sale"
+    "offer-features-residential-rental", "find-property-residential-sale", "find-budget-building-sale",
+    "listing-photos"
 ];
 
 for (const name of ALL_FIXTURES) {
@@ -153,4 +164,47 @@ test("find-property, budget: a building purchase shows its price per unit as the
     const rate = page.document.querySelector("[data-price-per-unit]");
     assert.equal(rate.hidden, false);
     assert.match(rate.textContent, /\/unité pour 12 unités$/);
+});
+
+/* Chooses [count] photos in the gallery input: jsdom decodes no image, so the page stays on "Préparation…". */
+function choosePhotos(page, count) {
+    page.window.URL.createObjectURL = () => "blob:photo";
+    page.window.URL.revokeObjectURL = () => {};
+    const input = page.document.querySelectorAll("[data-photo-input]")[1];
+    const files = Array.from({ length: count }, (_, i) => new page.window.File(["x"], `p${i}.jpg`, { type: "image/jpeg" }));
+    Object.defineProperty(input, "files", { value: files, configurable: true });
+    input.dispatchEvent(new page.window.Event("change", { bubbles: true }));
+    return input;
+}
+
+test("listing photos: choosing photos shows the progress and makes the buttons inactive", async () => {
+    const page = await load("listing-photos");
+    const progress = page.document.querySelector("[data-photo-progress]");
+    assert.equal(progress.hidden, true);
+    assert.equal(page.document.querySelector("[data-photo-submit]").hidden, true);
+
+    const input = choosePhotos(page, 3);
+
+    assert.equal(progress.hidden, false);
+    assert.equal(page.document.querySelector("[data-photo-progress-text]").textContent, "Préparation des photos…");
+    for (const label of page.document.querySelectorAll("[data-photo-actions] label")) {
+        assert.equal(label.getAttribute("aria-disabled"), "true");
+    }
+    // Inactive, not disabled: the multipart fallback posts the input's files
+    assert.equal(input.disabled, false);
+    const click = new page.window.MouseEvent("click", { bubbles: true, cancelable: true });
+    input.closest("label").dispatchEvent(click);
+    assert.equal(click.defaultPrevented, true);
+    assert.deepEqual(page.errors, []);
+});
+
+test("listing photos: a photo refused before sending hides the progress again", async () => {
+    const page = await load("listing-photos");
+    choosePhotos(page, 21);
+
+    assert.equal(page.document.querySelector("[data-photo-progress]").hidden, true);
+    assert.equal(page.document.querySelector("#photos-error").hidden, false);
+    for (const label of page.document.querySelectorAll("[data-photo-actions] label")) {
+        assert.equal(label.hasAttribute("aria-disabled"), false);
+    }
 });
