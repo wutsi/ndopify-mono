@@ -165,10 +165,10 @@ data class SectionView(
     val readonlyText: String?,
 )
 
-/** A property type of *Le bien*'s choices: its category (`data-categories`, for listing.js) and label. */
+/** A property type of *Le bien*'s choices: its categories (`data-categories`, space-separated, for listing.js) and label. */
 data class TypeChoice(
     val value: String,
-    val category: String,
+    val categories: String,
     val label: String,
 )
 

@@ -155,16 +155,22 @@
     function initProperty(form) {
         function sync() {
             var category = ($('[name="propertyCategory"]:checked', form) || {}).value;
+            var sale = document.body.getAttribute("data-sale") === "true";
             $all('[name="propertyType"]', form).forEach(function (radio) {
                 var label = radio.closest("[data-categories]");
-                var fits = !category || label.getAttribute("data-categories") === category;
+                var categories = label.getAttribute("data-categories").split(" ");
+                // #274: a building sold is stored Commercial; its row stays under Residential for a legacy listing,
+                // and a rental offers it there only. #275: a plot of land is sold, never let.
+                var fits = (!category || categories.indexOf(category) !== -1) &&
+                    (radio.value !== "LAND" || sale) &&
+                    (radio.value !== "BUILDING" || category === "RESIDENTIAL" || sale);
                 label.hidden = !fits;
                 if (!fits) radio.checked = false;
             });
             var answers = {
                 category: category,
                 type: ($('[name="propertyType"]:checked', form) || {}).value,
-                sale: document.body.getAttribute("data-sale") === "true"
+                sale: sale
             };
             $all("[data-applies]", form).forEach(function (el) {
                 el.hidden = !answers.type || !APPLIES[el.getAttribute("data-applies")](answers);

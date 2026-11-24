@@ -290,6 +290,35 @@ class ListingSectionTemplateTest {
     }
 
     @Test
+    fun `a building keeps the listing's usage`() {
+        // A new sale building stores Commercial: Le bien offers it there and keeps the legacy Residential row.
+        val commercial = form(render("property", BUILDING.copy(propertyCategory = PropertyCategory.COMMERCIAL)))
+
+        assertEquals("COMMERCIAL", commercial.selectFirst("input[name=propertyCategory][checked]")?.attr("value"))
+        val building = assertNotNull(commercial.selectFirst("input[name=propertyType][value=BUILDING][checked]"))
+        assertEquals("RESIDENTIAL COMMERCIAL", building.parent()?.attr("data-categories"))
+        assertEquals("3", commercial.selectFirst("input[name=levels]")?.attr("value"))
+        assertEquals("12", commercial.selectFirst("input[name=units]")?.attr("value"))
+
+        // A sale building stored Residential before this story stays selectable as it is.
+        val legacy = form(render("property", BUILDING))
+
+        assertEquals("RESIDENTIAL", legacy.selectFirst("input[name=propertyCategory][checked]")?.attr("value"))
+        assertEquals(
+            "RESIDENTIAL COMMERCIAL",
+            legacy.selectFirst("input[name=propertyType][value=BUILDING][checked]")?.parent()?.attr("data-categories"),
+        )
+
+        // A rental building is offered under Residential only, as today.
+        val rental = form(render("property", BUILDING.copy(listingType = ListingType.RENTAL)))
+
+        assertEquals(
+            "RESIDENTIAL",
+            rental.selectFirst("input[name=propertyType][value=BUILDING]")?.parent()?.attr("data-categories"),
+        )
+    }
+
+    @Test
     fun amenities() {
         val form = form(render("amenities"))
 

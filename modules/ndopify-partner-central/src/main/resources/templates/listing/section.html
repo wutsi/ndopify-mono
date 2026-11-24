@@ -151,7 +151,7 @@
                         <fieldset class="choices" aria-describedby="propertyType-error">
                             <legend class="choices__legend">Type de bien</legend>
                             <div class="choices__grid choices__grid--2">
-                                <label class="choice" th:each="t : ${types}" th:if="${e or a.propertyType == t.value}" th:attr="data-categories=${t.category}"><input
+                                <label class="choice" th:each="t : ${types}" th:if="${e or a.propertyType == t.value}" th:attr="data-categories=${t.categories}"><input
                                        name="propertyType" type="radio" th:value="${t.value}" th:checked="${a.propertyType == t.value}"
                                        th:disabled="${!e}"> <th:block th:text="${t.label}">Appartement</th:block></label>
                             </div>

@@ -45,7 +45,10 @@ object ListingRules {
     val LEASE_TERMS = listOf(6, 12, 24, 36)
     val NOTICE_PERIODS = 1..3
 
-    /** The types of each category (the prototype's `data-categories`: LAND and BUILDING are residential). */
+    /**
+     * The types of each category (the prototype's `data-categories`: LAND and BUILDING are residential); a sale
+     * building is also commercial, see [typeCategories].
+     */
     val TYPES: Map<PropertyCategory, List<PropertyType>> = linkedMapOf(
         PropertyCategory.RESIDENTIAL to listOf(
             PropertyType.APARTMENT,
@@ -280,9 +283,28 @@ object ListingRules {
         }
     }
 
-    /** The types of [category] a project may choose: a plot of land is sold, never let (#275). */
+    /**
+     * The categories a type is offered under: its [TYPES] entries, plus COMMERCIAL for a BUILDING when [sale] — a sale
+     * building is offered under both (its listing stores COMMERCIAL; a legacy row RESIDENTIAL), a rental only
+     * RESIDENTIAL.
+     */
+    fun typeCategories(type: PropertyType, sale: Boolean): List<PropertyCategory> {
+        val categories = TYPES.filterValues { type in it }.keys.toMutableList()
+        if (sale && type == PropertyType.BUILDING && PropertyCategory.COMMERCIAL !in categories) {
+            categories += PropertyCategory.COMMERCIAL
+        }
+        return categories
+    }
+
+    /** The types of [category] a project may choose, in the prototype's order: a plot of land is sold, never let (#275). */
     fun types(category: PropertyCategory?, sale: Boolean): List<PropertyType> =
-        TYPES[category].orEmpty().filter { sale || it != PropertyType.LAND }
+        if (category == null) {
+            emptyList()
+        } else {
+            TYPES.values.flatten().filter { type ->
+                category in typeCategories(type, sale) && (sale || type != PropertyType.LAND)
+            }
+        }
 
     private fun sale(listingType: ListingType?): Boolean = listingType == ListingType.SALE
 
