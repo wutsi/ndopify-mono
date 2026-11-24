@@ -60,7 +60,7 @@ data class MandateView(
     val signatureTtlDays: Int?, // Null without a request for signature
     val hasContract: Boolean,
     val contractDuration: String?, // "6 mois"; null without a contract
-    val visitFee: String?, // "5 000 FCFA"; null when there's none
+    val visitFee: String?, // "5K FCFA"; null when there's none
 
     /** A sale contract's commission: "7 % du prix de vente"; null without a contract or for a rental. */
     val commission: String?,
