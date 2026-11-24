@@ -20,10 +20,10 @@ import java.time.format.DateTimeParseException
  *
  * The wizard serves two projects: a rental ([ListingType.RENTAL]) and a sale ([ListingType.SALE]). A rental offers
  * neither land nor a building; a sale offers land under both usages, residential and commercial (#293), and no room,
- * asks furniture for every residential type (sale and rental alike), requires the surface of a plot of land, offers its
- * documents whatever the type, has its own price floor, and has no advance nor deposit. A building sold as a whole is
- * offered under Commercial only (#304), is captured by its two counts instead of a room and a parking, and skips the
- * amenities step.
+ * asks furniture for every residential type (sale and rental alike), requires the surface of a commercial property and
+ * of a sold plot, offers its documents whatever the type, has its own price floor, and has no advance nor deposit. A
+ * building sold as a whole is offered under Commercial only (#304), is captured by its two counts instead of a room and
+ * a parking, and skips the amenities step.
  */
 object OfferPropertyRules {
     const val STEP_PROPERTY = "property"
@@ -104,7 +104,7 @@ object OfferPropertyRules {
             (PropertyType.LAND to setOf(PropertyCategory.RESIDENTIAL, PropertyCategory.COMMERCIAL)) +
             (PropertyType.BUILDING to setOf(PropertyCategory.COMMERCIAL))
 
-    private val WITHOUT_ROOMS = setOf(PropertyType.ROOM, PropertyType.STUDIO, PropertyType.BUILDING)
+    private val WITHOUT_ROOMS = setOf(PropertyType.ROOM, PropertyType.STUDIO)
 
     private val TITLE_DOCUMENT_TYPES = listOf(
         TitleDocumentType.LAND_TITLE,

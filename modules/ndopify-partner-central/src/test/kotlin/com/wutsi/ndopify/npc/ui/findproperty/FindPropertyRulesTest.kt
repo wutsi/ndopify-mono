@@ -233,6 +233,7 @@ class FindPropertyRulesTest {
     fun `a residential non-land purchase asks no surface`() {
         assertFalse(FindPropertyRules.needsArea(residential, PropertyType.VILLA, ListingType.SALE))
         assertTrue(FindPropertyRules.needsArea(commercial, PropertyType.OFFICE, ListingType.SALE))
+        assertTrue(FindPropertyRules.needsArea(commercial, PropertyType.OFFICE, ListingType.RENTAL))
         assertTrue(FindPropertyRules.needsArea(residential, PropertyType.LAND, ListingType.SALE))
     }
 

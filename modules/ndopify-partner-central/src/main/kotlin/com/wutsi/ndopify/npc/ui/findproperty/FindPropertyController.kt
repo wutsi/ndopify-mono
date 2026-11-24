@@ -179,7 +179,7 @@ class FindPropertyController(
         val buildingSale = FindPropertyRules.buildingSale(pending.listingType, type)
         val areaText = form.area?.trim().orEmpty()
         val area = FindPropertyRules.parseAmount(areaText)?.takeIf { it <= Int.MAX_VALUE }?.toInt()
-        // Documents are kept for a land purchase only; unknown names were rejected at binding.
+        // Documents are kept for a purchase only, whatever the type; unknown names were rejected at binding.
         val documents = form.titleDocuments
             .filter { it in FindPropertyRules.titleDocumentTypes(pending.listingType, type) }
             .distinct()

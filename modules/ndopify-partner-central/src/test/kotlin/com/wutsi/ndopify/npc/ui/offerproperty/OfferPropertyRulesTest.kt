@@ -134,7 +134,7 @@ class OfferPropertyRulesTest {
         assertFalse(OfferPropertyRules.needsFurniture(commercial, PropertyType.OFFICE, null))
         assertFalse(OfferPropertyRules.needsRooms(residential, PropertyType.STUDIO, null))
         assertFalse(OfferPropertyRules.needsRooms(residential, PropertyType.ROOM, null))
-        assertFalse(OfferPropertyRules.needsRooms(residential, PropertyType.BUILDING, null))
+        assertFalse(OfferPropertyRules.needsRooms(commercial, PropertyType.BUILDING, ListingType.SALE))
         assertTrue(OfferPropertyRules.needsRooms(residential, PropertyType.APARTMENT, null))
         assertFalse(OfferPropertyRules.needsRooms(commercial, PropertyType.OFFICE, null))
         assertTrue(OfferPropertyRules.needsParking(residential, PropertyType.ROOM, null))
@@ -242,16 +242,12 @@ class OfferPropertyRulesTest {
     }
 
     @Test
-    fun `a residential non-land type asks no surface`() {
-        assertFalse(OfferPropertyRules.needsArea(residential, PropertyType.VILLA, ListingType.SALE))
+    fun `a commercial type or a sold plot asks its surface, a residential one does not`() {
         assertTrue(OfferPropertyRules.needsArea(residential, PropertyType.LAND, ListingType.SALE))
-    }
-
-    @Test
-    fun `only a land sale requires its surface`() {
-        assertTrue(OfferPropertyRules.needsArea(PropertyCategory.RESIDENTIAL, PropertyType.LAND, ListingType.SALE))
-        assertFalse(OfferPropertyRules.needsArea(PropertyCategory.RESIDENTIAL, PropertyType.LAND, ListingType.RENTAL))
-        assertTrue(OfferPropertyRules.needsArea(PropertyCategory.COMMERCIAL, PropertyType.OFFICE, ListingType.RENTAL))
+        assertFalse(OfferPropertyRules.needsArea(residential, PropertyType.LAND, ListingType.RENTAL))
+        assertFalse(OfferPropertyRules.needsArea(residential, PropertyType.VILLA, ListingType.SALE))
+        assertTrue(OfferPropertyRules.needsArea(commercial, PropertyType.OFFICE, ListingType.RENTAL))
+        assertTrue(OfferPropertyRules.needsArea(commercial, PropertyType.OFFICE, ListingType.SALE))
         assertEquals("Indiquez la surface du terrain.", OfferPropertyRules.area(null, required = true))
         assertEquals("Indiquez une surface d'au moins 5 m².", OfferPropertyRules.area(4, required = true))
     }
@@ -277,6 +273,17 @@ class OfferPropertyRulesTest {
         assertNull(OfferPropertyRules.pricePerUnit(ListingType.SALE, PropertyType.LAND, 250_000_000L, 12))
         assertNull(OfferPropertyRules.pricePerUnit(ListingType.SALE, PropertyType.BUILDING, 250_000_000L, null))
         assertNull(OfferPropertyRules.pricePerUnit(ListingType.SALE, PropertyType.BUILDING, null, 12))
+        assertNull(OfferPropertyRules.pricePerUnit(ListingType.SALE, PropertyType.BUILDING, 250_000_000L, 0))
+        assertNull(OfferPropertyRules.pricePerUnit(ListingType.SALE, PropertyType.BUILDING, 250_000_000L, 501))
+        assertNull(OfferPropertyRules.pricePerUnit(ListingType.SALE, PropertyType.BUILDING, 0L, 12))
+        assertEquals(
+            250_000_000L,
+            OfferPropertyRules.pricePerUnit(ListingType.SALE, PropertyType.BUILDING, 250_000_000L, 1),
+        )
+        assertEquals(
+            500_000L,
+            OfferPropertyRules.pricePerUnit(ListingType.SALE, PropertyType.BUILDING, 250_000_000L, 500),
+        )
     }
 
     @Test
