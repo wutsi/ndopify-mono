@@ -396,7 +396,10 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   With JS, `listing.js` first sends each shrunk photo straight to the storage via `direct-upload.js`
   (`POST /listings/{id}/photos/presign` → PUT → `POST /listings/{id}/photos/attach`), and falls back to the
   multipart post for that photo and the rest when presign has no URL (local storage) or any step fails; the
-  multipart path is the no-JS path. The two proxies answer JSON: 404 for an unknown or another agent's listing, 409
+  multipart path is the no-JS path. Meanwhile the page shows the progress (`data-photo-progress`: "Préparation des photos…"
+  while they're shrunk, then "Envoi de la photo 2 sur 5…" over a bar, no count on the multipart fallback), a dimmed
+  tile per photo and the two buttons inactive (`aria-disabled`, clicks blocked — never `disabled`, which would drop the
+  files from the fallback post). The two proxies answer JSON: 404 for an unknown or another agent's listing, 409
   once it isn't a DRAFT, else ndopify-server's answer (its error body for attach).
   `KycUploadErrorHandler` sends an upload over the multipart limit
   back with `?error=too-large`. `src/main/assets/js/listing.js` only enhances the three pages (`data-page` `listing`,

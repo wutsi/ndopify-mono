@@ -8,7 +8,8 @@
  *   shows the types of the chosen category and the questions of the type only; "Position GPS" takes the phone's
  *   position (the typed latitude / longitude stay the fallback), with its accuracy and a map link;
  * - photos: each photo taken or chosen is checked, shrunk and sent at once, straight to the storage when the page
- *   loads direct-upload.js (the multipart post otherwise), without "Envoyer les photos"; a photo opens in a
+ *   loads direct-upload.js (the multipart post otherwise), without "Envoyer les photos", with its progress ("Envoi de
+ *   la photo 2 sur 5…", a dimmed tile per photo, the buttons inactive meanwhile); a photo opens in a
  *   full-screen viewer (a <dialog>), swiped or browsed with its buttons and the arrow keys, instead of a new tab.
  * Ported from the prototype (src/main/html/assets/js/partner-central.js: initListing, initListingSection,
  * initListingProperty, initListingGps, initListingPhotos).
@@ -426,21 +427,96 @@
         var error = $("#photos-error");
         var count = $("[data-photo-count]");
         var live = $("[data-photo-live]");
+        var grid = $("[data-photos]");
+        var progress = $("[data-photo-progress]");
+        var progressText = $("[data-photo-progress-text]");
+        var progressBar = $("[data-photo-progress-bar]");
         var existing = $all("[data-photos] > li").length;
+        // While photos are shrunk and sent: no other photo can be chosen (the page reloads once they're in)
+        var busy = false;
 
         // Each photo is sent as soon as it's chosen: the button is for browsers without JS
         submit.hidden = true;
+
+        // The inputs stay enabled while busy: a disabled input isn't posted, and the multipart fallback needs its files
+        function lock(on) {
+            busy = on;
+            inputs.forEach(function (input) {
+                var label = input.closest("label");
+                if (on) label.setAttribute("aria-disabled", "true");
+                else label.removeAttribute("aria-disabled");
+            });
+        }
+
+        inputs.forEach(function (input) {
+            // A click on the label or the input (Enter, Space) would open the picker
+            input.closest("label").addEventListener("click", function (event) {
+                if (busy) event.preventDefault();
+            });
+        });
+
+        // [text] over the bar, [done] of [total] filled; no total: the bar moves without a value
+        function showProgress(text, done, total) {
+            if (!progress) return;
+            progress.hidden = false;
+            progressText.textContent = text;
+            if (total) {
+                progressBar.max = total;
+                progressBar.value = done;
+                progressBar.textContent = done + " sur " + total;
+            } else {
+                progressBar.removeAttribute("value");
+                progressBar.textContent = "";
+            }
+        }
+
+        // A dimmed tile per photo to send, after the photos already in
+        function addTiles(files) {
+            return files.map(function (file) {
+                var tile = document.createElement("li");
+                tile.className = "photo photo--pending";
+                var img = document.createElement("img");
+                img.alt = "";
+                img.width = 480;
+                img.height = 480;
+                try {
+                    img.src = URL.createObjectURL(file);
+                } catch (e) {
+                    // No preview: the tile still says where the photo stands
+                }
+                var note = document.createElement("p");
+                note.className = "photo__note";
+                note.textContent = "En attente";
+                tile.appendChild(img);
+                tile.appendChild(note);
+                if (grid) grid.appendChild(tile);
+                return tile;
+            });
+        }
+
+        function setTile(tile, state) {
+            if (!tile) return;
+            tile.classList.toggle("photo--sending", state === "sending");
+            tile.classList.toggle("photo--pending", state !== "sent");
+            $(".photo__note", tile).textContent = state === "sent" ? "Envoyée" : "Envoi…";
+        }
 
         function fail(message) {
             setFieldError(inputs[0], error, message);
             inputs.forEach(function (input) {
                 input.value = "";
             });
+            if (progress) progress.hidden = true;
+            lock(false);
             if (message) announce(live, message);
         }
 
         // Puts the photos in [input] (the others emptied), so the normal form post sends them
-        function send(input, files) {
+        function send(input, files, tiles) {
+            (tiles || []).forEach(function (tile) {
+                setTile(tile, "sending");
+            });
+            showProgress(files.length > 1 ? "Envoi de " + files.length + " photos…" : "Envoi de la photo…");
             try {
                 var transfer = new DataTransfer();
                 files.forEach(function (file) {
@@ -464,23 +540,33 @@
         // One photo after another, straight to the storage when the page offers it (direct-upload.js); a photo that
         // can't go that way (local storage, no bucket CORS, any error) and the ones after it are posted to the form.
         function sendAll(input, files) {
-            if (!window.NdDirectUpload) return send(input, files);
+            var tiles = addTiles(files);
+            if (!window.NdDirectUpload) return send(input, files, tiles);
             var action = form.getAttribute("action");
+            var total = files.length;
             var i = 0;
+            announce(live, total > 1 ? "Envoi de " + total + " photos…" : "Envoi de la photo…");
             (function next() {
-                if (i >= files.length) {
+                if (i >= total) {
                     // Everything is attached: reload to show the photos (as the form post does)
+                    var done = total > 1 ? total + " photos envoyées." : "Photo envoyée.";
+                    showProgress(done, total, total);
+                    announce(live, done);
                     location.reload();
                     return;
                 }
+                showProgress(total > 1 ? "Envoi de la photo " + (i + 1) + " sur " + total + "…" : "Envoi de la photo…",
+                    i, total);
+                setTile(tiles[i], "sending");
                 var photo = files[i++];
                 window.NdDirectUpload.upload(action, photo).then(function (uploaded) {
                     if (uploaded) {
+                        setTile(tiles[i - 1], "sent");
                         existing++;
                         return next();
                     }
                     // Not uploaded directly: the remaining photos go through the normal form post
-                    send(input, files.slice(i - 1));
+                    send(input, files.slice(i - 1), tiles.slice(i - 1));
                 });
             })();
         }
@@ -488,7 +574,7 @@
         inputs.forEach(function (input) {
             input.addEventListener("change", function () {
                 var files = Array.prototype.slice.call(input.files || []);
-                if (!files.length) return;
+                if (!files.length || busy) return;
                 setFieldError(inputs[0], error, null);
                 if (existing + files.length > MAX_PHOTOS) return fail(MAX_PHOTOS + " photos au plus.");
                 var wrong = files.filter(function (file) {
@@ -497,6 +583,8 @@
                 if (wrong) return fail(wrong.name + " n'est pas une photo JPEG, PNG ou WEBP.");
 
                 // One after another: a phone decoding 20 full-size photos at once runs out of memory
+                lock(true);
+                showProgress(files.length > 1 ? "Préparation des photos…" : "Préparation de la photo…");
                 var shrunk = [];
                 var total = 0;
                 (function next(i) {

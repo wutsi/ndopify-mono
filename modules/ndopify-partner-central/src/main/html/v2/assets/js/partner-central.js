@@ -5600,7 +5600,14 @@
         var error = $("#photos-error");
         var inputs = $all("[data-photo-input]");
         var live = $("[data-photo-live]");
-        var pending = 0;
+        var progress = $("[data-photo-progress]");
+        var progressText = $("[data-photo-progress-text]");
+        var progressBar = $("[data-photo-progress-bar]");
+        // The photos chosen and not sent yet, sent one after another ({ file, preview, sending }); the batch counts
+        // the photos of the current run, so the progress reads "photo 3 sur 5" even after the first ones went
+        var queue = [];
+        var batch = 0;
+        var sent = 0;
 
         function render() {
             listing = listings()[listing.id];
@@ -5628,11 +5635,29 @@
                 });
                 grid.appendChild(item);
             });
-            for (var n = 0; n < pending; n++) {
-                var placeholder = document.createElement("li");
-                placeholder.className = "photo photo--pending";
-                placeholder.textContent = "Envoi…";
-                grid.appendChild(placeholder);
+            queue.forEach(function (waiting) {
+                var tile = document.createElement("li");
+                tile.className = "photo photo--pending" + (waiting.sending ? " photo--sending" : "");
+                var img = document.createElement("img");
+                img.src = waiting.preview;
+                img.alt = "";
+                img.width = 480;
+                img.height = 480;
+                var note = document.createElement("p");
+                note.className = "photo__note";
+                note.textContent = waiting.sending ? "Envoi…" : "En attente";
+                tile.appendChild(img);
+                tile.appendChild(note);
+                grid.appendChild(tile);
+            });
+            progress.hidden = !queue.length;
+            if (queue.length) {
+                progressText.textContent = batch > 1
+                    ? "Envoi de la photo " + (sent + 1) + " sur " + batch + "…"
+                    : "Envoi de la photo…";
+                progressBar.max = batch;
+                progressBar.value = sent;
+                progressBar.textContent = sent + " sur " + batch;
             }
             var good = goodPhotos(listing);
             var refused = listing.photos.length - good;
@@ -5640,10 +5665,46 @@
                 ? " · supprimez " + (refused > 1 ? "les photos refusées" : "la photo refusée") + " et reprenez-la"
                 : good < MIN_LISTING_PHOTOS ? " · encore " + (MIN_LISTING_PHOTOS - good) + " au moins"
                     : " · c'est suffisant, ajoutez-en si utile");
-            var full = listing.photos.length + pending >= MAX_LISTING_PHOTOS;
+            var full = listing.photos.length + queue.length >= MAX_LISTING_PHOTOS;
+            // No new photo while a batch is sent: the page reloads once it's done (in production)
             inputs.forEach(function (input) {
-                input.disabled = full;
+                input.disabled = full || queue.length > 0;
+                if (queue.length) input.closest("label").setAttribute("aria-disabled", "true");
+                else input.closest("label").removeAttribute("aria-disabled");
             });
+        }
+
+        // Sends the first photo of the queue, then the next one
+        function pump() {
+            var item = queue[0];
+            if (!item || item.sending) return;
+            item.sending = true;
+            render();
+            // PROTOTYPE: simulates presign → PUT → attach (POST /v1/listings/{id}/images), kept small for the
+            // session's storage, and slow enough to see the progress
+            toThumbnail(item.file, function (src) {
+                window.setTimeout(function () {
+                    queue.shift();
+                    URL.revokeObjectURL(item.preview);
+                    sent++;
+                    var current = listings()[listing.id];
+                    if (src) {
+                        current.photos.push({ id: Date.now() + Math.random(), src: src, status: "PENDING_VERIFICATION" });
+                        if (!saveListing(current)) {
+                            setFieldError(inputs[0], error, "Mémoire du prototype pleine : supprimez des photos.");
+                        }
+                    } else {
+                        setFieldError(inputs[0], error, item.file.name + " ne peut pas être lue.");
+                    }
+                    if (!queue.length) {
+                        announce(live, plural(sent, "photo envoyée", "photos envoyées") + ". " + count.textContent);
+                        batch = 0;
+                        sent = 0;
+                    }
+                    render();
+                    pump();
+                }, 900);
+            }, 480);
         }
 
         // Each photo is sent as soon as it's taken, so a visit cut short loses nothing.
@@ -5656,29 +5717,12 @@
                 setFieldError(inputs[0], error, file.name + " dépasse 5 Mo.");
                 return;
             }
-            if (listings()[listing.id].photos.length + pending >= MAX_LISTING_PHOTOS) {
+            if (listings()[listing.id].photos.length + queue.length >= MAX_LISTING_PHOTOS) {
                 setFieldError(inputs[0], error, MAX_LISTING_PHOTOS + " photos au plus.");
                 return;
             }
-            pending++;
-            render();
-            // PROTOTYPE: simulates POST /v1/listings/{id}/images/upload, kept small for the session's storage
-            toThumbnail(file, function (src) {
-                window.setTimeout(function () {
-                    pending--;
-                    var current = listings()[listing.id];
-                    if (src) {
-                        current.photos.push({ id: Date.now() + Math.random(), src: src, status: "PENDING_VERIFICATION" });
-                        if (!saveListing(current)) {
-                            setFieldError(inputs[0], error, "Mémoire du prototype pleine : supprimez des photos.");
-                        }
-                    } else {
-                        setFieldError(inputs[0], error, file.name + " ne peut pas être lue.");
-                    }
-                    render();
-                    announce(live, count.textContent);
-                }, 400);
-            }, 480);
+            queue.push({ file: file, preview: URL.createObjectURL(file), sending: false });
+            batch++;
         }
 
         if (readonly) {
@@ -5691,6 +5735,10 @@
                 setFieldError(inputs[0], error, null);
                 Array.prototype.forEach.call(input.files, add);
                 input.value = "";
+                if (!queue.length) return;
+                announce(live, batch > 1 ? "Envoi de " + batch + " photos…" : "Envoi de la photo…");
+                render();
+                pump();
             });
         });
         render();
