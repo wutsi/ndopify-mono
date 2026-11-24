@@ -596,7 +596,8 @@
         });
 
         if ($("#cityId", form)) initAddress(form, refresh);
-        if ($('input[name="listingType"]', form).length) initProject(form);
+        // Only the property step has the project's radios ($ is querySelector: one element or null, never a list).
+        if ($('input[name="listingType"]', form)) initProject(form);
         if ($('[data-group="propertyType"]', form)) initFeatures(form, refresh);
         bindNumber($("#priceAmount", form), 9);
         bindNumber($("#area", form), 7);

@@ -72,6 +72,12 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   body of each call and the parsing of the response.
 - Shared fixtures are `object`s next to the tests (`TenantFixtures`, `ProfileFixtures`); `SignedInAdviceTest.signIn()`
   sets a signed-in user for a template test.
+- **Page scripts** — `src/test/js/page-scripts.test.mjs` (`node:test` + jsdom, `npm test`) runs the built
+  `app.min.js` on pages the template tests rendered: a template test saves them with `ScriptFixtures.write` (to
+  `target/script-fixtures/`, never committed), and the script test fails on any error a page script raises while
+  the page loads, and on the questions a type reveals, the grouped numbers and the rate lines of the two wizards. Maven
+  runs it in the `test` phase after surefire (`page-script-tests`, skipped with `-DskipTests`); run alone, it needs a
+  `mvn test` first. Added after #304, when `offer-property.js` threw on every step but the first and no test saw it.
 
 ## Pages
 
