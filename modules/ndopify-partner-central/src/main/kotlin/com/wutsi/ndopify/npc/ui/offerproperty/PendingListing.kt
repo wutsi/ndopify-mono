@@ -4,7 +4,6 @@ import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
-import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.TitleDocumentType
@@ -122,9 +121,9 @@ data class PendingListing(
 
     /**
      * The answers as a LISTING mandate, for the chosen project. Questions that don't apply to the chosen type are sent
-     * as null. A sale is a one-off price with no advance, deposit nor furnishing; only a land sale sends the documents
-     * of ownership the seller declares. A building sale sends its counts, and no amenity at all. The price per m² is
-     * not an answer: it is never sent.
+     * as null. A sale is a one-off price with no advance, deposit nor furnishing; every sale sends the documents of
+     * ownership the seller declares, whatever its type. A building sale sends its counts, and no amenity at all. The
+     * price per m² is not an answer: it is never sent.
      */
     fun toCreateMandateRequest(currency: String): CreateMandateRequest {
         val amenitiesNeeded = needsAmenities()
@@ -142,7 +141,7 @@ data class PendingListing(
             levels = levels.takeIf { buildingSale() },
             units = units.takeIf { buildingSale() },
             area = area?.takeIf { OfferPropertyRules.needsArea(propertyCategory, type(), listingType) },
-            ownershipDocuments = ownershipDocuments.filter { isSale() && type() == PropertyType.LAND }.distinct(),
+            ownershipDocuments = ownershipDocuments.filter { isSale() && it != TitleDocumentType.UNKNOWN }.distinct(),
             waterMeter = has("waterMeter") && amenitiesNeeded,
             dedicatedWaterMeter = has("dedicatedWaterMeter") && amenitiesNeeded,
             waterTank = has("waterTank") && amenitiesNeeded,

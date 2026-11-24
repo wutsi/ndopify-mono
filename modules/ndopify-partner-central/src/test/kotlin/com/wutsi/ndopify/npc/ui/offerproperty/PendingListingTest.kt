@@ -160,7 +160,7 @@ class PendingListingTest {
     fun stepsThatDontApplyAreNotAsked() {
         val studio = COMPLETE.copy(propertyType = "STUDIO", rooms = null)
         assertEquals("review", step(studio))
-        val room = COMPLETE.copy(propertyType = "ROOM", rooms = null, parkings = null)
+        val room = COMPLETE.copy(propertyType = "ROOM", rooms = null)
         assertEquals("review", step(room))
         val office = COMPLETE.copy(
             propertyCategory = PropertyCategory.COMMERCIAL,
@@ -267,14 +267,24 @@ class PendingListingTest {
     }
 
     @Test
-    fun `a villa sale sends no document`() {
-        val pending = COMPLETE.copy(
+    fun `a sale sends its documents whatever its type, a rental none`() {
+        val documents = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.LAND_TITLE, TitleDocumentType.UNKNOWN)
+        val sale = COMPLETE.copy(
             listingType = ListingType.SALE,
-            propertyType = "VILLA",
-            ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE),
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = "HOUSE",
+            priceAmount = 45_000_000L,
+            ownershipDocuments = documents,
         )
 
-        assertEquals(emptyList(), pending.toCreateMandateRequest("XAF").ownershipDocuments)
+        assertEquals(listOf(TitleDocumentType.LAND_TITLE), sale.toCreateMandateRequest("XAF").ownershipDocuments)
+        assertEquals(
+            emptyList(),
+            sale.copy(
+                listingType = ListingType.RENTAL,
+                propertyType = "APARTMENT",
+            ).toCreateMandateRequest("XAF").ownershipDocuments,
+        )
     }
 
     @Test
@@ -317,7 +327,7 @@ class PendingListingTest {
 
         val room = COMPLETE.copy(propertyType = "ROOM").toCreateMandateRequest("XAF")
         assertNull(room.rooms)
-        assertNull(room.parkings)
+        assertEquals("0", room.parkings)
         assertEquals(FurnitureType.UNFURNISHED, room.furnitureType)
     }
 }
