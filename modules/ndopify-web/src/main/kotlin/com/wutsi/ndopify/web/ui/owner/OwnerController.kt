@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping
 
 /**
  * The pages for property owners. `/owner` is the letting side: its calls to action open Partner Central's offer-property
- * page, `{partnerCentralUrl}/offer-property`. `/owner/sell` is the sale side: they open it in its sale branch,
+ * page, `{partnerCentralUrl}/offer-property?type=RENTAL`. `/owner/sell` is the sale side: they open it in its sale branch,
  * `{partnerCentralUrl}/offer-property?type=SALE`. Without a `partnerCentralUrl`, they're left out.
  *
  * The sale page's `zeroAmount` is the tenant's formatted zero for its "*0 …* for the audit and the photos" proof line:
@@ -29,7 +29,7 @@ class OwnerController {
 
     @GetMapping("/owner")
     fun index(model: Model): String {
-        model.addAttribute("offerPropertyUrl", PartnerCentralUrls.of(model.getAttribute("tenant") as Tenant, "/offer-property"))
+        model.addAttribute("offerPropertyUrl", PartnerCentralUrls.of(model.getAttribute("tenant") as Tenant, "/offer-property?type=RENTAL"))
         return VIEW
     }
 

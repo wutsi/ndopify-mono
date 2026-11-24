@@ -44,7 +44,7 @@ class HomeControllerTest {
         val result = index(context(Tenant(id = 1, partnerCentralUrl = "https://partner.ndopify.cm/")), "/louer")
 
         assertEquals("louer", result.modelAndView?.viewName)
-        assertEquals("https://partner.ndopify.cm/find-property", result.modelAndView?.model?.get("findPropertyUrl"))
+        assertEquals("https://partner.ndopify.cm/find-property?type=RENTAL", result.modelAndView?.model?.get("findPropertyUrl"))
     }
 
     @Test

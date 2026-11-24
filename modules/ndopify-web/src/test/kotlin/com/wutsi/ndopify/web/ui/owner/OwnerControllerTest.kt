@@ -37,7 +37,7 @@ class OwnerControllerTest {
 
         assertEquals(OwnerController.VIEW, result.modelAndView?.viewName)
         assertEquals(tenant, result.modelAndView?.model?.get("tenant"))
-        assertEquals("https://partner.ndopify.cm/offer-property", result.modelAndView?.model?.get("offerPropertyUrl"))
+        assertEquals("https://partner.ndopify.cm/offer-property?type=RENTAL", result.modelAndView?.model?.get("offerPropertyUrl"))
         assertNull(result.modelAndView?.model?.get("zeroAmount"))
     }
 
@@ -63,7 +63,7 @@ class OwnerControllerTest {
     fun `owner page keeps the rental URL`() {
         val result = index(context(tenant.copy(partnerCentralUrl = "https://partner.ndopify.cm/")), "/owner")
 
-        assertEquals("https://partner.ndopify.cm/offer-property", result.modelAndView?.model?.get("offerPropertyUrl"))
+        assertEquals("https://partner.ndopify.cm/offer-property?type=RENTAL", result.modelAndView?.model?.get("offerPropertyUrl"))
     }
 
     @Test
