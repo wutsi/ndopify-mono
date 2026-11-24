@@ -310,6 +310,12 @@ a.checklist__row:focus-visible {
     color: var(--color-info-fg);
 }
 
+/* v2 (#287): a land sale's ownership documents — the fieldset, then the seller's declaration under it. The owner
+   line stays outside the fieldset, which a sent section hides when the agent recorded no document. */
+.listing-documents > * + * {
+    margin-top: var(--space-2);
+}
+
 .gps__result > * + * {
     margin-top: var(--space-1);
 }
@@ -319,23 +325,19 @@ a.checklist__row:focus-visible {
     font-weight: 600;
 }
 
-/* Counts side by side from 480px: they're short. */
+/* #287: every count takes a full row, at every width — no two-column grid on *Le bien*. */
 .count-grid {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-4);
-}
-
-@media (min-width: 480px) {
-    .count-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
 }
 
 .count-grid .field[hidden] {
     display: none;
 }
 
-/* v2 (#274): a building's two counts (levels, units) never share a row: each takes the whole width, at every width. */
+/* v2 (#274): a building's two counts (levels, units) take the whole width like the others; kept so the rule still
+   holds if this grid ever gets a second column back. */
 .count-grid [data-applies="levels"],
 .count-grid [data-applies="units"] {
     grid-column: 1 / -1;

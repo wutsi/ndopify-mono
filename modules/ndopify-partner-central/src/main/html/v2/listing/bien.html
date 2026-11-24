@@ -23,9 +23,19 @@
     (category, type, furnishing, rooms, parking, area); bathrooms, living rooms, kitchens, levels and floor are the
     agent's. Only the questions of the type show (LISTING_APPLIES, as offer-property.js): a hidden one is saved
     empty. Required: category, type, furnishing, rooms, bathrooms (where they apply) and the area.
+    v2 (#287): a plot of land is asked no parking, and a land sale offers its ownership documents (*Titre foncier*,
+    *Plan de bornage*, *Certificat de propriété*), one per line, optional and several. The seller declares them in
+    *Proposer un bien*; the listing pre-fills them and the agent checks them at the audit, so the seller's
+    declaration shows under the fieldset whenever the agent's answer differs. Once sent, they are read-only with the
+    other answers — a section with none still shows the seller's declaration.
     Once sent (en vérification, publiée), the section is read-only: only the answers given, no action.
+    Layout (review of #287): one field per row and one option per row at every width — a plain single-column
+    choices__grid in every fieldset (never a two-column one) and a single-column count grid.
     PROTOTYPE: ?id= of a listing (see listing.html). Saved in the
     session (KEYS.listings), the section is then "Vérifié" on the checklist.
+    Samples: ?id=702 (DRAFT, a land sale from mandate 302, its two documents checked, no parking), ?id=703 (sent,
+    its documents checked), ?id=704 (sent, none recorded by the agent but declared by the seller), ?id=705 (DRAFT,
+    the seller declared none).
 -->
 <body data-page="listing-section" data-section="property">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -83,7 +93,7 @@
                 <form class="form stack" novalidate data-section-form>
                     <fieldset class="choices" aria-describedby="propertyCategory-error">
                         <legend class="choices__legend">Usage</legend>
-                        <div class="choices__grid choices__grid--2">
+                        <div class="choices__grid">
                                 <label class="choice"><input name="propertyCategory" type="radio" value="RESIDENTIAL"> Résidentiel</label>
                                 <label class="choice"><input name="propertyCategory" type="radio" value="COMMERCIAL"> Commercial</label>
                         </div>
@@ -92,7 +102,7 @@
                     </fieldset>
                     <fieldset class="choices" aria-describedby="propertyType-error">
                         <legend class="choices__legend">Type de bien</legend>
-                        <div class="choices__grid choices__grid--2">
+                        <div class="choices__grid">
                                 <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="APARTMENT"> Appartement</label>
                                 <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="HOUSE"> Maison</label>
                                 <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="VILLA"> Villa</label>
@@ -110,7 +120,7 @@
                     </fieldset>
                     <fieldset class="choices" aria-describedby="furnitureType-error" data-applies="furniture">
                         <legend class="choices__legend">Ameublement</legend>
-                        <div class="choices__grid choices__grid--2">
+                        <div class="choices__grid">
                                 <label class="choice"><input name="furnitureType" type="radio" value="UNFURNISHED"> Non meublé</label>
                                 <label class="choice"><input name="furnitureType" type="radio" value="FULLY_FURNISHED"> Meublé</label>
                         </div>
@@ -187,6 +197,29 @@
                         </div>
                         <p class="owner-value" hidden data-owner-for="area"></p>
                         <p class="field__error" id="area-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </div>
+
+                    <!--
+                        v2 (#287): a land sale's ownership documents, as the seller declares them in *Proposer un bien*
+                        (#273) — optional, none required, several selectable, one option per line at every width. The
+                        agent checks them during the audit. Hidden for another type and for a rental, so a hidden
+                        answer is saved empty. The owner line is outside the fieldset: a sent section whose agent
+                        recorded no document still shows the seller's declaration (the fieldset then hides).
+                    -->
+                    <div class="listing-documents" data-applies="ownershipDocuments">
+                        <fieldset class="choices" aria-describedby="ownershipDocuments-hint">
+                            <legend class="choices__legend">Document de propriété <span class="field__optional">(facultatif)</span></legend>
+                            <div class="choices__grid">
+                                <label class="choice"><input name="ownershipDocuments" type="checkbox" value="LAND_TITLE"> Titre foncier</label>
+                                <label class="choice"><input name="ownershipDocuments" type="checkbox" value="SURVEY_PLAN"> Plan de bornage</label>
+                                <label class="choice"><input name="ownershipDocuments" type="checkbox" value="CERTIFICATE_OF_OWNERSHIP"> Certificat de propriété</label>
+                            </div>
+                            <div class="hint" id="ownershipDocuments-hint" data-documents-hint>
+                                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                                <p>Facultatif&nbsp;: cochez plusieurs documents, ou aucun. Vérifiez-les à l'audit&nbsp;: si votre choix diffère de celui du propriétaire, sa déclaration s'affiche en dessous.</p>
+                            </div>
+                        </fieldset>
+                        <p class="owner-value" hidden data-owner-for="ownershipDocuments"></p>
                     </div>
 
                     <div class="form__actions">

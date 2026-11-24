@@ -1784,6 +1784,85 @@
                 movingPeriod: "WITHIN_1_MONTH",
                 comments: "Achat pour investissement locatif, comptant."
             }
+        },
+        // v2 (#287): land sellers whose *Le bien* carries the ownership documents: 307 and 308 declared the same two
+        // documents (their sent listings are 703 and 704), 309 declared none (its DRAFT is 705). No card on
+        // index.html: they open by URL (mandate.html?id=307, listing/bien.html?id=703…), like 208 and 209.
+        307: {
+            party: "bailleur",
+            listingType: "SALE",
+            createdAt: -26,
+            initial: { status: "APPROVED", acceptedAt: -26, requestedAt: -24, approvedAt: -22 },
+            contact: {
+                firstName: "Étienne",
+                lastName: "Abena",
+                whatsapp: "+237677556677",
+                email: "e.abena@example.com",
+                period: "Matin"
+            },
+            fields: {
+                city: "Yaoundé",
+                neighbourhoods: ["Nkolbisson"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "LAND",
+                area: 600,
+                amenities: ["roadPaved", "securedFenced"],
+                price: 30000000,
+                movingPeriod: "WITHIN_3_MONTHS",
+                ownershipDocuments: ["LAND_TITLE", "SURVEY_PLAN"],
+                comments: "Terrain borné, vendu avec son plan de bornage."
+            }
+        },
+        308: {
+            party: "bailleur",
+            listingType: "SALE",
+            createdAt: -31,
+            initial: { status: "APPROVED", acceptedAt: -31, requestedAt: -29, approvedAt: -27 },
+            contact: {
+                firstName: "Odette",
+                lastName: "Ngo Bassong",
+                whatsapp: "+237690667788",
+                email: "o.ngobassong@example.com",
+                period: "Après-midi"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Logbessou"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "LAND",
+                area: 1000,
+                amenities: ["trackAccessibleByCar", "securedFenced"],
+                price: 55000000,
+                movingPeriod: "WITHIN_1_MONTH",
+                ownershipDocuments: ["LAND_TITLE", "SURVEY_PLAN"],
+                comments: "Titre foncier et plan de bornage de 2023."
+            }
+        },
+        309: {
+            party: "bailleur",
+            listingType: "SALE",
+            createdAt: -19,
+            initial: { status: "APPROVED", acceptedAt: -19, requestedAt: -17, approvedAt: -15 },
+            contact: {
+                firstName: "Armand",
+                lastName: "Fotso",
+                whatsapp: "+237655889900",
+                email: "a.fotso@example.com",
+                period: "Soirée"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Japoma"],
+                propertyCategory: "COMMERCIAL",
+                propertyType: "LAND",
+                area: 400,
+                amenities: ["trackAccessibleByCar", "electricityMeter"],
+                price: 12000000,
+                movingPeriod: "WITHIN_3_MONTHS",
+                // #287: the seller declared no document at all (the section's empty state).
+                ownershipDocuments: [],
+                comments: "Terrain non titré, papiers en cours."
+            }
         }
     };
 
@@ -4613,13 +4692,18 @@
             bathrooms: null,
             livingRooms: null,
             kitchens: null,
-            parkings: countOf(f.parkings),
+            // v2 (#287): a plot of land is asked no parking; its answer is saved empty.
+            parkings: f.propertyType === "LAND" ? null : countOf(f.parkings),
             area: f.area || null,
             // v2 (#274): a building's two counts pre-fill its "Le bien"; no other type carries a unit count.
             levels: f.levels || null,
             units: isSale(mandateId) && f.propertyType === "BUILDING" ? f.units || null : null,
             floorLevel: null,
             amenities: f.amenities.slice(),
+            // v2 (#287): a land sale's ownership documents, pre-filled from the seller's declaration (none for any
+            // other listing: the section offers them only for a SALE · LAND).
+            ownershipDocuments: isSale(mandateId) && f.propertyType === "LAND"
+                ? (f.ownershipDocuments || []).slice() : [],
             price: f.price,
             securityDeposit: f.securityDeposit || null,
             advanceRent: f.advanceRent || null,
@@ -4654,11 +4738,68 @@
      */
     var BUILDING_LISTING_SAMPLE = { id: "701", mandateId: "305" };
 
+    /*
+     * v2 (#287): a land sale's listing, created from its seller's mandate on first visit like the building's.
+     *   702 — DRAFT from mandate 302: 800 m², no parking, the seller's two documents pre-checked.
+     *   703 — sent from mandate 307: the agent kept the seller's two documents (checked, read-only).
+     *   704 — sent from mandate 308: the agent recorded none of the seller's documents (the owner line remains).
+     *   705 — DRAFT from mandate 309: the seller declared no document at all (the empty state).
+     * A sent sample is shown as it was audited: every section checked, five verified photos, its place and GPS
+     * recorded. Each sample has its own mandate, so it keeps the mandate's single listing (listingOf).
+     */
+    var LAND_LISTING_SAMPLES = {
+        "702": { mandateId: "302" },
+        "703": {
+            mandateId: "307", sent: true, documents: ["LAND_TITLE", "SURVEY_PLAN"],
+            neighbourhood: "Nkolbisson", landmark: "Derrière l'école publique de Nkolbisson",
+            accessDirections: "Portail vert au fond de la rue, à 200 m du carrefour.",
+            latitude: 3.8578, longitude: 11.4489, accuracy: 9
+        },
+        "704": {
+            mandateId: "308", sent: true, documents: [],
+            neighbourhood: "Logbessou", landmark: "En face de la station-service du carrefour",
+            accessDirections: "Deuxième parcelle après le château d'eau, clôture en parpaings.",
+            latitude: 4.0865, longitude: 9.7768, accuracy: 7
+        },
+        "705": { mandateId: "309" }
+    };
+
     function ensureBuildingSampleListing(id) {
         if (String(id) !== BUILDING_LISTING_SAMPLE.id || listings()[id]) return;
         if (!ownsMandate(BUILDING_LISTING_SAMPLE.mandateId)) return;
         var listing = createListing(BUILDING_LISTING_SAMPLE.mandateId, BUILDING_LISTING_SAMPLE.id);
         saveListing(listing);
+    }
+
+    function ensureLandSampleListing(id) {
+        var sample = LAND_LISTING_SAMPLES[id];
+        if (!sample || listings()[id] || !ownsMandate(sample.mandateId)) return;
+        var listing = createListing(sample.mandateId, id);
+        if (sample.sent) {
+            // The agent's audit: the seller's documents, or none of them (704).
+            listing.fields.ownershipDocuments = sample.documents.slice();
+            listing.fields.neighbourhood = sample.neighbourhood;
+            listing.fields.landmark = sample.landmark;
+            listing.fields.accessDirections = sample.accessDirections;
+            listing.fields.latitude = sample.latitude;
+            listing.fields.longitude = sample.longitude;
+            listing.fields.accuracy = sample.accuracy;
+            listing.status = "PENDING";
+            listing.submittedAt = Date.now() - 2 * DAY_MS;
+            LISTING_SECTIONS.forEach(function (section) {
+                listing.checked[section.key] = listing.submittedAt;
+            });
+            listing.photos = [1, 2, 3, 4, 5].map(function (n) {
+                return { id: n, src: "assets/images/listing-" + n + ".jpg", status: "VERIFIED" };
+            });
+        }
+        saveListing(listing);
+    }
+
+    // PROTOTYPE: ?id=701 / ?id=702 to 705 seed their sample listing on the first visit.
+    function ensureSampleListing(id) {
+        ensureBuildingSampleListing(id);
+        ensureLandSampleListing(id);
     }
 
     function goodPhotos(listing) {
@@ -4764,7 +4905,7 @@
         var id = params.get("id");
         var readOnly = id === String(CO_BROKERAGE_LISTING.id);
         // v2 (#274): ?id=701 seeds the building sample's DRAFT listing on its first visit.
-        ensureBuildingSampleListing(id);
+        ensureSampleListing(id);
         var listing = readOnly ? CO_BROKERAGE_LISTING : listings()[id];
         if (!listing || (!readOnly && !ownsMandate(listing.mandateId))) {
             $("[data-listing-locked]").hidden = false;
@@ -4975,18 +5116,24 @@
             return !currentListingSale && a.propertyCategory === "RESIDENTIAL" && a.propertyType !== "BUILDING";
         },
         rooms: function (a) {
-            return a.propertyCategory === "RESIDENTIAL" && ["ROOM", "STUDIO", "BUILDING"].indexOf(a.propertyType) === -1;
+            // v2 (#287): a plot of land is asked no room, as in *Proposer un bien* (#273).
+            return a.propertyCategory === "RESIDENTIAL" && a.propertyType !== "LAND" &&
+                ["ROOM", "STUDIO", "BUILDING"].indexOf(a.propertyType) === -1;
         },
         bathrooms: function (a) {
             // v2 (#274): a building sold as a whole asks neither bathrooms nor parking: it is counted by its units.
             return a.propertyType !== "LAND" && !(currentListingSale && a.propertyType === "BUILDING");
         },
         kitchens: function (a) {
-            return a.propertyCategory === "RESIDENTIAL" && ["ROOM", "BUILDING"].indexOf(a.propertyType) === -1;
+            // v2 (#287): no kitchen either for a plot of land.
+            return a.propertyCategory === "RESIDENTIAL" && a.propertyType !== "LAND" &&
+                ["ROOM", "BUILDING"].indexOf(a.propertyType) === -1;
         },
         parkings: function (a) {
             // v2 (#274): a building sold as a whole asks no parking (nor parking spaces); a rental building keeps it.
-            return a.propertyType !== "ROOM" && !(currentListingSale && a.propertyType === "BUILDING");
+            // v2 (#287): a plot of land has no parking question, whatever the mandate's use.
+            return a.propertyType !== "ROOM" && a.propertyType !== "LAND" &&
+                !(currentListingSale && a.propertyType === "BUILDING");
         },
         levels: function (a) {
             return ["HOUSE", "DUPLEX", "BUILDING"].indexOf(a.propertyType) !== -1;
@@ -4994,6 +5141,10 @@
         // v2 (#274): a building sold is captured by its units, next to its levels; no other type asks a count of units.
         units: function (a) {
             return currentListingSale && a.propertyType === "BUILDING";
+        },
+        // v2 (#287): the ownership documents of a sale of land only (a rental, or the sale of another type, has none).
+        ownershipDocuments: function (a) {
+            return currentListingSale && a.propertyType === "LAND";
         },
         floorLevel: function (a) {
             return ["ROOM", "STUDIO", "APARTMENT", "OFFICE", "RETAIL"].indexOf(a.propertyType) !== -1;
@@ -5004,6 +5155,11 @@
         $all("input, select, textarea", form).forEach(function (el) {
             var name = el.name;
             if (!name) return;
+            // v2 (#287): the ownership documents of a land sale, checked one by one (an empty list is valid).
+            if (name === "ownershipDocuments") {
+                el.checked = (f.ownershipDocuments || []).indexOf(el.value) !== -1;
+                return;
+            }
             if (el.type === "checkbox") el.checked = f.amenities.indexOf(name) !== -1;
             else if (name === "roadAccess") el.checked = f.amenities.indexOf(el.value) !== -1;
             else if (el.type === "radio") el.checked = String(f[name]) === el.value;
@@ -5016,10 +5172,17 @@
     function readListingForm(form) {
         var values = {};
         var amenities = null;
+        var documents = null;
         $all("input, select, textarea", form).forEach(function (el) {
             var name = el.name;
             if (!name) return;
             var hidden = !!el.closest("[hidden]");
+            // v2 (#287): the ownership documents are their own list, not amenities; hidden ones aren't saved.
+            if (name === "ownershipDocuments") {
+                documents = documents || [];
+                if (el.checked && !hidden) documents.push(el.value);
+                return;
+            }
             if (el.type === "checkbox" || name === "roadAccess") {
                 amenities = amenities || [];
                 if (el.checked && !hidden) amenities.push(el.type === "checkbox" ? name : el.value);
@@ -5038,6 +5201,7 @@
             else values[name] = v;
         });
         if (amenities) values.amenities = amenities;
+        if (documents) values.ownershipDocuments = documents;
         return values;
     }
 
@@ -5060,6 +5224,11 @@
                 return formatDate(new Date(value + "T00:00").getTime());
             case "amenities":
                 return amenityLabels(value).join(", ") || "aucun équipement";
+            // v2 (#287): a land sale's declared documents, one per line's worth of labels, " · " between them.
+            case "ownershipDocuments":
+                return value.map(function (id) {
+                    return OWNERSHIP_DOCUMENT_LABELS[id];
+                }).filter(Boolean).join(" · ") || "Aucun document déclaré";
             default:
                 return String(value);
         }
@@ -5072,8 +5241,8 @@
             var name = hint.getAttribute("data-owner-for");
             var was = owner[name];
             var now = values[name];
-            var same = name === "amenities"
-                ? was.slice().sort().join() === (now || []).slice().sort().join()
+            var same = name === "amenities" || name === "ownershipDocuments"
+                ? (was || []).slice().sort().join() === (now || []).slice().sort().join()
                 : String(was == null ? "" : was) === String(now == null ? "" : now);
             hint.hidden = was == null || was === "" || same;
             hint.textContent = "Indiqué par le propriétaire : " + (was == null ? "" : ownerText(name, was));
@@ -5169,8 +5338,12 @@
         function sync() {
             var category = ($('[name="propertyCategory"]:checked', form) || {}).value;
             $all('[name="propertyType"]', form).forEach(function (radio) {
+                // v2 (#287): land is sold under both uses (#275), so a sale offers *Terrain* under Résidentiel too;
+                // a saved type the category no longer offers stays readable (a rental land stored before #275),
+                // and disappears once another type is picked.
                 var fits = radio.closest("[data-categories]").getAttribute("data-categories").split(" ")
-                    .indexOf(category) !== -1;
+                    .indexOf(category) !== -1 ||
+                    (radio.value === "LAND" && (currentListingSale || radio.checked));
                 radio.closest(".choice").hidden = !fits;
                 if (!fits) radio.checked = false;
             });
@@ -5364,7 +5537,7 @@
         $all("input, select, textarea, button", form).forEach(function (el) {
             el.disabled = true;
         });
-        $all("[data-gps], [data-gps-prototype], [data-gps-hint], [data-gps-weak], [data-section-submit]", form)
+        $all("[data-gps], [data-gps-prototype], [data-gps-hint], [data-gps-weak], [data-section-submit], [data-documents-hint]", form)
             .forEach(function (el) {
                 el.hidden = true;
             });
@@ -5380,7 +5553,7 @@
     function initListingSection() {
         var section = document.body.getAttribute("data-section");
         var id = new URLSearchParams(window.location.search).get("id");
-        ensureBuildingSampleListing(id);
+        ensureSampleListing(id);
         var listing = listings()[id];
         var back = "../listing.html?id=" + encodeURIComponent(id);
         $all("[data-back-link]").forEach(function (a) {

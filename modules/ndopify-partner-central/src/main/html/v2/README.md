@@ -41,6 +41,7 @@ rentals and sales (decided 2026-11-22): no mandate is filtered on a specialisati
 | `mandate.html` | A building sale (#274): 305 is a seller's building of 3 étages and 12 units (250M, Bonapriso, *Commercial* · *Immeuble*): its criteria read *Étages* 3 and *Unités* 12 among the visible ones, with no amenity, parking or bedroom row; 306 is a buyer's search for a building of 10 units and 3 étages (250M), whose matches read "12 unités · 3 étages" (and "20 unités au lieu de 10", "Nombre d'unités non précisé") with *Pourquoi ce bien ?* worded in units and étages only. 305 is Assigné, so its edit page is reachable. |
 | `mandate/edit.html` | A building sale (#274): the *Le bien* group shows *Étages* (1–30) and *Unités* (1–500), prefilled from the mandate, and hides *Chambres*, *Places de parking* and the whole *Équipements* group; the group's summary counts them ("Immeuble · 3 étages · 12 unités · 850 m²"), and both fields refuse empty, 0, out-of-bound and non-numeric values. Other types are unchanged. |
 | `listing.html`, `listing/bien.html` | A building's listing (#274): `?id=701` seeds a DRAFT for mandate 305 (Immeuble, 850 m², 3 étages, 12 units, no bathrooms nor parking); its checklist has six rows (no *Eau, électricité, accès*, not required to send it) and *Le bien* asks *Étages* and *Unités*, both required, with neither *Salles de bains* nor *Places de parking*; `listing/equipements.html?id=701` goes back to the checklist. Other types keep the seven sections. |
+| `listing/bien.html`, `assets/js/partner-central.js` (#287) | *Le bien* of a sale listing for a plot of land: no *Places de parking* (an office, a retail or an industrial listing keeps it; a land mandate stores no parking), and a new *Document de propriété (facultatif)* fieldset under the surface — *Titre foncier*, *Plan de bornage*, *Certificat de propriété*, one option per line at every width, none required, several selectable, with the hint that the agent checks them at the audit. Shown for a SALE · LAND only, hidden for another type and for a rental (a hidden answer is saved empty), and pre-filled from the seller's declaration when the listing is created. Layout: every field takes a full row (*Usage*, *Type de bien*, *Ameublement*, each count, *Surface*, *Document de propriété*) and every option of every fieldset sits alone on its row — no two-column count grid and no `choices__grid--2` on this page, at 390 px as at 1024 px. If the agent's answer differs from the seller's, the standard *Indiqué par le propriétaire : Titre foncier · Plan de bornage* line shows under the fieldset (*Aucun document déclaré* when the seller declared none). Once sent, the documents are read-only with the other answers; a section with none still shows the seller's declaration, the fieldset hiding around that line. Samples: `?id=702` (DRAFT from mandate 302, 800 m², its two documents checked), `?id=703` (sent, documents checked), `?id=704` (sent, none recorded by the agent but declared by the seller), `?id=705` (DRAFT, the seller declared none). |
 | `assets/js/find-property.js`, `offer-property.js`, `partner-central.js` | #274's logic: the branch's own step list (six for a building sale), the counts' fields and messages, the listing's sections and rules, the building samples (305, 306, 701) and their matches. |
 
 To review the type and status badges (#276): `index.html` (offer 104 and card 301 read *Vente*; the rental cards read
@@ -137,6 +138,34 @@ reads *étages* everywhere (its field stays `levels`), and a building's *Le bien
 *Places de parking* — it is counted by its units. Two points settled with the requester: the count
 reads *étages* everywhere (its field stays `levels`), and a building's *Le bien* asks neither *Salles de bains* nor
 *Places de parking* — it is counted by its units.
+
+A land sale's *Le bien* (#287): `listing/bien.html?id=702` is the DRAFT of seller 302 — *Terrain*, *Résidentiel*, 800 m²,
+no *Places de parking* (nor *Salles de bains*, *Chambres*, *Salons*, *Cuisines*, *Ameublement*, *Étages*, *Unités*,
+*Étage*), and *Document de propriété (facultatif)* with *Titre foncier* and *Plan de bornage* checked, one option per
+line (three rows at 390 px as at 1024 px), no owner line (the agent's answer is the seller's). A sale offers *Terrain*
+under both *Résidentiel* and *Commercial*, as #275 settled (#275's own `mandate/edit.html` rule): its saved type stays
+checked and readable whatever the category. Its checklist row is
+`listing.html?id=702` (*Terrain · 800 m²*, seven rows, nothing checked). Switching the type to *Maison* (or *Bureau*)
+hides the documents and brings *Places de parking* back; switching back to *Terrain* shows them again with the agent's
+ticks, and saving another type stores none (a hidden fieldset is saved empty, as for every question of the type).
+`listing/bien.html?id=703` is a sent land listing (mandate 307): its two documents are checked and disabled with the
+other answers, the hint gone, no action. `?id=704` is a sent listing whose agent recorded none of the seller's two
+documents: the fieldset is hidden and only *Indiqué par le propriétaire : Titre foncier · Plan de bornage* remains,
+outside anything hidden, under the surface — the seller's declaration survives its own hidden fieldset.
+`?id=705` is a DRAFT from seller 309, who declared no document: nothing checked, no owner line; tick one and it reads
+*Indiqué par le propriétaire : Aucun document déclaré*. The save error is the page's existing one (the surface's, or a
+number's): the documents are optional, so they never raise one, and the save flow is unchanged. The empty and loading
+states: 705 is the empty answer, the page has no loading state, and there is no new screen. Assumptions: each sample
+listing has its own mandate (a mandate has one listing at most) — 307, 308 and 309 are land sellers with no card on
+`index.html`, opened by URL; the sent samples also carry their audited place, GPS and five photos so their checklist
+reads as sent; existing listings aren't seeded with their mandate's documents, and a legacy parking count on a land
+listing is dropped the next time its section is saved. The narrow check: at 390 px the three options stack one per
+line, the hint and the owner line wrap under the fieldset; at 1024 px they still take one line each.
+One field per row and one option per row (review feedback): *Usage*, *Type de bien*, *Ameublement*, every count
+(*Chambres*, *Salons*, *Salles de bains*, *Cuisines*, *Places de parking*, *Étages*, *Unités*, *Étage*), *Surface* and
+*Document de propriété* each take the full width, and *Résidentiel* / *Commercial*, each type, *Non meublé* / *Meublé*
+and the three documents each sit alone on their row — the count grid is single-column at every width (`.count-grid`),
+and no fieldset of the page uses `choices__grid--2` (other pages keep it, `rejoindre.css` is unchanged).
 
 The empty and error states: `index.html?assignments=empty` (an agent without offers: no *Mandats proposés* section) and
 `index.html?mandates=empty` (no mandate in progress: the section's empty line). On `mandate/edit.html?id=104`, submit
