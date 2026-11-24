@@ -82,6 +82,23 @@ class ListingPagesTest {
         url = "/douala/bonapriso/listing/123/villa",
     )
 
+    /**
+     * A building sold as a whole: 12 unités on 3 étages, 850 m², carrying the rooms, the parking and the utility
+     * flags a sale-only question would no longer save.
+     */
+    private val building = sale.copy(
+        propertyType = PropertyType.BUILDING,
+        rooms = 6,
+        bathrooms = 4,
+        parkings = 3,
+        area = 850,
+        units = 12,
+        levels = 3,
+        title = "Immeuble 12 unités à Bonapriso",
+        summary = "250M FCFA. Bien audité par Ndopify.",
+        url = "/douala/bonapriso/listing/123/immeuble",
+    )
+
     private fun page(
         listing: Listing = this.listing,
         images: List<ListingImage> = emptyList(),
@@ -478,5 +495,101 @@ class ListingPagesTest {
     fun `a rental listing keeps its rental conditions title`() {
         assertFalse(page().sale)
         assertEquals("Conditions de location", page().conditionsTitle)
+    }
+
+    @Test
+    fun `a sold building reads its units, its levels and its surface`() {
+        val page = page(building)
+
+        assertEquals(
+            listOf(
+                Fact("building", "12", "unités"),
+                Fact("stairs", "3", "étages"),
+                Fact("area", "850", "m²"),
+            ),
+            page.keyFacts,
+        )
+        assertEquals(
+            listOf(
+                "Type de bien" to "Immeuble",
+                "Unités" to "12",
+                "Étages" to "3",
+                "Surface" to "850 m²",
+            ),
+            page.specs,
+        )
+    }
+
+    @Test
+    fun `a sold building shows no amenity, even with utility flags saved`() {
+        // The fixture carries water, electricity and access flags: a building sale asks none of them
+        assertEquals(emptyList(), page(building.copy(waterMeter = true, waterWell = true, generatorSet = true)).amenities)
+    }
+
+    @Test
+    fun `a sold building without counts shows neither`() {
+        val page = page(building.copy(units = null, levels = null))
+
+        assertEquals(listOf(Fact("area", "850", "m²")), page.keyFacts)
+        assertEquals(listOf("Type de bien" to "Immeuble", "Surface" to "850 m²"), page.specs)
+    }
+
+    @Test
+    fun `a sale villa keeps its rooms, its bathrooms and its parking`() {
+        val page = page(sale)
+
+        assertEquals(
+            listOf(
+                Fact("bed", "5", "chambres"),
+                Fact("bath", "2", "salles de bains"),
+                Fact("area", "95", "m²"),
+                Fact("car", "1", "parking"),
+            ),
+            page.keyFacts,
+        )
+        assertEquals(
+            listOf(
+                "Type de bien" to "Villa",
+                "Chambres" to "5",
+                "Salles de bains" to "2",
+                "Salons" to "1",
+                "Cuisines" to "1",
+                "Surface" to "95 m²",
+                "Étage" to "2e sur 3",
+                "Parkings" to "1",
+            ),
+            page.specs,
+        )
+        assertTrue(page.amenities.isNotEmpty())
+    }
+
+    @Test
+    fun `a rented building keeps today's key facts and specs`() {
+        val page = page(building.copy(listingType = ListingType.RENTAL, units = null))
+
+        assertEquals(
+            listOf(
+                Fact("bed", "6", "chambres"),
+                Fact("bath", "4", "salles de bains"),
+                Fact("area", "850", "m²"),
+                Fact("sofa", null, "Meublé"),
+                Fact("car", "3", "parkings"),
+            ),
+            page.keyFacts,
+        )
+        assertEquals(
+            listOf(
+                "Type de bien" to "Immeuble",
+                "Ameublement" to "Meublé",
+                "Chambres" to "6",
+                "Salles de bains" to "4",
+                "Salons" to "1",
+                "Cuisines" to "1",
+                "Surface" to "850 m²",
+                "Étage" to "2e sur 3",
+                "Parkings" to "3",
+            ),
+            page.specs,
+        )
     }
 }

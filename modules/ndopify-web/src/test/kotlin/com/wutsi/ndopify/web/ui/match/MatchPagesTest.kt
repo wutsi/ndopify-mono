@@ -114,6 +114,24 @@ class MatchPagesTest {
         title = "Villa 4 chambres à Bonapriso",
     )
 
+    /** A building SALE SEARCH: 12 unités on 3 étages, 250M FCFA, no rooms. */
+    private val buildingMandate = saleMandate.copy(
+        propertyType = PropertyType.BUILDING,
+        rooms = null,
+        units = 12,
+        levels = 3,
+    )
+
+    /** The building proposed to that buyer: the 12 unités on 3 étages it wants, for 240M FCFA. */
+    private val buildingListing = saleListing.copy(
+        propertyType = PropertyType.BUILDING,
+        rooms = null,
+        units = 12,
+        levels = 3,
+        availableFrom = null,
+        title = "Immeuble 12 unités à Bonapriso",
+    )
+
     private fun date(iso: String) = Date.from(Instant.parse(iso))
 
     private fun page(
@@ -438,5 +456,115 @@ class MatchPagesTest {
         assertFalse(page.sale)
         assertEquals("Serge vous propose ce logement", page.title)
         assertEquals("Disponible le 01 déc. 2026, avant votre emménagement", page.reasons.last().text)
+    }
+
+    @Test
+    fun `a building proposition reads its units and its étages`() {
+        val page = page(
+            match = match.copy(availabilityScore = 1.0, roomsScore = 0.0, missingAmenities = emptyList()),
+            mandate = buildingMandate,
+            listing = buildingListing,
+        )
+
+        assertEquals(
+            listOf(
+                "À Bonapriso, le quartier que vous cherchez",
+                "240M\u00A0FCFA, dans votre budget",
+                "12 unités, comme demandé",
+                "3 étages, comme demandé",
+                "Disponible avant votre achat",
+            ),
+            page.reasons.map { it.text },
+        )
+        // A building has no amenity question: the card lists none
+        assertTrue(page.criteria.isEmpty())
+        assertEquals(
+            "Pour votre recherche : immeuble de 12 unités sur 3 étages à Bonapriso, jusqu'à 250M\u00A0FCFA.",
+            page.searchSummary,
+        )
+    }
+
+    @Test
+    fun `a building's counts read their closeness instead of being ruled out`() {
+        val page = page(
+            match = match.copy(availabilityScore = 1.0, unitsScore = 0.8, levelsScore = 0.6667),
+            mandate = buildingMandate.copy(units = 10, levels = 3),
+            listing = buildingListing.copy(units = 12, levels = 4),
+        )
+
+        assertEquals(
+            listOf(
+                "À Bonapriso, le quartier que vous cherchez",
+                "240M\u00A0FCFA, dans votre budget",
+                "12 unités au lieu de 10",
+                "4 étages au lieu de 3",
+                "Disponible avant votre achat",
+            ),
+            page.reasons.map { it.text },
+        )
+    }
+
+    @Test
+    fun `a building that states no count says so`() {
+        val page = page(
+            match = match.copy(availabilityScore = 1.0),
+            mandate = buildingMandate,
+            listing = buildingListing.copy(units = null, levels = null),
+        )
+
+        assertEquals(
+            listOf(
+                "À Bonapriso, le quartier que vous cherchez",
+                "240M\u00A0FCFA, dans votre budget",
+                "Nombre d'unités non précisé",
+                "Nombre d'étages non précisé",
+                "Disponible avant votre achat",
+            ),
+            page.reasons.map { it.text },
+        )
+    }
+
+    @Test
+    fun `a building search's summary omits a count it didn't answer`() {
+        assertEquals(
+            "Pour votre recherche : immeuble de 12 unités à Bonapriso, jusqu'à 250M\u00A0FCFA.",
+            page(mandate = buildingMandate.copy(levels = null), listing = buildingListing).searchSummary,
+        )
+        assertEquals(
+            "Pour votre recherche : immeuble de 3 étages à Bonapriso, jusqu'à 250M\u00A0FCFA.",
+            page(mandate = buildingMandate.copy(units = null), listing = buildingListing).searchSummary,
+        )
+        assertEquals(
+            "Pour votre recherche : immeuble à Bonapriso, jusqu'à 250M\u00A0FCFA.",
+            page(mandate = buildingMandate.copy(units = null, levels = null), listing = buildingListing).searchSummary,
+        )
+    }
+
+    @Test
+    fun `a rented building keeps today's proposal`() {
+        val page = page(
+            mandate = buildingMandate.copy(
+                listingType = ListingType.RENTAL,
+                rooms = "4",
+                units = null,
+                levels = null,
+                price = Money(250000, "XAF", PeriodicityType.MONTHLY),
+            ),
+            listing = buildingListing.copy(
+                listingType = ListingType.RENTAL,
+                rooms = 4,
+                units = null,
+                levels = null,
+                price = 240000,
+                pricePeriodicityType = PeriodicityType.MONTHLY,
+            ),
+        )
+
+        assertEquals(
+            "Pour votre recherche : immeuble 4 chambres à Bonapriso, jusqu'à 250K\u00A0FCFA / mois.",
+            page.searchSummary,
+        )
+        assertTrue(page.reasons.map { it.text }.contains("4 chambres, comme demandé"))
+        assertTrue(page.criteria.isNotEmpty())
     }
 }

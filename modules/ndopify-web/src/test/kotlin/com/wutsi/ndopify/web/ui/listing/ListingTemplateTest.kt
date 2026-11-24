@@ -119,6 +119,22 @@ class ListingTemplateTest {
         noticePeriod = 1,
     )
 
+    /** A building sold as a whole: 12 unités on 3 étages, 850 m², with rooms, parking and a water well saved before. */
+    private val buildingListing = saleListing.copy(
+        propertyType = PropertyType.BUILDING,
+        rooms = 6,
+        bathrooms = 4,
+        parkings = 3,
+        area = 850,
+        units = 12,
+        levels = 3,
+        waterMeter = true,
+        waterWell = true,
+        title = "Immeuble 12 unités à Bonapriso",
+        summary = "250M FCFA. Bien audité par Ndopify.",
+        url = "/douala/bonapriso/listing/123/immeuble",
+    )
+
     private fun page(listing: Listing = this.listing, images: List<ListingImage> = this.images) = ListingPages.of(
         listing,
         images,
@@ -463,5 +479,24 @@ class ListingTemplateTest {
         assertNotNull(doc.selectFirst("form[data-listing-interest-form]"))
         assertEquals("Quand souhaitez-vous acheter ?", doc.selectFirst("#moving-period-label")?.text())
         assertEquals("Envoyer ma demande", doc.selectFirst("form[data-listing-interest-form] button[type=submit]")?.text())
+    }
+
+    @Test
+    fun `a sold building's page reads its units and its levels, without bathrooms nor amenities`() {
+        val doc = render(page(listing = buildingListing))
+
+        assertEquals(listOf("12 unités", "3 étages", "850 m²"), doc.select(".key-facts li").map { it.text() })
+        assertEquals(
+            listOf(
+                "Type de bien" to "Immeuble",
+                "Unités" to "12",
+                "Étages" to "3",
+                "Surface" to "850 m²",
+            ),
+            doc.select(".spec-list div").map { it.selectFirst("dt")!!.text() to it.selectFirst("dd")!!.text() },
+        )
+        assertNull(doc.selectFirst("#amenities-heading"))
+        assertFalse(doc.selectFirst(".listing__content")!!.text().contains("salles de bains"))
+        assertFalse(doc.selectFirst(".listing__content")!!.text().contains("parkings"))
     }
 }

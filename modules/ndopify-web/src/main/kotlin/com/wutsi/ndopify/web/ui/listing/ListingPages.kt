@@ -23,6 +23,9 @@ import java.time.LocalDate
  *
  * A SALE listing's conditions are the price and the availability only, whatever rental terms were saved before: never a
  * rent, a deposit, an advance, a lease term, a notice period nor the furniture.
+ *
+ * A building sold as a whole reads its unités, its étages and its surface instead of its rooms, its bathrooms and its
+ * parking, and shows no verified amenity since a building sale asks none.
  */
 object ListingPages {
     internal val PROPERTY_TYPE_LABELS: Map<PropertyType, String> = mapOf(
@@ -121,11 +124,16 @@ object ListingPages {
             keyFacts = keyFacts(listing, formatter, sale),
             description = paragraphs(listing.description),
             specs = specs(listing, formatter, sale),
-            amenities = AMENITIES.mapNotNull { (group, items) ->
-                items.filter { (_, has) -> has(listing) }
-                    .map { (label, _) -> label }
-                    .ifEmpty { null }
-                    ?.let { AmenityGroup(group, it) }
+            amenities = if (soldBuilding(listing)) {
+                // A building sold as a whole asks no utility question: its page shows no amenity group.
+                emptyList()
+            } else {
+                AMENITIES.mapNotNull { (group, items) ->
+                    items.filter { (_, has) -> has(listing) }
+                        .map { (label, _) -> label }
+                        .ifEmpty { null }
+                        ?.let { AmenityGroup(group, it) }
+                }
             },
             price = price,
             priceAmount = priceAmount,
@@ -214,26 +222,55 @@ object ListingPages {
         }
     }
 
-    private fun keyFacts(listing: Listing, formatter: TenantFormatter, sale: Boolean): List<Fact> = listOfNotNull(
-        listing.rooms?.let { Fact("bed", it.toString(), plural(it, "chambre", "chambres")) },
-        listing.bathrooms?.let { Fact("bath", it.toString(), plural(it, "salle de bains", "salles de bains")) },
+    private fun keyFacts(listing: Listing, formatter: TenantFormatter, sale: Boolean): List<Fact> =
+        if (soldBuilding(listing)) {
+            buildingFacts(listing, formatter)
+        } else {
+            listOfNotNull(
+                listing.rooms?.let { Fact("bed", it.toString(), plural(it, "chambre", "chambres")) },
+                listing.bathrooms?.let { Fact("bath", it.toString(), plural(it, "salle de bains", "salles de bains")) },
+                listing.area?.let { Fact("area", formatter.count(it.toLong()), "m²") },
+                // A sale shows no furniture: it is a rental question, whatever value was saved before.
+                if (sale) null else FURNITURE_LABELS[listing.furnitureType]?.let { Fact("sofa", null, it) },
+                listing.parkings?.let { Fact("car", it.toString(), plural(it, "parking", "parkings")) },
+            )
+        }
+
+    /** A building sold as a whole: its unités, its étages and its surface, never its rooms nor its parking. */
+    private fun buildingFacts(listing: Listing, formatter: TenantFormatter): List<Fact> = listOfNotNull(
+        listing.units?.let { Fact("building", it.toString(), plural(it, "unité", "unités")) },
+        listing.levels?.let { Fact("stairs", it.toString(), plural(it, "étage", "étages")) },
         listing.area?.let { Fact("area", formatter.count(it.toLong()), "m²") },
-        // A sale shows no furniture: it is a rental question, whatever value was saved before.
-        if (sale) null else FURNITURE_LABELS[listing.furnitureType]?.let { Fact("sofa", null, it) },
-        listing.parkings?.let { Fact("car", it.toString(), plural(it, "parking", "parkings")) },
     )
 
-    private fun specs(listing: Listing, formatter: TenantFormatter, sale: Boolean): List<Pair<String, String>> = listOfNotNull(
+    private fun specs(listing: Listing, formatter: TenantFormatter, sale: Boolean): List<Pair<String, String>> =
+        if (soldBuilding(listing)) {
+            buildingSpecs(listing, formatter)
+        } else {
+            listOfNotNull(
+                PROPERTY_TYPE_LABELS[listing.propertyType]?.let { "Type de bien" to it },
+                if (sale) null else FURNITURE_LABELS[listing.furnitureType]?.let { "Ameublement" to it },
+                listing.rooms?.let { "Chambres" to it.toString() },
+                listing.bathrooms?.let { "Salles de bains" to it.toString() },
+                listing.livingRooms?.let { "Salons" to it.toString() },
+                listing.kitchens?.let { "Cuisines" to it.toString() },
+                listing.area?.let { "Surface" to formatter.count(it.toLong()) + " m²" },
+                listing.floorLevel?.let { "Étage" to floor(it, listing.levels) },
+                listing.parkings?.let { "Parkings" to it.toString() },
+            )
+        }
+
+    /** A building sold as a whole: Type de bien, Unités, Étages and Surface, no bathroom, room nor parking row. */
+    private fun buildingSpecs(listing: Listing, formatter: TenantFormatter): List<Pair<String, String>> = listOfNotNull(
         PROPERTY_TYPE_LABELS[listing.propertyType]?.let { "Type de bien" to it },
-        if (sale) null else FURNITURE_LABELS[listing.furnitureType]?.let { "Ameublement" to it },
-        listing.rooms?.let { "Chambres" to it.toString() },
-        listing.bathrooms?.let { "Salles de bains" to it.toString() },
-        listing.livingRooms?.let { "Salons" to it.toString() },
-        listing.kitchens?.let { "Cuisines" to it.toString() },
+        listing.units?.let { "Unités" to it.toString() },
+        listing.levels?.let { "Étages" to it.toString() },
         listing.area?.let { "Surface" to formatter.count(it.toLong()) + " m²" },
-        listing.floorLevel?.let { "Étage" to floor(it, listing.levels) },
-        listing.parkings?.let { "Parkings" to it.toString() },
     )
+
+    /** A building sold as a whole, as opposed to a rented building or any other sale. */
+    private fun soldBuilding(listing: Listing): Boolean =
+        listing.listingType == ListingType.SALE && listing.propertyType == PropertyType.BUILDING
 
     /** "Rez-de-chaussée", "1er", "2e sur 3". */
     private fun floor(level: Int, levels: Int?): String {
