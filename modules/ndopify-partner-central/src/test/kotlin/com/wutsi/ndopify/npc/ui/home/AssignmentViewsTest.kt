@@ -181,7 +181,7 @@ class AssignmentViewsTest {
     fun `questions that don't apply to the type are left out`() {
         val view = AssignmentViews.of(
             ASSIGNMENT,
-            MANDATE.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = PropertyType.LAND),
+            MANDATE.copy(propertyCategory = PropertyCategory.RESIDENTIAL, propertyType = PropertyType.LAND),
             NAMES,
             NOW,
             FORMATTER
@@ -199,7 +199,7 @@ class AssignmentViewsTest {
             ASSIGNMENT,
             MANDATE.copy(
                 listingType = ListingType.SALE,
-                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
                 propertyType = PropertyType.LAND,
                 rooms = null,
                 area = 400,

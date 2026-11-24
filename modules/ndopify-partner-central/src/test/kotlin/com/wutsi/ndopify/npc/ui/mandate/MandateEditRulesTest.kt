@@ -241,9 +241,9 @@ class MandateEditRulesTest {
             MandateEditRules.errors(FORM.copy(propertyType = "ANY", rooms = null), MANDATE, FORMATTER)["rooms"],
         )
         assertEquals(emptyMap(), MandateEditRules.errors(FORM.copy(propertyType = "STUDIO", rooms = null), MANDATE, FORMATTER))
-        val storedLand = MANDATE.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = PropertyType.LAND)
+        val storedLand = MANDATE.copy(propertyCategory = PropertyCategory.RESIDENTIAL, propertyType = PropertyType.LAND)
         val landForm = FORM.copy(
-            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
             propertyType = "LAND",
             rooms = null,
             furnitureType = null,
@@ -260,7 +260,7 @@ class MandateEditRulesTest {
     fun `errors - a sale land is accepted`() {
         val sale = MANDATE.copy(
             listingType = ListingType.SALE,
-            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
             propertyType = PropertyType.LAND,
             rooms = null,
             furnitureType = null,
@@ -268,7 +268,7 @@ class MandateEditRulesTest {
             price = Money(15_000_000, "XAF", PeriodicityType.NONE),
         )
         val form = FORM.copy(
-            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
             propertyType = "LAND",
             rooms = null,
             furnitureType = null,
@@ -284,11 +284,11 @@ class MandateEditRulesTest {
     fun `errors - a stored rental land on a landlord's listing is accepted`() {
         val storedLand = MANDATE.copy(
             mandateType = MandateType.LISTING,
-            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
             propertyType = PropertyType.LAND,
         )
         val form = FORM.copy(
-            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
             propertyType = "LAND",
             rooms = null,
             furnitureType = null,
@@ -386,10 +386,10 @@ class MandateEditRulesTest {
 
     @Test
     fun `request - drops follow-ups that don't apply`() {
-        val storedLand = MANDATE.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = PropertyType.LAND)
+        val storedLand = MANDATE.copy(propertyCategory = PropertyCategory.RESIDENTIAL, propertyType = PropertyType.LAND)
         val request = MandateEditRules.request(
             FORM.copy(
-                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
                 propertyType = "LAND",
                 rooms = "3",
                 furnitureType = "FULLY_FURNISHED",

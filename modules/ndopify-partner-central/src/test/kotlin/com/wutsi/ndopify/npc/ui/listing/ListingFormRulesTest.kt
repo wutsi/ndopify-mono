@@ -144,7 +144,11 @@ class ListingFormRulesTest {
         assertFalse(ListingRules.applies("furniture", residential, PropertyType.BUILDING))
         assertFalse(ListingRules.applies("furniture", commercial, PropertyType.OFFICE))
         assertFalse(ListingRules.applies("rooms", residential, PropertyType.STUDIO))
-        assertFalse(ListingRules.applies("bathrooms", commercial, PropertyType.LAND))
+        assertFalse(ListingRules.applies("furniture", residential, PropertyType.LAND))
+        assertFalse(ListingRules.applies("rooms", residential, PropertyType.LAND))
+        assertFalse(ListingRules.applies("bathrooms", residential, PropertyType.LAND))
+        assertFalse(ListingRules.applies("kitchens", residential, PropertyType.LAND))
+        assertFalse(ListingRules.applies("parkings", residential, PropertyType.LAND))
         assertFalse(ListingRules.applies("kitchens", residential, PropertyType.ROOM))
         assertFalse(ListingRules.applies("parkings", residential, PropertyType.ROOM))
         assertTrue(ListingRules.applies("levels", residential, PropertyType.DUPLEX))
@@ -154,11 +158,12 @@ class ListingFormRulesTest {
     }
 
     @Test
-    fun `type fits the category`() {
-        assertTrue(ListingRules.typeFits(PropertyCategory.RESIDENTIAL, PropertyType.BUILDING))
-        assertTrue(ListingRules.typeFits(PropertyCategory.COMMERCIAL, PropertyType.LAND))
-        assertFalse(ListingRules.typeFits(PropertyCategory.RESIDENTIAL, PropertyType.LAND))
-        assertFalse(ListingRules.typeFits(null, PropertyType.APARTMENT))
+    fun `type fits the category and the project`() {
+        assertTrue(ListingRules.typeFits(PropertyCategory.RESIDENTIAL, PropertyType.BUILDING, sale = true))
+        assertTrue(ListingRules.typeFits(PropertyCategory.RESIDENTIAL, PropertyType.LAND, sale = true))
+        assertFalse(ListingRules.typeFits(PropertyCategory.COMMERCIAL, PropertyType.LAND, sale = true))
+        assertFalse(ListingRules.typeFits(PropertyCategory.RESIDENTIAL, PropertyType.LAND, sale = false))
+        assertFalse(ListingRules.typeFits(null, PropertyType.APARTMENT, sale = true))
     }
 
     @Test

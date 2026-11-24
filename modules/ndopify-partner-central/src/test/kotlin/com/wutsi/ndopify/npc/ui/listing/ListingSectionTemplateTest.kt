@@ -19,6 +19,7 @@ import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdviceTest
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.LISTING
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.MANDATE
+import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.SALE
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.SENT
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
@@ -209,11 +210,9 @@ class ListingSectionTemplateTest {
 
         assertEquals("RESIDENTIAL", form.selectFirst("input[name=propertyCategory][checked]")?.attr("value"))
         assertEquals("APARTMENT", form.selectFirst("input[name=propertyType][checked]")?.attr("value"))
-        assertEquals(11, form.select("input[name=propertyType]").size)
-        assertEquals(
-            "COMMERCIAL",
-            form.selectFirst("input[name=propertyType][value=LAND]")?.parent()?.attr("data-categories")
-        )
+        // A rental is offered no plot of land, even though it is residential now.
+        assertEquals(10, form.select("input[name=propertyType]").size)
+        assertNull(form.selectFirst("input[name=propertyType][value=LAND]"))
         // Every count question, the script hides those of the type
         listOf("rooms", "livingRooms", "bathrooms", "kitchens", "parkings", "levels", "floorLevel", "area").forEach {
             assertNotNull(form.selectFirst("input[name=$it]"), it)
@@ -225,6 +224,17 @@ class ListingSectionTemplateTest {
         assertEquals("Indiqué par le propriétaire : 3", hint.text())
         assertFalse(hint.hasAttr("hidden"))
         assertNull(form.selectFirst("[data-owner-for=area]"))
+    }
+
+    @Test
+    fun `property - a sale offers residential land`() {
+        val form = form(render("property", SALE))
+
+        assertEquals(11, form.select("input[name=propertyType]").size)
+        assertEquals(
+            "RESIDENTIAL",
+            form.selectFirst("input[name=propertyType][value=LAND]")?.parent()?.attr("data-categories"),
+        )
     }
 
     @Test

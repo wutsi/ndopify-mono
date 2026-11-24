@@ -384,7 +384,7 @@ class OfferPropertyTemplateTest {
     }
 
     @Test
-    fun `a sale residential step offers land to both uses and no room`() {
+    fun `a sale residential step offers residential land and no room`() {
         session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale.copy(propertyType = null))
 
         val page = render(get("/offer-property?step=features"))
@@ -401,7 +401,7 @@ class OfferPropertyTemplateTest {
     }
 
     @Test
-    fun `a sale commercial step offers land only when it fits the use`() {
+    fun `a sale commercial step offers no land`() {
         session.setAttribute(
             PendingListing.SESSION_ATTRIBUTE,
             sale.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = null),
@@ -410,7 +410,7 @@ class OfferPropertyTemplateTest {
         val page = render(get("/offer-property?step=features"))
 
         assertEquals(
-            listOf("OFFICE", "RETAIL", "INDUSTRIAL", "LAND"),
+            listOf("OFFICE", "RETAIL", "INDUSTRIAL"),
             page.select("input[name=propertyType]").map { it.attr("value") },
         )
     }
@@ -536,7 +536,7 @@ class OfferPropertyTemplateTest {
     }
 
     @Test
-    fun `the rental commercial description names no land`() {
+    fun `only the residential sale description names land`() {
         val rental = render(get("/offer-property?step=property"))
         assertNotNull(rental.selectFirst("[data-category-detail]"))
         val commercialRental = rental.selectFirst("input[value=COMMERCIAL]")!!.parent()!!
@@ -547,8 +547,10 @@ class OfferPropertyTemplateTest {
         session.setAttribute(PendingListing.SESSION_ATTRIBUTE, complete.copy(listingType = ListingType.SALE))
         val salePage = render(get("/offer-property?step=property"))
         val commercialSale = salePage.selectFirst("input[value=COMMERCIAL]")!!.parent()!!
-        assertTrue(commercialSale.text().contains("terrain"), commercialSale.text())
+        assertFalse(commercialSale.text().contains("terrain"), commercialSale.text())
         assertNotNull(commercialSale.selectFirst("[data-category-commercial-detail]"))
+        val residentialSale = salePage.selectFirst("input[value=RESIDENTIAL]")!!.parent()!!
+        assertTrue(residentialSale.text().contains("terrain"), residentialSale.text())
     }
 
     @Test

@@ -251,7 +251,7 @@ class FindPropertyTemplateTest {
             PendingMandate.SESSION_ATTRIBUTE,
             complete.copy(
                 listingType = ListingType.SALE,
-                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
                 propertyType = "LAND",
                 rooms = null,
                 furnitureType = null,
@@ -277,7 +277,7 @@ class FindPropertyTemplateTest {
             PendingMandate.SESSION_ATTRIBUTE,
             complete.copy(
                 listingType = ListingType.RENTAL,
-                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
                 propertyType = "LAND",
                 rooms = null,
                 furnitureType = null,
@@ -311,7 +311,7 @@ class FindPropertyTemplateTest {
             PendingMandate.SESSION_ATTRIBUTE,
             complete.copy(
                 listingType = ListingType.SALE,
-                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
                 propertyType = "LAND",
                 rooms = null,
                 furnitureType = null,
@@ -420,7 +420,7 @@ class FindPropertyTemplateTest {
             PendingMandate.SESSION_ATTRIBUTE,
             complete.copy(
                 listingType = ListingType.SALE,
-                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
                 propertyType = "LAND",
                 area = 400,
                 priceAmount = 10_000_000,
@@ -565,7 +565,7 @@ class FindPropertyTemplateTest {
             PendingMandate.SESSION_ATTRIBUTE,
             complete.copy(
                 listingType = ListingType.SALE,
-                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
                 propertyType = "LAND",
                 rooms = null,
                 furnitureType = null,
@@ -579,7 +579,7 @@ class FindPropertyTemplateTest {
 
         val page = render(get("/find-property?step=review"))
 
-        assertEquals("Achat, usage commercial", value(page, "project"))
+        assertEquals("Achat, usage résidentiel", value(page, "project"))
         assertEquals("10\u00a0000\u00a0000\u00a0FCFA", value(page, "price"))
         assertEquals("Achat prévu", page.selectFirst("[data-review-move-in-term]")?.text())
         assertEquals("Comptant", value(page, "financing"))
