@@ -63,7 +63,7 @@ Package `com.wutsi.ndopify.web`:
   409: already requested). An ACCEPTED match whose listing went away still shows its open visit; with no form and no
   open visit, the page only gives the agent's contact. The contract's per-visit fee (`Mandate.visitFee`, formatted by
   `TenantFormatter` into `MatchPage.visitFee`) is stated in the *Conditions de location* note
-  (*Frais de visite : 5 000 FCFA par visite, réglés directement à lui.*, or *Aucun frais de visite.*), and, once
+  (*Frais de visite : 5K FCFA par visite, réglés directement à lui.*, or *Aucun frais de visite.*), and, once
   ACCEPTED with no open visit, in the price card's hint and the `#visit` popup (*Ndopify ne perçoit aucun paiement*).
 - `ui/visit/` — `VisitController`, the link of the "visite" e-mail (`/visits/{id}?token=`): the same token handling as
   the match link (cookie, 302, `visit-link.html` with `reason = expired` / `not-yours`, a bad-shaped token never set),

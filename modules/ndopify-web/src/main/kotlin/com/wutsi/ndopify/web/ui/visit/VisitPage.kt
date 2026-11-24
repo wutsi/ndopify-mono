@@ -51,7 +51,7 @@ data class VisitPage(
     val feedbackError: String?,
     val listing: ListingPage?,
     val agent: VisitAgent?,
-    /** "Frais de visite : 5 000 FCFA, à régler directement à Serge…": only while the visit is open. */
+    /** "Frais de visite : 5K FCFA, à régler directement à Serge…": only while the visit is open. */
     val visitFee: String?,
     /** "/match/{matchId}", back to the proposal. */
     val matchUrl: String,
