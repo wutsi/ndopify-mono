@@ -30,19 +30,20 @@
     // ListingRules.applies: the questions of "Le bien" asked for a type.
     var APPLIES = {
         furniture: function (a) {
-            return a.category === "RESIDENTIAL" && a.type !== "BUILDING";
+            return a.category === "RESIDENTIAL" && ["BUILDING", "LAND"].indexOf(a.type) === -1;
         },
         rooms: function (a) {
-            return a.category === "RESIDENTIAL" && ["ROOM", "STUDIO", "BUILDING"].indexOf(a.type) === -1;
+            return a.category === "RESIDENTIAL" &&
+                ["ROOM", "STUDIO", "BUILDING", "LAND"].indexOf(a.type) === -1;
         },
         bathrooms: function (a) {
             return a.type !== "LAND";
         },
         kitchens: function (a) {
-            return a.category === "RESIDENTIAL" && ["ROOM", "BUILDING"].indexOf(a.type) === -1;
+            return a.category === "RESIDENTIAL" && ["ROOM", "BUILDING", "LAND"].indexOf(a.type) === -1;
         },
         parkings: function (a) {
-            return a.type !== "ROOM";
+            return ["ROOM", "LAND"].indexOf(a.type) === -1;
         },
         levels: function (a) {
             return ["HOUSE", "DUPLEX", "BUILDING"].indexOf(a.type) !== -1;

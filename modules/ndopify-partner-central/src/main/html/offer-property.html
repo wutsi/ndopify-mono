@@ -73,7 +73,7 @@
                         <label class="choice choice--described">
                             <input name="propertyCategory" required type="radio" value="COMMERCIAL">
                             <span>Commercial <span class="choice__detail">Pour une activité&nbsp;: bureau,
-                                boutique, entrepôt, terrain…</span></span></label>
+                                boutique, entrepôt…</span></span></label>
                     </div>
                     <p class="field__error" hidden id="propertyCategory-error">
                         <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
@@ -257,8 +257,9 @@
                         <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" required
                                                                                   type="radio" value="INDUSTRIAL">
                             Entrepôt, local industriel</label>
-                        <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" required
-                                                                                  type="radio" value="LAND">
+                        <!-- A plot of land is residential and sold only: this rental wizard offers it under no use. -->
+                        <label class="choice" data-categories=""><input name="propertyType" required
+                                                                        type="radio" value="LAND">
                             Terrain</label>
                     </div>
                     <p class="field__error" hidden id="propertyType-error">

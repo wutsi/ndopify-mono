@@ -185,7 +185,7 @@ class FindPropertyControllerTest {
             PendingMandate.SESSION_ATTRIBUTE,
             complete.copy(
                 listingType = ListingType.SALE,
-                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
                 propertyType = "LAND",
                 rooms = null,
                 furnitureType = null,
@@ -199,7 +199,7 @@ class FindPropertyControllerTest {
 
         val result = mvc.perform(get("/find-property?step=review").session(session)).andReturn()
 
-        assertEquals("Achat, usage commercial", model(result)["categoryLabel"])
+        assertEquals("Achat, usage résidentiel", model(result)["categoryLabel"])
         assertEquals("10\u00a0000\u00a0000\u00a0FCFA", model(result)["priceLabel"])
         assertEquals("Achat prévu", model(result)["moveInTerm"])
         assertEquals("Comptant", model(result)["financingLabel"])
@@ -544,7 +544,7 @@ class FindPropertyControllerTest {
             PendingMandate.SESSION_ATTRIBUTE,
             complete.copy(
                 listingType = ListingType.SALE,
-                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
                 propertyType = null,
                 rooms = null,
                 furnitureType = null,
@@ -588,7 +588,7 @@ class FindPropertyControllerTest {
             PendingMandate.SESSION_ATTRIBUTE,
             complete.copy(
                 listingType = ListingType.RENTAL,
-                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
                 propertyType = null,
                 rooms = null,
                 furnitureType = null,
@@ -658,7 +658,7 @@ class FindPropertyControllerTest {
             PendingMandate.SESSION_ATTRIBUTE,
             complete.copy(
                 listingType = ListingType.SALE,
-                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
                 propertyType = null,
                 rooms = null,
                 furnitureType = null,

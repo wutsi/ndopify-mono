@@ -202,9 +202,9 @@ object ListingViews {
     val AMENITY_LABELS: Map<String, String> =
         MandateLabels.AMENITY_LABELS - ROAD_ACCESS.toSet() + (Amenity.WATER_TANK.key to "Château d'eau, citerne")
 
-    /** *Le bien*'s types, residential first, in the prototype's order. */
-    val TYPES: List<TypeChoice> = ListingRules.TYPES.flatMap { (category, types) ->
-        types.map { type -> TypeChoice(type.name, category.name, TYPE_LABELS.getValue(type)) }
+    /** *Le bien*'s types, residential first, in the prototype's order; a rental is offered no plot of land. */
+    fun types(sale: Boolean): List<TypeChoice> = ListingRules.TYPES.keys.flatMap { category ->
+        ListingRules.types(category, sale).map { type -> TypeChoice(type.name, category.name, TYPE_LABELS.getValue(type)) }
     }
 
     /** The photos page's list (the prototype's `initListingPhotos`): what's left to do only while it's a draft. */

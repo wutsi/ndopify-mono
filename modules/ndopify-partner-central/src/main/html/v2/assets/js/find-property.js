@@ -7,14 +7,14 @@
  * (CreateMandateRequest, ndopify-dto — see toRequest). Server calls are simulated; every simulation is marked
  * "PROTOTYPE".
  * v2 — sales: step 1 asks listingType (Louer = RENTAL, Acheter = SALE), preselected from ?type= when nothing is
- * saved. For a SALE: no room ("Chambre") to buy, land ("Terrain") is offered for both uses, furniture isn't asked,
+ * saved. For a SALE: no room ("Chambre") to buy, land ("Terrain") is offered under Résidentiel, furniture isn't asked,
  * the budget is a total price (periodicity NONE, at least MIN_SALE_PRICE), the moving period reads as the buying
  * horizon (same MovingPeriod values) and a financing answer is required (FinancingType). A rental stays as is and
  * sends no financing.
  *
- * #275 — a plot of land is bought, never rented: a rental offers Terrain under neither use (data-categories is empty
- * in the page), and a posted propertyType=LAND is refused by the rules (the step never completes with it); a purchase
- * keeps it under both. "Indifférent" stays for both projects.
+ * #275 — a plot of land is residential and bought, never rented: a rental offers Terrain under neither use
+ * (data-categories is empty in the page), and a posted propertyType=LAND is refused by the rules (the step never
+ * completes with it); a purchase offers it under Résidentiel. "Indifférent" stays for both projects.
  *
  * #278 — once step 1 is answered, every later step (the review included) and the confirmation carry the project
  * ("Achat" / "Location") as a read-only pill next to the step count / under "Demande envoyée"; step 1 keeps its
@@ -139,8 +139,9 @@
         OFFICE: { label: "Bureau", categories: ["COMMERCIAL"] },
         INDUSTRIAL: { label: "Entrepôt, local industriel", categories: ["COMMERCIAL"] },
         BUILDING: { label: "Immeuble", categories: ["COMMERCIAL"] },
-        // A plot of land is bought, never rented (#275): no rental category offers it; a purchase, both.
-        LAND: { label: "Terrain", categories: [], saleCategories: ["RESIDENTIAL", "COMMERCIAL"] }
+        // A plot of land is residential and bought, never rented (#275): no rental category offers it; a purchase,
+        // Résidentiel only.
+        LAND: { label: "Terrain", categories: [], saleCategories: ["RESIDENTIAL"] }
     };
     // Types that can't be bought: a room is only rented.
     var RENTAL_ONLY_TYPES = ["ROOM"];

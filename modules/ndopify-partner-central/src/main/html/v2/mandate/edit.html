@@ -28,8 +28,9 @@
     landlord's property (Loyer, Disponibilité, no "Indifférent").
     v2: a SALE mandate (?id=104 once accepted) reads data-label-sale-tenant / data-label-sale-owner when set (Budget,
     Prix, Achat prévu), its price has no "/ mois" (data-sale-text) and furniture isn't asked.
-    #275: a rental mandate no longer offers Terrain, but a stored one keeps its saved answer: the type stays checked
-    and readable in its saved category (data-rental-categories=""), and a save keeps it. 208 (a renter's search) and
+    #275: a plot of land is residential and sold, never let. A rental no longer offers Terrain, but a stored one keeps
+    its saved answer: the type stays checked and readable in its saved category (data-rental-categories=""), and a
+    save keeps it. 208 (a renter's search) and
     209 (a landlord's property) are those rental mandates, opened by id; 201 the ordinary rental without one.
     PROTOTYPE: ?id=101 to 103 once accepted, 201, 202, 208 or 209; any other mandate, or one approved since, shows the
     locked view.
@@ -154,10 +155,11 @@
                                         <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="OFFICE"> Bureau</label>
                                         <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="INDUSTRIAL"> Entrepôt, local industriel</label>
                                         <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="BUILDING"> Immeuble</label>
-                                        <!-- #275: a plot of land is sold, never let. A rental offers no Terrain, except
-                                             the one a stored mandate already answered: partner-central.js keeps it
-                                             visible and checked in its saved category. A sale offers it in both. -->
-                                        <label class="choice" data-categories="RESIDENTIAL COMMERCIAL" data-rental-categories=""><input name="propertyType" type="radio" value="LAND"> Terrain</label>
+                                        <!-- #275: a plot of land is sold, never let, and is residential. A rental offers
+                                             no Terrain, except the one a stored mandate already answered:
+                                             partner-central.js keeps it visible and checked in its saved category. A
+                                             sale offers it under Résidentiel. -->
+                                        <label class="choice" data-categories="RESIDENTIAL" data-rental-categories=""><input name="propertyType" type="radio" value="LAND"> Terrain</label>
                                         <label class="choice" data-categories="RESIDENTIAL COMMERCIAL" data-tenant-only><input name="propertyType" type="radio" value="ANY"> Indifférent</label>
                                     </div>
                                 </fieldset>

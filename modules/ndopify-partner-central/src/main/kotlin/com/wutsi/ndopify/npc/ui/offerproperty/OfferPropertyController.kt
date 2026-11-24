@@ -576,7 +576,7 @@ private val CATEGORY_DETAIL_LABELS: Map<String, String> = mapOf(
     "RENTAL_RESIDENTIAL" to "Pour y habiter\u00a0: chambre, studio, appartement, villa, immeuble…",
     "SALE_RESIDENTIAL" to "Pour y habiter\u00a0: appartement, villa, immeuble, terrain à bâtir…",
     "RENTAL_COMMERCIAL" to "Pour une activité\u00a0: bureau, boutique, entrepôt…",
-    "SALE_COMMERCIAL" to "Pour une activité\u00a0: bureau, boutique, entrepôt, terrain…",
+    "SALE_COMMERCIAL" to "Pour une activité\u00a0: bureau, boutique, entrepôt…",
 )
 
 // "Villa, maison" is one answer, as in the prototype: it is sent as HOUSE. Land is only a sale's: it keeps its label

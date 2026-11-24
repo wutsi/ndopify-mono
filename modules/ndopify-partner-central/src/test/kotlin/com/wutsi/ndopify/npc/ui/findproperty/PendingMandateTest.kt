@@ -97,7 +97,7 @@ class PendingMandateTest {
 
     @Test
     fun `a rental land never completes the property step`() {
-        val land = COMPLETE.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = "LAND", rooms = null, furnitureType = null)
+        val land = COMPLETE.copy(propertyCategory = PropertyCategory.RESIDENTIAL, propertyType = "LAND", rooms = null, furnitureType = null)
         assertFalse(land.isComplete("property"))
     }
 
@@ -123,7 +123,7 @@ class PendingMandateTest {
     fun `a land purchase sends its financing and documents at a one-off price`() {
         val pending = COMPLETE.copy(
             listingType = ListingType.SALE,
-            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
             propertyType = "LAND",
             area = 400,
             priceAmount = 10_000_000,
@@ -162,7 +162,7 @@ class PendingMandateTest {
     fun `a land purchase without a document is complete`() {
         val pending = PendingMandateTest.COMPLETE.copy(
             listingType = ListingType.SALE,
-            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
             propertyType = "LAND",
             area = 400,
             rooms = null,
@@ -239,7 +239,7 @@ class PendingMandateTest {
     fun furnitureAndParkingsNotSentForLand() {
         val request = COMPLETE.copy(
             listingType = ListingType.SALE,
-            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
             propertyType = "LAND",
             area = 400,
             priceAmount = 10_000_000,

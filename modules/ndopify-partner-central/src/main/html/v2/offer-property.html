@@ -108,16 +108,15 @@
                                 habiter&nbsp;: chambre, studio, appartement, villa, immeuble…</span><span
                                 class="choice__detail" data-for="SALE" hidden>Pour y habiter&nbsp;: appartement,
                                 villa, terrain à bâtir…</span></span></label>
-                        <!-- A plot of land is sold, never let (#275): the rental's description names no land, the
-                             sale's keeps it. A building is sold under Commercial only (#274): the sale's
-                             residential
-                             list no longer names it. -->
+                        <!-- A plot of land is residential and sold, never let (#275): the commercial description
+                             names no land, the residential sale one does. A building is sold under Commercial only
+                             (#274): the sale's residential list no longer names it. -->
                         <label class="choice choice--described">
                             <input name="propertyCategory" required type="radio" value="COMMERCIAL">
                             <span>Commercial <span class="choice__detail" data-for="RENTAL">Pour une
                                 activité&nbsp;: bureau, boutique, entrepôt…</span><span class="choice__detail"
                                 data-for="SALE" hidden>Pour une activité&nbsp;: bureau, boutique, entrepôt,
-                                immeuble, terrain…</span></span></label>
+                                immeuble…</span></span></label>
                     </div>
                     <p class="field__error" hidden id="propertyCategory-error">
                         <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
@@ -313,9 +312,9 @@
                                                                                   type="radio" value="INDUSTRIAL">
                             Entrepôt, local industriel</label>
                         <!-- data-sale-categories: the categories of the type for a sale (none: not offered). A plot
-                             of land is sold, never let (#275): no rental category offers it (empty data-categories),
-                             both categories of a sale do. -->
-                        <label class="choice" data-categories="" data-sale-categories="RESIDENTIAL COMMERCIAL"><input
+                             of land is residential and sold, never let (#275): no rental category offers it (empty
+                             data-categories), a sale offers it under Résidentiel. -->
+                        <label class="choice" data-categories="" data-sale-categories="RESIDENTIAL"><input
                             name="propertyType" required type="radio" value="LAND">
                             Terrain</label>
                     </div>

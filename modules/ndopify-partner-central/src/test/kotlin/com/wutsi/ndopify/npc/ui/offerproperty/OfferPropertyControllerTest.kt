@@ -734,7 +734,7 @@ class OfferPropertyControllerTest {
         session.setAttribute(
             PendingListing.SESSION_ATTRIBUTE,
             complete.copy(
-                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
                 propertyType = null, area = null, rooms = null, furnitureType = null, parkings = null,
             ),
         )

@@ -256,7 +256,7 @@ class MandateLabelsTest {
     fun `criteria - landlord, whole city, follow-ups that don't apply`() {
         val mandate = Mandate(
             mandateType = MandateType.LISTING,
-            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
             propertyType = PropertyType.LAND,
             cityId = 1,
             rooms = "3",
@@ -270,7 +270,7 @@ class MandateLabelsTest {
                 "Secteur" to "Toute la ville — Douala",
                 "Loyer" to "50\u00a0000\u00a0FCFA / mois",
                 "Disponibilité" to "Dans plus de 3\u00a0mois",
-                "Catégorie" to "Commercial",
+                "Catégorie" to "Résidentiel",
                 "Type de propriété" to "Terrain",
             ),
             MandateLabels.criteria(mandate, LOCATIONS, FORMATTER),
@@ -282,7 +282,7 @@ class MandateLabelsTest {
         val mandate = Mandate(
             mandateType = MandateType.SEARCH,
             listingType = ListingType.SALE,
-            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
             propertyType = PropertyType.LAND,
             cityId = 1,
             area = 400,
@@ -309,7 +309,7 @@ class MandateLabelsTest {
         val mandate = Mandate(
             mandateType = MandateType.SEARCH,
             listingType = ListingType.SALE,
-            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
             propertyType = PropertyType.LAND,
             cityId = 1,
             price = Money(10_000_000, "XAF", PeriodicityType.NONE),

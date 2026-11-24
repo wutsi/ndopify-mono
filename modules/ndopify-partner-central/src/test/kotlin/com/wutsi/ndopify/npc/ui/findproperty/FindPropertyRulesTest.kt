@@ -68,7 +68,7 @@ class FindPropertyRulesTest {
     }
 
     @Test
-    fun `a sale offers land to both uses and no room`() {
+    fun `a sale offers residential land and no room`() {
         assertEquals(
             listOf(
                 PropertyType.STUDIO,
@@ -86,7 +86,6 @@ class FindPropertyRulesTest {
                 PropertyType.OFFICE,
                 PropertyType.INDUSTRIAL,
                 PropertyType.BUILDING,
-                PropertyType.LAND,
             ),
             FindPropertyRules.propertyTypes(PropertyCategory.COMMERCIAL, ListingType.SALE),
         )
@@ -107,7 +106,8 @@ class FindPropertyRulesTest {
         )
         assertFalse(FindPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "ROOM", ListingType.SALE))
         assertTrue(FindPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "LAND", ListingType.SALE))
-        assertTrue(FindPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "LAND", ListingType.SALE))
+        assertFalse(FindPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "LAND", ListingType.SALE))
+        assertFalse(FindPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "LAND", ListingType.RENTAL))
         assertFalse(FindPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "LAND", ListingType.RENTAL))
     }
 
@@ -212,7 +212,6 @@ class FindPropertyRulesTest {
         assertEquals("Indiquez la surface du terrain.", FindPropertyRules.area(null, true))
         assertEquals("Indiquez une surface d'au moins 5 m².", FindPropertyRules.area(4, true))
         assertTrue(FindPropertyRules.needsArea(PropertyCategory.RESIDENTIAL, PropertyType.LAND, ListingType.SALE))
-        assertTrue(FindPropertyRules.needsArea(PropertyCategory.COMMERCIAL, PropertyType.LAND, ListingType.SALE))
         assertFalse(FindPropertyRules.needsArea(PropertyCategory.RESIDENTIAL, PropertyType.LAND, ListingType.RENTAL))
         assertFalse(FindPropertyRules.needsArea(PropertyCategory.RESIDENTIAL, PropertyType.VILLA, ListingType.SALE))
     }

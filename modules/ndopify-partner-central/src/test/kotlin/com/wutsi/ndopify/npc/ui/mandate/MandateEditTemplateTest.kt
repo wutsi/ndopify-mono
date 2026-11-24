@@ -199,18 +199,18 @@ class MandateEditTemplateTest {
 
     @Test
     fun `a stored rental land stays checked and readable`() {
-        val page = render(MANDATE.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = PropertyType.LAND))
+        val page = render(MANDATE.copy(propertyCategory = PropertyCategory.RESIDENTIAL, propertyType = PropertyType.LAND))
         val form = page.selectFirst("form[data-edit-form]")!!
         assertEquals("false", form.attr("data-sale"))
         val land = assertNotNull(page.selectFirst("input[name=propertyType][value=LAND]"))
         assertTrue(land.hasAttr("checked"))
-        assertEquals("RESIDENTIAL COMMERCIAL", land.parent()!!.attr("data-categories"))
+        assertEquals("RESIDENTIAL", land.parent()!!.attr("data-categories"))
         // A rental offers only the saved answer: mandate.js hides it once another type is picked.
         assertEquals("", land.parent()!!.attr("data-rental-categories"))
     }
 
     @Test
-    fun `a sale still offers land under both uses`() {
+    fun `a sale offers residential land`() {
         val page = render(
             MANDATE.copy(listingType = ListingType.SALE, propertyCategory = PropertyCategory.RESIDENTIAL),
         )
@@ -218,9 +218,9 @@ class MandateEditTemplateTest {
         assertEquals("true", form.attr("data-sale"))
         val land = assertNotNull(page.selectFirst("input[name=propertyType][value=LAND]"))
         assertFalse(land.hasAttr("checked"))
-        // A sale's land fits Résidentiel too: mandate.js keeps data-categories for a sale, data-rental-categories
-        // for a rental.
-        assertEquals("RESIDENTIAL COMMERCIAL", land.parent()!!.attr("data-categories"))
+        // A sale's land fits Résidentiel: mandate.js keeps data-categories for a sale, data-rental-categories for a
+        // rental.
+        assertEquals("RESIDENTIAL", land.parent()!!.attr("data-categories"))
     }
 
     @Test

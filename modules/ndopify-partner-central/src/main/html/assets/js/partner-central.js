@@ -4357,22 +4357,24 @@
 
     /* listing/*.html: one section of the checklist. Its form only holds the section's fields. */
 
-    // The questions of "Le bien" that apply to a property type (as offer-property.js: LAND is commercial).
+    // The questions of "Le bien" that apply to a property type (as offer-property.js: LAND is residential).
     var LISTING_APPLIES = {
         furniture: function (a) {
-            return a.propertyCategory === "RESIDENTIAL" && a.propertyType !== "BUILDING";
+            return a.propertyCategory === "RESIDENTIAL" && ["BUILDING", "LAND"].indexOf(a.propertyType) === -1;
         },
         rooms: function (a) {
-            return a.propertyCategory === "RESIDENTIAL" && ["ROOM", "STUDIO", "BUILDING"].indexOf(a.propertyType) === -1;
+            return a.propertyCategory === "RESIDENTIAL" &&
+                ["ROOM", "STUDIO", "BUILDING", "LAND"].indexOf(a.propertyType) === -1;
         },
         bathrooms: function (a) {
             return a.propertyType !== "LAND";
         },
         kitchens: function (a) {
-            return a.propertyCategory === "RESIDENTIAL" && ["ROOM", "BUILDING"].indexOf(a.propertyType) === -1;
+            return a.propertyCategory === "RESIDENTIAL" &&
+                ["ROOM", "BUILDING", "LAND"].indexOf(a.propertyType) === -1;
         },
         parkings: function (a) {
-            return a.propertyType !== "ROOM";
+            return ["ROOM", "LAND"].indexOf(a.propertyType) === -1;
         },
         levels: function (a) {
             return ["HOUSE", "DUPLEX", "BUILDING"].indexOf(a.propertyType) !== -1;

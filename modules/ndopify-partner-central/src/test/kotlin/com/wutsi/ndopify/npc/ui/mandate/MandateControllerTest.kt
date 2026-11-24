@@ -1426,11 +1426,11 @@ class MandateControllerTest {
 
     @Test
     fun `save - a stored rental land is kept`() {
-        doReturn(MANDATE.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = PropertyType.LAND))
+        doReturn(MANDATE.copy(propertyCategory = PropertyCategory.RESIDENTIAL, propertyType = PropertyType.LAND))
             .whenever(mandateClient).get(201)
 
         val result = mvc.perform(
-            edit("propertyCategory" to "COMMERCIAL", "propertyType" to "LAND", "rooms" to "", "furnitureType" to "", "parkings" to ""),
+            edit("propertyCategory" to "RESIDENTIAL", "propertyType" to "LAND", "rooms" to "", "furnitureType" to "", "parkings" to ""),
         ).andReturn()
 
         assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
@@ -1444,13 +1444,13 @@ class MandateControllerTest {
         doReturn(
             MANDATE.copy(
                 mandateType = MandateType.LISTING,
-                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
                 propertyType = PropertyType.LAND,
             ),
         ).whenever(mandateClient).get(201)
 
         val result = mvc.perform(
-            edit("propertyCategory" to "COMMERCIAL", "propertyType" to "LAND", "rooms" to "", "furnitureType" to "", "parkings" to ""),
+            edit("propertyCategory" to "RESIDENTIAL", "propertyType" to "LAND", "rooms" to "", "furnitureType" to "", "parkings" to ""),
         ).andReturn()
 
         assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
@@ -1488,7 +1488,7 @@ class MandateControllerTest {
     @Test
     fun `save - a rental land that isn't stored is refused`() {
         val result = mvc.perform(
-            edit("propertyCategory" to "COMMERCIAL", "propertyType" to "LAND", "rooms" to "", "furnitureType" to "", "parkings" to ""),
+            edit("propertyCategory" to "RESIDENTIAL", "propertyType" to "LAND", "rooms" to "", "furnitureType" to "", "parkings" to ""),
         ).andReturn()
 
         assertEquals("mandate/edit", result.modelAndView?.viewName)
