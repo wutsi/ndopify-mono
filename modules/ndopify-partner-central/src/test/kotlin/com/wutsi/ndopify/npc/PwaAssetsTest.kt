@@ -18,6 +18,9 @@ class PwaAssetsTest {
     private companion object {
         const val BLUE = 0x1d7edf
         const val WHITE = 0xffffff
+
+        /** A visible pixel whose darkest channel is at least this is a white fringe, not the mark. */
+        const val VISIBLE_WHITE = 0xE0
     }
 
     @Test
@@ -54,17 +57,10 @@ class PwaAssetsTest {
 
     @Test
     fun faviconsAreTransparentAroundTheDisc() {
-        listOf(
-            "public/assets/images/favicon.png",
-            "public/assets/images/favicon-16.png",
-            "public/assets/images/favicon-32.png",
-        ).forEach { path ->
-            val icon = image(path)
-            val last = icon.width - 1
-            listOf(0 to 0, last to 0, 0 to last, last to last).forEach { (x, y) ->
-                assertEquals(0, icon.getRGB(x, y) ushr 24, "$path is not transparent at ($x,$y)")
-            }
-            assertEquals(0xFF, icon.getRGB(last / 2, last / 2) ushr 24, "$path has no opaque centre")
+        faviconImages().forEach { (name, icon) ->
+            assertTransparentBorder(name, icon)
+            assertNoVisibleWhite(name, icon)
+            assertEquals(0xFF, icon.getRGB(icon.width / 2, icon.height / 2) ushr 24, "$name has no opaque centre")
         }
     }
 
@@ -92,28 +88,12 @@ class PwaAssetsTest {
         val bytes = resourceBytes("public/favicon.ico")
         assertEquals(listOf(0, 0, 1, 0), bytes.take(4).map { it.toInt() and 0xff }, "not an ICO header")
         assertEquals(3, bytes[4].toInt() and 0xff, "the ICO must carry 16, 32 and 48")
-        val entries = (0 until 3).map { i ->
-            val at = 6 + 16 * i
-            val size = (bytes[at].toInt() and 0xff) to (bytes[at + 1].toInt() and 0xff)
-            val bitCount = (bytes[at + 6].toInt() and 0xff) or ((bytes[at + 7].toInt() and 0xff) shl 8)
-            val length = littleEndian(bytes, at + 8)
-            val offset = littleEndian(bytes, at + 12)
-            size to Triple(bitCount, offset, length)
-        }
-        assertEquals(listOf(16 to 16, 32 to 32, 48 to 48), entries.map { it.first })
-        assertEquals(
-            listOf(32, 32, 32),
-            entries.map { it.second.first },
-            "a layer without alpha (32 bpp) loses the transparency",
-        )
-        entries.forEach { (size, layer) ->
-            val (_, offset, length) = layer
-            val icon = ImageIO.read(ByteArrayInputStream(bytes, offset, length))
-            val last = icon.width - 1
-            listOf(0 to 0, last to 0, 0 to last, last to last).forEach { (x, y) ->
-                assertEquals(0, icon.getRGB(x, y) ushr 24, "the ${size.first}px layer is not transparent at ($x,$y)")
-            }
-            assertEquals(0xFF, icon.getRGB(last / 2, last / 2) ushr 24, "the ${size.first}px layer has no opaque centre")
+        val layers = icoLayers()
+        assertEquals(listOf(16, 32, 48), layers.map { it.size })
+        assertEquals(listOf(32, 32, 32), layers.map { it.bitCount }, "a layer without alpha (32 bpp) loses the transparency")
+        layers.forEach { layer ->
+            assertEquals(layer.size, layer.image.width, "the ${layer.size}px layer decodes to ${layer.image.width}px")
+            assertEquals(layer.size, layer.image.height, "the ${layer.size}px layer decodes to ${layer.image.height}px")
         }
     }
 
@@ -204,6 +184,58 @@ class PwaAssetsTest {
         assertTrue(sw.contains("const VERSION = \"$version\""), sw.take(200))
         assertTrue(sw.contains("/offline.html"))
         assertTrue(sw.contains("/assets/images/logo.png"))
+    }
+
+    /** One PNG-compressed layer of `public/favicon.ico`. */
+    private data class IcoLayer(val size: Int, val bitCount: Int, val image: BufferedImage)
+
+    private fun icoLayers(): List<IcoLayer> {
+        val bytes = resourceBytes("public/favicon.ico")
+        val count = bytes[4].toInt() and 0xff
+        return (0 until count).map { i ->
+            val at = 6 + 16 * i
+            val size = bytes[at].toInt() and 0xff
+            val bitCount = (bytes[at + 6].toInt() and 0xff) or ((bytes[at + 7].toInt() and 0xff) shl 8)
+            val length = littleEndian(bytes, at + 8)
+            val offset = littleEndian(bytes, at + 12)
+            IcoLayer(size, bitCount, ImageIO.read(ByteArrayInputStream(bytes, offset, length)))
+        }
+    }
+
+    /** The four delivered files, the ICO's three layers included, each under the name a failure names. */
+    private fun faviconImages(): List<Pair<String, BufferedImage>> =
+        listOf(
+            "public/assets/images/favicon.png",
+            "public/assets/images/favicon-16.png",
+            "public/assets/images/favicon-32.png",
+        ).map { path -> path to image(path) } +
+            icoLayers().map { layer -> "the ${layer.size}px ICO layer" to layer.image }
+
+    /** Every pixel of the four border rows and columns must be fully transparent. */
+    private fun assertTransparentBorder(name: String, icon: BufferedImage) {
+        val lastX = icon.width - 1
+        val lastY = icon.height - 1
+        for (x in 0..lastX) {
+            assertEquals(0, icon.getRGB(x, 0) ushr 24, "$name is not transparent at ($x,0)")
+            assertEquals(0, icon.getRGB(x, lastY) ushr 24, "$name is not transparent at ($x,$lastY)")
+        }
+        for (y in 1 until lastY) {
+            assertEquals(0, icon.getRGB(0, y) ushr 24, "$name is not transparent at (0,$y)")
+            assertEquals(0, icon.getRGB(lastX, y) ushr 24, "$name is not transparent at ($lastX,$y)")
+        }
+    }
+
+    /** No pixel the browser shows may be near-white: that is the source's square or the disc's white fringe. */
+    private fun assertNoVisibleWhite(name: String, icon: BufferedImage) {
+        for (y in 0 until icon.height) {
+            for (x in 0 until icon.width) {
+                val argb = icon.getRGB(x, y)
+                if (argb ushr 24 == 0) continue // the source's white RGB under a transparent pixel is invisible
+                val rgb = argb and 0xFFFFFF
+                val darkest = minOf((rgb shr 16) and 0xFF, (rgb shr 8) and 0xFF, rgb and 0xFF)
+                assertTrue(darkest < VISIBLE_WHITE, "$name has a visible near-white pixel at ($x,$y): #%06x".format(rgb))
+            }
+        }
     }
 
     /** Reads a little-endian 32-bit integer at `at`. */
