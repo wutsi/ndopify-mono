@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.web.core.service
 
 import com.wutsi.ndopify.refdata.dto.Tenant
+import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
@@ -11,6 +12,16 @@ import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
+
+/** A unit a short amount counts in: [shift] decimal places left of one unit, its [suffix], the decimals it shows. */
+private data class CompactUnit(val shift: Int, val suffix: String, val decimals: Int)
+
+private val COMPACT_UNITS = listOf(
+    CompactUnit(3, "K", 1),
+    CompactUnit(6, "M", 2),
+    CompactUnit(9, "G", 2),
+)
+private val THOUSAND = BigDecimal(1_000)
 
 /**
  * Formats dates and amounts with the tenant's rules, as ndopify-server's `TenantFormatter` does in its e-mails: its
@@ -67,19 +78,31 @@ class TenantFormatter(private val tenant: Tenant) {
         }
 
     /**
-     * An amount in short, for a card ("80K FCFA", "152,5K FCFA", "1,25M FCFA"): thousands as K (one decimal at most),
-     * millions as M (two at most), in the tenant's locale, followed by its currency.
+     * An amount in short, for a card ("80K FCFA", "152,5K FCFA", "1,25M FCFA", "1,5G FCFA"): in the tenant's locale,
+     * followed by its currency. See [compactNumber] for the unit and its decimals.
      */
     fun compactMoney(amount: Long, currencyCode: String = tenant.currencyCode): String {
-        val (value, suffix, decimals) = when {
-            abs(amount) >= 1_000_000 -> Triple(amount / 1_000_000.0, "M", "##")
-            abs(amount) >= 1_000 -> Triple(amount / 1_000.0, "K", "#")
-            else -> Triple(amount.toDouble(), "", "")
-        }
-        val format = DecimalFormat("0" + if (decimals.isEmpty()) "" else ".$decimals", DecimalFormatSymbols.getInstance(locale))
-        format.roundingMode = RoundingMode.HALF_UP
         val currency = if (currencyCode == tenant.currencyCode) currency() else currencyCode
-        return listOf(format.format(value) + suffix, currency).filter { it.isNotEmpty() }.joinToString(" ")
+        return listOf(compactNumber(amount), currency).filter { it.isNotEmpty() }.joinToString(" ")
+    }
+
+    /**
+     * 150K, 1,25M, 1,5G: K with one decimal at most, M and G with two, half-up, trailing zeros dropped. The unit is the
+     * smallest whose rounded value reads under 1000 (999 950 → 1M, never 1000K; 999 995 000 → 1G); under 1 000 stays
+     * exact and 0 reads 0. Built on [BigDecimal] so a boundary is exact, never a double's approximation.
+     */
+    private fun compactNumber(amount: Long): String {
+        val size = abs(amount)
+        val symbols = DecimalFormatSymbols.getInstance(locale)
+        if (size < 1_000) return DecimalFormat("0", symbols).format(amount)
+        val magnitude = BigDecimal.valueOf(size)
+        val smallest = COMPACT_UNITS.firstOrNull {
+            magnitude.movePointLeft(it.shift).setScale(it.decimals, RoundingMode.HALF_UP) < THOUSAND
+        }
+        val unit = smallest ?: COMPACT_UNITS.last()
+        val value = magnitude.movePointLeft(unit.shift).setScale(unit.decimals, RoundingMode.HALF_UP)
+        val format = DecimalFormat("0." + "#".repeat(unit.decimals), symbols)
+        return format.format(if (amount < 0) value.negate() else value) + unit.suffix
     }
 
     /** A count in the tenant's `numberFormat`, without decimals ("1 200", for an area in m²). */

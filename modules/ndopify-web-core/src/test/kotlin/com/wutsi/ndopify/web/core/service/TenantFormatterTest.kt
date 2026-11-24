@@ -79,13 +79,25 @@ class TenantFormatterTest {
     @Test
     fun `amount in short`() {
         val formatter = TenantFormatter(TENANT)
+        assertEquals("0\u00a0FCFA", formatter.compactMoney(0))
+        assertEquals("500\u00a0FCFA", formatter.compactMoney(500))
+        assertEquals("999\u00a0FCFA", formatter.compactMoney(999))
+        assertEquals("1K\u00a0FCFA", formatter.compactMoney(1_000))
         assertEquals("80K\u00a0FCFA", formatter.compactMoney(80_000))
         assertEquals("150K\u00a0FCFA", formatter.compactMoney(150_000))
         assertEquals("152,5K\u00a0FCFA", formatter.compactMoney(152_500))
+        assertEquals("999,9K\u00a0FCFA", formatter.compactMoney(999_949))
+        assertEquals("1M\u00a0FCFA", formatter.compactMoney(999_950))
+        assertEquals("1,2M\u00a0FCFA", formatter.compactMoney(1_200_000))
         assertEquals("1,25M\u00a0FCFA", formatter.compactMoney(1_250_000))
         assertEquals("2M\u00a0FCFA", formatter.compactMoney(2_000_000))
-        assertEquals("500\u00a0FCFA", formatter.compactMoney(500))
-        assertEquals("1.5K\u00a0EUR", TenantFormatter(TENANT.copy(locales = listOf("en"))).compactMoney(1500, "EUR"))
+        assertEquals("999,99M\u00a0FCFA", formatter.compactMoney(999_994_999))
+        assertEquals("999,95M\u00a0FCFA", formatter.compactMoney(999_950_000))
+        assertEquals("1G\u00a0FCFA", formatter.compactMoney(999_995_000))
+        assertEquals("1,5G\u00a0FCFA", formatter.compactMoney(1_500_000_000))
+        assertEquals("10G\u00a0FCFA", formatter.compactMoney(10_000_000_000))
+        assertEquals("1.25M\u00a0EUR", TenantFormatter(TENANT.copy(locales = listOf("en"))).compactMoney(1_250_000, "EUR"))
+        assertEquals("1.5G\u00a0EUR", TenantFormatter(TENANT.copy(locales = listOf("en"))).compactMoney(1_500_000_000, "EUR"))
     }
 
     @Test
