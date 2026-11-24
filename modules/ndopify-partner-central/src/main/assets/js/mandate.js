@@ -9,9 +9,10 @@
  *   post twice; the outcome of the last action gets the focus;
  * - mandate page, *Biens correspondants*: "Écarter" / "Annuler" toggle the confirmation in place (?dismiss= without
  *   JS), "Envoyer au client" and "Confirmer" can't post twice;
- * - edit page: the types of the chosen category only, the follow-up questions of the type only, each folded group's
- *   summary kept up to date, the neighbourhoods a slim-select over the mandate's city (GET /locations, at most 3),
- *   amounts formatted as typed;
+ * - edit page: the types of the chosen category only, the follow-up questions the shared rule table says the type
+ *   asks (#304, window.NdUtil.propertyRules), each folded group's summary kept up to date, the neighbourhoods a
+ *   slim-select over the mandate's city (GET /locations, at most 3), amounts formatted as typed, and the implied
+ *   rate a sale's price makes (per m² for a plot, per unit for a building; display only);
  * - contract page: the visit fee formatted as typed, like the closing page's rent;
  * - closing page: the agreed rent formatted as typed, the same way.
  * Ported from the prototype (src/main/html/assets/js/partner-central.js: initMandate, initMandateEdit,
@@ -27,11 +28,8 @@
     var SUMMARY_LENGTH = 40;
     // FindPropertyRules.MAX_AMOUNT_DIGITS: the server's bound on an amount, applied as it is typed.
     var MAX_AMOUNT_DIGITS = 12;
-
-    // FindPropertyRules: the follow-up questions of each type. A plot of land has no bedrooms, whatever the project.
-    var WITHOUT_ROOMS = ["STUDIO", "ROOM", "LAND"];
-    var WITHOUT_FURNITURE = ["LAND", "BUILDING", "INDUSTRIAL"];
-    var WITHOUT_PARKINGS = ["LAND", "ROOM"];
+    // A surface is at most 1 000 000 m² (7 digits), as in the two wizards.
+    var MAX_AREA_DIGITS = 7;
 
     /* ---------- Helpers ---------- */
     function $(selector, root) {
@@ -84,20 +82,20 @@
         return String(value || "").replace(/\D/g, "").replace(/^0+(?=\d)/, "");
     }
 
-    // "240000" → "240 000": the digits grouped by thousands, capped like the server's amount.
-    function formatAmount(value) {
-        var digits = digitsOf(value).slice(0, MAX_AMOUNT_DIGITS);
+    // "240000" → "240 000": the digits grouped by thousands, capped like the server's amount (or [maxDigits]).
+    function formatAmount(value, maxDigits) {
+        var digits = digitsOf(value).slice(0, maxDigits || MAX_AMOUNT_DIGITS);
         return digits ? formatNumber(Number(digits)) : "";
     }
 
     // Regroups an amount's digits by thousands while typing, keeping the caret after the same digit.
-    function bindAmount(input) {
+    function bindAmount(input, maxDigits) {
         if (!input) return;
         // A value the server sent back as invalid ("abc", "5.5") stays as typed: its error is about that value.
-        if (/^[\d\s\u00a0\u202f]*$/.test(input.value)) input.value = formatAmount(input.value);
+        if (/^[\d\s\u00a0\u202f]*$/.test(input.value)) input.value = formatAmount(input.value, maxDigits);
         input.addEventListener("input", function () {
             var caretDigits = digitsOf(input.value.slice(0, input.selectionStart)).length;
-            var formatted = formatAmount(input.value);
+            var formatted = formatAmount(input.value, maxDigits);
             var pos = 0;
             for (var seen = 0; pos < formatted.length && seen < caretDigits; pos++) {
                 if (/\d/.test(formatted.charAt(pos))) seen++;
@@ -288,43 +286,99 @@
             return $('[data-group="' + name + '"]', form);
         }
 
-        // #275: a sale offers a plot of land under Résidentiel (data-categories); a rental offers none, except the one
-        // a stored mandate already answered (data-rental-categories), kept in its saved category while it is still
-        // checked, and no longer offered once another type is picked.
+        // The property-type rule table shared by the three pages (#304): the Kotlin rule sets are the source of truth
+        // (MandateEditRules, FindPropertyRules), this table mirrors them.
+        var RULES = window.NdUtil.propertyRules;
         var sale = form.getAttribute("data-sale") === "true";
-        var savedLand = !sale && checked("propertyType") === "LAND";
+        var listingType = sale ? "SALE" : "RENTAL";
+        var savedType = checked("propertyType");
         var savedCategory = checked("propertyCategory");
+        // A stored rental type the rules no longer offer (a plot of land, #275, or a building, #304) stays visible and
+        // checked in its saved usage while it is the saved answer; it is no longer offered once another type is picked.
+        var savedLegacy = !sale && !!savedType && RULES.offers(savedType, "RENTAL").length === 0;
+        var rateLine = $("[data-rate]", form);
 
-        // The types of the category; rooms for a home, furniture and parking as FindPropertyRules asks them.
+        function typeFits(type, category) {
+            return type === "ANY" || RULES.categories(type, listingType).indexOf(category) !== -1;
+        }
+
+        // A stored rental building is no longer offered; while it stays the saved answer it keeps the questions it had
+        // as a rental — its surface, its furniture, no count (a sale's) nor parking.
+        function savedRentalBuilding() {
+            return !sale && savedType === "BUILDING" && checked("propertyType") === "BUILDING" &&
+                checked("propertyCategory") === savedCategory;
+        }
+
+        /*
+         * Whether a question applies to the type being chosen. "Indifférent" (a client's search) keeps the questions
+         * of its usage: rooms, furniture and parking for a residential one, the surface for a commercial one — or for
+         * any purchase, which may match a plot of land.
+         */
+        function asks(name) {
+            var type = checked("propertyType");
+            var category = checked("propertyCategory");
+            if (name === "documents") return RULES.asksDocuments(listingType);
+            if (name === "furnitureType" && savedRentalBuilding()) return true;
+            if (!type || type === "ANY") {
+                if (name === "area") return category === "COMMERCIAL" || sale;
+                if (name === "counts") return false;
+                return category === "RESIDENTIAL" &&
+                    (name === "rooms" || name === "furnitureType" || name === "parkings");
+            }
+            return RULES.asks(type, listingType, name);
+        }
+
+        // Shows only the questions of the chosen type; a hidden one keeps its answer (the template posts it, the
+        // server's rules decide) and never shows an error.
         function syncProperty() {
             var category = checked("propertyCategory");
-            var attribute = sale ? "data-sale-categories" : "data-rental-categories";
             $all('[name="propertyType"]', form).forEach(function (input) {
                 var label = input.closest("label");
-                var categories = label.hasAttribute(attribute)
-                    ? label.getAttribute(attribute) : label.getAttribute("data-categories");
-                var keep = savedLand && input.value === "LAND" && input.checked && category === savedCategory;
-                var fits = categories.split(" ").indexOf(category) !== -1 || keep;
+                var keep = savedLegacy && input.value === savedType && input.checked && category === savedCategory;
+                var fits = typeFits(input.value, category) || keep;
                 label.hidden = !fits;
                 if (!fits) input.checked = false;
             });
-            var type = checked("propertyType");
-            if (type === "ANY") type = null;
-            var building = sale && type === "BUILDING";
-            // A building sold as a whole is asked its étages and its unités, and no room nor parking; its
-            // amenities group (and its fields, without JS) is not on the page.
-            hide(group("rooms"), category !== "RESIDENTIAL" || WITHOUT_ROOMS.indexOf(type) !== -1 || building);
-            // A sale's edit page has no furniture question at all (th:unless="${sale}").
-            var furniture = group("furnitureType");
-            if (furniture) furniture.hidden = WITHOUT_FURNITURE.indexOf(type) !== -1;
-            hide(group("parkings"), WITHOUT_PARKINGS.indexOf(type) !== -1 || building);
+            // A building sold as a whole is asked its étages and its unités, and no room nor parking; its amenities
+            // group (and its fields, without JS) is not on the page.
+            var building = asks("counts");
+            hide(group("rooms"), !asks("rooms"));
+            hide(group("furnitureType"), !asks("furnitureType"));
+            hide(group("parkings"), !asks("parkings"));
+            hide(group("area"), !asks("area"));
+            hide(group("documents"), !asks("documents"));
             hide(group("levels"), !building);
             hide(group("units"), !building);
             hide($("[data-edit-group=amenities]", form), building);
+            syncRate();
         }
 
         function hide(el, hidden) {
             if (el) el.hidden = hidden;
+        }
+
+        // A sale's implied rate under the price (#304): price ÷ surface for a plot (per m²), price ÷ unités for a
+        // building (per unit), rounded to the nearest 100. Display only, never posted; hidden for anything else.
+        function syncRate() {
+            if (!rateLine) return;
+            var type = checked("propertyType");
+            var price = parseAmount(form.elements.priceAmount.value);
+            var land = sale && type === "LAND";
+            var building = sale && type === "BUILDING";
+            var divisor = land ? parseAmount(form.elements.area.value)
+                : building ? parseCount(form.elements.units.value) : null;
+            var rate = (land || building) && price > 0 && divisor > 0 ? Math.round((price / divisor) / 100) * 100 : 0;
+            if (rate <= 0) {
+                rateLine.hidden = true;
+                rateLine.textContent = "";
+                return;
+            }
+            rateLine.textContent = land
+                ? "Soit ≈ " + window.NdUtil.compactNumber(rate, decimalSeparator()) + "\u00a0" + currency() +
+                    "/m² pour " + formatNumber(divisor) + " m²"
+                : "Soit ≈ " + window.NdUtil.compactNumber(rate, decimalSeparator()) + "\u00a0" + currency() +
+                    "/unité pour " + divisor + (divisor > 1 ? " unités" : " unité");
+            rateLine.hidden = false;
         }
 
         var neighborhoods = initNeighborhoods(form, syncSummaries);
@@ -343,7 +397,8 @@
                 if (levels > 0) parts.push(levels + (levels > 1 ? " étages" : " étage"));
                 var units = group("units") && !group("units").hidden && parseCount(form.elements.units.value);
                 if (units > 0) parts.push(units + (units > 1 ? " unités" : " unité"));
-                var area = parseAmount(form.elements.area.value);
+                // #304: a residential type has no surface, so a hidden one isn't summarised either.
+                var area = group("area") && !group("area").hidden && parseAmount(form.elements.area.value);
                 if (area > 0) parts.push(area + " m²");
                 return parts.filter(Boolean).join(" · ");
             },
@@ -378,15 +433,22 @@
             var amount = parseAmount(price.value);
             if (amount > 0) price.value = formatNumber(amount);
         });
+        // The surface is grouped like the price (#304), capped at a usable surface.
+        bindAmount(form.elements.area, MAX_AREA_DIGITS);
 
         form.addEventListener("change", function (event) {
             var name = event.target.name;
             if (name === "propertyCategory" || name === "propertyType") syncProperty();
             var error = $("#" + name + "-error", form);
             if (error) setFieldError(event.target.closest("fieldset") || event.target, error, null);
+            syncRate();
             syncSummaries();
         });
-        form.addEventListener("input", syncSummaries);
+        form.addEventListener("input", function (event) {
+            var name = event.target.name;
+            if (name === "priceAmount" || name === "area" || name === "units" || name === "levels") syncRate();
+            syncSummaries();
+        });
         guardSubmit(form, "Enregistrement…");
 
         syncProperty();
