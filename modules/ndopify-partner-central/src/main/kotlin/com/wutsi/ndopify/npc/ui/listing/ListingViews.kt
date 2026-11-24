@@ -253,15 +253,13 @@ object ListingViews {
      * follow [ListingRules.typeCategories]; a rental is offered no plot of land.
      */
     fun types(sale: Boolean): List<TypeChoice> =
-        ListingRules.TYPES.values.flatten()
-            .filter { sale || it != PropertyType.LAND }
-            .map { type ->
-                TypeChoice(
-                    value = type.name,
-                    categories = ListingRules.typeCategories(type, sale).joinToString(" "),
-                    label = TYPE_LABELS.getValue(type),
-                )
-            }
+        ListingRules.allTypes(sale).map { type ->
+            TypeChoice(
+                value = type.name,
+                categories = ListingRules.typeCategories(type, sale).joinToString(" "),
+                label = TYPE_LABELS.getValue(type),
+            )
+        }
 
     /** The photos page's list (the prototype's `initListingPhotos`): what's left to do only while it's a draft. */
     fun photos(images: List<ListingImage>, editable: Boolean): PhotosView {

@@ -125,11 +125,12 @@
                                                                      th:checked="${#strings.equals(answers.propertyType, 'INDUSTRIAL')}"> <th:block th:text="${propertyTypeLabels['INDUSTRIAL']}">Entrepôt, local industriel</th:block></label>
                                         <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="BUILDING"
                                                                      th:checked="${#strings.equals(answers.propertyType, 'BUILDING')}"> <th:block th:text="${propertyTypeLabels['BUILDING']}">Immeuble</th:block></label>
-                                        <!-- #275: a plot of land is sold, never let, and is residential. A sale offers it
-                                             under Résidentiel (data-categories); a rental keeps only the answer a stored
-                                             mandate already gave (data-rental-categories), which mandate.js shows while
-                                             it is that saved answer and hides once another type is picked. -->
-                                        <label class="choice" data-categories="RESIDENTIAL" data-rental-categories=""
+                                        <!-- #275, #293: a plot of land is sold, never let. A rental offers no Terrain
+                                             except the saved answer a stored mandate already gave
+                                             (data-rental-categories empty, which mandate.js shows while it is that
+                                             answer); a sale offers it under Résidentiel and Commercial alike
+                                             (data-categories), and the picked usage is saved. -->
+                                        <label class="choice" data-categories="RESIDENTIAL COMMERCIAL" data-rental-categories=""
                                                th:if="${sale or answers.propertyType == 'LAND'}"><input name="propertyType" type="radio" value="LAND"
                                                                      th:checked="${#strings.equals(answers.propertyType, 'LAND')}"> <th:block th:text="${propertyTypeLabels['LAND']}">Terrain</th:block></label>
                                         <label class="choice" data-categories="RESIDENTIAL COMMERCIAL" th:unless="${owner}"><input name="propertyType" type="radio" value="ANY"

@@ -68,7 +68,7 @@ class FindPropertyRulesTest {
     }
 
     @Test
-    fun `a sale offers residential land and no room`() {
+    fun `a sale offers land under both usages and no room`() {
         assertEquals(
             listOf(
                 PropertyType.STUDIO,
@@ -86,6 +86,7 @@ class FindPropertyRulesTest {
                 PropertyType.OFFICE,
                 PropertyType.INDUSTRIAL,
                 PropertyType.BUILDING,
+                PropertyType.LAND,
             ),
             FindPropertyRules.propertyTypes(PropertyCategory.COMMERCIAL, ListingType.SALE),
         )
@@ -106,9 +107,28 @@ class FindPropertyRulesTest {
         )
         assertFalse(FindPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "ROOM", ListingType.SALE))
         assertTrue(FindPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "LAND", ListingType.SALE))
-        assertFalse(FindPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "LAND", ListingType.SALE))
+        assertTrue(FindPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "LAND", ListingType.SALE))
         assertFalse(FindPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "LAND", ListingType.RENTAL))
         assertFalse(FindPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "LAND", ListingType.RENTAL))
+    }
+
+    @Test
+    fun `a commercial purchase accepts a plot of land`() {
+        assertNull(FindPropertyRules.propertyType(PropertyCategory.COMMERCIAL, "LAND", ListingType.SALE))
+        assertEquals(
+            listOf(
+                PropertyType.RETAIL,
+                PropertyType.OFFICE,
+                PropertyType.INDUSTRIAL,
+                PropertyType.BUILDING,
+                PropertyType.LAND,
+            ),
+            FindPropertyRules.propertyTypes(PropertyCategory.COMMERCIAL, ListingType.SALE),
+        )
+        assertFalse(FindPropertyRules.needsRooms(PropertyCategory.COMMERCIAL, PropertyType.LAND, ListingType.SALE))
+        assertFalse(FindPropertyRules.asksParkings(PropertyType.LAND, ListingType.SALE))
+        assertTrue(FindPropertyRules.needsArea(PropertyCategory.COMMERCIAL, PropertyType.LAND, ListingType.SALE))
+        assertFalse(FindPropertyRules.needsFurniture(PropertyType.LAND, ListingType.SALE))
     }
 
     @Test

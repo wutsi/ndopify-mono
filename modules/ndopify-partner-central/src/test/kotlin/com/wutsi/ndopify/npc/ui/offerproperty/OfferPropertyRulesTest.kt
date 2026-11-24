@@ -145,7 +145,7 @@ class OfferPropertyRulesTest {
     }
 
     @Test
-    fun `a sale offers residential land and no room`() {
+    fun `a sale offers land under both usages and no room`() {
         assertEquals(
             listOf(
                 PropertyType.APARTMENT, PropertyType.HOUSE, PropertyType.STUDIO, PropertyType.DUPLEX,
@@ -156,6 +156,7 @@ class OfferPropertyRulesTest {
         assertEquals(
             listOf(
                 PropertyType.BUILDING, PropertyType.OFFICE, PropertyType.RETAIL, PropertyType.INDUSTRIAL,
+                PropertyType.LAND,
             ),
             OfferPropertyRules.propertyTypes(PropertyCategory.COMMERCIAL, ListingType.SALE),
         )
@@ -170,9 +171,13 @@ class OfferPropertyRulesTest {
         )
         assertFalse(OfferPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "ROOM", ListingType.SALE))
         assertTrue(OfferPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "LAND", ListingType.SALE))
-        assertFalse(OfferPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "LAND", ListingType.SALE))
+        assertTrue(OfferPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "LAND", ListingType.SALE))
         assertFalse(OfferPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "LAND", ListingType.RENTAL))
         assertFalse(OfferPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "LAND", ListingType.RENTAL))
+        assertEquals(
+            "Choisissez le type de bien.",
+            OfferPropertyRules.propertyType(PropertyCategory.COMMERCIAL, "LAND", ListingType.RENTAL),
+        )
     }
 
     @Test

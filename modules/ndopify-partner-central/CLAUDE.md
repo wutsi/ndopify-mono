@@ -145,7 +145,7 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   *Louer / Acheter*; `?type=SALE|RENTAL` preselects it. `GET /find-property` without a `step` is the entry point
   and starts a new run: it drops the session's `PendingMandate` and `SubmittedMandate`, so a previous run's answers
   are never shown (every in-run URL, *Précédent* included, carries its `step`).
-  A purchase drops the *Chambre* type, offers *Terrain* under the residential use only with a required surface, asks
+  A purchase drops the *Chambre* type, offers *Terrain* under both usages (residential and commercial) with a required surface, asks
   no furniture, reads *Budget total* (floor 1 000 000 FCFA, `PeriodicityType.NONE`), the buying horizon and a required financing
   answer, asks the title documents (*Titre foncier*, *Plan de bornage*, *Certificat de propriété*) for a *Terrain*
   only, and shows the implied price per m² as the budget is typed — display only, never sent nor stored. The session
@@ -168,7 +168,7 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   shows the confirmation while a `SubmittedMandate` is in the session. `GET /offer-property` without a `step` is the
   entry point and starts a new run, dropping the session's `PendingListing` and `SubmittedMandate` like *Trouver un
   bien*. A sale has a one-off price (`PeriodicityType.NONE`, at least 1 000 000 FCFA), no advance nor deposit, no
-  furnishing, *Terrain* offered under the residential use only and no *Chambre*; a sold *Terrain* requires its
+  furnishing, *Terrain* offered under both usages and no *Chambre*; a sold *Terrain* requires its
   surface, offers the optional *Document de propriété* (*Titre foncier*, *Plan de bornage*, *Certificat de propriété*, several or none,
   sent only for a SALE · LAND) and shows its implied price per m² as the surface is typed — display only, never sent
   nor stored. `availableFrom` must be between today and 365 days later, in the tenant's time zone (`Clock`, so a

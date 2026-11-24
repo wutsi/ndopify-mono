@@ -417,18 +417,20 @@ class OfferPropertyTemplateTest {
     }
 
     @Test
-    fun `a sale commercial step offers no land`() {
+    fun `a sale commercial step offers land under both usages`() {
         session.setAttribute(
             PendingListing.SESSION_ATTRIBUTE,
-            sale.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = null),
+            sale.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = "LAND"),
         )
 
         val page = render(get("/offer-property?step=features"))
 
         assertEquals(
-            listOf("BUILDING", "OFFICE", "RETAIL", "INDUSTRIAL"),
+            listOf("BUILDING", "OFFICE", "RETAIL", "INDUSTRIAL", "LAND"),
             page.select("input[name=propertyType]").map { it.attr("value") },
         )
+        assertTrue(page.selectFirst("input[name=propertyType][value=LAND]")!!.hasAttr("checked"))
+        assertEquals("Terrain", page.selectFirst("input[name=propertyType][value=LAND]")!!.parent()!!.text())
     }
 
     @Test
@@ -542,7 +544,7 @@ class OfferPropertyTemplateTest {
         val commercial = render(get("/offer-property?step=features"))
 
         assertEquals(
-            listOf("BUILDING", "OFFICE", "RETAIL", "INDUSTRIAL"),
+            listOf("BUILDING", "OFFICE", "RETAIL", "INDUSTRIAL", "LAND"),
             commercial.select("input[name=propertyType]").map { it.attr("value") },
         )
         assertEquals(

@@ -385,6 +385,34 @@ class MandateEditRulesTest {
     }
 
     @Test
+    fun `errors - a sale land saves under its commercial usage`() {
+        // #293: the usage the agent picks is the one stored, both being valid for a sold plot of land
+        val sale = MANDATE.copy(
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = PropertyType.LAND,
+            rooms = null,
+            furnitureType = null,
+            parkings = null,
+            price = Money(15_000_000, "XAF", PeriodicityType.NONE),
+        )
+        val form = FORM.copy(
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = "LAND",
+            rooms = null,
+            furnitureType = null,
+            parkings = null,
+            area = "300",
+            priceAmount = "15 000 000",
+        )
+
+        assertEquals(emptyMap(), MandateEditRules.errors(form, sale, FORMATTER))
+        val request = MandateEditRules.request(form, sale)
+        assertEquals(PropertyCategory.COMMERCIAL, request.propertyCategory)
+        assertEquals(PropertyType.LAND, request.propertyType)
+    }
+
+    @Test
     fun `errors - a stored rental land on a landlord's listing is accepted`() {
         val storedLand = MANDATE.copy(
             mandateType = MandateType.LISTING,

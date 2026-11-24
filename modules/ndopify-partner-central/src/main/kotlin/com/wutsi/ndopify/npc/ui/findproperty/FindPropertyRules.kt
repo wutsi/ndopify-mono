@@ -17,9 +17,9 @@ import com.wutsi.ndopify.web.core.service.TenantFormatter
  * any of this yet, so these rules are the only validation a mandate gets.
  *
  * The wizard serves two projects: a rental ([ListingType.RENTAL]) and a purchase ([ListingType.SALE]). Land is
- * bought, never rented: only a purchase offers it, under the residential use only and no room, asks no furniture,
- * requires the surface of a plot of land and its optional documents, has its own budget floor and asks how the buyer
- * will pay.
+ * bought, never rented: only a purchase offers it, under both usages (residential and commercial) (#293) and no room,
+ * asks no furniture, requires the surface of a plot of land and its optional documents, has its own budget floor and
+ * asks how the buyer will pay.
  */
 object FindPropertyRules {
     const val MAX_NEIGHBORHOODS = 3
@@ -64,11 +64,11 @@ object FindPropertyRules {
         PropertyType.BUILDING to setOf(PropertyCategory.COMMERCIAL),
     )
 
-    // A purchase drops the room type and offers land under the residential use only (a plot to build on is
-    // residential); a rental never offers land.
+    // A purchase drops the room type and offers a plot of land under both usages, residential and commercial (#293);
+    // a rental never offers land.
     private val SALE_CATEGORIES_BY_TYPE: Map<PropertyType, Set<PropertyCategory>> =
         RENTAL_CATEGORIES_BY_TYPE - PropertyType.ROOM +
-            (PropertyType.LAND to setOf(PropertyCategory.RESIDENTIAL))
+            (PropertyType.LAND to setOf(PropertyCategory.RESIDENTIAL, PropertyCategory.COMMERCIAL))
 
     private val RENTAL_WITHOUT_ROOMS = setOf(PropertyType.STUDIO, PropertyType.ROOM)
     private val SALE_WITH_ROOMS =

@@ -204,13 +204,14 @@ class MandateEditTemplateTest {
         assertEquals("false", form.attr("data-sale"))
         val land = assertNotNull(page.selectFirst("input[name=propertyType][value=LAND]"))
         assertTrue(land.hasAttr("checked"))
-        assertEquals("RESIDENTIAL", land.parent()!!.attr("data-categories"))
-        // A rental offers only the saved answer: mandate.js hides it once another type is picked.
+        // #293: both usages on the one radio; a rental keeps data-rental-categories empty, so mandate.js offers it only
+        // while it is the saved answer.
+        assertEquals("RESIDENTIAL COMMERCIAL", land.parent()!!.attr("data-categories"))
         assertEquals("", land.parent()!!.attr("data-rental-categories"))
     }
 
     @Test
-    fun `a sale offers residential land`() {
+    fun `a sale offers land under both usages`() {
         val page = render(
             MANDATE.copy(listingType = ListingType.SALE, propertyCategory = PropertyCategory.RESIDENTIAL),
         )
@@ -218,9 +219,9 @@ class MandateEditTemplateTest {
         assertEquals("true", form.attr("data-sale"))
         val land = assertNotNull(page.selectFirst("input[name=propertyType][value=LAND]"))
         assertFalse(land.hasAttr("checked"))
-        // A sale's land fits Résidentiel: mandate.js keeps data-categories for a sale, data-rental-categories for a
-        // rental.
-        assertEquals("RESIDENTIAL", land.parent()!!.attr("data-categories"))
+        assertEquals("RESIDENTIAL COMMERCIAL", land.parent()!!.attr("data-categories"))
+        // One radio, never one per usage
+        assertEquals(1, page.select("input[name=propertyType][value=LAND]").size)
     }
 
     @Test

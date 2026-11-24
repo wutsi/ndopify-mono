@@ -47,7 +47,7 @@ object ListingRules {
 
     /**
      * The types of each category (the prototype's `data-categories`: LAND and BUILDING are residential); a sale
-     * building is also commercial, see [typeCategories].
+     * building and a sale plot of land are also commercial, see [typeCategories].
      */
     val TYPES: Map<PropertyCategory, List<PropertyType>> = linkedMapOf(
         PropertyCategory.RESIDENTIAL to listOf(
@@ -283,28 +283,33 @@ object ListingRules {
         }
     }
 
+    /** The types a sale offers under COMMERCIAL without listing them there in [TYPES]: a whole building, a plot of land. */
+    private val SALE_COMMERCIAL_TYPES = setOf(PropertyType.BUILDING, PropertyType.LAND)
+
     /**
-     * The categories a type is offered under: its [TYPES] entries, plus COMMERCIAL for a BUILDING when [sale] — a sale
-     * building is offered under both (its listing stores COMMERCIAL; a legacy row RESIDENTIAL), a rental only
-     * RESIDENTIAL.
+     * The categories a type is offered under: its [TYPES] entries, plus COMMERCIAL for a sale [SALE_COMMERCIAL_TYPES]
+     * type — a sale building and a sale plot of land are offered under both (a rental plot of land under none, see
+     * [types]).
      */
     fun typeCategories(type: PropertyType, sale: Boolean): List<PropertyCategory> {
         val categories = TYPES.filterValues { type in it }.keys.toMutableList()
-        if (sale && type == PropertyType.BUILDING && PropertyCategory.COMMERCIAL !in categories) {
+        if (sale && type in SALE_COMMERCIAL_TYPES && PropertyCategory.COMMERCIAL !in categories) {
             categories += PropertyCategory.COMMERCIAL
         }
         return categories
     }
 
-    /** The types of [category] a project may choose, in the prototype's order: a plot of land is sold, never let (#275). */
+    /**
+     * Every type once, in *Le bien*'s order (the prototype's `listing/bien.html`): a sale adds its conditional types
+     * where [TYPES] already puts them (a building before the offices) and lists a plot of land last; a rental lists no
+     * plot of land.
+     */
+    fun allTypes(sale: Boolean): List<PropertyType> =
+        TYPES.values.flatten().let { if (sale) it - PropertyType.LAND + PropertyType.LAND else it - PropertyType.LAND }
+
+    /** The types of [category] a project may choose, in [allTypes]' order: a plot of land is sold, never let (#275). */
     fun types(category: PropertyCategory?, sale: Boolean): List<PropertyType> =
-        if (category == null) {
-            emptyList()
-        } else {
-            TYPES.values.flatten().filter { type ->
-                category in typeCategories(type, sale) && (sale || type != PropertyType.LAND)
-            }
-        }
+        if (category == null) emptyList() else allTypes(sale).filter { category in typeCategories(it, sale) }
 
     private fun sale(listingType: ListingType?): Boolean = listingType == ListingType.SALE
 

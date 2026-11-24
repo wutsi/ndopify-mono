@@ -100,6 +100,19 @@ class ListingFormRulesTest {
     }
 
     @Test
+    fun `property - a sale land saves under either usage`() {
+        listOf("RESIDENTIAL", "COMMERCIAL").forEach { category ->
+            val form = ListingSectionForm(version = 4, propertyCategory = category, propertyType = "LAND", area = "800")
+
+            assertEquals(emptyMap(), errors(ListingSection.PROPERTY, form, SALE), category)
+            assertEquals(
+                PropertyCategory.valueOf(category),
+                ListingRules.request(ListingSection.PROPERTY, form, SALE).propertyCategory,
+            )
+        }
+    }
+
+    @Test
     fun `property - a sale land asks no follow-up`() {
         // #275: land is residential, so without its own exclusions the sale would ask rooms, kitchens and parking
         val land = ListingSectionForm(
@@ -207,7 +220,7 @@ class ListingFormRulesTest {
     fun `type fits the category and the project`() {
         assertTrue(ListingRules.typeFits(PropertyCategory.RESIDENTIAL, PropertyType.BUILDING, sale = true))
         assertTrue(ListingRules.typeFits(PropertyCategory.RESIDENTIAL, PropertyType.LAND, sale = true))
-        assertFalse(ListingRules.typeFits(PropertyCategory.COMMERCIAL, PropertyType.LAND, sale = true))
+        assertTrue(ListingRules.typeFits(PropertyCategory.COMMERCIAL, PropertyType.LAND, sale = true))
         assertFalse(ListingRules.typeFits(PropertyCategory.RESIDENTIAL, PropertyType.LAND, sale = false))
         assertFalse(ListingRules.typeFits(null, PropertyType.APARTMENT, sale = true))
     }

@@ -180,6 +180,32 @@ class MatcherTest {
     }
 
     @Test
+    fun `land matches a land of the other category`() {
+        // #293: a sold plot of land is stored under the usage the owner picked, either one
+        val result = score(
+            landSearch,
+            landListing.copy(
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                mandate = landListing.mandate.copy(ownershipDocuments = listOf(TitleDocumentType.SURVEY_PLAN)),
+            ),
+        )
+
+        assertNotNull(result)
+        assertEquals(1.0, result.type, DELTA)
+    }
+
+    @Test
+    fun `land still scores zero against another type`() {
+        // The veto is skipped, not the type rule: a plot of land only matches a plot of land
+        val commercialLand = landListing.copy(
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            mandate = landListing.mandate.copy(ownershipDocuments = listOf(TitleDocumentType.SURVEY_PLAN)),
+        )
+
+        assertNull(score(landSearch.copy(propertyType = PropertyType.OFFICE, titleDocuments = emptyList()), commercialLand))
+    }
+
+    @Test
     fun `office matches a building stored residential`() {
         val result = score(
             commercialSearch,

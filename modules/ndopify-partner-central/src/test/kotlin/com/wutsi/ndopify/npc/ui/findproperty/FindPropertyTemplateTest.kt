@@ -259,6 +259,26 @@ class FindPropertyTemplateTest {
     }
 
     @Test
+    fun `a commercial purchase property step offers land under both usages`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = null,
+                rooms = null,
+            ),
+        )
+
+        val page = render(get("/find-property?step=property"))
+
+        assertEquals(
+            listOf("RETAIL", "OFFICE", "INDUSTRIAL", "BUILDING", "LAND", "ANY"),
+            page.select("input[name=propertyType]").map { it.attr("value") },
+        )
+    }
+
+    @Test
     fun `a land purchase asks its documents and a required surface`() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,

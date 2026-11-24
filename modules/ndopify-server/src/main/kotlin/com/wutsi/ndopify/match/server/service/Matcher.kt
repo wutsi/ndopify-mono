@@ -21,7 +21,8 @@ import kotlin.math.abs
  * 1. an incompatible `propertyType` (`typeScore` is 0.0): `LAND` against non-land, residential against commercial,
  *    `ROOM` against a housing type other than `STUDIO`, an unknown listed type;
  * 2. the listing is the search customer's own property;
- * 3. other `listingType`, `cityId`, or `propertyCategory` (a `BUILDING` pair is decided by its type instead);
+ * 3. other `listingType`, `cityId`, or `propertyCategory` (a `BUILDING` or `LAND` pair is decided by its type
+ *    instead);
  * 4. a land purchase requiring a document the seller didn't declare (any one of the required documents is enough);
  * 5. with a budget: other `currencyCode` or `pricePeriodicityType`;
  * 6. with a budget: a price over the budget + `priceTolerance`;
@@ -71,6 +72,10 @@ class Matcher(
 
         // Asked without a rooms count by the wizards: a single room
         private val SINGLE_ROOM = setOf(PropertyType.ROOM, PropertyType.STUDIO)
+
+        // The types a pair's category doesn't decide: a whole building, and a sold plot of land, are offered under
+        // both usages (#293)
+        private val CATEGORY_DECIDED_BY_TYPE = setOf(PropertyType.BUILDING, PropertyType.LAND)
     }
 
     /**
@@ -199,14 +204,17 @@ class Matcher(
         else -> null
     }
 
-    // The type is the specific fact; the category is derived, and the two wizards map BUILDING differently. With no
-    // preferred type the category still decides, as before.
+    // The type is the specific fact; the category is derived, and the two wizards map BUILDING, and a sold plot of land,
+    // under both usages (#293). With no preferred type the category still decides, as before.
     private fun categoryMismatch(search: MandateEntity, listing: ListingEntity): Boolean =
         listing.propertyCategory != search.propertyCategory &&
             (
                 search.propertyType == null ||
                     search.propertyType == PropertyType.UNKNOWN ||
-                    (search.propertyType != PropertyType.BUILDING && listing.propertyType != PropertyType.BUILDING)
+                    (
+                        search.propertyType !in CATEGORY_DECIDED_BY_TYPE &&
+                            listing.propertyType !in CATEGORY_DECIDED_BY_TYPE
+                        )
                 )
 
     // Any one of the required documents is enough; only a land sale, where both answers exist, filters at all.

@@ -230,13 +230,23 @@ class ListingSectionTemplateTest {
     }
 
     @Test
-    fun `property - a sale offers residential land`() {
+    fun `property - a sale offers land under both usages, last in the list`() {
         val form = form(render("property", SALE))
 
         assertEquals(11, form.select("input[name=propertyType]").size)
         assertEquals(
-            "RESIDENTIAL",
+            "RESIDENTIAL COMMERCIAL",
             form.selectFirst("input[name=propertyType][value=LAND]")?.parent()?.attr("data-categories"),
+        )
+        assertEquals(
+            "LAND",
+            form.select("input[name=propertyType]").last()?.attr("value"),
+        )
+        assertEquals(
+            listOf("BUILDING", "OFFICE", "RETAIL", "INDUSTRIAL", "LAND"),
+            form.select("input[name=propertyType]")
+                .filter { (it.parent()?.attr("data-categories") ?: "").contains("COMMERCIAL") }
+                .map { it.attr("value") },
         )
     }
 
