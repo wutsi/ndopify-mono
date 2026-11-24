@@ -69,6 +69,7 @@ class FindPropertyTemplateTest {
         parkings = null,
         levels = 3,
         units = 12,
+        area = 850,
         priceAmount = 250_000_000,
         financingType = FinancingType.CASH,
     )
@@ -219,9 +220,9 @@ class FindPropertyTemplateTest {
         val page = render(get("/find-property?step=property"))
 
         val types = page.select("input[name=propertyType]").map { it.attr("value") }
-        assertEquals(listOf("RETAIL", "OFFICE", "INDUSTRIAL", "BUILDING", "ANY"), types)
+        assertEquals(listOf("RETAIL", "OFFICE", "INDUSTRIAL", "ANY"), types)
         assertNull(page.selectFirst("[data-group=rooms]"))
-        assertNotNull(page.selectFirst("[data-group=furnitureType]"))
+        assertNull(page.selectFirst("[data-group=furnitureType]"))
         assertNotNull(page.selectFirst("[data-group=parkings]"))
         assertEquals("Bureau", page.selectFirst("input[value=OFFICE]")!!.parent()!!.text())
     }
@@ -242,7 +243,7 @@ class FindPropertyTemplateTest {
     }
 
     @Test
-    fun `a sale property step offers land and no room nor furniture`() {
+    fun `a sale property step offers land, and asks its rooms and its furniture`() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
             complete.copy(listingType = ListingType.SALE, propertyType = null, rooms = null),
@@ -254,8 +255,8 @@ class FindPropertyTemplateTest {
             listOf("STUDIO", "APARTMENT", "HOUSE", "VILLA", "DUPLEX", "LAND", "ANY"),
             page.select("input[name=propertyType]").map { it.attr("value") },
         )
-        assertNull(page.selectFirst("[data-group=furnitureType]"))
         assertNotNull(page.selectFirst("[data-group=rooms]"))
+        assertFalse(page.selectFirst("[data-group=furnitureType]")!!.hasAttr("hidden"))
     }
 
     @Test
@@ -273,7 +274,7 @@ class FindPropertyTemplateTest {
         val page = render(get("/find-property?step=property"))
 
         assertEquals(
-            listOf("RETAIL", "OFFICE", "INDUSTRIAL", "BUILDING", "LAND", "ANY"),
+            listOf("RETAIL", "OFFICE", "INDUSTRIAL", "LAND", "BUILDING", "ANY"),
             page.select("input[name=propertyType]").map { it.attr("value") },
         )
     }
@@ -305,7 +306,7 @@ class FindPropertyTemplateTest {
     }
 
     @Test
-    fun `a rental and a villa purchase are asked no document`() {
+    fun `a rental is asked no document`() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
             complete.copy(
@@ -318,24 +319,83 @@ class FindPropertyTemplateTest {
             ),
         )
 
-        val rental = render(get("/find-property?step=property"))
+        val page = render(get("/find-property?step=property"))
 
-        assertTrue(rental.selectFirst("[data-group=titleDocuments]")!!.hasAttr("hidden"))
-        assertEquals("Surface du terrain minimale", rental.selectFirst("[data-area-label]")?.text())
+        assertTrue(page.selectFirst("[data-group=titleDocuments]")!!.hasAttr("hidden"))
+        assertEquals("Surface du terrain minimale", page.selectFirst("[data-area-label]")?.text())
+    }
 
+    @Test
+    fun `a purchase asks its documents whatever its type`() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
             complete.copy(
                 listingType = ListingType.SALE,
                 propertyCategory = PropertyCategory.RESIDENTIAL,
-                propertyType = "VILLA",
+                propertyType = "HOUSE",
+                furnitureType = "UNFURNISHED",
+                financingType = FinancingType.CASH,
             ),
         )
 
-        val villa = render(get("/find-property?step=property"))
+        val page = render(get("/find-property?step=property"))
 
-        assertTrue(villa.selectFirst("[data-group=titleDocuments]")!!.hasAttr("hidden"))
-        assertEquals("Surface minimale", villa.selectFirst("[data-area-label]")?.text())
+        assertNotNull(page.selectFirst("[data-group=titleDocuments]:not([hidden])"))
+        assertNotNull(page.selectFirst("input[name=titleDocuments][value=LAND_TITLE]"))
+    }
+
+    @Test
+    fun `a residential purchase asks furniture and no surface, a commercial type asks its surface`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
+                propertyType = "HOUSE",
+                furnitureType = "UNFURNISHED",
+                financingType = FinancingType.CASH,
+            ),
+        )
+
+        val house = render(get("/find-property?step=property"))
+
+        assertFalse(house.selectFirst("[data-group=furnitureType]")!!.hasAttr("hidden"))
+        assertTrue(house.selectFirst("[data-group=area]")!!.hasAttr("hidden"))
+
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = "OFFICE",
+                rooms = null,
+                furnitureType = null,
+                financingType = FinancingType.CASH,
+            ),
+        )
+
+        val office = render(get("/find-property?step=property"))
+
+        assertNull(office.selectFirst("[data-group=furnitureType]"))
+        assertFalse(office.selectFirst("[data-group=area]")!!.hasAttr("hidden"))
+    }
+
+    @Test
+    fun `a rental office asks no parkings`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(
+                listingType = ListingType.RENTAL,
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = "OFFICE",
+                rooms = null,
+                furnitureType = null,
+            ),
+        )
+
+        val page = render(get("/find-property?step=property"))
+
+        assertTrue(page.select("[data-group=parkings]").attr("hidden").isNotEmpty())
     }
 
     @Test
@@ -387,12 +447,12 @@ class FindPropertyTemplateTest {
     }
 
     @Test
-    fun `a rental building is asked no counts and keeps its parking`() {
+    fun `a rental is asked no building counts`() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
             complete.copy(
                 propertyCategory = PropertyCategory.COMMERCIAL,
-                propertyType = "BUILDING",
+                propertyType = "OFFICE",
                 rooms = null,
                 furnitureType = null,
             ),
@@ -401,21 +461,35 @@ class FindPropertyTemplateTest {
         val page = render(get("/find-property?step=property"))
 
         assertTrue(page.selectFirst("[data-building-counts]")!!.hasAttr("hidden"))
-        assertFalse(page.selectFirst("[data-group=parkings]")!!.hasAttr("hidden"))
     }
 
     @Test
-    fun `a building sale shows its counts on the review and no amenity row`() {
+    fun `a building sale's review reads its counts once and no amenity row`() {
         session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, buildingSale)
 
         val page = render(get("/find-property?step=review"))
 
         val terms = page.select(".review__term").map { it.text() }
-        assertTrue(terms.contains("Étages"))
-        assertTrue(terms.contains("Unités"))
+        assertFalse(terms.contains("Étages"))
+        assertFalse(terms.contains("Unités"))
         assertFalse(terms.contains("Indispensable"))
-        assertEquals("3", value(page, "levels"))
-        assertEquals("12", value(page, "units"))
+        assertEquals("Immeuble · 3 étages · 12 unités · 850 m² minimum", value(page, "property"))
+    }
+
+    @Test
+    fun `a building's review reads its counts once, with the budget's price per unit`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, buildingSale)
+
+        val page = render(get("/find-property?step=review"))
+
+        assertEquals(
+            "Immeuble · 3 étages · 12 unités · 850 m² minimum",
+            page.selectFirst("[data-review-value=property]")!!.text(),
+        )
+        assertNull(page.selectFirst("[data-review-value=levels]"))
+        assertTrue(
+            page.select("[data-review-value=price]").text().contains("≈ 20,83M FCFA/unité pour 12 unités"),
+        )
     }
 
     @Test
@@ -427,8 +501,11 @@ class FindPropertyTemplateTest {
 
         val page = render(get("/find-property?step=review"))
 
-        assertEquals("Indifférent", value(page, "levels"))
-        assertEquals("Indifférent", value(page, "units"))
+        assertEquals(
+            "Immeuble · étages indifférents · unités indifférentes · 850 m² minimum",
+            value(page, "property"),
+        )
+        assertFalse(page.select("[data-review-value=price]").text().contains("/unité"))
     }
 
     @Test
@@ -638,7 +715,7 @@ class FindPropertyTemplateTest {
         assertEquals("Location, usage résidentiel", value(page, "project"))
         assertEquals("Yaoundé — Bastos, Essos", value(page, "sector"))
         assertEquals(
-            "Appartement · 3 chambres · Meublé ou non · 1 place de parking · 80 m² minimum",
+            "Appartement · 3 chambres · Meublé ou non · 1 place de parking",
             value(page, "property"),
         )
         assertEquals("Compteur d'eau, Gardien de sécurité", value(page, "amenities"))
@@ -719,7 +796,9 @@ class FindPropertyTemplateTest {
         val page = render(get("/find-property?step=review"))
 
         assertEquals("Achat, usage résidentiel", value(page, "project"))
-        assertEquals("10M\u00a0FCFA", value(page, "price"))
+        assertEquals("Terrain · 400 m² minimum", value(page, "property"))
+        assertTrue(value(page, "price").contains("10M\u00a0FCFA"))
+        assertTrue(value(page, "price").contains("≈ 25K\u00a0FCFA/m² pour 400 m²"))
         assertEquals("Achat prévu", page.selectFirst("[data-review-move-in-term]")?.text())
         assertEquals("Comptant", value(page, "financing"))
         assertEquals("Aucun document exigé", value(page, "titleDocuments"))

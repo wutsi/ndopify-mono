@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.client.RestClientException
+import kotlin.math.roundToLong
 
 /**
  * The public "Trouver un bien" wizard, on a single page (`find-property.html`) like `/join`, with seven steps —
@@ -402,13 +403,19 @@ class FindPropertyController(
             model.addAttribute("propertyTypeLabels", MandateLabels.PROPERTY_TYPE_LABELS)
             model.addAttribute("furnitureLabels", MandateLabels.byName(MandateLabels.FURNITURE_TYPE_LABELS))
             model.addAttribute("titleDocumentLabels", MandateLabels.byName(MandateLabels.TITLE_DOCUMENT_LABELS))
+            val type = FindPropertyRules.parsePropertyType(answers.propertyType)
+            // A purchase asks its documents whatever its type. The follow-up questions follow the rule table of the
+            // chosen type; an *Indifférent* answer keeps the questions of its usage, as they still narrow the match.
+            model.addAttribute("asksTitleDocuments", FindPropertyRules.isSale(answers.listingType))
             model.addAttribute(
-                "asksTitleDocuments",
-                FindPropertyRules.titleDocumentTypes(
-                    answers.listingType,
-                    FindPropertyRules.parsePropertyType(answers.propertyType),
-                ).isNotEmpty(),
+                "needsFurniture",
+                FindPropertyRules.needsFurniture(answers.propertyCategory, type, answers.listingType),
             )
+            model.addAttribute(
+                "needsParkings",
+                FindPropertyRules.asksParkings(answers.propertyCategory, type, answers.listingType),
+            )
+            model.addAttribute("showsArea", showsArea(answers))
         }
         if (step == STEP_BUDGET) {
             model.addAttribute("currency", formatter().currency())
@@ -430,29 +437,18 @@ class FindPropertyController(
         if (step == STEP_REVIEW) {
             model.addAttribute("categoryLabel", MandateLabels.project(answers.propertyCategory, answers.listingType))
             model.addAttribute("propertyLabel", propertyLabel(answers))
-            // A building sale's two counts, "Indifférent" when the visitor didn't answer.
-            if (answers.buildingSale()) {
-                model.addAttribute("levelsLabel", answers.levels?.toString() ?: "Indifférent")
-                model.addAttribute("unitsLabel", answers.units?.toString() ?: "Indifférent")
-            }
             model.addAttribute("priceTerm", if (answers.isSale()) "Budget total" else "Budget mensuel")
-            model.addAttribute(
-                "priceLabel",
-                answers.priceAmount?.let { formatter().compactMoney(it) + if (answers.isSale()) "" else " par mois" },
-            )
+            model.addAttribute("priceLabel", priceLabel(answers))
             model.addAttribute("moveInTerm", MandateLabels.moveInTerm(answers.listingType, answers.propertyCategory))
             model.addAttribute("movingPeriodLabel", MandateLabels.MOVE_IN_LABELS[answers.movingPeriod])
             model.addAttribute(
                 "financingLabel",
                 answers.financingType?.takeIf { answers.isSale() }?.let { MandateLabels.FINANCING_LABELS[it] },
             )
+            // Every purchase asks its documents, whatever its type; "Aucun document exigé" for none.
             model.addAttribute(
                 "titleDocumentsLabel",
-                answers.titleDocuments
-                    .takeIf {
-                        answers.isSale() && FindPropertyRules.parsePropertyType(answers.propertyType) == PropertyType.LAND
-                    }
-                    ?.let { MandateLabels.titleDocuments(it) },
+                answers.titleDocuments.takeIf { answers.isSale() }?.let { MandateLabels.titleDocuments(it) },
             )
             model.addAttribute("contactPeriodLabel", MandateLabels.CONTACT_PERIOD_LABELS[answers.preferredContactPeriod])
             model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS.filterKeys { answers.has(it) }.values.toList())
@@ -460,9 +456,14 @@ class FindPropertyController(
         return VIEW
     }
 
-    /** "Appartement · 3 chambres · Meublé ou non · 80 m² minimum", as the prototype's describeProperty. */
+    /**
+     * "Appartement · 3 chambres · Meublé ou non · 80 m² minimum", as the prototype's describeProperty; a building
+     * bought as a whole folds its two counts in once, between the parking and the surface ("Immeuble · 3 étages ·
+     * 12 unités · 850 m² minimum", "étages indifférents" for an unanswered count).
+     */
     private fun propertyLabel(answers: PendingMandate): String {
         val type = FindPropertyRules.parsePropertyType(answers.propertyType)
+        val buildingSale = answers.buildingSale()
         val parts = listOfNotNull(
             MandateLabels.PROPERTY_TYPE_LABELS[type] ?: "Tout type de bien",
             MandateLabels.ROOM_LABELS[answers.rooms]?.takeIf {
@@ -474,9 +475,69 @@ class FindPropertyController(
             MandateLabels.PARKING_LABELS[answers.parkings]?.takeIf {
                 FindPropertyRules.asksParkings(answers.propertyCategory, type, answers.listingType)
             },
-            answers.area?.let { MandateLabels.formatNumber(it) + " m² minimum" },
+            countLabel(answers.levels, buildingSale, "étage", "étages", "étages indifférents"),
+            countLabel(answers.units, buildingSale, "unité", "unités", "unités indifférentes"),
+            answers.area?.takeIf { showsArea(answers) }?.let { MandateLabels.formatNumber(it) + " m² minimum" },
         )
         return parts.joinToString(" · ")
+    }
+
+    /** A building's count when the type asks it: "3 étages", "1 étage", or the *Indifférent* wording for a null. */
+    private fun countLabel(value: Int?, asked: Boolean, singular: String, plural: String, any: String): String? =
+        when {
+            !asked -> null
+            value == null -> any
+            else -> count(value, singular, plural)
+        }
+
+    /** "1 étage" / "3 étages", "1 unité" / "12 unités". */
+    private fun count(value: Int, singular: String, plural: String): String =
+        "$value " + if (value > 1) plural else singular
+
+    /**
+     * The surface is asked of a commercial property and of a plot bought, and an *Indifférent* search keeps it when it
+     * may still match one: every commercial search, and a residential purchase (it may be a plot).
+     */
+    private fun showsArea(answers: PendingMandate): Boolean {
+        val type = FindPropertyRules.parsePropertyType(answers.propertyType)
+        return FindPropertyRules.needsArea(answers.propertyCategory, type, answers.listingType) ||
+            (type == null && (answers.propertyCategory == PropertyCategory.COMMERCIAL || answers.isSale()))
+    }
+
+    /**
+     * "150K FCFA par mois", then on its own line the implied rate of a plot (per m²) or of a building bought as a
+     * whole (per unit) — "10M FCFA\n≈ 25K FCFA/m² pour 400 m²". Display only: the rate is never stored nor sent.
+     */
+    private fun priceLabel(answers: PendingMandate): String? =
+        listOfNotNull(
+            answers.priceAmount?.let { formatter().compactMoney(it) + if (answers.isSale()) "" else " par mois" },
+            priceRateLabel(answers),
+        ).joinToString("\n").ifEmpty { null }
+
+    /**
+     * "≈ 20,83M FCFA/unité pour 12 unités", or "≈ 312,5K FCFA/m² pour 800 m²", the prototype's wording; null without
+     * a usable budget and count, and for a building whose unités are *Indifférent*.
+     */
+    private fun priceRateLabel(answers: PendingMandate): String? {
+        val amount = answers.priceAmount?.takeIf { answers.isSale() } ?: return null
+        val formatter = formatter()
+        if (answers.buildingSale()) {
+            val units = answers.units ?: return null
+            return priceRate(amount, units)?.let {
+                "≈ " + formatter.compactMoney(it) + "/unité pour " + count(units, "unité", "unités")
+            }
+        }
+        if (FindPropertyRules.parsePropertyType(answers.propertyType) != PropertyType.LAND) return null
+        val area = answers.area ?: return null
+        return priceRate(amount, area)?.let {
+            "≈ " + formatter.compactMoney(it) + "/m² pour " + MandateLabels.formatNumber(area) + " m²"
+        }
+    }
+
+    /** The rate rounded to the nearest 100 of the tenant's currency, as the prototype's scripts do; null when unusable. */
+    private fun priceRate(amount: Long, divisor: Int): Long? {
+        if (amount <= 0 || divisor <= 0) return null
+        return (amount.toDouble() / divisor / 100).roundToLong().times(100).takeIf { it > 0 }
     }
 
     /**
