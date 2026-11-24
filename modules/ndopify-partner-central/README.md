@@ -81,10 +81,12 @@ Signed-in pages:
   `maskable` icons at 192 and 512 px (`assets/images/icon-*.png`) cut from `assets/images/icon.png`, the 500 px
   master of Partner Central's own house/N mark: the `any` icons are the artwork as supplied (white corners), the
   `maskable` ones a full-bleed `#1d7edf` tile with the mark inside the maskable safe circle;
-  `assets/images/apple-touch-icon.png` (180 px) is the iOS install icon. The tab has **no favicon**: no page declares
-  a `<link rel="icon">`, `favicon.ico` and `favicon-16/32.png` are gone, and `/favicon.ico` stays public so that the
-  browser's automatic 404 is not a sign-in redirect. HTML and API responses are never cached, only the versioned
-  assets.
+  `assets/images/apple-touch-icon.png` (180 px) is the iOS install icon. The tab carries its own **transparent**
+  favicon — the blue disc with the black chevron, the white square of the supplied illustration cut away — delivered
+  as `favicon.ico` (16/32/48) plus `favicon-16.png` / `favicon-32.png` cut from the 500 px master
+  `assets/images/favicon.png`; it is deliberately not the house/N install identity of `icon*.png` /
+  `apple-touch-icon.png`, which do not change. `/favicon.ico` stays public (and excluded from the sign-in target) and
+  now answers 200. HTML and API responses are never cached, only the versioned assets.
 
 Every form posts without JavaScript; the scripts in `src/main/assets/js/` (`join.js`, `find-property.js`,
 `offer-property.js`, `kyc.js`, `home.js`, `mandate.js`, `listing.js`) only enhance (dropdowns, intl-tel-input, photo
@@ -101,7 +103,8 @@ resizing, in-page camera, countdowns, in-place confirmations). They ship in one 
   decodes (expired); everything except `/assets/**`, `/sw.js`, `/offline.html`, `/manifest.json`, `/favicon.ico`,
   `/login/**`, `/error`, `/join/**`, `/find-property/**`, `/offer-property/**` and `/locations/**` requires
   authentication, and
-  unauthenticated requests are redirected to `/login`.
+  unauthenticated requests are redirected to `/login`. `/favicon.ico` is public so the browser's automatic request
+  answers the icon, signed out or not, and it stays out of the sign-in target.
   The web app's `JwtDecoder` reads the claims without checking the signature (only ndopify-server has the secret and
   checks it on each call); it is never trusted on its own.
 - **The signed-in agent** — `CurrentAgent` calls `GET /v1/agents/me`, which ndopify-server resolves from the access
