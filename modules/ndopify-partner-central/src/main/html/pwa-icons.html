@@ -120,7 +120,8 @@
             border-radius: 22.5%;
         }
 
-        /* Browser-tab mock for the "no favicon" note. */
+        /* Browser-tab mocks: the old shared mark (before #249), the tab without a favicon (#249) and the
+           delivered chevron (#286). */
         .pwa-tabstrip {
             display: flex;
             align-items: flex-end;
@@ -160,6 +161,16 @@
             background: var(--primary);
         }
 
+        /* The tab favicon delivered by #286: the chevron on its disc, transparent around it, at tab size. The
+           linked source is opaque, so the mock clips it inside the disc's edge as a stand-in for that. */
+        .pwa-tab__mark {
+            flex: none;
+            display: block;
+            width: 1rem;
+            height: 1rem;
+            clip-path: circle(47% at 50% 50%);
+        }
+
         .pwa-tab__label {
             min-width: 0;
             overflow: hidden;
@@ -177,7 +188,8 @@
     Approval sheet for the rebuilt PWA icon set (#249). A standalone page, not linked from the app: it documents the
     exact composition the committed production files (icon-192.png, icon-512.png, icon-maskable-192.png,
     icon-maskable-512.png, apple-touch-icon.png) must match, and lets the reviewer sign it off before implementation.
-    The source artwork is linked (user-attachments), not copied into the tree.
+    The source artwork is linked (user-attachments), not copied into the tree. The browser tab is separate: since #286
+    it carries its own favicon (the chevron), documented in favicon.html; the install icons below stay the house/N.
 -->
 <body data-page="pwa-icons">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -210,8 +222,9 @@
             <section class="section" aria-labelledby="any-title">
                 <h2 id="any-title">Icônes «&nbsp;any&nbsp;»</h2>
                 <p>La source redimensionnée, coins blancs et cercle bleu conservés. Seuls 512 et 192 sont livrés,
-                    ce sont les icônes du manifest&nbsp;; 48, 32 et 16 ne sont qu'un aperçu de lisibilité, non
-                    livrés, car le favicon est supprimé.</p>
+                    ce sont les icônes du manifest&nbsp;; 48, 32 et 16 ne sont qu'un aperçu de lisibilité de la
+                    maison/N, non livrés. Le favicon de l'onglet est une autre illustration — le toit de #286 —,
+                    livrée à part&nbsp;: voir <a href="favicon.html">Favicon de l'onglet</a>.</p>
                 <div class="pwa-row">
                     <figure class="pwa-figure">
                         <img class="pwa-any pwa-512" src="https://github.com/user-attachments/assets/b7f9d547-a614-46de-b318-dca4aef459ab"
@@ -317,12 +330,12 @@
             </section>
 
             <section class="section" aria-labelledby="tab-title">
-                <h2 id="tab-title">Onglet du navigateur — sans favicon</h2>
-                <p>L'onglet ne montre plus d'icône&nbsp;: Partner Central ne partage plus le même signe que le site
-                    public. <code>apple-touch-icon</code> et le manifest sont conservés&nbsp;: ce sont des icônes
-                    d'installation, pas un favicon.</p>
+                <h2 id="tab-title">Onglet du navigateur</h2>
+                <p>Le favicon, l'icône de l'onglet, est distinct des icônes d'installation&nbsp;:
+                    <code>apple-touch-icon</code> et le manifest restent l'identité de l'application posée sur
+                    l'écran d'accueil, et ne changent pas.</p>
 
-                <p>Avant&nbsp;: l'onglet portait le signe Ndopify partagé avec le site public (l'ancien cercle
+                <p>Avant #249&nbsp;: l'onglet portait le signe Ndopify partagé avec le site public (l'ancien cercle
                     bleu, pas la marque maison/N).</p>
                 <div class="pwa-tabstrip" aria-hidden="true">
                     <span class="pwa-tab">
@@ -332,10 +345,27 @@
                     </span>
                 </div>
 
-                <p>Après&nbsp;: aucun <code>&lt;link rel=&quot;icon&quot;&gt;</code>, l'onglet n'a plus de favicon.</p>
+                <p>Après #249&nbsp;: aucun <code>&lt;link rel=&quot;icon&quot;&gt;</code>, l'onglet n'avait plus de
+                    favicon et ne se distinguait plus du site public.</p>
                 <div class="pwa-tabstrip" aria-hidden="true">
                     <span class="pwa-tab">
                         <span class="pwa-tab__fav"></span>
+                        <span class="pwa-tab__label">Espace agent — Ndopify Partner Central</span>
+                        <span class="pwa-tab__close">×</span>
+                    </span>
+                </div>
+
+                <p>Depuis #286&nbsp;: l'onglet porte le toit noir sur son disque bleu — une illustration à part,
+                    transparente autour du disque, livrée en <code>favicon.ico</code>, <code>favicon-16.png</code> et
+                    <code>favicon-32.png</code>, pas la maison/N. C'est un signe de la taille d'un onglet, pas
+                    l'identité de l'application&nbsp;: la maison/N reste l'icône d'installation. La planche
+                    <a href="favicon.html">Favicon de l'onglet</a> montre le toit à 16, 32 et 48 px, sur chrome
+                    clair et sombre.</p>
+                <div class="pwa-tabstrip" aria-hidden="true">
+                    <span class="pwa-tab">
+                        <img class="pwa-tab__mark"
+                             src="https://github.com/user-attachments/assets/0cc99495-217a-4a6e-b572-c453751551f6"
+                             alt="" width="16" height="16">
                         <span class="pwa-tab__label">Espace agent — Ndopify Partner Central</span>
                         <span class="pwa-tab__close">×</span>
                     </span>

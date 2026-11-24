@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Favicon de l'onglet — Ndopify Partner Central</title>
+    <meta name="description" content="Planche d'approbation du favicon de l'onglet de Partner Central : le toit noir sur son disque bleu, à 16, 32 et 48 px, sur un navigateur clair et sombre.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="apple-touch-icon" href="assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="assets/css/partner-central.css">
+    <style>
+        /*
+         * favicon.html only: the approval sheet of Partner Central's browser-tab icon (#286). A static sheet, not
+         * linked from the app's pages. Tokens come from partner-central.css / DESIGN.md — no new colour, size or
+         * font. The committed mark: the #1d7edf disc and the black chevron as supplied, cut to the disc so that
+         * the surround is fully transparent (alpha 0, never an opaque white square, never a full-bleed tile).
+         * The hotlinked source is opaque, so every preview of the delivered file clips it to a circle inside
+         * the disc's antialiased edge (.fav-mark) — a stand-in for its transparent pixels, not the recipe.
+         *
+         * The tab strips are mock browser chrome. Light chrome uses the page's neutral surfaces; dark chrome uses
+         * text-default for the bar and the border tokens around it, because DESIGN.md defines no dark palette —
+         * nothing new is invented, the neutrals are only inverted.
+         */
+
+        .fav-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: var(--space-4);
+        }
+
+        /* The install tile and the 16 px tab mark are of very different heights: centre their captions. */
+        .fav-row--center {
+            align-items: center;
+        }
+
+        .fav-figure {
+            margin: 0;
+            min-width: 0; /* lets a 500 px source shrink on a 390 px viewport instead of overflowing */
+        }
+
+        .fav-figure > * + * {
+            margin-top: var(--space-2);
+        }
+
+        .fav-figure figcaption {
+            font-size: var(--step-hint);
+        }
+
+        .fav-figure figcaption strong {
+            display: block;
+            font-weight: 600;
+        }
+
+        /* The source is an opaque white square: on the white page a hairline keeps its extent visible. */
+        .fav-any {
+            display: block;
+            height: auto;
+            border: 1px solid var(--color-border);
+            background: var(--color-bg);
+        }
+
+        /* Sizes (px). width + max-width keeps the true pixel size on desktop and shrinks on a narrow viewport.
+           The 16/32/48 previews carry no border: at 16 px it would eat the icon. */
+        .fav-500 { width: 500px; max-width: 100%; }
+        .fav-180 { width: 180px; }
+        .fav-48 { width: 48px; }
+        .fav-32 { width: 32px; }
+        .fav-16 { width: 16px; }
+
+        /* The supplied file (unclipped, its opaque white square visible) next to the delivered master (clipped
+           stand-in), both at 500 px. From a wide desktop the row borrows the page's own width — not the 34rem
+           column, and never past the page's padding — so the two figures sit side by side; below, it wraps and
+           each figure falls back to max-width: 100%. */
+        .fav-compare {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: var(--space-3);
+        }
+
+        .fav-compare .fav-figure {
+            width: 500px;
+            max-width: 100%;
+        }
+
+        /* 75rem: the page's content box is wider than the two 500 px figures plus 240 px of bleed each side,
+           even with a vertical scrollbar. */
+        @media (min-width: 75rem) {
+            .fav-compare {
+                margin-inline: -15rem;
+            }
+        }
+
+        /* The delivered favicon is transparent around the disc; the linked source is not. Every preview of the
+           delivered file clips the source inside the disc's antialiased edge (≈ 97 % of the disc's visual
+           diameter) — the sheet's stand-in for the files' alpha-0 pixels, never the production recipe. */
+        .fav-mark {
+            clip-path: circle(47% at 50% 50%);
+        }
+
+        /* The mark at 48 px over the two tab backgrounds: the corners must show the background, not white. */
+        .fav-swatch {
+            display: inline-block;
+            padding: var(--space-3);
+            line-height: 0;
+        }
+
+        .fav-swatch--light {
+            border: 1px solid var(--color-border);
+            background: var(--color-bg);
+        }
+
+        .fav-swatch--dark {
+            background: var(--color-fg);
+        }
+
+        .fav-note {
+            font-size: var(--step-hint);
+        }
+
+        /* ---------- Mock browser tab strips ---------- */
+
+        .fav-strips > * + * {
+            margin-top: var(--space-4);
+        }
+
+        .fav-strip {
+            display: flex;
+            align-items: flex-end;
+            gap: var(--space-1);
+            max-width: 100%;
+            padding: var(--space-2) var(--space-2) 0;
+            overflow: hidden;
+            border: 1px solid var(--color-border);
+            background: var(--color-surface-alt);
+        }
+
+        .fav-strip--dark {
+            border-color: var(--color-border-strong);
+            background: var(--color-fg);
+        }
+
+        .fav-tab {
+            display: inline-flex;
+            flex: 1 1 0;
+            align-items: center;
+            gap: var(--space-2);
+            min-width: 0;
+            max-width: 15rem;
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid transparent;
+            border-bottom: 0;
+            border-radius: var(--space-2) var(--space-2) 0 0;
+            color: var(--color-fg-disabled);
+            font-size: var(--step-hint);
+        }
+
+        .fav-tab--active {
+            flex-grow: 2; /* the active tab gets the room, as in a real tab bar */
+            border-color: var(--color-border);
+            background: var(--color-bg);
+            color: var(--color-fg);
+            font-weight: 600;
+        }
+
+        .fav-strip--dark .fav-tab--active {
+            border-color: var(--color-border-strong);
+            background: var(--color-fg);
+            color: var(--color-bg);
+        }
+
+        /* The mark under review, at the strip's own size — true CSS pixels, never zoomed. */
+        .fav-tab__icon {
+            display: block;
+            flex: none;
+        }
+
+        .fav-strip--16 .fav-tab__icon {
+            width: 16px;
+            height: 16px;
+        }
+
+        .fav-strip--32 .fav-tab__icon {
+            width: 32px;
+            height: 32px;
+        }
+
+        /* A neighbour's icon: a neutral tile, no application named. */
+        .fav-tab__icon--blank {
+            border-radius: 2px;
+            background: var(--color-border);
+        }
+
+        .fav-strip--dark .fav-tab__icon--blank {
+            background: var(--color-border-strong);
+        }
+
+        .fav-tab__label {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .fav-tab__close {
+            flex: none;
+            color: var(--color-fg-disabled);
+        }
+
+        /* ---------- Files and the head lines ---------- */
+
+        .fav-files {
+            margin: 0;
+            padding-inline-start: 1.25em;
+            max-width: var(--measure);
+        }
+
+        .fav-files li + li {
+            margin-top: var(--space-2);
+        }
+
+        .fav-files code,
+        .fav-files li {
+            overflow-wrap: anywhere;
+        }
+
+        /* Wraps instead of scrolling sideways on a phone: the page never scrolls horizontally. */
+        .fav-code {
+            margin: 0;
+            max-width: 100%;
+            padding: var(--space-3);
+            border: 1px solid var(--color-border);
+            border-radius: var(--space-1);
+            background: var(--color-surface-alt);
+            font-size: var(--step-hint);
+            line-height: 1.5;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+        }
+    </style>
+</head>
+<!--
+    Approval sheet of Partner Central's browser-tab favicon (#286). A standalone page, not linked from the app: it
+    shows the delivered mark at the real size of a tab, on light and dark browser chrome, and the four files the story
+    commits (favicon.png, favicon-16.png, favicon-32.png, favicon.ico). The artwork is linked (user-attachments), not
+    copied into the tree; those files are transparent around the disc, so the opaque source is clipped to a circle
+    here — a stand-in for their alpha-0 pixels, not the recipe. The install identity — the opaque house/N of #249 —
+    differs on purpose and is untouched.
+-->
+<body data-page="favicon">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <span class="site-header__brand">
+                <img src="assets/images/logo.png" alt="Ndopify" width="84" height="40">
+            </span>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <div class="page-intro">
+                <h1>Favicon de l'onglet</h1>
+                <p>L'onglet de Partner Central porte de nouveau une icône&nbsp;: le toit noir sur son disque bleu
+                    <code>#1d7edf</code>, découpé de l'illustration fournie. Le disque reste — c'est le corps de la
+                    marque&nbsp;; seul le carré blanc du fond disparaît, remplacé par un pourtour entièrement
+                    transparent. Cette planche le montre à la taille réelle d'un onglet, sur un navigateur clair et
+                    sur un navigateur sombre, et dit ce que l'histoire livre.</p>
+            </div>
+
+            <section class="section" aria-labelledby="source-title">
+                <h2 id="source-title">Source fournie et master livré (500 × 500)</h2>
+                <p>L'illustration fournie est un carré blanc opaque&nbsp;: le disque <code>#1d7edf</code> y est posé
+                    à environ 7 px du bord, et ce carré n'est qu'un fond — il n'est pas livré. Le favicon, c'est le
+                    disque et le toit noir&nbsp;; le master livré (<code>assets/images/favicon.png</code>) les
+                    reprend tels quels, avec un pourtour entièrement transparent — alpha 0 sur les coins et les
+                    bords.</p>
+                <div class="fav-compare">
+                    <figure class="fav-figure">
+                        <img class="fav-any fav-500"
+                             src="https://github.com/user-attachments/assets/0cc99495-217a-4a6e-b572-c453751551f6"
+                             alt="Fichier fourni : un toit noir sur un disque bleu, posé sur un carré blanc opaque"
+                             width="500" height="500">
+                        <figcaption><strong>Fichier fourni</strong> — ce n'est pas le favicon&nbsp;; son carré blanc
+                            de fond n'est pas livré</figcaption>
+                    </figure>
+                    <figure class="fav-figure">
+                        <img class="fav-mark fav-500"
+                             src="https://github.com/user-attachments/assets/0cc99495-217a-4a6e-b572-c453751551f6"
+                             alt="Master livré : le même toit noir sur son disque bleu, sans carré blanc autour"
+                             width="500" height="500">
+                        <figcaption><strong>Master livré</strong> — pourtour transparent (alpha 0)&nbsp;; l'aperçu
+                            est découpé au disque</figcaption>
+                    </figure>
+                </div>
+                <p>La recette&nbsp;: la source est coupée au disque à environ 97&nbsp;% de son diamètre visuel (rayon
+                    ≈ 243 px à 500, coupe à ≈ 236 px), pour que la coupe tombe à l'intérieur du bord antialiasé et
+                    qu'aucune frange blanche ne subsiste sur un onglet sombre. Le disque n'est ni redimensionné ni
+                    recoloré, et le toit reste intact&nbsp;: seule la bordure extérieure du disque, là où passe la
+                    coupe, est retirée.</p>
+            </section>
+
+            <section class="section" aria-labelledby="sizes-title">
+                <h2 id="sizes-title">Aux tailles de l'onglet</h2>
+                <p>Les tailles réelles, sans agrandissement&nbsp;: c'est à cette échelle que le toit doit se lire.
+                    Les aperçus ci-dessous sont l'illustration rééchantillonnée et découpée au disque, comme les
+                    fichiers livrés. Le découpage circulaire de cette planche est un substitut au fichier livré,
+                    qu'elle ne peut pas générer&nbsp;: les fichiers, eux, portent ces pixels du pourtour en
+                    transparent (alpha 0).</p>
+                <div class="fav-row">
+                    <figure class="fav-figure">
+                        <img class="fav-mark fav-16"
+                             src="https://github.com/user-attachments/assets/0cc99495-217a-4a6e-b572-c453751551f6"
+                             alt="" width="16" height="16">
+                        <figcaption><strong>16 × 16</strong> <code>favicon-16.png</code></figcaption>
+                    </figure>
+                    <figure class="fav-figure">
+                        <img class="fav-mark fav-32"
+                             src="https://github.com/user-attachments/assets/0cc99495-217a-4a6e-b572-c453751551f6"
+                             alt="" width="32" height="32">
+                        <figcaption><strong>32 × 32</strong> <code>favicon-32.png</code></figcaption>
+                    </figure>
+                    <figure class="fav-figure">
+                        <img class="fav-mark fav-48"
+                             src="https://github.com/user-attachments/assets/0cc99495-217a-4a6e-b572-c453751551f6"
+                             alt="" width="48" height="48">
+                        <figcaption><strong>48 × 48</strong> calque de <code>favicon.ico</code></figcaption>
+                    </figure>
+                </div>
+                <p class="fav-note">Le <code>.ico</code> porte les trois calques, 16, 32 et 48 px&nbsp;; il n'y a pas
+                    de PNG à 48. Aucun carré blanc, opaque ni tuile pleine n'est livré&nbsp;: le fond de l'onglet
+                    passe sous les coins. Le point à juger ici&nbsp;: que le toit se détache nettement du disque à
+                    16 px, et que le bord du disque reste net sur chrome sombre. Aucune variante sombre, monochrome
+                    ni SVG&nbsp;: le toit et le disque sont repris tels quels, sans redessin ni recoloration.</p>
+
+                <p>Le même fichier, à 48 px, sur les deux fonds qu'un onglet peut avoir&nbsp;:</p>
+                <div class="fav-row">
+                    <figure class="fav-figure">
+                        <span class="fav-swatch fav-swatch--light">
+                            <img class="fav-mark fav-48"
+                                 src="https://github.com/user-attachments/assets/0cc99495-217a-4a6e-b572-c453751551f6"
+                                 alt="" width="48" height="48">
+                        </span>
+                        <figcaption><strong>48 px, fond clair</strong> le fichier est transparent autour du
+                            disque</figcaption>
+                    </figure>
+                    <figure class="fav-figure">
+                        <span class="fav-swatch fav-swatch--dark">
+                            <img class="fav-mark fav-48"
+                                 src="https://github.com/user-attachments/assets/0cc99495-217a-4a6e-b572-c453751551f6"
+                                 alt="" width="48" height="48">
+                        </span>
+                        <figcaption><strong>48 px, fond sombre</strong> aucun carré blanc, aucun halo clair</figcaption>
+                    </figure>
+                </div>
+            </section>
+
+            <section class="section" aria-labelledby="tabs-title">
+                <h2 id="tabs-title">Dans une barre d'onglets</h2>
+                <p>Quatre barres simulées, avec deux onglets voisins, pour juger la reconnaissance d'un coup d'œil.
+                    Les vignettes voisines sont neutres&nbsp;: elles ne représentent aucune application. L'onglet
+                    actif est celui de Partner Central.</p>
+                <div class="fav-strips">
+                    <figure class="fav-figure">
+                        <div class="fav-strip fav-strip--16" aria-hidden="true">
+                            <span class="fav-tab">
+                                <span class="fav-tab__icon fav-tab__icon--blank"></span>
+                                <span class="fav-tab__label">Boîte de réception</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                            <span class="fav-tab fav-tab--active">
+                                <img class="fav-tab__icon fav-mark"
+                                     src="https://github.com/user-attachments/assets/0cc99495-217a-4a6e-b572-c453751551f6"
+                                     alt="" width="16" height="16">
+                                <span class="fav-tab__label">Espace agent — Ndopify Partner Central</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                            <span class="fav-tab">
+                                <span class="fav-tab__icon fav-tab__icon--blank"></span>
+                                <span class="fav-tab__label">Agenda</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                        </div>
+                        <figcaption><strong>Chrome clair, vignettes de 16 px</strong></figcaption>
+                    </figure>
+
+                    <figure class="fav-figure">
+                        <div class="fav-strip fav-strip--32" aria-hidden="true">
+                            <span class="fav-tab">
+                                <span class="fav-tab__icon fav-tab__icon--blank"></span>
+                                <span class="fav-tab__label">Boîte de réception</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                            <span class="fav-tab fav-tab--active">
+                                <img class="fav-tab__icon fav-mark"
+                                     src="https://github.com/user-attachments/assets/0cc99495-217a-4a6e-b572-c453751551f6"
+                                     alt="" width="32" height="32">
+                                <span class="fav-tab__label">Espace agent — Ndopify Partner Central</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                            <span class="fav-tab">
+                                <span class="fav-tab__icon fav-tab__icon--blank"></span>
+                                <span class="fav-tab__label">Agenda</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                        </div>
+                        <figcaption><strong>Chrome clair, vignettes de 32 px</strong></figcaption>
+                    </figure>
+
+                    <figure class="fav-figure">
+                        <div class="fav-strip fav-strip--dark fav-strip--16" aria-hidden="true">
+                            <span class="fav-tab">
+                                <span class="fav-tab__icon fav-tab__icon--blank"></span>
+                                <span class="fav-tab__label">Boîte de réception</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                            <span class="fav-tab fav-tab--active">
+                                <img class="fav-tab__icon fav-mark"
+                                     src="https://github.com/user-attachments/assets/0cc99495-217a-4a6e-b572-c453751551f6"
+                                     alt="" width="16" height="16">
+                                <span class="fav-tab__label">Espace agent — Ndopify Partner Central</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                            <span class="fav-tab">
+                                <span class="fav-tab__icon fav-tab__icon--blank"></span>
+                                <span class="fav-tab__label">Agenda</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                        </div>
+                        <figcaption><strong>Chrome sombre, vignettes de 16 px</strong></figcaption>
+                    </figure>
+
+                    <figure class="fav-figure">
+                        <div class="fav-strip fav-strip--dark fav-strip--32" aria-hidden="true">
+                            <span class="fav-tab">
+                                <span class="fav-tab__icon fav-tab__icon--blank"></span>
+                                <span class="fav-tab__label">Boîte de réception</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                            <span class="fav-tab fav-tab--active">
+                                <img class="fav-tab__icon fav-mark"
+                                     src="https://github.com/user-attachments/assets/0cc99495-217a-4a6e-b572-c453751551f6"
+                                     alt="" width="32" height="32">
+                                <span class="fav-tab__label">Espace agent — Ndopify Partner Central</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                            <span class="fav-tab">
+                                <span class="fav-tab__icon fav-tab__icon--blank"></span>
+                                <span class="fav-tab__label">Agenda</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                        </div>
+                        <figcaption><strong>Chrome sombre, vignettes de 32 px</strong></figcaption>
+                    </figure>
+                </div>
+                <p>Sur chrome clair comme sur chrome sombre, c'est le disque bleu qui porte le toit&nbsp;: aucun carré
+                    blanc, aucun halo clair ne l'entoure — le fond de l'onglet passe sous les coins. Dans les deux
+                    cas, c'est le toit — et non le N ni la maison — qui identifie Partner Central.</p>
+                <p class="fav-note">Sur un téléphone (390 px), les barres gardent les deux tailles&nbsp;: les libellés
+                    se tronquent comme dans un vrai navigateur, les vignettes ne changent pas, et la page ne défile
+                    jamais horizontalement.</p>
+            </section>
+
+            <section class="section" aria-labelledby="files-title">
+                <h2 id="files-title">Les fichiers livrés et les lignes du head</h2>
+                <p>Quatre fichiers, tous dans les ressources servies&nbsp;; le carré blanc de la source n'est
+                    dupliqué dans aucun&nbsp;:</p>
+                <ul class="fav-files">
+                    <li><code>public/assets/images/favicon.png</code> — l'illustration 500 × 500 découpée au disque,
+                        disque et toit seuls, pourtour transparent (alpha 0)&nbsp;; le maître des trois
+                        autres&nbsp;;</li>
+                    <li><code>public/assets/images/favicon-32.png</code> — 32 × 32, même découpe et même
+                        transparence&nbsp;;</li>
+                    <li><code>public/assets/images/favicon-16.png</code> — 16 × 16, même découpe et même
+                        transparence, la taille de l'onglet&nbsp;;</li>
+                    <li><code>public/favicon.ico</code> — 16, 32 et 48 px, même transparence&nbsp;; la ressource
+                        que le navigateur demande par défaut.</li>
+                </ul>
+                <p>Les trois lignes que reçoivent <code>templates/fragments/head.html</code> — le
+                    <code>&lt;head&gt;</code> de toutes les pages servies — et <code>public/offline.html</code>, qui
+                    reste autonome (ni webfont ni bundle) et garde son <code>&lt;head&gt;</code> à lui&nbsp;:</p>
+                <pre class="fav-code">&lt;link rel="icon" href="/favicon.ico" sizes="any"&gt;
+&lt;link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32.png"&gt;
+&lt;link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16.png"&gt;</pre>
+                <p>Dans <code>head.html</code>, les <code>href</code> passent par <code>@{…}</code> comme ceux du
+                    manifest et de l'apple-touch-icon, pour les mêmes chemins&nbsp;; la page hors ligne, sans
+                    Thymeleaf, les porte en absolu. Le reste du <code>&lt;head&gt;</code> ne bouge pas&nbsp;:
+                    <code>rel="manifest"</code>, <code>rel="apple-touch-icon"</code> et les
+                    <code>apple-mobile-web-app-*</code>.</p>
+                <p><code>/favicon.ico</code> reste un chemin public et répond maintenant 200 avec un type image,
+                    connecté ou non&nbsp;: plus de 404 par la page d'erreur, ni de redirection vers la connexion.</p>
+            </section>
+
+            <section class="section" aria-labelledby="install-title">
+                <h2 id="install-title">Onglet et écran d'accueil&nbsp;: deux signes, volontairement</h2>
+                <p>Le favicon n'est que l'icône de l'onglet. L'application installable garde la maison/N de
+                    #249&nbsp;: <code>icon.png</code>, <code>icon-192.png</code>, <code>icon-512.png</code>, les deux
+                    maskables, <code>apple-touch-icon.png</code> et <code>manifest.json</code> sont inchangés — mêmes
+                    fichiers, mêmes octets, carré blanc compris. L'icône d'installation, elle, est opaque&nbsp;; le
+                    favicon, lui, est transparent autour de son disque. Quelques pixels sur une barre d'onglets n'ont
+                    pas les contraintes d'une grande tuile d'écran d'accueil&nbsp;: les deux signes diffèrent exprès,
+                    et cette histoire ne les aligne pas.</p>
+                <div class="fav-row fav-row--center">
+                    <figure class="fav-figure">
+                        <img class="fav-any fav-180"
+                             src="https://github.com/user-attachments/assets/b7f9d547-a614-46de-b318-dca4aef459ab"
+                             alt="Icône d'installation : un toit et un N noirs sur un disque bleu, dans un carré blanc"
+                             width="180" height="180">
+                        <figcaption><strong>Écran d'accueil</strong> maison/N (#249), inchangée</figcaption>
+                    </figure>
+                    <figure class="fav-figure">
+                        <img class="fav-mark fav-16"
+                             src="https://github.com/user-attachments/assets/0cc99495-217a-4a6e-b572-c453751551f6"
+                             alt="Favicon de l'onglet, à sa taille réelle : un toit noir sur un disque bleu, sans fond"
+                             width="16" height="16">
+                        <figcaption><strong>Onglet, 16 px</strong> le toit seul (#286)</figcaption>
+                    </figure>
+                </div>
+                <p class="fav-note">L'icône d'installation est liée depuis la pièce jointe de #249, comme dans
+                    <code>pwa-icons.html</code>&nbsp;: la copie du prototype
+                    (<code>assets/images/icon.png</code>) est encore l'ancien signe d'avant #249, et les pages du
+                    prototype ne sont pas reprises par cette histoire.</p>
+            </section>
+        </div>
+    </main>
+</body>
+</html>
