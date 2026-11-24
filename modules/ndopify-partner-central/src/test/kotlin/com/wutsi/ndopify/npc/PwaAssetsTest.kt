@@ -3,6 +3,7 @@ package com.wutsi.ndopify.npc
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.Test
 import java.awt.image.BufferedImage
+import java.io.ByteArrayInputStream
 import java.security.MessageDigest
 import javax.imageio.ImageIO
 import kotlin.math.abs
@@ -95,10 +96,25 @@ class PwaAssetsTest {
             val at = 6 + 16 * i
             val size = (bytes[at].toInt() and 0xff) to (bytes[at + 1].toInt() and 0xff)
             val bitCount = (bytes[at + 6].toInt() and 0xff) or ((bytes[at + 7].toInt() and 0xff) shl 8)
-            size to bitCount
+            val length = littleEndian(bytes, at + 8)
+            val offset = littleEndian(bytes, at + 12)
+            size to Triple(bitCount, offset, length)
         }
         assertEquals(listOf(16 to 16, 32 to 32, 48 to 48), entries.map { it.first })
-        assertEquals(listOf(32, 32, 32), entries.map { it.second }, "a layer without alpha (32 bpp) loses the transparency")
+        assertEquals(
+            listOf(32, 32, 32),
+            entries.map { it.second.first },
+            "a layer without alpha (32 bpp) loses the transparency",
+        )
+        entries.forEach { (size, layer) ->
+            val (_, offset, length) = layer
+            val icon = ImageIO.read(ByteArrayInputStream(bytes, offset, length))
+            val last = icon.width - 1
+            listOf(0 to 0, last to 0, 0 to last, last to last).forEach { (x, y) ->
+                assertEquals(0, icon.getRGB(x, y) ushr 24, "the ${size.first}px layer is not transparent at ($x,$y)")
+            }
+            assertEquals(0xFF, icon.getRGB(last / 2, last / 2) ushr 24, "the ${size.first}px layer has no opaque centre")
+        }
     }
 
     @Test
@@ -189,6 +205,13 @@ class PwaAssetsTest {
         assertTrue(sw.contains("/offline.html"))
         assertTrue(sw.contains("/assets/images/logo.png"))
     }
+
+    /** Reads a little-endian 32-bit integer at `at`. */
+    private fun littleEndian(bytes: ByteArray, at: Int): Int =
+        (bytes[at].toInt() and 0xff) or
+            ((bytes[at + 1].toInt() and 0xff) shl 8) or
+            ((bytes[at + 2].toInt() and 0xff) shl 16) or
+            ((bytes[at + 3].toInt() and 0xff) shl 24)
 
     private fun image(path: String): BufferedImage =
         ImageIO.read(javaClass.classLoader.getResourceAsStream(path) ?: fail("missing classpath resource $path"))
