@@ -184,6 +184,16 @@ class ListingSectionControllerTest {
     }
 
     @Test
+    fun `show - a building sale has no amenities page`() {
+        doReturn(ListingViewsTest.BUILDING).whenever(listingClient).get(501)
+
+        val result = mvc.perform(get("/listings/501/amenities")).andReturn()
+
+        assertEquals("redirect:/listings/501", result.modelAndView?.viewName)
+        assertNull(result.modelAndView?.model?.get("section"))
+    }
+
+    @Test
     fun `show - another agent's listing is locked`() {
         doReturn(LISTING.copy(agentId = 999)).whenever(listingClient).get(501)
 

@@ -37,16 +37,19 @@
                 ["ROOM", "STUDIO", "BUILDING", "LAND"].indexOf(a.type) === -1;
         },
         bathrooms: function (a) {
-            return a.type !== "LAND";
+            return a.type !== "LAND" && !(a.sale && a.type === "BUILDING");
         },
         kitchens: function (a) {
             return a.category === "RESIDENTIAL" && ["ROOM", "BUILDING", "LAND"].indexOf(a.type) === -1;
         },
         parkings: function (a) {
-            return ["ROOM", "LAND"].indexOf(a.type) === -1;
+            return ["ROOM", "LAND"].indexOf(a.type) === -1 && !(a.sale && a.type === "BUILDING");
         },
         levels: function (a) {
             return ["HOUSE", "DUPLEX", "BUILDING"].indexOf(a.type) !== -1;
+        },
+        units: function (a) {
+            return a.sale && a.type === "BUILDING";
         },
         floorLevel: function (a) {
             return ["ROOM", "STUDIO", "APARTMENT", "OFFICE", "RETAIL"].indexOf(a.type) !== -1;
@@ -160,11 +163,15 @@
             });
             var answers = {
                 category: category,
-                type: ($('[name="propertyType"]:checked', form) || {}).value
+                type: ($('[name="propertyType"]:checked', form) || {}).value,
+                sale: document.body.getAttribute("data-sale") === "true"
             };
             $all("[data-applies]", form).forEach(function (el) {
                 el.hidden = !answers.type || !APPLIES[el.getAttribute("data-applies")](answers);
             });
+            // A building sale's étages are a required count; every other type keeps the optional hint.
+            var optional = $("[data-levels-optional]", form);
+            if (optional) optional.hidden = !!answers.type && APPLIES.units(answers);
         }
         $all('[name="propertyCategory"], [name="propertyType"]', form).forEach(function (radio) {
             radio.addEventListener("change", sync);

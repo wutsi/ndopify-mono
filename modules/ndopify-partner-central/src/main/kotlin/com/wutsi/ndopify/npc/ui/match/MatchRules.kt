@@ -126,6 +126,12 @@ object MatchRules {
     /** "3 chambres", "1 chambre". */
     fun rooms(count: Int): String = "$count " + plural(count, "chambre", "chambres")
 
+    /** "12 unités", "1 unité". */
+    fun units(count: Int): String = "$count " + plural(count, "unité", "unités")
+
+    /** "3 étages", "1 étage". */
+    fun levels(count: Int): String = "$count " + plural(count, "étage", "étages")
+
     private fun neighborhood(match: Match): FitLine =
         when {
             match.neighborhoodScore >= FULL -> FitLine(true, "Dans le secteur recherché")

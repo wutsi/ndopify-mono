@@ -24,7 +24,7 @@ object MandateEditRules {
     /** The edit page's groups, and the fields each holds: a group with an error opens. */
     val GROUPS: Map<String, List<String>> = linkedMapOf(
         "sector" to listOf("neighborhoodIds"),
-        "property" to listOf("propertyCategory", "propertyType", "rooms", "furnitureType", "parkings", "area"),
+        "property" to listOf("propertyCategory", "propertyType", "rooms", "levels", "units", "furnitureType", "parkings", "area"),
         "amenities" to emptyList(),
         "budget" to listOf("priceAmount", "movingPeriod"),
         "comments" to listOf("comments"),
@@ -35,15 +35,22 @@ object MandateEditRules {
         val area = area(form.area)
         val owner = mandate.mandateType == MandateType.LISTING
         val sale = FindPropertyRules.isSale(mandate.listingType)
+        // A building sold as a whole is asked its étages and its unités, and no room nor parking.
+        val building = FindPropertyRules.buildingSale(mandate.listingType, type)
+        val levelsError = if (building) countError(form.levels, "d'étages", FindPropertyRules.MAX_LEVELS) else null
+        val unitsError = if (building) countError(form.units, "d'unités", FindPropertyRules.MAX_UNITS) else null
         return listOfNotNull(
             FindPropertyRules.neighborhoodIds(form.neighborhoodIds)?.let { "neighborhoodIds" to it },
             FindPropertyRules.propertyCategory(form.propertyCategory)?.let { "propertyCategory" to it },
             typeError(form, mandate)?.let { "propertyType" to it },
             ("rooms" to "Indiquez le nombre de chambres.")
                 .takeIf {
-                    FindPropertyRules.needsRooms(form.propertyCategory, type, mandate.listingType) &&
+                    !building &&
+                        FindPropertyRules.needsRooms(form.propertyCategory, type, mandate.listingType) &&
                         FindPropertyRules.rooms(form.rooms) != null
                 },
+            levelsError?.let { "levels" to it },
+            unitsError?.let { "units" to it },
             ("furnitureType" to "Indiquez si le bien est meublé.")
                 .takeIf {
                     FindPropertyRules.needsFurniture(type, mandate.listingType) &&
@@ -51,7 +58,7 @@ object MandateEditRules {
                 },
             ("parkings" to "Choisissez un nombre de places proposé.")
                 .takeIf {
-                    FindPropertyRules.asksParkings(type) &&
+                    !building && FindPropertyRules.asksParkings(type, mandate.listingType) &&
                         (FindPropertyRules.parkings(form.parkings) != null || (owner && form.parkings == ANY))
                 },
             ("area" to "Indiquez la surface en m², ou laissez le champ vide.")
@@ -74,7 +81,8 @@ object MandateEditRules {
      */
     fun request(form: MandateEditForm, mandate: Mandate): UpdateMandateRequest {
         val type = type(form)
-        val amenities = form.amenities.toSet()
+        val building = FindPropertyRules.buildingSale(mandate.listingType, type)
+        val amenities = if (building) emptySet() else form.amenities.toSet()
         return UpdateMandateRequest(
             propertyCategory = form.propertyCategory ?: mandate.propertyCategory,
             listingType = mandate.listingType,
@@ -87,9 +95,14 @@ object MandateEditRules {
             furnitureType = form.furnitureType
                 ?.takeIf { FindPropertyRules.needsFurniture(type, mandate.listingType) && it != ANY }
                 ?.let { FurnitureType.valueOf(it) },
-            rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(form.propertyCategory, type, mandate.listingType) },
-            parkings = form.parkings?.ifEmpty { null }?.takeIf { FindPropertyRules.asksParkings(type) && it != ANY },
+            rooms = form.rooms?.takeIf {
+                !building && FindPropertyRules.needsRooms(form.propertyCategory, type, mandate.listingType)
+            },
+            parkings = form.parkings?.ifEmpty { null }
+                ?.takeIf { !building && FindPropertyRules.asksParkings(type, mandate.listingType) && it != ANY },
             area = area(form.area).getOrNull(),
+            levels = count(form.levels).takeIf { building },
+            units = count(form.units).takeIf { building },
             waterMeter = "waterMeter" in amenities,
             dedicatedWaterMeter = "dedicatedWaterMeter" in amenities,
             waterTank = "waterTank" in amenities,
@@ -124,10 +137,14 @@ object MandateEditRules {
         formatter: TenantFormatter,
     ): Map<String, String> {
         val type = type(form)
+        val building = FindPropertyRules.buildingSale(mandate.listingType, type)
         val rooms = form.rooms?.takeIf {
-            FindPropertyRules.needsRooms(form.propertyCategory, type, mandate.listingType) && FindPropertyRules.rooms(it) == null
+            !building && FindPropertyRules.needsRooms(form.propertyCategory, type, mandate.listingType) &&
+                FindPropertyRules.rooms(it) == null
         }
         val area = area(form.area).getOrNull()
+        val levels = count(form.levels).takeIf { building && it != null && it > 0 }
+        val units = count(form.units).takeIf { building && it != null && it > 0 }
         val amenities = form.amenities.distinct().size
         val price = FindPropertyRules.parseAmount(form.priceAmount)?.takeIf { it > 0 }
         val comments = form.comments?.trim().orEmpty()
@@ -142,6 +159,8 @@ object MandateEditRules {
                         ?: form.propertyCategory?.let { MandateLabels.category(it) }
                     ),
                 rooms?.let { if (it == "1") "1 chambre" else "$it chambres" },
+                levels?.let { if (it == 1) "1 étage" else "$it étages" },
+                units?.let { if (it == 1) "1 unité" else "$it unités" },
                 area?.let { "$it m²" },
             ).joinToString(" · "),
             "amenities" to when (amenities) {
@@ -207,6 +226,18 @@ object MandateEditRules {
             }
             else -> FindPropertyRules.priceAmount(amount, formatter, mandate.listingType)
         }
+    }
+
+    /** A building's count: "3" → 3, whatever else → null (the error is the field's). */
+    private fun count(value: String?): Int? =
+        value?.trim()?.takeIf { it.isNotEmpty() && it.all(Char::isDigit) }?.toIntOrNull()
+
+    /** A building's count as its edit group words it: a blank field and an out-of-bounds value have their own message. */
+    private fun countError(value: String?, noun: String, max: Int): String? {
+        val text = value?.trim().orEmpty()
+        if (text.isEmpty()) return "Indiquez le nombre $noun."
+        val number = text.takeIf { it.all(Char::isDigit) }?.toIntOrNull()
+        return if (number != null && number in 1..max) null else "Indiquez un nombre entier, de 1 à $max."
     }
 
     /** Blank → null (optional); digits only (spaces and dots as separators) → the surface; else a failure. */

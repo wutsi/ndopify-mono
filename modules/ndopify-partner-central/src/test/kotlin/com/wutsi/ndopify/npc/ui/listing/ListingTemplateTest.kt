@@ -167,6 +167,24 @@ class ListingTemplateTest {
     }
 
     @Test
+    fun `a building sale's checklist has no amenities row`() {
+        val building = ListingViewsTest.BUILDING.copy(
+            sections = ListingViewsTest.BUILDING.sections.map { it.copy(status = ListingSectionStatus.TO_VERIFY) },
+        )
+
+        val page = render(building)
+
+        val rows = page.select("[data-checklist] > li")
+        assertEquals(6, rows.size)
+        assertEquals(
+            listOf("location", "gps", "property", "terms", "photos", "remarks").map { "/listings/501/$it" },
+            rows.map { it.selectFirst("a.checklist__row")?.attr("href") },
+        )
+        assertEquals("0 sections sur 5 vérifiées", page.selectFirst("[data-checklist-progress]")?.text())
+        assertEquals("Immeuble · 3 étages · 12 unités · 850 m²", rows[2].selectFirst("[data-section-summary]")?.text())
+    }
+
+    @Test
     fun `send - incomplete`() {
         val page = render()
 

@@ -7,6 +7,8 @@ import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingSectionStatus
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
@@ -312,5 +314,96 @@ class ListingRulesTest {
             "/listings/5001?back=/agent?id%3D30%26page%3D1",
             ListingRules.url(5001, "/agent?id=30&page=1"),
         )
+    }
+
+    /** A building sold as a whole: six sections (no amenities), its counts instead of rooms and parking. */
+    private val building = ListingViewsTest.LISTING.copy(
+        listingType = ListingType.SALE,
+        propertyCategory = PropertyCategory.RESIDENTIAL,
+        propertyType = PropertyType.BUILDING,
+        rooms = null,
+        bathrooms = null,
+        parkings = null,
+        levels = 3,
+        units = 12,
+        sections = ListingViewsTest.LISTING.sections.filter { it.section != ListingSection.AMENITIES },
+    )
+
+    private fun errors(section: ListingSection, form: ListingSectionForm, listing: Listing) =
+        ListingRules.errors(section, form, listing, today, FORMATTER)
+
+    @Test
+    fun `a building sale's checklist has no amenities section`() {
+        assertTrue(ListingRules.soldBuilding(building))
+        assertEquals(ListingRules.SECTIONS - ListingSection.AMENITIES, ListingRules.sections(building))
+        assertEquals(ListingRules.SECTIONS, ListingRules.sections(ListingViewsTest.LISTING))
+        assertFalse(ListingRules.soldBuilding(ListingViewsTest.LISTING.copy(listingType = ListingType.SALE)))
+        assertFalse(ListingRules.soldBuilding(building.copy(listingType = ListingType.RENTAL)))
+    }
+
+    @Test
+    fun `a building sale asks units and no bathroom nor parking`() {
+        val commercial = PropertyCategory.COMMERCIAL
+        val residential = PropertyCategory.RESIDENTIAL
+
+        assertTrue(ListingRules.applies("units", commercial, PropertyType.BUILDING, ListingType.SALE))
+        assertFalse(ListingRules.applies("units", commercial, PropertyType.BUILDING, ListingType.RENTAL))
+        assertFalse(ListingRules.applies("units", residential, PropertyType.VILLA, ListingType.SALE))
+        assertFalse(ListingRules.applies("bathrooms", commercial, PropertyType.BUILDING, ListingType.SALE))
+        assertTrue(ListingRules.applies("bathrooms", commercial, PropertyType.BUILDING, ListingType.RENTAL))
+        assertFalse(ListingRules.applies("parkings", residential, PropertyType.BUILDING, ListingType.SALE))
+        assertTrue(ListingRules.applies("parkings", residential, PropertyType.BUILDING, ListingType.RENTAL))
+        assertTrue(ListingRules.applies("parkings", residential, PropertyType.HOUSE, ListingType.SALE))
+    }
+
+    @Test
+    fun `a building sale's property asks its two counts`() {
+        val form = ListingSectionForm(
+            propertyCategory = "RESIDENTIAL",
+            propertyType = "BUILDING",
+            levels = "3",
+            units = "12",
+            area = "850",
+        )
+
+        assertEquals(emptyMap(), errors(ListingSection.PROPERTY, form, building))
+        assertEquals(
+            mapOf(
+                "levels" to "Indiquez ce nombre, compté sur place.",
+                "units" to "Indiquez ce nombre, compté sur place.",
+            ),
+            errors(ListingSection.PROPERTY, form.copy(levels = null, units = null), building),
+        )
+        assertEquals(
+            "Indiquez un nombre d'étages, de 1 à 30.",
+            errors(ListingSection.PROPERTY, form.copy(levels = "31"), building)["levels"],
+        )
+        assertEquals(
+            "Indiquez un nombre d'unités, de 1 à 500.",
+            errors(ListingSection.PROPERTY, form.copy(units = "501"), building)["units"],
+        )
+    }
+
+    @Test
+    fun `a building sale's property request sends its two counts and no bathroom nor parking`() {
+        val request = ListingRules.request(
+            ListingSection.PROPERTY,
+            ListingSectionForm(
+                propertyCategory = "RESIDENTIAL",
+                propertyType = "BUILDING",
+                bathrooms = "2",
+                parkings = "3",
+                levels = "3",
+                units = "12",
+                area = "850",
+            ),
+            building,
+        )
+
+        assertEquals(3, request.levels)
+        assertEquals(12, request.units)
+        assertNull(request.bathrooms)
+        assertNull(request.parkings)
+        assertNull(request.rooms)
     }
 }

@@ -347,6 +347,47 @@ class MandateEditTemplateTest {
     }
 
     @Test
+    fun `a building sale's edit page asks its étages and its unités`() {
+        val page = render(
+            MandateCardsTest.MANDATE.copy(
+                mandateType = MandateType.LISTING,
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = PropertyType.BUILDING,
+                rooms = null,
+                furnitureType = null,
+                parkings = null,
+                levels = 3,
+                units = 12,
+                area = 850,
+                price = Money(250_000_000, "XAF", PeriodicityType.NONE),
+            ),
+        )
+
+        val form = page.selectFirst("form[data-edit-form]")!!
+        val levels = assertNotNull(form.selectFirst("input[name=levels]"))
+        assertEquals("3", levels.attr("value"))
+        assertEquals("Étages (1 à 30)", form.selectFirst("label[for=levels]")?.text())
+        assertFalse(form.selectFirst("[data-group=levels] label")!!.text().contains("facultatif"))
+        val units = assertNotNull(form.selectFirst("input[name=units]"))
+        assertEquals("12", units.attr("value"))
+        assertEquals("Unités (1 à 500)", form.selectFirst("label[for=units]")?.text())
+        assertFalse(form.selectFirst("[data-group=units] label")!!.text().contains("facultatif"))
+
+        assertNull(form.selectFirst("[data-group=rooms]"))
+        assertNull(form.selectFirst("[data-group=parkings]"))
+        assertNull(form.selectFirst("[data-edit-group=amenities]"))
+        assertEquals(
+            listOf("sector", "property", "budget", "comments"),
+            form.select("details.edit-group").map { it.attr("data-edit-group") },
+        )
+        val summary = form.selectFirst("[data-edit-group=property] [data-group-value]")?.text()
+            ?.replace('\u00a0', ' ')
+            ?.replace('\u202f', ' ')
+        assertEquals("Immeuble · 3 étages · 12 unités · 850 m²", summary)
+    }
+
+    @Test
     fun `locked - approved`() {
         val page = render(APPROVED)
 

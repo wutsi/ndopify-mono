@@ -138,7 +138,8 @@
                                 <p class="field__error" id="propertyType-error" th:hidden="${errors['propertyType'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['propertyType']}"></span></p>
                             </fieldset>
                             <!-- Without JS every follow-up question shows; the server ignores those that don't apply to the type. -->
-                            <fieldset class="choices" aria-describedby="rooms-error" data-group="rooms" th:attr="aria-invalid=${errors['rooms'] != null ? 'true' : null}">
+                            <fieldset class="choices" aria-describedby="rooms-error" data-group="rooms" th:unless="${building}"
+                                      th:attr="aria-invalid=${errors['rooms'] != null ? 'true' : null}">
                                 <legend class="choices__legend">Nombre de chambres</legend>
                                 <div class="choices__grid choices__grid--2">
                                         <label class="choice"><input name="rooms" type="radio" value="1"
@@ -167,7 +168,8 @@
                                 </div>
                                 <p class="field__error" id="furnitureType-error" th:hidden="${errors['furnitureType'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['furnitureType']}"></span></p>
                             </fieldset>
-                            <fieldset class="choices" aria-describedby="parkings-error" data-group="parkings" th:attr="aria-invalid=${errors['parkings'] != null ? 'true' : null}">
+                            <fieldset class="choices" aria-describedby="parkings-error" data-group="parkings" th:unless="${building}"
+                                      th:attr="aria-invalid=${errors['parkings'] != null ? 'true' : null}">
                                 <legend class="choices__legend">Places de parking <span class="field__optional">(facultatif)</span></legend>
                                 <div class="choices__grid choices__grid--2">
                                         <label class="choice"><input name="parkings" type="radio" value="0"
@@ -183,6 +185,21 @@
                                 </div>
                                 <p class="field__error" id="parkings-error" th:hidden="${errors['parkings'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['parkings']}"></span></p>
                             </fieldset>
+                            <!-- A building sold as a whole is captured by its étages and its unités; no other type asks them. -->
+                            <div class="field" data-group="levels" th:if="${building}">
+                                <label class="field__label" for="levels">Étages <span class="field__optional">(1 à 30)</span></label>
+                                <input class="input" id="levels" name="levels" type="text" inputmode="numeric" autocomplete="off"
+                                       aria-describedby="levels-error" th:value="${answers.levels}"
+                                       th:attr="aria-invalid=${errors['levels'] != null ? 'true' : null}">
+                                <p class="field__error" id="levels-error" th:hidden="${errors['levels'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['levels']}"></span></p>
+                            </div>
+                            <div class="field" data-group="units" th:if="${building}">
+                                <label class="field__label" for="units">Unités <span class="field__optional">(1 à 500)</span></label>
+                                <input class="input" id="units" name="units" type="text" inputmode="numeric" autocomplete="off"
+                                       aria-describedby="units-error" th:value="${answers.units}"
+                                       th:attr="aria-invalid=${errors['units'] != null ? 'true' : null}">
+                                <p class="field__error" id="units-error" th:hidden="${errors['units'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['units']}"></span></p>
+                            </div>
                             <div class="field" data-group="area">
                                 <label class="field__label" for="area"><span th:text="${owner} ? 'Surface' : 'Surface minimale'">Surface minimale</span>
                                     <span class="field__optional">(facultatif)</span></label>
@@ -196,7 +213,7 @@
                         </div>
                     </details>
 
-                    <details class="edit-group" data-edit-group="amenities" th:attr="open=${#sets.contains(openGroups, 'amenities')} ? 'open' : null">
+                    <details class="edit-group" data-edit-group="amenities" th:unless="${building}" th:attr="open=${#sets.contains(openGroups, 'amenities')} ? 'open' : null">
                         <summary>
                             <span class="edit-group__title">Équipements</span>
                             <span class="edit-group__value" data-group-value th:text="${summaries['amenities']}"></span>

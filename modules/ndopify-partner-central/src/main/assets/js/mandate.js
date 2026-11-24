@@ -69,6 +69,13 @@
         return /^\d+$/.test(digits) && parseInt(digits, 10) > 0 ? parseInt(digits, 10) : NaN;
     }
 
+    // "3" → 3; null when empty, NaN when not a whole number.
+    function parseCount(value) {
+        var text = String(value || "").trim();
+        if (!text) return null;
+        return /^\d+$/.test(text) ? parseInt(text, 10) : NaN;
+    }
+
     function formatNumber(amount) {
         return amount.toLocaleString("fr-FR");
     }
@@ -298,11 +305,21 @@
             });
             var type = checked("propertyType");
             if (type === "ANY") type = null;
-            group("rooms").hidden = category !== "RESIDENTIAL" || WITHOUT_ROOMS.indexOf(type) !== -1;
+            var building = sale && type === "BUILDING";
+            // A building sold as a whole is asked its étages and its unités, and no room nor parking; its
+            // amenities group (and its fields, without JS) is not on the page.
+            hide(group("rooms"), category !== "RESIDENTIAL" || WITHOUT_ROOMS.indexOf(type) !== -1 || building);
             // A sale's edit page has no furniture question at all (th:unless="${sale}").
             var furniture = group("furnitureType");
             if (furniture) furniture.hidden = WITHOUT_FURNITURE.indexOf(type) !== -1;
-            group("parkings").hidden = WITHOUT_PARKINGS.indexOf(type) !== -1;
+            hide(group("parkings"), WITHOUT_PARKINGS.indexOf(type) !== -1 || building);
+            hide(group("levels"), !building);
+            hide(group("units"), !building);
+            hide($("[data-edit-group=amenities]", form), building);
+        }
+
+        function hide(el, hidden) {
+            if (el) el.hidden = hidden;
         }
 
         var neighborhoods = initNeighborhoods(form, syncSummaries);
@@ -315,8 +332,12 @@
             },
             property: function () {
                 var parts = [checkedLabel("propertyType") || checkedLabel("propertyCategory")];
-                var rooms = !group("rooms").hidden && checked("rooms");
+                var rooms = group("rooms") && !group("rooms").hidden && checked("rooms");
                 if (rooms) parts.push(rooms + (rooms === "1" ? " chambre" : " chambres"));
+                var levels = group("levels") && !group("levels").hidden && parseCount(form.elements.levels.value);
+                if (levels > 0) parts.push(levels + (levels > 1 ? " étages" : " étage"));
+                var units = group("units") && !group("units").hidden && parseCount(form.elements.units.value);
+                if (units > 0) parts.push(units + (units > 1 ? " unités" : " unité"));
                 var area = parseAmount(form.elements.area.value);
                 if (area > 0) parts.push(area + " m²");
                 return parts.filter(Boolean).join(" · ");

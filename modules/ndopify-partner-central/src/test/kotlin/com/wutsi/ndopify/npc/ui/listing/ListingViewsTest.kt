@@ -107,6 +107,22 @@ class ListingViewsTest {
             availableFrom = LocalDate.of(2026, 12, 1),
         )
 
+        /** A building sold as a whole: six sections (no amenities), its counts instead of rooms. */
+        val BUILDING = LISTING.copy(
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = PropertyType.BUILDING,
+            rooms = null,
+            bathrooms = null,
+            parkings = null,
+            levels = 3,
+            units = 12,
+            area = 850,
+            price = 250_000_000,
+            pricePeriodicityType = PeriodicityType.NONE,
+            sections = LISTING.sections.filter { it.section != ListingSection.AMENITIES },
+        )
+
         private fun day(day: Int): Date = Date.from(Instant.parse("2026-10-%02dT10:00:00Z".format(day)))
 
         /** The published listing's matches sent to a client: 204 and 207 are the agent's searches, 305 another agent's. */
@@ -1136,5 +1152,19 @@ class ListingViewsTest {
                 mapOf(1001L to Location(id = 1001, name = "Bonapriso")),
             ),
         )
+    }
+
+    @Test
+    fun `a building sale's checklist is six sections and words its two counts`() {
+        val listing = BUILDING.copy(
+            sections = BUILDING.sections.map { it.copy(status = ListingSectionStatus.TO_VERIFY) },
+        )
+
+        val view = of(listing)
+
+        assertEquals(6, view.rows.size)
+        assertEquals(ListingRules.SECTIONS - ListingSection.AMENITIES, view.rows.map { it.section })
+        assertEquals("0 sections sur 5 vérifiées", view.progress)
+        assertEquals("Immeuble · 3 étages · 12 unités · 850 m²", row(view, ListingSection.PROPERTY).summary)
     }
 }

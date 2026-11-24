@@ -235,6 +235,8 @@ object MandateLabels {
         val owner = mandate.mandateType == MandateType.LISTING
         val sale = FindPropertyRules.isSale(mandate.listingType)
         val type = mandate.propertyType
+        // A building sold as a whole is captured by its étages and its unités, never by rooms, parking or amenities.
+        val building = FindPropertyRules.buildingSale(mandate.listingType, type)
         val neighborhoods = mandate.neighborhoodIds.mapNotNull { locations[it]?.name }
         val sector = listOfNotNull(
             if (mandate.neighborhoodIds.isEmpty()) {
@@ -254,12 +256,14 @@ object MandateLabels {
                 ),
             "Catégorie" to (category(mandate.propertyCategory) ?: NONE),
             "Type de propriété" to (PROPERTY_TYPE_LABELS[mandate.propertyType] ?: "Indifférent"),
+            mandate.levels?.takeIf { building }?.let { "Étages" to it.toString() },
+            mandate.units?.takeIf { building }?.let { "Unités" to it.toString() },
             ("Meublé" to furniture(mandate.furnitureType))
                 .takeIf { !sale && FindPropertyRules.needsFurniture(type, mandate.listingType) },
             mandate.rooms?.let { "Chambres" to it }
-                ?.takeIf { FindPropertyRules.needsRooms(mandate.propertyCategory, type, mandate.listingType) },
+                ?.takeIf { !building && FindPropertyRules.needsRooms(mandate.propertyCategory, type, mandate.listingType) },
             ("Parking" to (mandate.parkings?.let { PARKING_VALUES[it] ?: it } ?: "Indifférent"))
-                .takeIf { FindPropertyRules.asksParkings(type) },
+                .takeIf { !building && FindPropertyRules.asksParkings(type, mandate.listingType) },
             mandate.area?.let { (if (owner) "Surface" else "Surface souhaitée") to formatNumber(it) + " m²" },
         ) + listOfNotNull(
             mandate.financingType?.takeIf { sale }?.let { "Financement" to (FINANCING_LABELS[it] ?: NONE) },
@@ -267,7 +271,7 @@ object MandateLabels {
                 .takeIf { sale && !owner && type == PropertyType.LAND },
             ("Document de propriété" to ownershipDocuments(mandate.ownershipDocuments))
                 .takeIf { sale && owner && type == PropertyType.LAND && mandate.ownershipDocuments.isNotEmpty() },
-        ) + amenityGroups(mandate) + listOfNotNull(mandate.comments?.trim()?.ifEmpty { null }
+        ) + (if (building) emptyList() else amenityGroups(mandate)) + listOfNotNull(mandate.comments?.trim()?.ifEmpty { null }
             ?.let { "Autres précisions" to it })
     }
 

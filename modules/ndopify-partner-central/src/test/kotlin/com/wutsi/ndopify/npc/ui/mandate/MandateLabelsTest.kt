@@ -408,6 +408,79 @@ class MandateLabelsTest {
     }
 
     @Test
+    fun `a building sale's criteria read its étages and its unités`() {
+        val mandate = Mandate(
+            mandateType = MandateType.SEARCH,
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.BUILDING,
+            cityId = 1,
+            levels = 3,
+            units = 12,
+            area = 850,
+            waterWell = true, // left over from an earlier answer
+            price = Money(250_000_000, "XAF", PeriodicityType.NONE),
+            movingPeriod = MovingPeriod.WITHIN_3_MONTHS,
+        )
+
+        assertEquals(
+            listOf(
+                "Secteur" to "Toute la ville — Douala",
+                "Budget" to "250\u00a0000\u00a0000\u00a0FCFA",
+                "Achat prévu" to "Dans 1 à 3\u00a0mois",
+                "Catégorie" to "Commercial",
+                "Type de propriété" to "Immeuble",
+                "Étages" to "3",
+                "Unités" to "12",
+                "Surface souhaitée" to "850 m²",
+            ),
+            MandateLabels.criteria(mandate, LOCATIONS, FORMATTER),
+        )
+    }
+
+    @Test
+    fun `a rented building keeps today's criteria and shows no count`() {
+        val mandate = Mandate(
+            mandateType = MandateType.SEARCH,
+            listingType = ListingType.RENTAL,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = PropertyType.BUILDING,
+            cityId = 1,
+            levels = 3, // left over from an earlier answer
+            units = 12,
+            price = Money(150_000, "XAF", PeriodicityType.MONTHLY),
+            movingPeriod = MovingPeriod.WITHIN_3_MONTHS,
+        )
+
+        val rows = MandateLabels.criteria(mandate, LOCATIONS, FORMATTER)
+
+        assertEquals(emptyList(), rows.filter { it.first == "Étages" || it.first == "Unités" })
+        assertEquals("Indifférent", rows.single { it.first == "Parking" }.second)
+        assertTrue(rows.none { it.first == "Chambres" })
+    }
+
+    @Test
+    fun `a sale villa keeps its rooms and shows no count`() {
+        val mandate = Mandate(
+            mandateType = MandateType.SEARCH,
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = PropertyType.VILLA,
+            cityId = 1,
+            rooms = "3",
+            levels = 3, // left over from an earlier answer
+            units = 12,
+            price = Money(45_000_000, "XAF", PeriodicityType.NONE),
+            movingPeriod = MovingPeriod.WITHIN_3_MONTHS,
+        )
+
+        val rows = MandateLabels.criteria(mandate, LOCATIONS, FORMATTER)
+
+        assertEquals("3", rows.single { it.first == "Chambres" }.second)
+        assertTrue(rows.none { it.first == "Étages" || it.first == "Unités" })
+    }
+
+    @Test
     fun `a rental criteria is unchanged`() {
         val mandate = Mandate(
             mandateType = MandateType.LISTING,

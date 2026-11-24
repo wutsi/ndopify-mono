@@ -252,6 +252,23 @@ class ListingSectionTemplateTest {
     }
 
     @Test
+    fun `a building sale's property asks its units and étages, no bathroom nor parking`() {
+        val page = render("property", ListingViewsTest.BUILDING)
+        val form = form(page)
+
+        val levels = assertNotNull(form.selectFirst("input[name=levels]"))
+        assertEquals("3", levels.attr("value"))
+        assertEquals("Étages", form.selectFirst("label[for=levels]")?.text())
+        assertNull(form.selectFirst("[data-applies=levels] .field__optional"))
+        val units = assertNotNull(form.selectFirst("input[name=units]"))
+        assertEquals("12", units.attr("value"))
+        assertEquals("Unités", form.selectFirst("label[for=units]")?.text())
+        assertNull(form.selectFirst("[data-applies=units] .field__optional"))
+        assertNull(form.selectFirst("input[name=bathrooms]"))
+        assertNull(form.selectFirst("input[name=parkings]"))
+    }
+
+    @Test
     fun amenities() {
         val form = form(render("amenities"))
 

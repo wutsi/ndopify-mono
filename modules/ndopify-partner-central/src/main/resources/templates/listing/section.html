@@ -10,7 +10,7 @@
   and every question of "Le bien" is shown (ListingRules.applies ignores those of another type); listing.js only
   enhances. Once sent ("section.editable" false), the section is only shown: its answers, nothing to act on.
 */-->
-<body data-page="listing-section" th:attr="data-section=${section} ? ${section.slug} : null, data-currency=${currency}">
+<body data-page="listing-section" th:attr="data-section=${section} ? ${section.slug} : null, data-currency=${currency}, data-sale=${sale}">
     <th:block th:replace="~{fragments/site-header :: header(@{/}, true)}"></th:block>
     <main id="main" class="page">
         <div class="column">
@@ -181,7 +181,7 @@
                                 <input th:replace="~{:: count('livingRooms', ${a.livingRooms})}">
                                 <p th:replace="~{:: error('livingRooms')}"></p>
                             </div>
-                            <div class="field" data-applies="bathrooms" th:if="${e or !#strings.isEmpty(a.bathrooms)}">
+                            <div class="field" data-applies="bathrooms" th:if="${!building and (e or !#strings.isEmpty(a.bathrooms))}">
                                 <label class="field__label" for="bathrooms">Salles de bain, douches</label>
                                 <input th:replace="~{:: count('bathrooms', ${a.bathrooms})}">
                                 <p th:replace="~{:: error('bathrooms')}"></p>
@@ -191,16 +191,22 @@
                                 <input th:replace="~{:: count('kitchens', ${a.kitchens})}">
                                 <p th:replace="~{:: error('kitchens')}"></p>
                             </div>
-                            <div class="field" data-applies="parkings" th:if="${e or !#strings.isEmpty(a.parkings)}">
+                            <div class="field" data-applies="parkings" th:if="${!building and (e or !#strings.isEmpty(a.parkings))}">
                                 <label class="field__label" for="parkings">Places de parking <span class="field__optional">(facultatif)</span></label>
                                 <input th:replace="~{:: count('parkings', ${a.parkings})}">
                                 <p class="owner-value" th:if="${ownerHints['parkings']}" th:text="${ownerHints['parkings']}" data-owner-for="parkings"></p>
                                 <p th:replace="~{:: error('parkings')}"></p>
                             </div>
                             <div class="field" data-applies="levels" th:if="${e or !#strings.isEmpty(a.levels)}">
-                                <label class="field__label" for="levels">Niveaux <span class="field__optional">(facultatif)</span></label>
+                                <label class="field__label" for="levels">Étages <span class="field__optional" data-levels-optional th:unless="${building}">(facultatif)</span></label>
                                 <input th:replace="~{:: count('levels', ${a.levels})}">
                                 <p th:replace="~{:: error('levels')}"></p>
+                            </div>
+                            <div class="field" data-applies="units" th:if="${e or !#strings.isEmpty(a.units)}">
+                                <label class="field__label" for="units">Unités</label>
+                                <input th:replace="~{:: count('units', ${a.units})}">
+                                <p class="owner-value" th:if="${ownerHints['units']}" th:text="${ownerHints['units']}" data-owner-for="units"></p>
+                                <p th:replace="~{:: error('units')}"></p>
                             </div>
                             <div class="field" data-applies="floorLevel" th:if="${e or !#strings.isEmpty(a.floorLevel)}">
                                 <label class="field__label" for="floorLevel">Étage <span class="field__optional">(0&nbsp;: rez-de-chaussée)</span></label>

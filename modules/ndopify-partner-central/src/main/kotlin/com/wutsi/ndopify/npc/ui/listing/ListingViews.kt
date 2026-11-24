@@ -82,7 +82,8 @@ object ListingViews {
         backLabel: String = "← Retour au mandat",
     ): ListingView {
         val editable = ListingRules.editable(listing) && !readOnly
-        val required = ListingRules.SECTIONS.filter { ListingRules.required(listing, it) }
+        val sections = ListingRules.sections(listing)
+        val required = sections.filter { ListingRules.required(listing, it) }
         val done = required.count { ListingRules.done(listing, it) }
         val left = required.filter { !ListingRules.done(listing, it) }.map { missing(listing, it, images) }
         val published = listing.status == ListingStatus.PUBLISHED
@@ -115,7 +116,7 @@ object ListingViews {
             rows = if (readOnly) {
                 emptyList()
             } else {
-                ListingRules.SECTIONS.map { section ->
+                sections.map { section ->
                     ChecklistRow(
                         section = section,
                         label = ListingRules.label(listing, section),
@@ -491,7 +492,7 @@ object ListingViews {
             listing == null -> null
             toFix -> "Annonce à corriger : voyez les points signalés."
             draft -> {
-                val left = ListingRules.SECTIONS
+                val left = ListingRules.sections(listing)
                     .filter { ListingRules.required(listing, it) && !ListingRules.done(listing, it) }
                     .map { ListingRules.label(listing, it) }
                 "Annonce en brouillon : " +
@@ -597,11 +598,20 @@ object ListingViews {
                 "À relever devant l'entrée du bien"
             }
 
-        ListingSection.PROPERTY -> listOfNotNull(
-            listing.propertyType?.let { MandateLabels.PROPERTY_TYPE_LABELS[it] },
-            listing.rooms?.let { plural(it, "chambre", "chambres") },
-            listing.area?.let { "${formatter.count(it.toLong())} m²" },
-        ).joinToString(" · ")
+        ListingSection.PROPERTY -> if (ListingRules.soldBuilding(listing)) {
+            listOfNotNull(
+                listing.propertyType?.let { MandateLabels.PROPERTY_TYPE_LABELS[it] },
+                listing.levels?.let { MatchRules.levels(it) },
+                listing.units?.let { MatchRules.units(it) },
+                listing.area?.let { "${formatter.count(it.toLong())} m²" },
+            ).joinToString(" · ")
+        } else {
+            listOfNotNull(
+                listing.propertyType?.let { MandateLabels.PROPERTY_TYPE_LABELS[it] },
+                listing.rooms?.let { plural(it, "chambre", "chambres") },
+                listing.area?.let { "${formatter.count(it.toLong())} m²" },
+            ).joinToString(" · ")
+        }
 
         ListingSection.AMENITIES -> {
             val checked = Amenity.of(listing).map { it.key }

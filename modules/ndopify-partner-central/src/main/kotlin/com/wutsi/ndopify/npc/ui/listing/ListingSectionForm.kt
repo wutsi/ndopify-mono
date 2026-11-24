@@ -30,6 +30,7 @@ data class ListingSectionForm(
     val parkings: String? = null,
     val area: String? = null,
     val levels: String? = null,
+    val units: String? = null,
     val floorLevel: String? = null,
     // AMENITIES: the road access is one answer, the others are checkboxes
     val waterMeter: Boolean = false,
@@ -75,6 +76,7 @@ data class ListingSectionForm(
                 parkings = listing.parkings?.toString(),
                 area = listing.area?.toString(),
                 levels = listing.levels?.toString(),
+                units = listing.units?.toString(),
                 floorLevel = listing.floorLevel?.toString(),
                 waterMeter = listing.waterMeter,
                 dedicatedWaterMeter = listing.dedicatedWaterMeter,
