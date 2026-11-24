@@ -324,7 +324,7 @@ class MandateContractGeneratorTest {
     }
 
     @Test
-    fun `a building sale contract words its étages and its unités`() {
+    fun `a building sale contract words its étages and its unités, never its stored utilities`() {
         val building = mandate.copy(
             listingType = ListingType.SALE,
             propertyCategory = PropertyCategory.COMMERCIAL,
@@ -334,12 +334,21 @@ class MandateContractGeneratorTest {
             area = 850,
             levels = 3,
             units = 12,
-            dedicatedWaterMeter = false,
-            waterWell = false,
-            generatorSet = false,
-            roadPaved = false,
-            securityGuard = false,
-            videoSurveillance = false,
+            // An interest-seeded search, or a legacy row, may still store the utilities the wizards no longer ask
+            waterMeter = true,
+            dedicatedWaterMeter = true,
+            waterTank = true,
+            waterWell = true,
+            electricityMeter = true,
+            dedicatedElectricityMeter = true,
+            generatorSet = true,
+            solarPanel = true,
+            roadPaved = true,
+            trackAccessibleByCar = true,
+            trackInaccessibleByCar = true,
+            securedFenced = true,
+            securityGuard = true,
+            videoSurveillance = true,
             pricePeriodicityType = PeriodicityType.UNKNOWN,
         )
 
@@ -348,7 +357,47 @@ class MandateContractGeneratorTest {
         assertTrue(html.contains("<b>Étages</b> : 3"))
         assertTrue(html.contains("<b>Unités</b> : 12"))
         assertFalse(html.contains("Chambres"))
-        assertFalse(html.contains("Accès à l'eau"))
+        listOf(
+            "Les équipements souhaités",
+            "Accès à l'eau",
+            "Compteur électrique",
+            "Groupe électrogène",
+            "Route bitumée",
+            "Gardien",
+        ).forEach { text -> assertFalse(html.contains(text), "unexpected: $text") }
+    }
+
+    @Test
+    fun `a building sale listing contract never words its stored utilities`() {
+        val building = mandate.copy(
+            mandateType = MandateType.LISTING,
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.BUILDING,
+            rooms = null,
+            parkings = null,
+            area = 850,
+            levels = 3,
+            units = 12,
+            waterMeter = true,
+            generatorSet = true,
+            roadPaved = true,
+            securityGuard = true,
+            pricePeriodicityType = PeriodicityType.UNKNOWN,
+        )
+
+        val html = generator.generate(building, contract.copy(commissionRate = 5))
+
+        assertTrue(html.contains("<b>Étages</b> : 3"))
+        assertTrue(html.contains("<b>Unités</b> : 12"))
+        listOf(
+            "Les équipements du bien",
+            "Accès à l'eau",
+            "Compteur électrique",
+            "Groupe électrogène",
+            "Route bitumée",
+            "Gardien",
+        ).forEach { text -> assertFalse(html.contains(text), "unexpected: $text") }
     }
 
     @Test

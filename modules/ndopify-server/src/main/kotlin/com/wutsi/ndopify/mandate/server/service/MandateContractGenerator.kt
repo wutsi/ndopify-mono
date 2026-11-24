@@ -117,28 +117,31 @@ class MandateContractGenerator(
         val customer = customerService.findById(mandate.customerId)
         val agent = mandate.agentId?.let { id -> agentService.findById(id) }
 
+        // A building sold as a whole is worded by its storeys and its units, never by utilities (AC 9): neither wizard
+        // asks them, and a legacy row's — or an interest-seeded search's — stored flags must not be printed either
+        val soldBuilding = mandate.listingType == ListingType.SALE && mandate.propertyType == PropertyType.BUILDING
         val water = amenities(
             mandate.waterMeter to "Compteur d'eau",
             mandate.dedicatedWaterMeter to "Compteur d'eau individuel",
             mandate.waterTank to "Citerne",
             mandate.waterWell to "Forage",
-        )
+        ).takeUnless { soldBuilding }
         val electricity = amenities(
             mandate.electricityMeter to "Compteur électrique",
             mandate.dedicatedElectricityMeter to "Compteur électrique individuel",
             mandate.generatorSet to "Groupe électrogène",
             mandate.solarPanel to "Panneaux solaires",
-        )
+        ).takeUnless { soldBuilding }
         val roadAccess = amenities(
             mandate.roadPaved to "Route bitumée",
             mandate.trackAccessibleByCar to "Piste accessible en voiture",
             mandate.trackInaccessibleByCar to "Piste accessible à pied seulement",
-        )
+        ).takeUnless { soldBuilding }
         val security = amenities(
             mandate.securedFenced to "Clôturé et sécurisé",
             mandate.securityGuard to "Gardien",
             mandate.videoSurveillance to "Vidéosurveillance",
-        )
+        ).takeUnless { soldBuilding }
         val contactPeriod = mandate.preferredContactPeriod?.let { CONTACT_PERIODS[it] }
         val comments = mandate.comments?.ifBlank { null }
 
