@@ -158,15 +158,10 @@ object MandateLabels {
     }
 
     /**
-     * "150 000 FCFA / mois" in the tenant's format, or "150K FCFA / mois" when [compact] (a card's facts); without
-     * " / mois" unless the price is monthly.
+     * "150K FCFA / mois" or "45M FCFA", short in the tenant's format; without " / mois" unless the price is monthly.
      */
-    fun price(money: Money, formatter: TenantFormatter, compact: Boolean = false): String {
-        val amount = if (compact) {
-            formatter.compactMoney(money.amount, money.currency)
-        } else {
-            formatter.money(money.amount, money.currency)
-        }
+    fun price(money: Money, formatter: TenantFormatter): String {
+        val amount = formatter.compactMoney(money.amount, money.currency)
         return if (money.periodicity == PeriodicityType.MONTHLY) "$amount / mois" else amount
     }
 

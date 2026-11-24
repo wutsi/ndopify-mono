@@ -176,7 +176,7 @@ class MandateCloseViewsTest {
                 .map { it.label },
         )
         assertEquals(
-            "240\u00a0000\u00a0FCFA / mois",
+            "240K\u00a0FCFA / mois",
             MandateCloseViews.recap(unknown, null, null, false, null, null, emptyMap(), 240000, FORMATTER).price,
         )
     }
@@ -187,7 +187,7 @@ class MandateCloseViewsTest {
 
         val recap = MandateCloseViews.recap(sale, null, null, true, null, null, emptyMap(), 15_000_000, FORMATTER)
 
-        assertEquals("15\u00a0000\u00a0000\u00a0FCFA", recap.price)
+        assertEquals("15M\u00a0FCFA", recap.price)
         assertEquals(
             "À la confirmation : le mandat n° 201 est fermé et l'annonce est marquée vendue. Cette action est définitive.",
             recap.note,
@@ -284,7 +284,7 @@ class MandateCloseViewsTest {
 
         assertEquals("Appartement · 3 chambres, Bonapriso — annonce n° 3012", recap.property)
         assertEquals("Ray Sponsible", recap.client)
-        assertEquals("240\u00a0000\u00a0FCFA / mois", recap.price)
+        assertEquals("240K\u00a0FCFA / mois", recap.price)
         assertEquals(
             "À la confirmation : le mandat n° 201 est fermé, l'annonce est retirée du marché et le mandat du bailleur est fermé. Cette action est définitive.",
             recap.note,
@@ -309,7 +309,7 @@ class MandateCloseViewsTest {
 
         assertEquals("Appartement · 2 chambres, Bonapriso — annonce n° 501", recap.property)
         assertEquals("Un client hors de vos recherches", recap.client)
-        assertEquals("150\u00a0000\u00a0FCFA / mois", recap.price)
+        assertEquals("150K\u00a0FCFA / mois", recap.price)
         assertEquals(
             "À la confirmation : le mandat n° 201 est fermé et l'annonce est retirée du marché. Cette action est définitive.",
             recap.note,
@@ -332,7 +332,7 @@ class MandateCloseViewsTest {
 
         assertEquals("Un bien", recap.property)
         assertEquals("Ray Sponsible", recap.client)
-        assertEquals("240\u00a0000\u00a0FCFA / mois", recap.price)
+        assertEquals("240K\u00a0FCFA / mois", recap.price)
         assertEquals(
             "À la confirmation : le mandat n° 201 est fermé. Aucune annonce n'est retirée du marché. Cette action est définitive.",
             recap.note,

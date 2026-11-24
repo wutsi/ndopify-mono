@@ -289,7 +289,7 @@ class VisitTemplateTest {
             assertNotNull(fee, visit.status.name)
             assertTrue(
                 fee.text().replace('\u00a0', ' ').replace('\u202f', ' ')
-                    .contains("Frais de visite : 5 000 FCFA, à encaisser auprès du client à la visite."),
+                    .contains("Frais de visite : 5K FCFA, à encaisser auprès du client à la visite."),
                 visit.status.name,
             )
         }

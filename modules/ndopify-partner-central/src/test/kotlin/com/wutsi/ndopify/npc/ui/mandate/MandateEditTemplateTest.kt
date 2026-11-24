@@ -310,7 +310,7 @@ class MandateEditTemplateTest {
         val budget = form.selectFirst("[data-edit-group=budget] [data-group-value]")?.text()
             ?.replace('\u00a0', ' ')
             ?.replace('\u202f', ' ')
-        assertEquals("15 000 000 FCFA · Dans 1 à 3 mois", budget)
+        assertEquals("15M FCFA · Dans 1 à 3 mois", budget)
     }
 
     @Test
@@ -431,6 +431,7 @@ class MandateEditTemplateTest {
         assertNotNull(page.selectFirst("script[src*=slim-select@4.3.0]"))
         assertNotNull(page.selectFirst("link[href*=slim-select@4.3.0]"))
         assertEquals("mandate-edit", page.body().attr("data-page"))
+        assertEquals(",", page.body().attr("data-decimal-separator"))
         val form = page.selectFirst("form[data-edit-form]")!!
         assertEquals("/locations", form.attr("data-locations-url"))
         assertEquals(11, form.select("[data-categories]").size)

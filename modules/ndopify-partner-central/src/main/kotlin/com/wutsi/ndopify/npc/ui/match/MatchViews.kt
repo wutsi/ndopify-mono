@@ -123,7 +123,6 @@ object MatchViews {
                 MandateLabels.listingPriceTerm(mandate.listingType) to MandateLabels.price(
                     Money(listing.price, listing.currencyCode, listing.pricePeriodicityType),
                     formatter,
-                    compact = true,
                 ),
                 "Disponibilité" to (available?.let { "Dès le " + formatter.date(it) } ?: "Libre maintenant"),
             ),

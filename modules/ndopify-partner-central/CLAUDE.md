@@ -411,8 +411,8 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `MatchRules.proposals` like the cards', counts it), then their listings in one `GET /v1/listings?id=&id=` (`NdListingClient.searchByIds`; a match whose listing
   isn't returned, unpublished meanwhile, is left out), and the location names with the mandate's. Either search failing
   is the section's "unavailable": the mandate is still shown. The cards are compact for phones: the title links to the
-  listing, then one line of facts (score, neighbourhood, the rent in bold and in short, `compact = true`: "245K FCFA /
-  mois", availability) and, once sent, "Envoyé le …" (tag "En attente" / "Intéressé"; "Expirée" and "Envoyé le …, sans réponse" for a
+  listing, then one line of facts (score, neighbourhood, the rent in bold and in short: "245K FCFA / mois",
+  availability) and, once sent, "Envoyé le …" (tag "En attente" / "Intéressé"; "Expirée" and "Envoyé le …, sans réponse" for a
   proposal ndopify-server expired unanswered, counted "1 sans réponse"). `MatchViews` → `MatchView` (cards in `MatchRules.ORDER`,
   best score first within each status) and `MatchRules`: tags, the client's answer ("Envoyé le …" or, interested,
   "Intéressé le …": the latest step only), and "Pourquoi ce bien ?", the partial scores of ndopify-server's `Matcher` in words (neighbourhood, price,

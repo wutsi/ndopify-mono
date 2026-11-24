@@ -44,18 +44,17 @@ class MandateLabelsTest {
     @Test
     fun price() {
         assertEquals(
-            "150\u00a0000\u00a0FCFA / mois",
+            "150K\u00a0FCFA / mois",
             MandateLabels.price(
                 Money(amount = 150000, currency = "XAF", periodicity = PeriodicityType.MONTHLY),
                 FORMATTER
             ),
         )
-        assertEquals("2\u00a0500,00\u00a0CAD", MandateLabels.price(Money(amount = 2500, currency = "CAD"), FORMATTER))
+        assertEquals("2,5K\u00a0CAD", MandateLabels.price(Money(amount = 2500, currency = "CAD"), FORMATTER))
         assertEquals(
             "152,5K\u00a0FCFA / mois",
-            MandateLabels.price(Money(152500, "XAF", PeriodicityType.MONTHLY), FORMATTER, compact = true),
+            MandateLabels.price(Money(152500, "XAF", PeriodicityType.MONTHLY), FORMATTER),
         )
-        assertEquals("2,5K\u00a0CAD", MandateLabels.price(Money(2500, "CAD"), FORMATTER, compact = true))
     }
 
     @Test
@@ -183,7 +182,7 @@ class MandateLabelsTest {
         )
 
         assertEquals(
-            "Prix" to "45\u00a0000\u00a0000\u00a0FCFA",
+            "Prix" to "45M\u00a0FCFA",
             MandateLabels.criteria(listing, LOCATIONS, FORMATTER).first { it.first == "Prix" },
         )
         assertEquals(
@@ -191,7 +190,7 @@ class MandateLabelsTest {
             MandateLabels.criteria(listing, LOCATIONS, FORMATTER).first { it.first == "Disponibilité" },
         )
         assertEquals(
-            "Budget" to "45\u00a0000\u00a0000\u00a0FCFA",
+            "Budget" to "45M\u00a0FCFA",
             MandateLabels.criteria(search, LOCATIONS, FORMATTER).first { it.first == "Budget" },
         )
         assertEquals(
@@ -237,7 +236,7 @@ class MandateLabelsTest {
         assertEquals(
             listOf(
                 "Secteurs" to "Kotto, Logpom — Douala",
-                "Budget" to "150\u00a0000\u00a0FCFA / mois",
+                "Budget" to "150K\u00a0FCFA / mois",
                 "Emménagement" to "Dans moins d'1\u00a0mois",
                 "Catégorie" to "Résidentiel",
                 "Type de propriété" to "Appartement",
@@ -268,7 +267,7 @@ class MandateLabelsTest {
         assertEquals(
             listOf(
                 "Secteur" to "Toute la ville — Douala",
-                "Loyer" to "50\u00a0000\u00a0FCFA / mois",
+                "Loyer" to "50K\u00a0FCFA / mois",
                 "Disponibilité" to "Dans plus de 3\u00a0mois",
                 "Catégorie" to "Résidentiel",
                 "Type de propriété" to "Terrain",
@@ -295,7 +294,7 @@ class MandateLabelsTest {
 
         val rows = MandateLabels.criteria(mandate, LOCATIONS, FORMATTER)
 
-        assertEquals("10\u00a0000\u00a0000\u00a0FCFA", rows.single { it.first == "Budget" }.second)
+        assertEquals("10M\u00a0FCFA", rows.single { it.first == "Budget" }.second)
         assertEquals(emptyList(), rows.filter { it.first == "Meublé" })
         assertEquals("Comptant", rows.single { it.first == "Financement" }.second)
         assertEquals(
@@ -338,7 +337,7 @@ class MandateLabelsTest {
 
         val rows = MandateLabels.criteria(mandate, LOCATIONS, FORMATTER)
 
-        assertEquals("150\u00a0000\u00a0FCFA / mois", rows.single { it.first == "Budget" }.second)
+        assertEquals("150K\u00a0FCFA / mois", rows.single { it.first == "Budget" }.second)
         assertEquals("Indifférent", rows.single { it.first == "Meublé" }.second)
         assertEquals(emptyList(), rows.filter { it.first == "Financement" })
         assertEquals(emptyList(), rows.filter { it.first == "Documents exigés" })
@@ -426,7 +425,7 @@ class MandateLabelsTest {
         assertEquals(
             listOf(
                 "Secteur" to "Toute la ville — Douala",
-                "Budget" to "250\u00a0000\u00a0000\u00a0FCFA",
+                "Budget" to "250M\u00a0FCFA",
                 "Achat prévu" to "Dans 1 à 3\u00a0mois",
                 "Catégorie" to "Commercial",
                 "Type de propriété" to "Immeuble",
@@ -501,6 +500,6 @@ class MandateLabelsTest {
 
         assertTrue(rows.any { it.first == "Meublé" })
         assertTrue(rows.none { it.first == "Document de propriété" })
-        assertEquals("150\u00a0000\u00a0FCFA / mois", rows.first { it.first == "Loyer" }.second)
+        assertEquals("150K\u00a0FCFA / mois", rows.first { it.first == "Loyer" }.second)
     }
 }

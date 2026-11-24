@@ -338,7 +338,7 @@ class VisitTemplateTest {
     fun `an open visit states the fee`() {
         val doc = render(of(visit(VisitStatus.CONFIRMED, VisitType.ON_SITE).copy(visitFee = Money(5000, "XAF"))))
 
-        assertTrue(doc.selectFirst("[data-visit-fee]")!!.text().contains("5 000 FCFA"))
+        assertTrue(doc.selectFirst("[data-visit-fee]")!!.text().contains("5K FCFA"))
     }
 
     @Test

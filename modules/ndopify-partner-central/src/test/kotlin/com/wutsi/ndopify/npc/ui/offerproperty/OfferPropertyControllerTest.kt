@@ -488,7 +488,7 @@ class OfferPropertyControllerTest {
 
         val result = mvc.perform(terms(price = "1 000")).andReturn()
 
-        assertEquals("Indiquez un loyer d'au moins ${FORMATTER.money(5000)} par mois.", errors(result)["priceAmount"])
+        assertEquals("Indiquez un loyer d'au moins ${FORMATTER.compactMoney(5000)} par mois.", errors(result)["priceAmount"])
     }
 
     @Test
@@ -502,7 +502,7 @@ class OfferPropertyControllerTest {
 
         assertEquals("terms", model(result)["step"])
         assertEquals(
-            "Indiquez un prix d'au moins ${FORMATTER.money(1_000_000)}.",
+            "Indiquez un prix d'au moins ${FORMATTER.compactMoney(1_000_000)}.",
             errors(result)["priceAmount"],
         )
         assertNull(pending()?.priceAmount)
@@ -529,7 +529,7 @@ class OfferPropertyControllerTest {
         session.setAttribute(PendingListing.SESSION_ATTRIBUTE, complete.copy(priceAmount = null))
 
         val below = mvc.perform(terms(price = "4 000")).andReturn()
-        assertEquals("Indiquez un loyer d'au moins ${FORMATTER.money(5000)} par mois.", errors(below)["priceAmount"])
+        assertEquals("Indiquez un loyer d'au moins ${FORMATTER.compactMoney(5000)} par mois.", errors(below)["priceAmount"])
 
         val saved = mvc.perform(terms()).andReturn()
         assertEquals("redirect:/offer-property?step=features", saved.modelAndView?.viewName)
@@ -914,7 +914,7 @@ class OfferPropertyControllerTest {
         assertEquals("Bastos, Yaoundé", model(result)["locationLabel"])
         assertEquals(
             listOf(
-                FORMATTER.money(150_000) + " par mois",
+                FORMATTER.compactMoney(150_000) + " par mois",
                 "Avance de 3 mois",
                 "Caution de 2 mois",
                 "Disponible dès le " + FORMATTER.date(TODAY.plusDays(10)),
@@ -941,7 +941,7 @@ class OfferPropertyControllerTest {
 
         assertEquals(
             listOf(
-                FORMATTER.money(150_000) + " par mois",
+                FORMATTER.compactMoney(150_000) + " par mois",
                 "Sans avance de loyer",
                 "Sans caution",
                 "Disponible dès le " + FORMATTER.date(TODAY.plusDays(10)),
@@ -962,8 +962,8 @@ class OfferPropertyControllerTest {
         assertEquals("Vente, usage résidentiel", model(result)["categoryLabel"])
         assertEquals(
             listOf(
-                FORMATTER.money(45_000_000),
-                "≈ " + FORMATTER.money(56_300) + "/m² pour " + MandateLabels.formatNumber(800) + " m²",
+                FORMATTER.compactMoney(45_000_000),
+                "≈ " + FORMATTER.compactMoney(56_300) + "/m² pour " + MandateLabels.formatNumber(800) + " m²",
                 "Disponible dès le " + FORMATTER.date(TODAY.plusDays(10)),
             ),
             model(result)["termsLines"],

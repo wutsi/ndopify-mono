@@ -268,7 +268,7 @@ class MandateTemplateTest {
 
         val section = page.selectFirst("[data-terms-section]")!!
         assertEquals("3 mois", section.select(".review__value")[0].text())
-        assertEquals("5 000 FCFA", section.select(".review__value")[1].text().replace('\u00a0', ' '))
+        assertEquals("5K FCFA", section.select(".review__value")[1].text().replace('\u00a0', ' '))
         assertTrue(section.text().contains("Signé le"))
         assertTrue(section.text().contains("20 oct. 2026"))
         assertTrue(section.text().contains("Valable jusqu'au"))
@@ -622,7 +622,7 @@ class MandateTemplateTest {
         )
 
         assertEquals(
-            "Mandat fermé le 01 nov. 2026, au loyer de 240 000 FCFA / mois, 12 jours après son approbation.",
+            "Mandat fermé le 01 nov. 2026, au loyer de 240K FCFA / mois, 12 jours après son approbation.",
             page.selectFirst("[data-panel=CLOSED] .alert__title + p")?.text()?.replace('\u00a0', ' '),
         )
         assertNull(page.selectFirst("[data-end]"))
@@ -646,7 +646,7 @@ class MandateTemplateTest {
         val panel = page.selectFirst("[data-panel=CLOSED]")!!
         assertEquals("Vente conclue", panel.selectFirst(".alert__title")?.text())
         assertEquals(
-            "Mandat fermé le 01 nov. 2026, au prix de 15 000 000 FCFA, 12 jours après son approbation.",
+            "Mandat fermé le 01 nov. 2026, au prix de 15M FCFA, 12 jours après son approbation.",
             panel.selectFirst(".alert__title + p")?.text()?.replace('\u00a0', ' '),
         )
         assertFalse(panel.text().contains("au loyer de"))
@@ -662,7 +662,7 @@ class MandateTemplateTest {
         val panel = page.selectFirst("[data-panel=CLOSED]")!!
         assertEquals("Bail signé", panel.selectFirst(".alert__title")?.text())
         assertEquals(
-            "Mandat fermé le 01 nov. 2026, au loyer de 240 000 FCFA / mois, 12 jours après son approbation.",
+            "Mandat fermé le 01 nov. 2026, au loyer de 240K FCFA / mois, 12 jours après son approbation.",
             panel.selectFirst(".alert__title + p")?.text()?.replace('\u00a0', ' '),
         )
     }

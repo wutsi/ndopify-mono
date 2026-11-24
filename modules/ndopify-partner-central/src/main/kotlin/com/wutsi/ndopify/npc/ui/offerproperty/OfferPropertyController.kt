@@ -451,6 +451,7 @@ class OfferPropertyController(
             model.addAttribute("propertyTypeLabels", PROPERTY_TYPE_LABELS)
             model.addAttribute("furnitureLabels", MandateLabels.byName(MandateLabels.FURNITURE_TYPE_LABELS))
             model.addAttribute("currency", formatter().currency())
+            model.addAttribute("decimalSeparator", formatter().decimalSeparator())
             model.addAttribute("ownershipDocumentLabels", MandateLabels.byName(MandateLabels.TITLE_DOCUMENT_LABELS))
             model.addAttribute("ownershipDocumentNames", HashSet(answers.ownershipDocuments.map { it.name }))
             // A sale renders the follow-up questions until its type is known, then only the ones its type needs.
@@ -509,7 +510,7 @@ class OfferPropertyController(
     }
 
     /**
-     * "150 000 FCFA par mois", "Avance de 3 mois", "Caution de 2 mois", "Disponible dès maintenant"; a sale's price
+     * "150K FCFA par mois", "Avance de 3 mois", "Caution de 2 mois", "Disponible dès maintenant"; a sale's price
      * has no "/ mois" and no advance nor deposit line, and a sold plot adds its implied rate right after it.
      */
     private fun termsLines(answers: PendingListing): List<String> {
@@ -521,15 +522,15 @@ class OfferPropertyController(
             val type = FindPropertyRules.parsePropertyType(answers.propertyType)
             val rate = OfferPropertyRules.pricePerSqm(answers.listingType, type, answers.priceAmount, answers.area)
             return listOfNotNull(
-                answers.priceAmount?.let { formatter.money(it) },
+                answers.priceAmount?.let { formatter.compactMoney(it) },
                 rate?.let {
-                    "≈ " + formatter.money(it) + "/m² pour " + MandateLabels.formatNumber(answers.area!!) + " m²"
+                    "≈ " + formatter.compactMoney(it) + "/m² pour " + MandateLabels.formatNumber(answers.area!!) + " m²"
                 },
                 availability,
             )
         }
         return listOfNotNull(
-            answers.priceAmount?.let { formatter.money(it) + " par mois" },
+            answers.priceAmount?.let { formatter.compactMoney(it) + " par mois" },
             answers.advanceRent?.let { "Avance de $it mois" } ?: "Sans avance de loyer",
             answers.securityDeposit?.let { "Caution de $it mois" } ?: "Sans caution",
             availability,

@@ -111,11 +111,11 @@ class MandateEditRulesTest {
     @Test
     fun `a sale listing's floor is a price, a sale search's a budget`() {
         assertEquals(
-            "Indiquez un prix d'au moins 1 000 000 FCFA.",
+            "Indiquez un prix d'au moins 1M FCFA.",
             text(MandateEditRules.errors(FORM.copy(priceAmount = "1 000"), SALE_LISTING, FORMATTER)["priceAmount"]),
         )
         assertEquals(
-            "Indiquez un budget d'au moins 1 000 000 FCFA.",
+            "Indiquez un budget d'au moins 1M FCFA.",
             text(MandateEditRules.errors(FORM.copy(priceAmount = "1 000"), SALE_SEARCH, FORMATTER)["priceAmount"]),
         )
         assertEquals(emptyMap(), MandateEditRules.errors(FORM.copy(priceAmount = "15 000 000"), SALE_LISTING, FORMATTER))
@@ -129,7 +129,7 @@ class MandateEditRulesTest {
         assertEquals(emptyMap(), MandateEditRules.errors(form, SALE_LISTING, FORMATTER))
 
         assertEquals(
-            "15 000 000 FCFA · Dans moins d'1 mois",
+            "15M FCFA · Dans moins d'1 mois",
             text(MandateEditRules.summaries(form, SALE_SEARCH, listOf("Bonapriso"), FORMATTER)["budget"]),
         )
         assertFalse(MandateEditRules.summaries(form, SALE_SEARCH, listOf("Bonapriso"), FORMATTER)["budget"]!!.contains("/ mois"))
@@ -158,7 +158,7 @@ class MandateEditRulesTest {
             MandateEditRules.errors(FORM.copy(movingPeriod = null), MANDATE, FORMATTER)["movingPeriod"],
         )
         assertEquals(
-            "150 000 FCFA / mois · Dans moins d'1 mois",
+            "150K FCFA / mois · Dans moins d'1 mois",
             text(MandateEditRules.summaries(FORM, MANDATE, listOf("Bonapriso"), FORMATTER)["budget"]),
         )
     }
@@ -444,7 +444,7 @@ class MandateEditRulesTest {
     @Test
     fun `errors - amounts`() {
         assertEquals(
-            "Indiquez un loyer d'au moins 5\u00a0000\u00a0FCFA par mois.",
+            "Indiquez un loyer d'au moins 5K\u00a0FCFA par mois.",
             MandateEditRules.errors(FORM.copy(priceAmount = "1 000"), MANDATE, FORMATTER)["priceAmount"],
         )
         assertEquals(

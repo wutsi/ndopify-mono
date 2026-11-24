@@ -74,7 +74,7 @@ object MandateCards {
             facts = facts.mapIndexed { i, (term, value) ->
                 when (i) {
                     0 -> term to sector(mandate, value, city)
-                    1 -> term to MandateLabels.price(mandate.price, formatter, compact = true) // "250K FCFA / mois", short on a card
+                    1 -> term to MandateLabels.price(mandate.price, formatter) // "250K FCFA / mois"
                     else -> term to value
                 }
             },

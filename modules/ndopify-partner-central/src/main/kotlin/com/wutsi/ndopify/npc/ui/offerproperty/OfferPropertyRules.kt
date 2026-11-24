@@ -220,13 +220,13 @@ object OfferPropertyRules {
         if (isSale(listingType)) {
             when {
                 value == null || value <= 0 -> "Indiquez le prix de vente souhaité."
-                value < MIN_SALE_PRICE -> "Indiquez un prix d'au moins ${formatter.money(MIN_SALE_PRICE)}."
+                value < MIN_SALE_PRICE -> "Indiquez un prix d'au moins ${formatter.compactMoney(MIN_SALE_PRICE)}."
                 else -> null
             }
         } else {
             when {
                 value == null || value <= 0 -> "Indiquez le loyer mensuel souhaité."
-                value < MIN_RENT -> "Indiquez un loyer d'au moins ${formatter.money(MIN_RENT)} par mois."
+                value < MIN_RENT -> "Indiquez un loyer d'au moins ${formatter.compactMoney(MIN_RENT)} par mois."
                 else -> null
             }
         }

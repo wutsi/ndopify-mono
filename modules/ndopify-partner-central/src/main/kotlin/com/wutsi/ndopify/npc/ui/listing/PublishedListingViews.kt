@@ -99,7 +99,7 @@ object PublishedListingViews {
             .map { (group, items) -> AmenityGroupView(group, items.map { it.label }) }
 
     private fun terms(listing: Listing, formatter: TenantFormatter): List<SpecView> {
-        val money = { months: Int -> formatter.money(months.toLong() * listing.price, listing.currencyCode) }
+        val amount = { months: Int -> formatter.compactMoney(months.toLong() * listing.price, listing.currencyCode) }
         if (listing.listingType == ListingType.SALE) {
             // A sale's conditions are its price and its availability: never a rent, a deposit or a lease term
             return listOfNotNull(
@@ -128,10 +128,10 @@ object PublishedListingViews {
                 null
             },
             listing.securityDeposit?.let {
-                SpecView("Caution", if (it > 0) "${plural(it, "mois", "mois")} (${money(it)})" else "Sans caution")
+                SpecView("Caution", if (it > 0) "${plural(it, "mois", "mois")} (${amount(it)})" else "Sans caution")
             },
             listing.advanceRent?.let {
-                SpecView("Avance sur loyer", if (it > 0) "${plural(it, "mois", "mois")} (${money(it)})" else "Sans avance")
+                SpecView("Avance sur loyer", if (it > 0) "${plural(it, "mois", "mois")} (${amount(it)})" else "Sans avance")
             },
             listing.availableFrom?.let { SpecView("Disponible", "À partir du ${formatter.date(it)}") },
             listing.leaseTerm?.let { SpecView("Durée du bail", plural(it, "mois", "mois")) },

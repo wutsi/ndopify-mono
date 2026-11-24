@@ -185,7 +185,7 @@ class FindPropertyControllerTest {
             "Appartement · 3 chambres · Meublé ou non · 1 place de parking · 80 m² minimum",
             model(result)["propertyLabel"],
         )
-        assertEquals("150\u00a0000\u00a0FCFA par mois", model(result)["priceLabel"])
+        assertEquals("150K\u00a0FCFA par mois", model(result)["priceLabel"])
         assertEquals("Dans moins d'1\u00a0mois", model(result)["movingPeriodLabel"])
         assertEquals("le soir", model(result)["contactPeriodLabel"])
         assertEquals(listOf("Compteur d'eau", "Gardien de sécurité"), model(result)["amenityLabels"])
@@ -213,7 +213,7 @@ class FindPropertyControllerTest {
         val result = mvc.perform(get("/find-property?step=review").session(session)).andReturn()
 
         assertEquals("Achat, usage résidentiel", model(result)["categoryLabel"])
-        assertEquals("10\u00a0000\u00a0000\u00a0FCFA", model(result)["priceLabel"])
+        assertEquals("10M\u00a0FCFA", model(result)["priceLabel"])
         assertEquals("Achat prévu", model(result)["moveInTerm"])
         assertEquals("Comptant", model(result)["financingLabel"])
         assertEquals("Aucun document exigé", model(result)["titleDocumentsLabel"])
@@ -956,7 +956,7 @@ class FindPropertyControllerTest {
                 .param("priceAmount", "4 000")
                 .param("movingPeriod", "WITHIN_1_MONTH"),
         ).andReturn()
-        assertEquals("Indiquez un loyer d'au moins 5\u00a0000\u00a0FCFA par mois.", errors(low)["priceAmount"])
+        assertEquals("Indiquez un loyer d'au moins 5K\u00a0FCFA par mois.", errors(low)["priceAmount"])
 
         val result = mvc.perform(
             post("/find-property/budget").session(session)
@@ -979,7 +979,7 @@ class FindPropertyControllerTest {
                 .param("movingPeriod", "WITHIN_1_MONTH"),
         ).andReturn()
 
-        assertEquals("Indiquez un loyer d'au moins 5\u00a0000\u00a0FCFA par mois.", errors(result)["priceAmount"])
+        assertEquals("Indiquez un loyer d'au moins 5K\u00a0FCFA par mois.", errors(result)["priceAmount"])
         assertNull(pending()?.priceAmount)
     }
 

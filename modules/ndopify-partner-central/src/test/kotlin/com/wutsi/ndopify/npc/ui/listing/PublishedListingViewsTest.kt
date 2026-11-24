@@ -47,8 +47,8 @@ class PublishedListingViewsTest {
         )
         assertEquals(
             listOf(
-                SpecView("Loyer", "150\u00a0000\u00a0FCFA / mois"),
-                SpecView("Caution", "3 mois (450\u00a0000\u00a0FCFA)"),
+                SpecView("Loyer", "150K\u00a0FCFA / mois"),
+                SpecView("Caution", "3 mois (450K\u00a0FCFA)"),
                 SpecView("Disponible", "À partir du 01 nov. 2026"),
             ),
             view.terms,
@@ -77,7 +77,7 @@ class PublishedListingViewsTest {
 
         assertEquals(
             listOf(
-                SpecView("Prix", "45\u00a0000\u00a0000\u00a0FCFA"),
+                SpecView("Prix", "45M\u00a0FCFA"),
                 SpecView("Disponible", "À partir du 01 nov. 2026"),
             ),
             view.terms,

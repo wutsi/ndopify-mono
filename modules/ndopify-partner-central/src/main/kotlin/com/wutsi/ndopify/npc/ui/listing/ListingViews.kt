@@ -690,13 +690,11 @@ object ListingViews {
                 MandateLabels.price(
                     Money(listing.price, listing.currencyCode, listing.pricePeriodicityType),
                     formatter,
-                    compact = true,
                 )
             } else {
                 val rent = MandateLabels.price(
                     Money(listing.price, listing.currencyCode, PeriodicityType.MONTHLY),
                     formatter,
-                    compact = true,
                 )
                 rent + (listing.securityDeposit?.let { if (it > 0) " · caution $it mois" else " · sans caution" } ?: "")
             }

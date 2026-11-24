@@ -529,6 +529,7 @@ class OfferPropertyTemplateTest {
 
         val hook = assertNotNull(page.selectFirst("[data-price-per-sqm]"))
         assertTrue(hook.text().isBlank())
+        assertEquals(",", page.selectFirst("form[data-offer-form]")?.attr("data-decimal-separator"))
     }
 
     @Test
@@ -774,7 +775,7 @@ class OfferPropertyTemplateTest {
         assertFalse(value(page, "terms").contains("Caution"))
         assertTrue(
             value(page, "terms")
-                .contains("≈ " + FORMATTER.money(56_300) + "/m² pour " + MandateLabels.formatNumber(800) + " m²"),
+                .contains("≈ " + FORMATTER.compactMoney(56_300) + "/m² pour " + MandateLabels.formatNumber(800) + " m²"),
         )
         assertFalse(value(page, "terms").contains("56300"))
         assertEquals("Document de propriété", page.selectFirst("[data-review-ownershipDocuments] .review__term")?.text())

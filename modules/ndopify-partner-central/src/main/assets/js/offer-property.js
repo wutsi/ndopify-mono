@@ -397,6 +397,7 @@
         var sale = (form.getAttribute("data-listing-type") || "RENTAL") === "SALE";
         var askingPrice = Number(form.getAttribute("data-price-amount")) || 0;
         var currency = form.getAttribute("data-currency") || "";
+        var decimalSeparator = form.getAttribute("data-decimal-separator") || ",";
         var groups = {
             furnitureType: $('[data-group="furnitureType"]', form),
             rooms: $('[data-group="rooms"]', form),
@@ -486,8 +487,8 @@
                 perSqm.textContent = "";
                 return;
             }
-            perSqm.textContent = "Soit ≈ " + formatNumber(rate) + " " + currency + "/m² pour " +
-                formatNumber(surface) + " m²";
+            perSqm.textContent = "Soit ≈ " + window.NdUtil.compactNumber(rate, decimalSeparator) + "\u00a0" + currency +
+                "/m² pour " + formatNumber(surface) + " m²";
             perSqm.hidden = false;
         }
 

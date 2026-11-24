@@ -554,6 +554,7 @@ class FindPropertyTemplateTest {
         assertEquals("400", form(page).attr("data-area"))
         assertEquals("LAND", form(page).attr("data-property-type"))
         assertEquals("FCFA", form(page).attr("data-currency"))
+        assertEquals(",", form(page).attr("data-decimal-separator"))
     }
 
     @Test
@@ -577,7 +578,7 @@ class FindPropertyTemplateTest {
 
         assertEquals("100", page.selectFirst("#priceAmount")?.attr("value"))
         assertEquals(
-            "Indiquez un loyer d'au moins 5 000 FCFA par mois.",
+            "Indiquez un loyer d'au moins 5K FCFA par mois.",
             page.selectFirst("#priceAmount-error")?.text()
         )
         assertEquals("true", page.selectFirst("#priceAmount")?.attr("aria-invalid"))
@@ -621,7 +622,7 @@ class FindPropertyTemplateTest {
             value(page, "property"),
         )
         assertEquals("Compteur d'eau, Gardien de sécurité", value(page, "amenities"))
-        assertEquals("150\u00a0000\u00a0FCFA par mois", value(page, "price"))
+        assertEquals("150K\u00a0FCFA par mois", value(page, "price"))
         assertEquals("Dans moins d'1\u00a0mois", value(page, "movingPeriod"))
         assertTrue(value(page, "contact").contains("Ray Sponsible"))
         assertTrue(value(page, "contact").contains("ray@gmail.com"))
@@ -698,7 +699,7 @@ class FindPropertyTemplateTest {
         val page = render(get("/find-property?step=review"))
 
         assertEquals("Achat, usage résidentiel", value(page, "project"))
-        assertEquals("10\u00a0000\u00a0000\u00a0FCFA", value(page, "price"))
+        assertEquals("10M\u00a0FCFA", value(page, "price"))
         assertEquals("Achat prévu", page.selectFirst("[data-review-move-in-term]")?.text())
         assertEquals("Comptant", value(page, "financing"))
         assertEquals("Aucun document exigé", value(page, "titleDocuments"))

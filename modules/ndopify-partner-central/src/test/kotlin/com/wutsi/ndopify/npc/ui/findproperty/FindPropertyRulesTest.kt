@@ -277,7 +277,7 @@ class FindPropertyRulesTest {
         assertNull(FindPropertyRules.priceAmount(5000L, FORMATTER, null))
         assertEquals("Indiquez votre budget mensuel.", FindPropertyRules.priceAmount(null, FORMATTER, null))
         assertEquals(
-            "Indiquez un loyer d'au moins 5\u00a0000\u00a0FCFA par mois.",
+            "Indiquez un loyer d'au moins 5K\u00a0FCFA par mois.",
             FindPropertyRules.priceAmount(4999L, FORMATTER, null),
         )
     }
@@ -287,7 +287,7 @@ class FindPropertyRulesTest {
         assertNull(FindPropertyRules.priceAmount(1_000_000L, FORMATTER, ListingType.SALE))
         assertEquals("Indiquez votre budget total.", FindPropertyRules.priceAmount(null, FORMATTER, ListingType.SALE))
         assertEquals(
-            "Indiquez un budget d'au moins 1\u00a0000\u00a0000\u00a0FCFA.",
+            "Indiquez un budget d'au moins 1M\u00a0FCFA.",
             FindPropertyRules.priceAmount(999_999L, FORMATTER, ListingType.SALE),
         )
         assertNull(FindPropertyRules.priceAmount(5_000L, FORMATTER, ListingType.RENTAL))

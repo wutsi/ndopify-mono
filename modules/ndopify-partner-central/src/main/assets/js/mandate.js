@@ -112,9 +112,14 @@
         return document.body.getAttribute("data-currency") || "";
     }
 
-    // 150000 → "150 000 FCFA / mois", close to MandateLabels.price (the tenant's monetaryFormat is server-side only).
-    function formatRent(amount) {
-        return formatNumber(amount) + "\u00a0" + currency() + " / mois";
+    // The tenant's decimal separator ("," or "."), from the page's body (data-decimal-separator).
+    function decimalSeparator() {
+        return document.body.getAttribute("data-decimal-separator") || ",";
+    }
+
+    // 150000 → "150K FCFA / mois" for a rental, "150K FCFA" for a sale, as MandateEditRules.summaries renders it.
+    function formatPrice(amount, sale) {
+        return window.NdUtil.compactNumber(amount, decimalSeparator()) + "\u00a0" + currency() + (sale ? "" : " / mois");
     }
 
     // A form's submit button, once pressed: disabled and relabelled, so the form can't be posted twice.
@@ -349,7 +354,7 @@
             },
             budget: function () {
                 var price = parseAmount(form.elements.priceAmount.value);
-                var parts = [price > 0 ? formatRent(price) : "Montant à indiquer"];
+                var parts = [price > 0 ? formatPrice(price, sale) : "Montant à indiquer"];
                 if (checked("movingPeriod")) parts.push(checkedLabel("movingPeriod"));
                 return parts.join(" · ");
             },
