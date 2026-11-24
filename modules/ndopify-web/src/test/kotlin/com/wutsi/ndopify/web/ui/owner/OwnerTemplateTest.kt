@@ -66,7 +66,7 @@ class OwnerTemplateTest {
 
     @Test
     fun `tenant logo and icon`() {
-        val page = render("tenant" to tenant, "offerPropertyUrl" to "https://partner.ndopify.cm/offer-property")
+        val page = render("tenant" to tenant, "offerPropertyUrl" to "https://partner.ndopify.cm/offer-property?type=RENTAL")
 
         assertEquals("https://cdn.ndopify.cm/logo.png", page.selectFirst("header img")?.attr("src"))
         assertEquals("Ndopify Cameroun", page.selectFirst("header img")?.attr("alt"))
@@ -92,11 +92,11 @@ class OwnerTemplateTest {
 
     @Test
     fun `every call to action opens offer-property`() {
-        val page = render("tenant" to tenant, "offerPropertyUrl" to "https://partner.ndopify.cm/offer-property")
+        val page = render("tenant" to tenant, "offerPropertyUrl" to "https://partner.ndopify.cm/offer-property?type=RENTAL")
 
         val ctas = page.select(".cta-row a")
         assertEquals(4, ctas.size)
-        assertTrue(ctas.all { it.attr("href") == "https://partner.ndopify.cm/offer-property" })
+        assertTrue(ctas.all { it.attr("href") == "https://partner.ndopify.cm/offer-property?type=RENTAL" })
     }
 
     @Test
@@ -108,7 +108,7 @@ class OwnerTemplateTest {
 
     @Test
     fun `the switch offers the sale page and keeps the rental wording`() {
-        val page = render("tenant" to tenant, "offerPropertyUrl" to "https://partner.ndopify.cm/offer-property")
+        val page = render("tenant" to tenant, "offerPropertyUrl" to "https://partner.ndopify.cm/offer-property?type=RENTAL")
 
         assertEquals(listOf("/owner", "/owner/sell"), page.select("nav.goal-switch a").map { it.attr("href") })
         assertEquals("Mettre en location", page.selectFirst("nav.goal-switch a[aria-current=page]")?.text())
@@ -118,7 +118,7 @@ class OwnerTemplateTest {
 
     @Test
     fun `no pre-MVP promise`() {
-        val text = render("tenant" to tenant, "offerPropertyUrl" to "https://partner.ndopify.cm/offer-property").text()
+        val text = render("tenant" to tenant, "offerPropertyUrl" to "https://partner.ndopify.cm/offer-property?type=RENTAL").text()
 
         listOf("sous 24 h", "vidéos", "Pass Visite", "l'équipe examine votre dossier").forEach {
             assertFalse(text.contains(it), it)
@@ -128,7 +128,7 @@ class OwnerTemplateTest {
 
     @Test
     fun `no link to the prototype`() {
-        val page = render("tenant" to tenant, "offerPropertyUrl" to "https://partner.ndopify.cm/offer-property")
+        val page = render("tenant" to tenant, "offerPropertyUrl" to "https://partner.ndopify.cm/offer-property?type=RENTAL")
 
         assertTrue(page.select("[href$=.html], [src$=.html]").isEmpty())
     }

@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping
  * pages of the four mandates (Louer, Acheter, Mettre en location, Vendre), nothing to browse.
  *
  * `/louer` is the renter's page, for people looking for a rental: its calls to action open Partner Central's *Trouver
- * un bien* wizard, `{partnerCentralUrl}/find-property`, and are left out without a `partnerCentralUrl`.
+ * un bien* wizard, `{partnerCentralUrl}/find-property?type=RENTAL`, and are left out without a `partnerCentralUrl`.
  *
  * The tenant is the one [com.wutsi.ndopify.web.ui.layout.TenantAdvice] put in the model, read from there rather than
  * taken as a `@ModelAttribute` parameter, which request parameters could bind.
@@ -30,7 +30,7 @@ class HomeController {
 
     @GetMapping("/louer")
     fun rent(model: Model): String {
-        model.addAttribute("findPropertyUrl", PartnerCentralUrls.of(model.getAttribute("tenant") as Tenant, "/find-property"))
+        model.addAttribute("findPropertyUrl", PartnerCentralUrls.of(model.getAttribute("tenant") as Tenant, "/find-property?type=RENTAL"))
         return RENTER_VIEW
     }
 }

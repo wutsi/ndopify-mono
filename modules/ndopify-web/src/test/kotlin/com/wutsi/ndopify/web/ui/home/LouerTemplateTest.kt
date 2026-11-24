@@ -59,7 +59,7 @@ class LouerTemplateTest {
         publicPortalUrl = "https://www.ndopify.cm",
     )
 
-    private val findPropertyUrl = "https://partner.ndopify.cm/find-property"
+    private val findPropertyUrl = "https://partner.ndopify.cm/find-property?type=RENTAL"
 
     private fun render(vararg attributes: Pair<String, Any?>): Document {
         controller.attributes = mapOf(*attributes)

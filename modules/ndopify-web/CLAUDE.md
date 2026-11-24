@@ -15,8 +15,8 @@ every ndopify-server call while the cookie is present (a 401 clears it: `HttpCli
 
 Package `com.wutsi.ndopify.web`:
 
-- `ui/home/` (`/`, `templates/index.html`, people looking for a rental → `{partnerCentralUrl}/find-property`),
-  `ui/owner/` (`/owner`, `owner.html`, property owners → `/offer-property`), `ui/agent/` (`/agent`, `agent.html`,
+- `ui/home/` (`/`, `templates/index.html`, people looking for a rental → `{partnerCentralUrl}/find-property?type=RENTAL`),
+  `ui/owner/` (`/owner`, `owner.html`, property owners → `/offer-property?type=RENTAL`), `ui/agent/` (`/agent`, `agent.html`,
   agents → `/join`). Each controller only builds its link with `ui/layout/PartnerCentralUrls.of(tenant, path)`,
   null (the call to action is left out) when the tenant has no `partnerCentralUrl`.
 - `ui/listing/` — a listing's public page at its `Listing.url` (`/<city>/<neighborhood>/listing/<id>/<slug>`,
