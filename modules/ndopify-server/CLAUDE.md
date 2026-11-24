@@ -462,7 +462,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   first, then co-brokerage, best score first. `matchListing` never creates co-brokerage rows: the daily `rematch`
   picks a newly published listing up. `Matcher` (pure, unit
   tested case by case in `MatcherTest`) rules a pair out (the customer's own property, another listing type / city /
-  category — skipped only for a specified `BUILDING` pair — currency or periodicity, over budget +
+  category — skipped only for a specified `BUILDING` or `LAND` pair — currency or periodicity, over budget +
   `price-tolerance`, an incompatible property type) or scores it (neighbourhood, price, rooms, amenities, availability,
   furniture) multiplied by a property-type factor: 1.0 exact or no preference, 0.9 `OFFICE`/`RETAIL`, 0.85
   `BUILDING`/`OFFICE`/`RETAIL`, 0.8 `INDUSTRIAL` siblings, 0.0 veto (`LAND` against non-land, residential
