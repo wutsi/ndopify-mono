@@ -599,6 +599,24 @@ class FindPropertyControllerTest {
     }
 
     @Test
+    fun `a residential purchase drops a surface it no longer asks`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(listingType = ListingType.SALE, propertyType = null, rooms = null, area = null),
+        )
+
+        mvc.perform(
+            post("/find-property/property").session(session)
+                .param("propertyType", "VILLA")
+                .param("rooms", "3")
+                .param("furnitureType", "ANY")
+                .param("area", "400"),
+        ).andReturn()
+
+        assertNull(pending()?.area)
+    }
+
+    @Test
     fun `a house purchase sends its documents and a rental none`() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
@@ -748,12 +766,14 @@ class FindPropertyControllerTest {
 
     @Test
     fun propertyAreaWithSeparators() {
-        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete.copy(propertyType = null, rooms = null))
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = null, rooms = null),
+        )
 
         mvc.perform(
             post("/find-property/property").session(session)
-                .param("propertyType", "STUDIO")
-                .param("furnitureType", "ANY")
+                .param("propertyType", "OFFICE")
                 .param("area", "1 200"),
         ).andReturn()
 
@@ -762,12 +782,14 @@ class FindPropertyControllerTest {
 
     @Test
     fun propertyAreaNotANumber() {
-        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete.copy(propertyType = null, rooms = null))
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = null, rooms = null),
+        )
 
         val result = mvc.perform(
             post("/find-property/property").session(session)
-                .param("propertyType", "STUDIO")
-                .param("furnitureType", "ANY")
+                .param("propertyType", "OFFICE")
                 .param("area", "abc"),
         ).andReturn()
 
@@ -776,12 +798,14 @@ class FindPropertyControllerTest {
 
     @Test
     fun propertyAreaTooLarge() {
-        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete.copy(propertyType = null, rooms = null))
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = null, rooms = null),
+        )
 
         val result = mvc.perform(
             post("/find-property/property").session(session)
-                .param("propertyType", "STUDIO")
-                .param("furnitureType", "ANY")
+                .param("propertyType", "OFFICE")
                 .param("area", "99999999999"),
         ).andReturn()
 

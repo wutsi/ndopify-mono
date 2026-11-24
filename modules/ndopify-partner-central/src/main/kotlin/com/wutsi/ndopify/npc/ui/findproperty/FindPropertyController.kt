@@ -180,6 +180,10 @@ class FindPropertyController(
         val buildingSale = FindPropertyRules.buildingSale(pending.listingType, type)
         val areaText = form.area?.trim().orEmpty()
         val area = FindPropertyRules.parseAmount(areaText)?.takeIf { it <= Int.MAX_VALUE }?.toInt()
+        // A surface only where the rules ask it: a commercial property, a plot bought, or an "Indifférent" search that
+        // may still match one. A residential non-land type drops it, like any other answer that doesn't apply (#304).
+        val showsArea = FindPropertyRules.needsArea(pending.propertyCategory, type, pending.listingType) ||
+            (type == null && (pending.propertyCategory == PropertyCategory.COMMERCIAL || pending.isSale()))
         // Documents are kept for a purchase only, whatever the type; unknown names were rejected at binding.
         val documents = form.titleDocuments
             .filter { it in FindPropertyRules.titleDocumentTypes(pending.listingType, type) }
@@ -192,7 +196,7 @@ class FindPropertyController(
             parkings = form.parkings?.takeIf {
                 it.isNotEmpty() && FindPropertyRules.asksParkings(pending.propertyCategory, type, pending.listingType)
             },
-            area = area,
+            area = area.takeIf { showsArea },
             // A building sale's counts: kept as typed (the page shows them again on error), sent as null when
             // "Indifférent" is ticked, and dropped for any other type; so is a stale amenity answer.
             levels = form.levels?.trim()?.toIntOrNull().takeIf { buildingSale && !form.levelsAny },
@@ -202,7 +206,8 @@ class FindPropertyController(
             amenities = pending.amenities.takeIf { !buildingSale } ?: emptySet(),
             titleDocuments = documents,
         )
-        val requiredArea = FindPropertyRules.needsArea(pending.propertyCategory, type, pending.listingType)
+        // The surface is required for a plot of land bought only; a commercial property's is optional, as today.
+        val requiredArea = pending.isSale() && type == PropertyType.LAND
         val errors = errors(
             "propertyType" to FindPropertyRules.propertyType(answers.propertyCategory, typeAnswer, pending.listingType),
             "rooms" to
@@ -220,11 +225,12 @@ class FindPropertyController(
             "parkings" to FindPropertyRules.parkings(answers.parkings),
             "levels" to if (buildingSale) FindPropertyRules.levels(form.levels, form.levelsAny) else null,
             "units" to if (buildingSale) FindPropertyRules.units(form.units, form.unitsAny) else null,
-            // Something typed that isn't a usable number is an error too, not a silent "no area".
-            "area" to if (areaText.isNotEmpty() && area == null) {
-                FindPropertyRules.area(0, requiredArea)
-            } else {
-                FindPropertyRules.area(area, requiredArea)
+            // Something typed that isn't a usable number is an error too, not a silent "no area"; a hidden surface is
+            // dropped, so its field has no error either.
+            "area" to when {
+                !showsArea -> null
+                areaText.isNotEmpty() && area == null -> FindPropertyRules.area(0, requiredArea)
+                else -> FindPropertyRules.area(area, requiredArea)
             },
         )
         return save(STEP_PROPERTY, answers, errors, returnTo, session, model)
