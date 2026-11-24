@@ -37,7 +37,7 @@ class OwnerController {
     fun sell(model: Model): String {
         val tenant = model.getAttribute("tenant") as Tenant
         model.addAttribute("offerPropertyUrl", PartnerCentralUrls.of(tenant, "/offer-property?type=SALE"))
-        model.addAttribute("zeroAmount", TenantFormatter(tenant).money(0))
+        model.addAttribute("zeroAmount", TenantFormatter(tenant).compactMoney(0))
         return SELL_VIEW
     }
 }

@@ -73,7 +73,7 @@ object VisitPages {
         val intro = feedbackIntro(visit, tenant, formatter)
         val visitFee = if (visit.status in OPEN_STATUSES) {
             visit.visitFee.takeIf { it.amount > 0 }?.let {
-                "Frais de visite : ${formatter.money(it.amount, it.currency)}, à régler directement à " +
+                "Frais de visite : ${formatter.compactMoney(it.amount, it.currency)}, à régler directement à " +
                     "${agent?.party?.firstName?.ifBlank { null } ?: NO_AGENT_NAME} lors de la visite. " +
                     "Ndopify ne perçoit aucun paiement."
             } ?: "Aucun frais de visite."

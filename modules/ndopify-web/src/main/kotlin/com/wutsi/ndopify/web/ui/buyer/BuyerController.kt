@@ -27,7 +27,7 @@ class BuyerController {
     fun index(model: Model): String {
         val tenant = model.getAttribute("tenant") as Tenant
         model.addAttribute("findPropertyUrl", PartnerCentralUrls.of(tenant, "/find-property?type=SALE"))
-        model.addAttribute("zeroAmount", TenantFormatter(tenant).money(0))
+        model.addAttribute("zeroAmount", TenantFormatter(tenant).compactMoney(0))
         return VIEW
     }
 }

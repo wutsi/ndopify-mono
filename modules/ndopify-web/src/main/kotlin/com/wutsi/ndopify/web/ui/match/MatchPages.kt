@@ -86,7 +86,7 @@ object MatchPages {
         val state = state(match, listing)
         val sale = mandate.listingType == ListingType.SALE
         val visitFee = mandate.visitFee.takeIf { it.amount > 0 }
-            ?.let { formatter.money(it.amount, it.currency) }
+            ?.let { formatter.compactMoney(it.amount, it.currency) }
         val termsNote = "Les visites sont organisées par votre agent. " +
             (
                 visitFee?.let { "Frais de visite : $it par visite, réglés directement à lui." }

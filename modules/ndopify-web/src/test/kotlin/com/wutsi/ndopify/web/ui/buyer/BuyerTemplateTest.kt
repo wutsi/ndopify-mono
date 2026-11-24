@@ -70,7 +70,7 @@ class BuyerTemplateTest {
         numberFormat = "#,###,##0",
     )
 
-    private val zeroAmount = TenantFormatter(euroTenant).money(0)
+    private val zeroAmount = TenantFormatter(euroTenant).compactMoney(0)
 
     private fun render(vararg attributes: Pair<String, Any?>): Document {
         controller.attributes = mapOf(*attributes)

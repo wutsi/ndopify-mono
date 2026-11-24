@@ -251,7 +251,7 @@ class MatchTemplateTest {
         val doc = render(
             page(
                 MatchStatus.ACCEPTED,
-                visitFee = "5 000 FCFA",
+                visitFee = "5K FCFA",
                 visitPanel = VisitPanel(
                     open = null,
                     form = VisitForm(
@@ -264,8 +264,8 @@ class MatchTemplateTest {
             ),
         )
 
-        assertTrue(doc.selectFirst(".terms-note")!!.text().contains("Frais de visite : 5 000 FCFA"))
-        assertTrue(doc.selectFirst(".answer[data-answer=ACCEPTED] .price-card__hint")!!.text().contains("5 000 FCFA"))
+        assertTrue(doc.selectFirst(".terms-note")!!.text().contains("Frais de visite : 5K FCFA"))
+        assertTrue(doc.selectFirst(".answer[data-answer=ACCEPTED] .price-card__hint")!!.text().contains("5K FCFA"))
         assertTrue(doc.selectFirst("#visit .visit-request__fee")!!.text().contains("Ndopify ne perçoit aucun paiement"))
         assertFalse(doc.text().contains("Pass Visite"))
     }
