@@ -394,7 +394,7 @@ class MandateViewsTest {
     }
 
     @Test
-    fun `a non-land sale shows its documents, without the note`() {
+    fun `a non-land sale shows its documents and the note`() {
         val view = view(
             APPROVED.copy(
                 listingType = ListingType.SALE,
@@ -403,7 +403,7 @@ class MandateViewsTest {
             ),
         )
 
-        assertFalse(view.titleDocumentsRequired)
+        assertTrue(view.titleDocumentsRequired)
         assertTrue(view.keyCriteria.contains("Documents exigés" to "Titre foncier"))
     }
 
