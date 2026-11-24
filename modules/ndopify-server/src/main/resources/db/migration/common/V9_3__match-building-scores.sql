@@ -1,0 +1,3 @@
+ALTER TABLE T_MATCH
+  ADD COLUMN units_score DOUBLE NOT NULL DEFAULT 1 AFTER rooms_score,
+  ADD COLUMN levels_score DOUBLE NOT NULL DEFAULT 1 AFTER units_score;

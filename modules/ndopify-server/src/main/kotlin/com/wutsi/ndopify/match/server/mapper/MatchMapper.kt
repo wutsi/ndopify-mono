@@ -19,6 +19,8 @@ class MatchMapper {
             neighborhoodScore = entity.neighborhoodScore,
             priceScore = entity.priceScore,
             roomsScore = entity.roomsScore,
+            unitsScore = entity.unitsScore,
+            levelsScore = entity.levelsScore,
             amenitiesScore = entity.amenitiesScore,
             availabilityScore = entity.availabilityScore,
             furnitureScore = entity.furnitureScore,

@@ -10,6 +10,7 @@ import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.time.LocalDate
+import kotlin.math.abs
 
 /**
  * Rules out or scores one (search mandate, listing) pair. Pure: what the pair needs from elsewhere (distances, today)
@@ -30,6 +31,9 @@ import java.time.LocalDate
  * The score is the weighted sum of its partials multiplied by `typeScore`: 1.0 for the searched type (or none),
  * 0.8-0.9 for a commercial or housing sibling. See also
  * `docs/superpowers/specs/2026-11-08-match-residential-siblings-design.md`.
+ *
+ * A building sold as a whole, against a building sold as a whole, is scored on the closeness of its units and its
+ * levels instead of its rooms, amenities and furniture (see [MatchScore.building]).
  */
 @Service
 class Matcher(
@@ -43,6 +47,10 @@ class Matcher(
         const val WEIGHT_AMENITIES = 0.15
         const val WEIGHT_AVAILABILITY = 0.10
         const val WEIGHT_FURNITURE = 0.05
+
+        // A building sold as a whole: its two counts replace rooms, amenities and furniture
+        const val WEIGHT_UNITS = 0.20
+        const val WEIGHT_LEVELS = 0.15
 
         // A housing sibling is kept only with the searched rooms count or one more
         const val MIN_SIBLING_ROOMS = 0.7
@@ -123,17 +131,41 @@ class Matcher(
         listing: ListingEntity,
         distances: Map<Long, Double>,
         today: LocalDate,
-    ): MatchScore = MatchScore(
-        neighborhood = neighborhood(search, listing, distances),
-        price = price(search, listing),
-        rooms = rooms(search, listing),
-        amenities = amenities(search, listing),
-        availability = availability(search, listing, today),
-        furniture = furniture(search, listing),
-        type = typeScore(search.propertyType, listing.propertyType),
-        distanceKm = distanceKm(search, listing, distances),
-        missingAmenities = requested(search, listing).filterNot { (_, has) -> has }.map { (key, _) -> key },
-    )
+    ): MatchScore {
+        val building = buildingPair(search, listing)
+        return MatchScore(
+            neighborhood = neighborhood(search, listing, distances),
+            price = price(search, listing),
+            rooms = if (building) 1.0 else rooms(search, listing),
+            amenities = if (building) 1.0 else amenities(search, listing),
+            availability = availability(search, listing, today),
+            furniture = if (building) 1.0 else furniture(search, listing),
+            type = typeScore(search.propertyType, listing.propertyType),
+            distanceKm = distanceKm(search, listing, distances),
+            missingAmenities = if (building) {
+                emptyList()
+            } else {
+                requested(search, listing).filterNot { (_, has) -> has }.map { (key, _) -> key }
+            },
+            units = if (building) closeness(search.units, listing.units) else 1.0,
+            levels = if (building) closeness(search.levels, listing.levels) else 1.0,
+            building = building,
+        )
+    }
+
+    // A building sold as a whole on both sides: the only pair the building weights apply to
+    private fun buildingPair(search: MandateEntity, listing: ListingEntity): Boolean =
+        search.listingType == ListingType.SALE &&
+            search.propertyType == PropertyType.BUILDING &&
+            listing.propertyType == PropertyType.BUILDING
+
+    // 1 - |actual - wanted| / wanted, clamped: 0 for a gap at least as wide as the search, 1.0 when either states none
+    private fun closeness(wanted: Int?, actual: Int?): Double {
+        if (wanted == null || actual == null || wanted <= 0) {
+            return 1.0
+        }
+        return (1.0 - abs(actual - wanted).toDouble() / wanted).coerceIn(0.0, 1.0)
+    }
 
     private fun ruleOut(search: MandateEntity, listing: ListingEntity): MatchResult.RuledOut? = when {
         listing.mandate.customerId == search.customerId ->

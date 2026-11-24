@@ -48,6 +48,8 @@ data class MatchEntity(
     val neighborhoodScore: Double = 0.0,
     val priceScore: Double = 0.0,
     val roomsScore: Double = 0.0,
+    val unitsScore: Double = 1.0,
+    val levelsScore: Double = 1.0,
     val amenitiesScore: Double = 0.0,
     val availabilityScore: Double = 0.0,
     val furnitureScore: Double = 0.0,

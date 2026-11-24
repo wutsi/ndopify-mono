@@ -4,6 +4,9 @@ package com.wutsi.ndopify.match.server.service
  * The partial scores (each 0..1) of a (search mandate, listing) pair, and their weighted sum. With what explains them
  * to the agent: [distanceKm] from the listing's neighbourhood to the nearest searched one (0 inside one, null when not
  * nearby or none searched), and the [missingAmenities] searched that the listing lacks, by DTO field name.
+ *
+ * A building sold as a whole ([building]) is scored on its units and its levels instead of its rooms, amenities and
+ * furniture, which it has none of: its total switches to the building weights, and those three partials stay neutral.
  */
 data class MatchScore(
     val neighborhood: Double,
@@ -15,14 +18,25 @@ data class MatchScore(
     val type: Double = 1.0,
     val distanceKm: Double? = null,
     val missingAmenities: List<String> = emptyList(),
+    val units: Double = 1.0,
+    val levels: Double = 1.0,
+    val building: Boolean = false,
 ) {
     val total: Double
         get() = (
-            Matcher.WEIGHT_NEIGHBORHOOD * neighborhood +
-                Matcher.WEIGHT_PRICE * price +
-                Matcher.WEIGHT_ROOMS * rooms +
-                Matcher.WEIGHT_AMENITIES * amenities +
-                Matcher.WEIGHT_AVAILABILITY * availability +
-                Matcher.WEIGHT_FURNITURE * furniture
+            if (building) {
+                Matcher.WEIGHT_NEIGHBORHOOD * neighborhood +
+                    Matcher.WEIGHT_PRICE * price +
+                    Matcher.WEIGHT_UNITS * units +
+                    Matcher.WEIGHT_LEVELS * levels +
+                    Matcher.WEIGHT_AVAILABILITY * availability
+            } else {
+                Matcher.WEIGHT_NEIGHBORHOOD * neighborhood +
+                    Matcher.WEIGHT_PRICE * price +
+                    Matcher.WEIGHT_ROOMS * rooms +
+                    Matcher.WEIGHT_AMENITIES * amenities +
+                    Matcher.WEIGHT_AVAILABILITY * availability +
+                    Matcher.WEIGHT_FURNITURE * furniture
+            }
             ) * type
 }
