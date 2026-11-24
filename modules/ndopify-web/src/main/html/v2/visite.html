@@ -60,6 +60,10 @@
   v2 (#259): &sale=1 is the visit of a SALE match (proposition.html?sale=1): "Le bien" instead of "le logement", the
   sale price, and once interested "Serge vous recontacte pour la suite de votre achat". The rest (fee, slots, cancel,
   feedback) is the same. Rental page unchanged.
+
+  #292 — the visit fee reads short ("5K FCFA") in the summary notice and in "À prévoir", overriding the full fee of
+  the earlier prototypes; every other displayed amount is short too. Areas ("800 m²") and counts are not money and
+  keep their formatting.
 -->
 <body class="visit-page">
 <a class="skip-link" href="#main">Aller au contenu principal</a>
@@ -118,8 +122,8 @@
                     <strong class="visit-listing__title"><span data-rental-only>Appartement 3 chambres à
                         Bonapriso</span><span data-sale-only hidden>Villa 4 chambres à Bonapriso</span></strong>
                     <span class="visit-listing__place">Bonapriso, Douala</span>
-                    <span class="visit-listing__price" data-rental-only><strong>240K FCFA</strong> / mois</span>
-                    <span class="visit-listing__price" data-sale-only hidden><strong>240M FCFA</strong></span>
+                    <span class="visit-listing__price" data-rental-only><strong>240K&nbsp;FCFA</strong> / mois</span>
+                    <span class="visit-listing__price" data-sale-only hidden><strong>240M&nbsp;FCFA</strong></span>
                 </span>
             </a>
             <div class="visit-agent">
@@ -135,7 +139,7 @@
             <!-- Only while the visit is still to happen: an ended visit owes nothing (visite.js hides it). -->
             <p class="notice notice--info" data-visit-only="REQUESTED CONFIRMED CHECKED_IN">
                 <svg aria-hidden="true" class="icon"><use href="#i-info"/></svg>
-                <span>Frais de visite&nbsp;: <strong>5&nbsp;000&nbsp;FCFA</strong>, à régler directement à Serge lors de
+                <span>Frais de visite&nbsp;: <strong>5K&nbsp;FCFA</strong>, à régler directement à Serge lors de
                     la visite. Ndopify ne perçoit aucun paiement.</span>
             </p>
         </div>
@@ -238,7 +242,7 @@
                         passeport).</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-key"/></svg>Votre code de visite, sur votre
                         téléphone ou noté.</li>
-                    <li><svg aria-hidden="true" class="icon"><use href="#i-info"/></svg>5&nbsp;000&nbsp;FCFA pour les
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-info"/></svg>5K&nbsp;FCFA pour les
                         frais de visite, à régler à Serge.</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg>Vos questions : charges, eau,
                         électricité, voisinage.</li>

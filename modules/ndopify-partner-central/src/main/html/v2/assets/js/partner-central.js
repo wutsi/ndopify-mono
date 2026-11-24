@@ -1874,23 +1874,38 @@
         return !!MANDATES[id] && MANDATES[id].listingType === "SALE";
     }
 
-    // A sale price in millions on a card, so it fits one line: "15M FCFA", "12,5M FCFA", "850K FCFA". No "/ mois".
-    function formatSalePrice(amount) {
-        var value = amount >= 1000000
-            ? (amount / 1000000).toLocaleString("fr-FR", { maximumFractionDigits: 1 }) + "M"
-            : amount >= 1000 ? (amount / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 }) + "K"
-                : String(amount);
-        return value + " FCFA";
+    // A displayed amount, short and in the tenant's French form (#292): "500 FCFA", "150K FCFA", "1,25M FCFA",
+    // "1,5G FCFA". K keeps at most one decimal, M and G two, half-up, trailing zeros dropped, and the unit is
+    // bumped after rounding (999 950 → "1M FCFA", never "1000K FCFA"). The prototype hard-codes the French comma
+    // and FCFA; production reads the tenant's locale and currency symbol (TenantFormatter.compactMoney).
+    function formatMoney(amount) {
+        var n = Math.abs(Number(amount) || 0);
+        var sign = Number(amount) < 0 ? "-" : "";
+        function rounded(value, decimals) {
+            var factor = Math.pow(10, decimals);
+            return Math.round(value * factor) / factor;
+        }
+        function text(value, decimals) {
+            return String(value.toFixed(decimals)).replace(/\.?0+$/, "").replace(".", ",");
+        }
+        var value;
+        if (n < 1000) {
+            value = String(n);
+        } else {
+            var k = rounded(n / 1000, 1);
+            if (k < 1000) {
+                value = text(k, 1) + "K";
+            } else {
+                var m = rounded(n / 1000000, 2);
+                value = m < 1000 ? text(m, 2) + "M" : text(rounded(n / 1000000000, 2), 2) + "G";
+            }
+        }
+        return sign + value + "\u00A0FCFA";
     }
 
-    // The mandate's price as a card shows it: compact, "/ mois" for a rental only.
+    // The mandate's price as a card shows it: short, "/ mois" for a rental only.
     function formatPriceOf(id, amount) {
-        return isSale(id) ? formatSalePrice(amount) : formatRent(amount);
-    }
-
-    // In full ("250 000 000 FCFA", "300 000 FCFA / mois"): the closed panel, the close wizard.
-    function formatFullPriceOf(id, amount) {
-        return amount.toLocaleString("fr-FR") + (isSale(id) ? " FCFA" : " FCFA / mois");
+        return formatMoney(amount) + (isSale(id) ? "" : " / mois");
     }
 
     // The mandate's type badge ("Vente" / "Location"): a status pill of the type variant, beside the status on the
@@ -1970,25 +1985,11 @@
             ["videoSurveillance", "Vidéosurveillance"]]]
     ];
 
-    // 150000 → "150K FCFA / mois".
-    // A match card's rent, in thousands so the facts fit one line on a phone: "245K FCFA / mois", "152,5K FCFA / mois"
-    // (the BFF's TenantFormatter.compactMoney).
-    function formatCompactRent(amount) {
-        var value = amount < 1000 ? String(amount)
-            : (amount / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 }) + "K";
-        return value + " FCFA / mois";
-    }
-
     // The visit's kind, as an icon: a camera for a video call, a house on site. Its words for screen readers.
     var VISIT_ICONS = {
         VIDEO: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 10 6-3v10l-6-3z"/></svg>',
         IN_PERSON: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>'
     };
-
-    function formatRent(amount) {
-        var value = amount % 1000 === 0 ? amount / 1000 + "K" : amount.toLocaleString("fr-FR");
-        return value + " FCFA / mois";
-    }
 
     function fieldsOf(id) {
         var saved = mandateStates()[id];
@@ -3360,7 +3361,7 @@
             }
             if (state.status === "CLOSED") {
                 var days = Math.max(0, Math.floor((state.closedAt - state.approvedAt) / DAY_MS));
-                fill("[data-final-price]", formatFullPriceOf(id, state.finalPrice));
+                fill("[data-final-price]", formatPriceOf(id, state.finalPrice));
                 fill("[data-age]", days + (days > 1 ? " jours" : " jour"));
                 // What the closing recorded: the counterpart (a buyer, for a sale) and the withdrawn listing.
                 var deal = $("[data-closed-deal]");
@@ -3557,8 +3558,7 @@
                     "mandate.html?id=" + encodeURIComponent(id) + "#matches-title");
             }
             // In bold: what the agent looks at first. A sale's card reads "Prix", without " / mois".
-            fact(facts, isSale(id) ? "Prix" : "Loyer",
-                isSale(id) ? formatSalePrice(match.price) : formatCompactRent(match.price), "match__rent");
+            fact(facts, isSale(id) ? "Prix" : "Loyer", formatPriceOf(id, match.price), "match__rent");
             fact(facts, "Disponibilité", matchAvailability(match));
             var fit = $("[data-match-fit]", item);
             match.fit.forEach(function (row) {
@@ -4874,8 +4874,8 @@
                 return [road.length ? amenityLabels(road)[0] : "Accès à préciser",
                     others ? plural(others, "équipement", "équipements") : "aucun équipement"].join(" · ");
             case "terms":
-                if (listingIsSale(listing)) return formatSalePrice(f.price);
-                return formatRent(f.price) +
+                if (listingIsSale(listing)) return formatMoney(f.price);
+                return formatMoney(f.price) + " / mois" +
                     (f.securityDeposit ? " · caution " + f.securityDeposit + " mois" : "");
             case "photos":
                 var n = goodPhotos(listing);
@@ -5216,7 +5216,7 @@
             case "furnitureType":
                 return LISTING_FURNITURE_LABELS[value];
             case "price":
-                return value.toLocaleString("fr-FR") + (currentListingSale ? " FCFA" : " FCFA / mois");
+                return formatMoney(value) + (currentListingSale ? "" : " / mois");
             case "securityDeposit":
             case "advanceRent":
                 return value + " mois";
@@ -5966,7 +5966,7 @@
                     ? (sale ? " — son mandat sera aussi fermé" : " — sa recherche sera aussi fermée") : "")
                     : sale ? "Aucun acheteur de vos recherches" : "Aucun client de vos recherches")
                 : contactName(contactOf(id));
-            $("[data-recap-price]", form).textContent = formatFullPriceOf(id, draft.price);
+            $("[data-recap-price]", form).textContent = formatPriceOf(id, draft.price);
 
             // What confirming does: this mandate, the listing, the deal's other mandate when the agent owns it. Another
             // agent's listing stays on the market with its own mandate: never claimed as withdrawn here.

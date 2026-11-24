@@ -33,13 +33,15 @@
     </script>
 </head>
 <!--
-  v2 (#259) — SALE variant: ?sale=1 shows the same page for a listing for sale (a villa in Bonapriso, 250 000 000
+  v2 (#259) — SALE variant: ?sale=1 shows the same page for a listing for sale (a villa in Bonapriso, 250M
   FCFA): badge "À vendre", price without " / mois", "Prix et conditions" with the price and the availability only
   (never caution, advance, lease term, notice or furniture), and the interest form asking "Quand souhaitez-vous
   acheter ?" (the same three horizons). &state=sold is the SOLD state: badge "Vendu", the price card keeps the last
   published price with the notice instead of the terms and the call to action, and no interest form. The SALE copy is
   in the markup ([data-sale-only]); annonce.js only toggles it, so the rental page (default) is unchanged and every
   sale word is in the page itself.
+  #292 — every displayed amount is already short ("175K FCFA / mois", "250M FCFA", "180M FCFA", "350K FCFA" for two
+  months' caution); it stays so here, with a no-break space before the currency.
 -->
 <body class="listing-page" data-listing-page>
 <a class="skip-link" href="#main">Aller au contenu principal</a>
@@ -347,9 +349,9 @@
                     <table class="terms-table">
                         <caption class="visually-hidden">Conditions de location du logement</caption>
                         <tbody>
-                        <tr><th scope="row">Loyer</th><td>175K FCFA / mois</td></tr>
-                        <tr><th scope="row">Caution</th><td>2 mois (350K FCFA)</td></tr>
-                        <tr><th scope="row">Avance sur loyer</th><td>3 mois (525K FCFA)</td></tr>
+                        <tr><th scope="row">Loyer</th><td>175K&nbsp;FCFA / mois</td></tr>
+                        <tr><th scope="row">Caution</th><td>2 mois (350K&nbsp;FCFA)</td></tr>
+                        <tr><th scope="row">Avance sur loyer</th><td>3 mois (525K&nbsp;FCFA)</td></tr>
                         <tr><th scope="row">Durée du bail</th><td>12 mois</td></tr>
                         <tr><th scope="row">Préavis</th><td>1 mois</td></tr>
                         <tr><th scope="row">Disponible</th><td>À partir du 1<sup>er</sup> décembre 2026</td></tr>
@@ -365,7 +367,7 @@
                     <table class="terms-table">
                         <caption class="visually-hidden">Prix et conditions du bien</caption>
                         <tbody>
-                        <tr><th scope="row">Prix</th><td>250M FCFA</td></tr>
+                        <tr><th scope="row">Prix</th><td>250M&nbsp;FCFA</td></tr>
                         <tr><th scope="row">Disponible</th><td>Libre maintenant</td></tr>
                         </tbody>
                     </table>
@@ -379,7 +381,7 @@
                     <table class="terms-table">
                         <caption class="visually-hidden">Prix et conditions du bien</caption>
                         <tbody>
-                        <tr><th scope="row">Prix</th><td>180M FCFA</td></tr>
+                        <tr><th scope="row">Prix</th><td>180M&nbsp;FCFA</td></tr>
                         <tr><th scope="row">Disponible</th><td>Libre maintenant</td></tr>
                         </tbody>
                     </table>
@@ -396,9 +398,9 @@
             <!-- Price card: sticky on desktop; on mobile, the fixed bottom bar carries the same call to action. -->
             <aside aria-label="Prix et contact" class="listing__aside">
                 <div class="price-card">
-                    <p class="price-card__price" data-rental-only><strong>175K FCFA</strong> / mois</p>
-                    <p class="price-card__price" data-sale-only data-property-only hidden><strong>250M FCFA</strong></p>
-                    <p class="price-card__price" data-building-only hidden><strong>180M FCFA</strong></p>
+                    <p class="price-card__price" data-rental-only><strong>175K&nbsp;FCFA</strong> / mois</p>
+                    <p class="price-card__price" data-sale-only data-property-only hidden><strong>250M&nbsp;FCFA</strong></p>
+                    <p class="price-card__price" data-building-only hidden><strong>180M&nbsp;FCFA</strong></p>
                     <ul class="price-card__terms" data-rental-only data-price-terms>
                         <li>Caution : 2 mois</li>
                         <li>Avance : 3 mois</li>
@@ -423,9 +425,9 @@
 
     <!-- Below 1024px: one call to action, the price beside it -->
     <div class="cta-bar">
-        <p class="cta-bar__price" data-rental-only><strong>175K FCFA</strong> / mois</p>
-        <p class="cta-bar__price" data-sale-only data-property-only hidden><strong>250M FCFA</strong></p>
-        <p class="cta-bar__price" data-building-only hidden><strong>180M FCFA</strong></p>
+        <p class="cta-bar__price" data-rental-only><strong>175K&nbsp;FCFA</strong> / mois</p>
+        <p class="cta-bar__price" data-sale-only data-property-only hidden><strong>250M&nbsp;FCFA</strong></p>
+        <p class="cta-bar__price" data-building-only hidden><strong>180M&nbsp;FCFA</strong></p>
         <div class="cta-bar__actions" data-interest-cta>
             <a class="btn btn-primary" data-modal-open href="#visit">Être contacté par un agent</a>
         </div>
@@ -450,11 +452,11 @@
             <div>
                 <h2 class="modal__title" id="visit-title">Être contacté par un agent</h2>
                 <p class="modal__subtitle" data-rental-only>Appartement meublé 2 chambres · Bonapriso<span
-                        class="modal__price">&nbsp;· <strong>175K FCFA</strong> / mois</span></p>
+                        class="modal__price">&nbsp;· <strong>175K&nbsp;FCFA</strong> / mois</span></p>
                 <p class="modal__subtitle" data-sale-only data-property-only hidden>Villa 5 chambres · Bonapriso<span
-                        class="modal__price">&nbsp;· <strong>250M FCFA</strong></span></p>
+                        class="modal__price">&nbsp;· <strong>250M&nbsp;FCFA</strong></span></p>
                 <p class="modal__subtitle" data-building-only hidden>Immeuble 12 unités · Bonapriso<span
-                        class="modal__price">&nbsp;· <strong>180M FCFA</strong></span></p>
+                        class="modal__price">&nbsp;· <strong>180M&nbsp;FCFA</strong></span></p>
             </div>
             <a class="modal__close" data-modal-close href="#main">
                 <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>

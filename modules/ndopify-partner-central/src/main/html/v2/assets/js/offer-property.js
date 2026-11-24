@@ -24,9 +24,10 @@
  *    require them; once it is saved as Terrain they are gone (a plot has no bedroom nor parking);
  *  - the ownership documents are visible for every sale from the step's first render, and hidden once the type is
  *    saved as another one;
- *  - a sold plot shows its implied rate under its surface ("Soit ≈ 56 300 FCFA/m² pour 800 m²", display only) and
- *    the review repeats it right after the total asking price, before the availability;
- *  - the review of a sale reads its total price in full ("45 000 000 FCFA", never a K/M short form).
+ *  - a sold plot shows its implied rate under its surface, short ("Soit ≈ 56,3K FCFA/m² pour 800 m²", display only)
+ *    and the review repeats it right after the total asking price, before the availability;
+ *  - the review of a sale reads its total price short like every displayed amount ("45M FCFA", #292 overriding
+ *    #273's full form); inputs keep their exact digits.
  *  - once step 1 is answered, every later step — the review included — and the confirmation carry the project
  *    ("Vente" / "Location") as a read-only pill next to the step count / under "Bien enregistré" (#278, AC 1, 3).
  *    Step 1 keeps its choice only; the word is the page's data-for pair, so a land sale reads "Vente" like any
@@ -414,7 +415,7 @@
         }
     };
 
-    // The answers a sample starts from: a complete sale in Bastos, Yaoundé, at 45 000 000 FCFA for 800 m².
+    // The answers a sample starts from: a complete sale in Bastos, Yaoundé, at 45M FCFA for 800 m².
     function sampleAnswers(name) {
         var chosen = Object.prototype.hasOwnProperty.call(SAMPLES, name) ? SAMPLES[name] : null;
         if (!chosen) return null;
@@ -529,15 +530,26 @@
         return n ? Number(n).toLocaleString("fr-FR") : "";
     }
 
-    // A price to read, not to type: "800K", "12M", "1.5M" (FCFA has no cents, so K and M are enough).
+    // A price to read, not to type (#292): "800K", "12M", "1,25M", "1,5G" (FCFA has no cents). K keeps at most
+    // one decimal, M and G two, half-up, trailing zeros dropped, and the unit is bumped after rounding
+    // (999 950 → "1M", never "1000K"). The French comma matches the rest of the page.
     function formatPrice(n) {
         n = Number(n) || 0;
-        var short = function (value, unit) {
-            return value.toLocaleString("en-US", { maximumFractionDigits: 2, useGrouping: false }) + unit;
-        };
-        if (n >= 1000000) return short(n / 1000000, "M");
-        if (n >= 1000) return short(n / 1000, "K");
-        return String(n);
+        var abs = Math.abs(n);
+        var sign = n < 0 ? "-" : "";
+        function rounded(value, decimals) {
+            var factor = Math.pow(10, decimals);
+            return Math.round(value * factor) / factor;
+        }
+        function text(value, decimals) {
+            return String(value.toFixed(decimals)).replace(/\.?0+$/, "").replace(".", ",");
+        }
+        if (abs < 1000) return sign + String(abs);
+        var k = rounded(abs / 1000, 1);
+        if (k < 1000) return sign + text(k, 1) + "K";
+        var m = rounded(abs / 1000000, 2);
+        if (m < 1000) return sign + text(m, 2) + "M";
+        return sign + text(rounded(abs / 1000000000, 2), 2) + "G";
     }
 
     function numberValue(input) {
@@ -760,12 +772,12 @@
     }
 
     /*
-     * "≈ 56 300 FCFA/m² pour 800 m²". The rate and the surface both go through formatNumber, like every amount on
-     * the page: thousands grouped, never a raw number. The prototype hard-codes fr-FR and FCFA; the production page
-     * formats them with the tenant's formatter (the tenant's locale and currency symbol).
+     * "≈ 56,3K FCFA/m² pour 800 m²" (#292): the rate reads short like every displayed amount, the surface stays a
+     * plain grouped count. The prototype hard-codes the French comma and FCFA; the production page formats both with
+     * the tenant's formatter (the tenant's locale and currency symbol).
      */
     function rateText(rate, surface) {
-        return "≈ " + formatNumber(rate) + " FCFA/m² pour " + formatNumber(surface) + " m²";
+        return "≈ " + formatPrice(rate) + "\u00A0FCFA/m² pour " + formatNumber(surface) + " m²";
     }
 
     // A question is required only while it applies: the page marks the normal state with `required`, and the script
@@ -1042,8 +1054,8 @@
                         }
                         if (numberValue(price) >= (sale ? MIN_SALE_PRICE : MIN_RENT)) return "";
                         return sale
-                            ? "Indiquez un prix d'au moins " + formatPrice(MIN_SALE_PRICE) + " FCFA."
-                            : "Indiquez un loyer d'au moins " + formatPrice(MIN_RENT) + " FCFA par mois.";
+                            ? "Indiquez un prix d'au moins " + formatPrice(MIN_SALE_PRICE) + "\u00A0FCFA."
+                            : "Indiquez un loyer d'au moins " + formatPrice(MIN_RENT) + "\u00A0FCFA par mois.";
                     }
                 },
                 {
@@ -1364,16 +1376,17 @@
             if (!isStepComplete("conditions", a)) return "";
             var availability = formatAvailability(a.availableFrom);
             if (isSale(a)) {
-                // The total asking price in full (#273), then — for a sold plot of land only — its implied rate per m²,
-                // right after it, before the availability.
-                var lines = [formatNumber(a.priceAmount) + " FCFA"];
+                // The total asking price, short like every displayed amount (#292, overriding #273's full amount),
+                // then — for a sold plot of land only — its implied rate per m², right after it, before the
+                // availability.
+                var lines = [formatPrice(a.priceAmount) + "\u00A0FCFA"];
                 var rate = rateOf(a, a.priceAmount, a.area);
                 if (rate > 0) lines.push(rateText(rate, a.area));
                 lines.push(availability);
                 return lines.join("\n");
             }
             return [
-                formatPrice(a.priceAmount) + " FCFA par mois",
+                formatPrice(a.priceAmount) + "\u00A0FCFA par mois",
                 a.advanceRent ? "Avance de " + months(a.advanceRent) : "Sans avance de loyer",
                 "Caution de " + months(a.securityDeposit),
                 availability

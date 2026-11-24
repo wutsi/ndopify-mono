@@ -48,12 +48,18 @@
   (proposition.js). Match 9001 of mandate 204 in Partner Central's prototype.
 -->
 <!--
-  v2 (#259) — SALE variant: ?sale=1 is a buyer's SALE search (a villa of 4 bedrooms in Bonapriso, budget 250 000 000
+  v2 (#259) — SALE variant: ?sale=1 is a buyer's SALE search (a villa of 4 bedrooms in Bonapriso, budget 250M
   FCFA), proposed through the same page: "<agent> vous propose ce bien", "Pourquoi ce bien ?", the search summary
   without " / mois", "Ce bien vous intéresse" / "Pourquoi pas ce bien ?", and the availability reason "Disponible avant
   votre achat". The five answers (PENDING, ACCEPTED, REJECTED, EXPIRED, UNAVAILABLE) are the same states with the sale
   words. The sale copy is in the markup ([data-sale-only]); annonce.js only toggles it, so it is right without
   JavaScript, and the rental page (default) is unchanged.
+
+  #292 — every displayed amount reads short, in the tenant's French form: K keeps at most one decimal, M and G at most
+  two (half-up, trailing zeros dropped, the unit bumped after rounding: 999 950 → "1M", never "1000K"); under 1 000
+  stays exact and 0 reads "0 FCFA". The search summary therefore says "250M FCFA", and the terms note, the price-card
+  hint and the visit popup say "5K FCFA" — overriding the full visit fee of #259. Inputs keep their exact digits; a
+  no-break space keeps an amount from wrapping before the currency.
 -->
 <body class="listing-page" data-proposition-page>
 <a class="skip-link" href="#main">Aller au contenu principal</a>
@@ -110,11 +116,11 @@
                     <h2 class="proposal__title" id="proposal-title">Sandrine, Serge vous propose ce <span
                             data-rental-only>logement</span><span data-sale-only hidden>bien</span></h2>
                     <p class="proposal__subtitle" data-rental-only>Pour votre recherche : appartement 3 chambres à
-                        Bonapriso, jusqu'à 250K FCFA / mois.</p>
+                        Bonapriso, jusqu'à 250K&nbsp;FCFA / mois.</p>
                     <p class="proposal__subtitle" data-sale-only data-property-only hidden>Pour votre recherche : villa
-                        4 chambres à Bonapriso, jusqu'à 250 000 000 FCFA.</p>
+                        4 chambres à Bonapriso, jusqu'à 250M&nbsp;FCFA.</p>
                     <p class="proposal__subtitle" data-building-only hidden>Pour votre recherche : immeuble de 12
-                        unités sur 3 étages à Bonapriso, jusqu'à 250 000 000 FCFA.</p>
+                        unités sur 3 étages à Bonapriso, jusqu'à 250M&nbsp;FCFA.</p>
                 </div>
             </div>
 
@@ -124,21 +130,21 @@
                                                                                      hidden>Pourquoi ce bien&nbsp;?</span><svg aria-hidden="true" class="icon proposal__chevron"><use href="#i-chevron-right"/></svg></summary>
                 <ul class="check-list proposal__fit" data-rental-only>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>À Bonapriso, le quartier que vous cherchez</li>
-                    <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>240K FCFA / mois, dans votre budget</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>240K&nbsp;FCFA / mois, dans votre budget</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>3 chambres, comme demandé</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>Non meublé, comme demandé</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg><span>Disponible le 1<sup>er</sup> décembre 2026, avant votre emménagement</span></li>
                 </ul>
                 <ul class="check-list proposal__fit" data-sale-only data-property-only hidden>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>À Bonapriso, le quartier que vous cherchez</li>
-                    <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>240M FCFA, dans votre budget</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>240M&nbsp;FCFA, dans votre budget</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>4 chambres, comme demandé</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg><span>Disponible avant votre achat</span></li>
                 </ul>
                 <!-- v2 (#274): a building's fit, its units and levels where a home has its rooms — never amenities. -->
                 <ul class="check-list proposal__fit" data-building-only hidden>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>À Bonapriso, le quartier que vous cherchez</li>
-                    <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>240M FCFA, dans votre budget</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>240M&nbsp;FCFA, dans votre budget</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>12 unités, comme demandé</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>3 étages, comme demandé</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg><span>Disponible avant votre achat</span></li>
@@ -426,15 +432,15 @@
                     <table class="terms-table">
                         <caption class="visually-hidden">Conditions de location du logement</caption>
                         <tbody>
-                        <tr><th scope="row">Loyer</th><td>240K FCFA / mois</td></tr>
-                        <tr><th scope="row">Caution</th><td>2 mois (480K FCFA)</td></tr>
-                        <tr><th scope="row">Avance sur loyer</th><td>3 mois (720K FCFA)</td></tr>
+                        <tr><th scope="row">Loyer</th><td>240K&nbsp;FCFA / mois</td></tr>
+                        <tr><th scope="row">Caution</th><td>2 mois (480K&nbsp;FCFA)</td></tr>
+                        <tr><th scope="row">Avance sur loyer</th><td>3 mois (720K&nbsp;FCFA)</td></tr>
                         <tr><th scope="row">Durée du bail</th><td>12 mois</td></tr>
                         <tr><th scope="row">Préavis</th><td>1 mois</td></tr>
                         <tr><th scope="row">Disponible</th><td>À partir du 1<sup>er</sup> décembre 2026</td></tr>
                         </tbody>
                     </table>
-                    <p class="terms-note">Les visites sont organisées par votre agent. Frais de visite&nbsp;: <strong>5&nbsp;000&nbsp;FCFA</strong> par visite, réglés directement à lui.</p>
+                    <p class="terms-note">Les visites sont organisées par votre agent. Frais de visite&nbsp;: <strong>5K&nbsp;FCFA</strong> par visite, réglés directement à lui.</p>
                 </section>
 
                 <section aria-labelledby="sale-terms-heading" class="listing__section" data-sale-only hidden>
@@ -442,11 +448,11 @@
                     <table class="terms-table">
                         <caption class="visually-hidden">Prix et conditions du bien</caption>
                         <tbody>
-                        <tr><th scope="row">Prix</th><td>240M FCFA</td></tr>
+                        <tr><th scope="row">Prix</th><td>240M&nbsp;FCFA</td></tr>
                         <tr><th scope="row">Disponible</th><td>Libre maintenant</td></tr>
                         </tbody>
                     </table>
-                    <p class="terms-note">Les visites sont organisées par votre agent. Frais de visite&nbsp;: <strong>5&nbsp;000&nbsp;FCFA</strong> par visite, réglés directement à lui.</p>
+                    <p class="terms-note">Les visites sont organisées par votre agent. Frais de visite&nbsp;: <strong>5K&nbsp;FCFA</strong> par visite, réglés directement à lui.</p>
                 </section>
 
                 <section aria-labelledby="location-heading" class="listing__section">
@@ -476,8 +482,8 @@
             -->
             <aside aria-label="Prix et réponse" class="listing__aside">
                 <div class="price-card">
-                    <p class="price-card__price" data-rental-only><strong>240K FCFA</strong> / mois</p>
-                    <p class="price-card__price" data-sale-only hidden><strong>240M FCFA</strong></p>
+                    <p class="price-card__price" data-rental-only><strong>240K&nbsp;FCFA</strong> / mois</p>
+                    <p class="price-card__price" data-sale-only hidden><strong>240M&nbsp;FCFA</strong></p>
                     <ul class="price-card__terms" data-rental-only>
                         <li>Caution : 2 mois</li>
                         <li>Avance : 3 mois</li>
@@ -506,7 +512,7 @@
                         <a class="btn btn-primary price-card__cta" data-modal-open href="#visit">
                             <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Demander une visite
                         </a>
-                        <p class="price-card__hint">Visite&nbsp;: <strong>5&nbsp;000&nbsp;FCFA</strong> de frais, réglés directement à Serge. Il vous confirme la date par e-mail.</p>
+                        <p class="price-card__hint">Visite&nbsp;: <strong>5K&nbsp;FCFA</strong> de frais, réglés directement à Serge. Il vous confirme la date par e-mail.</p>
                     </div>
 
                     <!-- Accepted, no visit to request yet (the search mandate isn't signed) and none open -->
@@ -566,8 +572,8 @@
     </div>
 
     <div class="cta-bar">
-        <p class="cta-bar__price" data-rental-only><strong>240K FCFA</strong> / mois</p>
-        <p class="cta-bar__price" data-sale-only hidden><strong>240M FCFA</strong></p>
+        <p class="cta-bar__price" data-rental-only><strong>240K&nbsp;FCFA</strong> / mois</p>
+        <p class="cta-bar__price" data-sale-only hidden><strong>240M&nbsp;FCFA</strong></p>
         <!--
           Below 1024px, one button: the two answers are in the #answer popup. Buttons never carry the agent's name
           (a first name can be long, and a button doesn't wrap): only sentences do, and visually-hidden labels.
@@ -601,11 +607,11 @@
                 <h2 class="modal__title" id="answer-title"><span data-rental-only>Ce logement vous
                     intéresse&nbsp;?</span><span data-sale-only hidden>Ce bien vous intéresse&nbsp;?</span></h2>
                 <p class="modal__subtitle" data-rental-only>Appartement 3 chambres · Bonapriso<span
-                        class="modal__price">&nbsp;· <strong>240K FCFA</strong> / mois</span></p>
+                        class="modal__price">&nbsp;· <strong>240K&nbsp;FCFA</strong> / mois</span></p>
                 <p class="modal__subtitle" data-sale-only data-property-only hidden>Villa 4 chambres · Bonapriso<span
-                        class="modal__price">&nbsp;· <strong>240M FCFA</strong></span></p>
+                        class="modal__price">&nbsp;· <strong>240M&nbsp;FCFA</strong></span></p>
                 <p class="modal__subtitle" data-building-only hidden>Immeuble 12 unités · Bonapriso<span
-                        class="modal__price">&nbsp;· <strong>240M FCFA</strong></span></p>
+                        class="modal__price">&nbsp;· <strong>240M&nbsp;FCFA</strong></span></p>
             </div>
             <a class="modal__close" data-modal-close href="#main">
                 <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
@@ -679,11 +685,11 @@
             <div>
                 <h2 class="modal__title" id="visit-title">Demander une visite</h2>
                 <p class="modal__subtitle" data-rental-only>Appartement 3 chambres · Bonapriso<span
-                        class="modal__price">&nbsp;· <strong>240K FCFA</strong> / mois</span></p>
+                        class="modal__price">&nbsp;· <strong>240K&nbsp;FCFA</strong> / mois</span></p>
                 <p class="modal__subtitle" data-sale-only data-property-only hidden>Villa 4 chambres · Bonapriso<span
-                        class="modal__price">&nbsp;· <strong>240M FCFA</strong></span></p>
+                        class="modal__price">&nbsp;· <strong>240M&nbsp;FCFA</strong></span></p>
                 <p class="modal__subtitle" data-building-only hidden>Immeuble 12 unités · Bonapriso<span
-                        class="modal__price">&nbsp;· <strong>240M FCFA</strong></span></p>
+                        class="modal__price">&nbsp;· <strong>240M&nbsp;FCFA</strong></span></p>
             </div>
             <a class="modal__close" data-modal-close href="#main">
                 <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
@@ -772,7 +778,7 @@
             </div>
             <p class="visit-request__fee">
                 <svg aria-hidden="true" class="icon"><use href="#i-info"/></svg>
-                <span>Frais de visite&nbsp;: <strong>5&nbsp;000&nbsp;FCFA</strong>, à régler directement à Serge lors de
+                <span>Frais de visite&nbsp;: <strong>5K&nbsp;FCFA</strong>, à régler directement à Serge lors de
                     la visite. Ndopify ne perçoit aucun paiement.</span>
             </p>
             <button class="btn btn-primary interest-form__submit" type="submit">Envoyer la demande</button>

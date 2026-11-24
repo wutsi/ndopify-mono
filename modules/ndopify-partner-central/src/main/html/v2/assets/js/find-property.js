@@ -345,7 +345,7 @@
         }
     };
 
-    // The answers a sample starts from: a complete purchase in Bonapriso, Douala, at 250 000 000 FCFA.
+    // The answers a sample starts from: a complete purchase in Bonapriso, Douala, at 250M FCFA.
     function sampleAnswers(name) {
         var chosen = Object.prototype.hasOwnProperty.call(SAMPLES, name) ? SAMPLES[name] : null;
         if (!chosen) return null;
@@ -458,15 +458,26 @@
         return n ? Number(n).toLocaleString("fr-FR") : "";
     }
 
-    // A price to read, not to type: "800K", "12M", "1.5M" (FCFA has no cents, so K and M are enough).
+    // A price to read, not to type (#292): "800K", "12M", "1,25M", "1,5G" (FCFA has no cents). K keeps at most
+    // one decimal, M and G two, half-up, trailing zeros dropped, and the unit is bumped after rounding
+    // (999 950 → "1M", never "1000K"). The French comma matches the rest of the page.
     function formatPrice(n) {
         n = Number(n) || 0;
-        var short = function (value, unit) {
-            return value.toLocaleString("en-US", { maximumFractionDigits: 2, useGrouping: false }) + unit;
-        };
-        if (n >= 1000000) return short(n / 1000000, "M");
-        if (n >= 1000) return short(n / 1000, "K");
-        return String(n);
+        var abs = Math.abs(n);
+        var sign = n < 0 ? "-" : "";
+        function rounded(value, decimals) {
+            var factor = Math.pow(10, decimals);
+            return Math.round(value * factor) / factor;
+        }
+        function text(value, decimals) {
+            return String(value.toFixed(decimals)).replace(/\.?0+$/, "").replace(".", ",");
+        }
+        if (abs < 1000) return sign + String(abs);
+        var k = rounded(abs / 1000, 1);
+        if (k < 1000) return sign + text(k, 1) + "K";
+        var m = rounded(abs / 1000000, 2);
+        if (m < 1000) return sign + text(m, 2) + "M";
+        return sign + text(rounded(abs / 1000000000, 2), 2) + "G";
     }
 
     function numberValue(input) {
@@ -1095,7 +1106,7 @@
                 perSqm.textContent = "";
                 return;
             }
-            perSqm.textContent = "Soit ≈ " + formatNumber(rate) + " FCFA/m² pour " + formatNumber(area) + " m²";
+            perSqm.textContent = "Soit ≈ " + formatPrice(rate) + "\u00A0FCFA/m² pour " + formatNumber(area) + " m²";
             perSqm.hidden = false;
         }
         price.addEventListener("input", updatePerSqm);
@@ -1134,10 +1145,10 @@
             fields: [
                 textField(price, "Indiquez votre budget.", function () {
                     if (isSale(loadAnswers())) {
-                        if (numberValue(price) < MIN_SALE_PRICE) return "Indiquez un budget d'au moins " + formatPrice(MIN_SALE_PRICE) + " FCFA.";
+                        if (numberValue(price) < MIN_SALE_PRICE) return "Indiquez un budget d'au moins " + formatPrice(MIN_SALE_PRICE) + "\u00A0FCFA.";
                         return "";
                     }
-                    if (numberValue(price) < MIN_RENT) return "Indiquez un loyer d'au moins " + formatPrice(MIN_RENT) + " FCFA par mois.";
+                    if (numberValue(price) < MIN_RENT) return "Indiquez un loyer d'au moins " + formatPrice(MIN_RENT) + "\u00A0FCFA par mois.";
                     return "";
                 }),
                 radioField("movingPeriod", "Indiquez quand vous souhaitez emménager ou acheter."),
@@ -1232,7 +1243,7 @@
                     }).filter(Boolean).join(" · ") || "Aucun document exigé")
                     : "",
                 price: isStepComplete("budget", a)
-                    ? formatPrice(a.priceAmount) + (isSale(a) ? " FCFA" : " FCFA par mois") : "",
+                    ? formatPrice(a.priceAmount) + (isSale(a) ? "\u00A0FCFA" : "\u00A0FCFA par mois") : "",
                 movingPeriod: MOVE_IN_LABELS[a.movingPeriod] || "",
                 financing: FINANCING_LABELS[a.financingType] || "",
                 contact: isStepComplete("contact", a)

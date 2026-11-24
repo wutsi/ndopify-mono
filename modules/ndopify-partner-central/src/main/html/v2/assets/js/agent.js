@@ -21,27 +21,27 @@
             listings: [
                 {
                     id: 5001, title: "Appartement 2 chambres", place: "Bonapriso, Douala",
-                    facts: "80 m² · Meublé", amount: "250K FCFA", period: "/ mois"
+                    facts: "80 m² · Meublé", amount: "250K\u00A0FCFA", period: "/ mois"
                 },
                 {
                     id: 5002, title: "Studio", place: "Akwa, Douala",
-                    facts: "30 m² · Meublé", amount: "120K FCFA", period: "/ mois"
+                    facts: "30 m² · Meublé", amount: "120K\u00A0FCFA", period: "/ mois"
                 },
                 {
                     id: 5003, title: "Maison 3 chambres", place: "Bonanjo, Douala",
-                    facts: "150 m² · Non meublé", amount: "400K FCFA", period: "/ mois"
+                    facts: "150 m² · Non meublé", amount: "400K\u00A0FCFA", period: "/ mois"
                 },
                 {
                     id: 5004, title: "Appartement 3 chambres", place: "Bonapriso, Douala",
-                    facts: "95 m² · Non meublé", amount: "300K FCFA", period: "/ mois"
+                    facts: "95 m² · Non meublé", amount: "300K\u00A0FCFA", period: "/ mois"
                 },
                 {
                     id: 5005, title: "Studio", place: "Akwa, Douala",
-                    facts: "28 m² · Meublé", amount: "110K FCFA", period: "/ mois"
+                    facts: "28 m² · Meublé", amount: "110K\u00A0FCFA", period: "/ mois"
                 },
                 {
                     id: 5006, title: "Maison 4 chambres", place: "Bonanjo, Douala",
-                    facts: "200 m² · Non meublé", amount: "450K FCFA", period: "/ mois"
+                    facts: "200 m² · Non meublé", amount: "450K\u00A0FCFA", period: "/ mois"
                 }
             ]
         },

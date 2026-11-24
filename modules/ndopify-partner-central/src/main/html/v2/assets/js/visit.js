@@ -93,8 +93,30 @@
     }
 
 
+    // A rent, short and in the tenant's French form (#292): "240K FCFA / mois", "1,25M FCFA / mois".
+    // K keeps one decimal, M and G two, half-up, the unit bumped after rounding; under 1 000 stays exact.
     function formatCompactRent(amount) {
-        return (amount / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 }) + "K " + currency() + " / mois";
+        var n = Math.abs(Number(amount) || 0);
+        function rounded(value, decimals) {
+            var factor = Math.pow(10, decimals);
+            return Math.round(value * factor) / factor;
+        }
+        function text(value, decimals) {
+            return String(value.toFixed(decimals)).replace(/\.?0+$/, "").replace(".", ",");
+        }
+        var value;
+        if (n < 1000) {
+            value = String(n);
+        } else {
+            var k = rounded(n / 1000, 1);
+            if (k < 1000) {
+                value = text(k, 1) + "K";
+            } else {
+                var m = rounded(n / 1000000, 2);
+                value = m < 1000 ? text(m, 2) + "M" : text(rounded(n / 1000000000, 2), 2) + "G";
+            }
+        }
+        return value + "\u00A0" + currency() + " / mois";
     }
 
     // Local day `days` from today at "HH:MM".
