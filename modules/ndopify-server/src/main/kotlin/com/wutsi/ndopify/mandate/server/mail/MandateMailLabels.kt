@@ -90,10 +90,13 @@ internal object MandateMailLabels {
             null
         } else {
             listOfNotNull(
-                mandate.levels?.let { "$it étages" },
-                mandate.units?.let { "$it unités" },
+                mandate.levels?.let { count(it, "étage", "étages") },
+                mandate.units?.let { count(it, "unité", "unités") },
             ).joinToString(" · ").ifEmpty { null }
         }
+
+    // "1 étage", "3 étages": the same rule as the match card's (MatchRules.levels / units).
+    private fun count(value: Int, one: String, many: String): String = "$value " + if (value > 1) many else one
 
     // Ex: "Comptant"; null for a rental, and for no usable answer.
     fun financingType(mandate: MandateEntity): String? =
