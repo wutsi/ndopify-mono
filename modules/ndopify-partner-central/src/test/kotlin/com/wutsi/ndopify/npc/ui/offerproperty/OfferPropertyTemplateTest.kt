@@ -541,7 +541,7 @@ class OfferPropertyTemplateTest {
         val commercial = render(get("/offer-property?step=features"))
 
         assertEquals(
-            listOf("BUILDING", "OFFICE", "RETAIL", "INDUSTRIAL", "LAND"),
+            listOf("BUILDING", "OFFICE", "RETAIL", "INDUSTRIAL"),
             commercial.select("input[name=propertyType]").map { it.attr("value") },
         )
         assertEquals(
