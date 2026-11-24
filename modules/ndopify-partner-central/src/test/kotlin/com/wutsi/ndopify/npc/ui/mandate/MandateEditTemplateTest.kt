@@ -467,6 +467,10 @@ class MandateEditTemplateTest {
             ?.replace('\u00a0', ' ')
             ?.replace('\u202f', ' ')
         assertEquals("Immeuble · 3 étages · 12 unités · 850 m²", summary)
+        assertEquals(
+            "Soit ≈ 20,83M FCFA/unité pour 12 unités",
+            form.selectFirst("[data-rate]")?.text(),
+        )
     }
 
     @Test
