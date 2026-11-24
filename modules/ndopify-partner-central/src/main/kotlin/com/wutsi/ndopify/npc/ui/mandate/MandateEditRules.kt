@@ -2,6 +2,7 @@ package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
+import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -217,11 +218,16 @@ object MandateEditRules {
 
     /**
      * Whether the page asks the surface: a commercial property or a plot of land bought; a stored rental building keeps
-     * the surface its commercial usage already asked for.
+     * the surface its commercial usage already asked for. A search without a type (*Indifférent*) keeps it when it may
+     * still match a plot or a commercial property, as *Trouver un bien* does.
      */
     fun showsArea(form: MandateEditForm, mandate: Mandate): Boolean =
         FindPropertyRules.needsArea(form.propertyCategory, type(form), mandate.listingType) ||
-            storedRentalBuilding(form, mandate, type(form))
+            storedRentalBuilding(form, mandate, type(form)) ||
+            (
+                mandate.mandateType == MandateType.SEARCH && type(form) == null &&
+                    (form.propertyCategory == PropertyCategory.COMMERCIAL || FindPropertyRules.isSale(mandate.listingType))
+                )
 
     /**
      * A sale's implied rate under the price, as the page shows it before its script recomputes it (#304): the price per

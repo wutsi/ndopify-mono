@@ -673,6 +673,15 @@ class MandateEditRulesTest {
     }
 
     @Test
+    fun `an indifferent sale search keeps its surface`() {
+        val search = SALE_SEARCH.copy(propertyType = null, area = 120)
+        val form = FORM.copy(propertyType = "ANY")
+
+        assertTrue(MandateEditRules.showsArea(form, search))
+        assertFalse(MandateEditRules.showsArea(FORM.copy(propertyType = "ANY"), MANDATE))
+    }
+
+    @Test
     fun `of - a sale's documents and a grouped surface`() {
         val sale = MANDATE.copy(
             mandateType = MandateType.LISTING,
