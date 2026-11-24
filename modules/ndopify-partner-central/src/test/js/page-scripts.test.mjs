@@ -72,6 +72,7 @@ for (const name of ALL_FIXTURES) {
 test("offer-property, terms: the price is grouped by thousands as it is typed", async () => {
     const page = await load("offer-terms-sale");
     assert.equal(type(page, "#priceAmount", "50000000"), "50 000 000");
+    assert.equal(type(page, "#priceAmount", "1234567890123"), "123 456 789 012", "12 digits at most");
 });
 
 test("offer-property, features: no follow-up question before a type, a sale's documents excepted", async () => {
@@ -147,6 +148,7 @@ test("find-property, property: a purchase's questions follow its type", async ()
 
 test("find-property, budget: a building purchase shows its price per unit as the budget is typed", async () => {
     const page = await load("find-budget-building-sale");
+    assert.equal(type(page, "#priceAmount", "1234567890123"), "123 456 789 012", "12 digits at most");
     assert.equal(type(page, "#priceAmount", "300000000"), "300 000 000");
     const rate = page.document.querySelector("[data-price-per-unit]");
     assert.equal(rate.hidden, false);

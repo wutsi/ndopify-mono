@@ -623,7 +623,7 @@
         if ($("#cityId", form)) initArea(form, refresh);
         if ($('[data-group="propertyType"]', form)) initProperty(form, refresh);
         if ($("#priceAmount", form)) initBudget(form);
-        bindNumber($("#priceAmount", form), 9);
+        bindNumber($("#priceAmount", form), 12);
         bindNumber($("#area", form), 7);
         initComments(form);
 
