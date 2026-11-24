@@ -32,6 +32,8 @@ data class FeaturesForm(
     val rooms: String? = null,
     val hasParking: String? = null,
     val parkings: String? = null,
+    val levels: String? = null,
+    val units: String? = null,
     val area: String? = null,
     val ownershipDocuments: List<TitleDocumentType> = emptyList(),
 )

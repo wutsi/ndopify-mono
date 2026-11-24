@@ -149,12 +149,14 @@ class OfferPropertyRulesTest {
         assertEquals(
             listOf(
                 PropertyType.APARTMENT, PropertyType.HOUSE, PropertyType.STUDIO, PropertyType.DUPLEX,
-                PropertyType.BUILDING, PropertyType.LAND,
+                PropertyType.LAND,
             ),
             OfferPropertyRules.propertyTypes(PropertyCategory.RESIDENTIAL, ListingType.SALE),
         )
         assertEquals(
-            listOf(PropertyType.OFFICE, PropertyType.RETAIL, PropertyType.INDUSTRIAL),
+            listOf(
+                PropertyType.BUILDING, PropertyType.OFFICE, PropertyType.RETAIL, PropertyType.INDUSTRIAL,
+            ),
             OfferPropertyRules.propertyTypes(PropertyCategory.COMMERCIAL, ListingType.SALE),
         )
         assertEquals(
@@ -171,6 +173,48 @@ class OfferPropertyRulesTest {
         assertFalse(OfferPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "LAND", ListingType.SALE))
         assertFalse(OfferPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "LAND", ListingType.RENTAL))
         assertFalse(OfferPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "LAND", ListingType.RENTAL))
+    }
+
+    @Test
+    fun `a building is sold under commercial only`() {
+        assertTrue(OfferPropertyRules.propertyTypes(PropertyCategory.COMMERCIAL, ListingType.SALE).contains(PropertyType.BUILDING))
+        assertFalse(OfferPropertyRules.propertyTypes(PropertyCategory.RESIDENTIAL, ListingType.SALE).contains(PropertyType.BUILDING))
+        assertTrue(OfferPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "BUILDING", ListingType.SALE))
+        assertFalse(OfferPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "BUILDING", ListingType.SALE))
+        // A rented building keeps today's category.
+        assertTrue(OfferPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "BUILDING", ListingType.RENTAL))
+        assertFalse(OfferPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "BUILDING", ListingType.RENTAL))
+    }
+
+    @Test
+    fun `a building sale asks its counts, no parking and no amenities step`() {
+        assertTrue(OfferPropertyRules.buildingSale(ListingType.SALE, PropertyType.BUILDING))
+        assertFalse(OfferPropertyRules.buildingSale(ListingType.RENTAL, PropertyType.BUILDING))
+        assertFalse(OfferPropertyRules.buildingSale(ListingType.SALE, PropertyType.VILLA))
+        assertFalse(OfferPropertyRules.buildingSale(null, null))
+
+        assertFalse(OfferPropertyRules.needsParking(commercial, PropertyType.BUILDING, ListingType.SALE))
+        assertTrue(OfferPropertyRules.needsParking(residential, PropertyType.BUILDING, ListingType.RENTAL))
+        assertFalse(OfferPropertyRules.needsAmenities(commercial, PropertyType.BUILDING, ListingType.SALE))
+        assertTrue(OfferPropertyRules.needsAmenities(residential, PropertyType.HOUSE, ListingType.SALE))
+        assertTrue(OfferPropertyRules.needsAmenities(commercial, PropertyType.BUILDING, ListingType.RENTAL))
+    }
+
+    @Test
+    fun `a building's counts are whole numbers within their bounds`() {
+        assertEquals(30, OfferPropertyRules.MAX_LEVELS)
+        assertEquals(500, OfferPropertyRules.MAX_UNITS)
+
+        assertNull(OfferPropertyRules.levels("1"))
+        assertNull(OfferPropertyRules.levels("30"))
+        assertEquals("Indiquez le nombre d'étages.", OfferPropertyRules.levels(null))
+        assertEquals("Indiquez le nombre d'étages.", OfferPropertyRules.levels(" "))
+        assertEquals("Indiquez un nombre entier, de 1 à 30.", OfferPropertyRules.levels("31"))
+        assertEquals("Indiquez un nombre entier, de 1 à 30.", OfferPropertyRules.levels("3,5"))
+
+        assertNull(OfferPropertyRules.units("500"))
+        assertEquals("Indiquez le nombre d'unités.", OfferPropertyRules.units(""))
+        assertEquals("Indiquez un nombre entier, de 1 à 500.", OfferPropertyRules.units("501"))
     }
 
     @Test

@@ -45,6 +45,75 @@ class PendingListingTest {
 
     private fun step(pending: PendingListing) = pending.firstIncompleteStep(TODAY)
 
+    private val buildingSale = COMPLETE.copy(
+        listingType = ListingType.SALE,
+        propertyCategory = PropertyCategory.COMMERCIAL,
+        propertyType = "BUILDING",
+        area = 850,
+        priceAmount = 250_000_000,
+        advanceRent = null,
+        securityDeposit = null,
+        furnitureType = null,
+        rooms = null,
+        parkings = null,
+        levels = 3,
+        units = 12,
+        roadAccess = null,
+    )
+
+    @Test
+    fun `a building sale skips the amenities step`() {
+        assertEquals(
+            listOf("property", "address", "terms", "features", "contact", "review"),
+            buildingSale.steps(),
+        )
+        assertEquals("review", step(buildingSale))
+        assertTrue(buildingSale.isComplete("amenities", TODAY))
+        assertEquals(
+            listOf("property", "address", "terms", "features", "amenities", "contact", "review"),
+            COMPLETE.steps(),
+        )
+    }
+
+    @Test
+    fun `a building sale requires both counts`() {
+        assertTrue(buildingSale.isComplete("features", TODAY))
+        assertFalse(buildingSale.copy(levels = null).isComplete("features", TODAY))
+        assertFalse(buildingSale.copy(units = null).isComplete("features", TODAY))
+        assertEquals("features", step(buildingSale.copy(units = null)))
+    }
+
+    @Test
+    fun `a building sale sends its counts and no amenity`() {
+        val request = buildingSale.toCreateMandateRequest("XAF")
+
+        assertEquals(3, request.levels)
+        assertEquals(12, request.units)
+        assertNull(request.rooms)
+        assertNull(request.furnitureType)
+        assertNull(request.parkings)
+        assertFalse(request.waterMeter)
+        assertFalse(request.roadPaved)
+    }
+
+    @Test
+    fun `only a building sale sends the counts`() {
+        assertNull(COMPLETE.toCreateMandateRequest("XAF").levels)
+        assertNull(COMPLETE.toCreateMandateRequest("XAF").units)
+
+        // A rental building keeps today's model: neither count.
+        val rentalBuilding = COMPLETE.copy(
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = "BUILDING",
+            rooms = null,
+            furnitureType = null,
+            levels = 3,
+            units = 12,
+        )
+        assertNull(rentalBuilding.toCreateMandateRequest("XAF").levels)
+        assertNull(rentalBuilding.toCreateMandateRequest("XAF").units)
+    }
+
     @Test
     fun emptyStartsAtProperty() {
         assertEquals("property", step(PendingListing()))
