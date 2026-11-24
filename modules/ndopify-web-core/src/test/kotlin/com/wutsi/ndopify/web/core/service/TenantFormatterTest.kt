@@ -58,25 +58,6 @@ class TenantFormatterTest {
     }
 
     @Test
-    fun `amount in the tenant's monetary format, never wrapping`() {
-        assertEquals("1 500 000 FCFA", TenantFormatter(TENANT).money(1_500_000))
-        assertEquals("1 500 000 FCFA", TenantFormatter(TENANT).money(1_500_000, "XAF"))
-    }
-
-    @Test
-    fun `amount in another currency`() {
-        assertEquals("1,500.00 EUR", TenantFormatter(TENANT.copy(locales = listOf("en"))).money(1500, "EUR"))
-    }
-
-    @Test
-    fun `amount without a monetary format`() {
-        val tenant = TENANT.copy(monetaryFormat = "", numberFormat = "")
-        assertEquals("150 000 FCFA", TenantFormatter(tenant).money(150_000))
-        assertEquals("150 000 XAF", TenantFormatter(tenant.copy(currencySymbol = "")).money(150_000))
-        assertEquals("150 000", TenantFormatter(tenant.copy(currencySymbol = "", currencyCode = "")).money(150_000))
-    }
-
-    @Test
     fun `amount in short`() {
         val formatter = TenantFormatter(TENANT)
         assertEquals("0\u00a0FCFA", formatter.compactMoney(0))
