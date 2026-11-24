@@ -1568,9 +1568,10 @@
             }
         },
         // #275: rental mandates stored before land stopped being let. Their saved Terrain stays readable and
-        // savable — mandate/edit.html shows it checked and enabled, though a rental no longer offers it — and no
-        // data is rewritten. 208 a renter's search, 209 a landlord's property; neither has a card on index.html,
-        // so they are opened by id (mandate/edit.html?id=208, ?id=209).
+        // savable — mandate/edit.html shows it checked and enabled, though a rental no longer offers it — and
+        // #290 realigns a stored land row to Résidentiel in the data, not in this prototype. 208 a renter's search,
+        // 209 a landlord's property; neither has a card on index.html, so they are opened by id
+        // (mandate/edit.html?id=208, ?id=209).
         208: {
             party: "client",
             createdAt: -45,
@@ -5340,7 +5341,7 @@
             var category = ($('[name="propertyCategory"]:checked', form) || {}).value;
             $all('[name="propertyType"]', form).forEach(function (radio) {
                 // v2 (#275): a plot of land is residential and sold, never let, so a sale offers *Terrain* under
-                // Résidentiel and a rental offers it at all — a rental land stored before #275 is hidden too.
+                // Résidentiel and a rental never offers it at all — a rental land stored before #275 is hidden too.
                 var fits = radio.closest("[data-categories]").getAttribute("data-categories").split(" ")
                     .indexOf(category) !== -1 && (radio.value !== "LAND" || currentListingSale);
                 radio.closest(".choice").hidden = !fits;
