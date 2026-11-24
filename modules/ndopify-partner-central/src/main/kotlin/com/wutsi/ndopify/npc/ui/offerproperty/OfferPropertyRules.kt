@@ -19,10 +19,10 @@ import java.time.format.DateTimeParseException
  * advance range only, so the other rules here are the only validation a listing gets.
  *
  * The wizard serves two projects: a rental ([ListingType.RENTAL]) and a sale ([ListingType.SALE]). A rental offers no
- * land; a sale offers it under the residential use only and no room, asks no furniture, requires the surface of a plot
- * of land and its optional documents, has its own price floor, and has no advance nor deposit. A building sold as a
- * whole is offered under Commercial only (#274), is captured by its two counts instead of a room and a parking, and
- * skips the amenities step.
+ * land; a sale offers it under both usages, residential and commercial (#293), and no room, asks no furniture,
+ * requires the surface of a plot of land and its optional documents, has its own price floor, and has no advance nor
+ * deposit. A building sold as a whole is offered under Commercial only (#274), is captured by its two counts instead of
+ * a room and a parking, and skips the amenities step.
  */
 object OfferPropertyRules {
     const val STEP_PROPERTY = "property"
@@ -95,13 +95,13 @@ object OfferPropertyRules {
         PropertyType.INDUSTRIAL to PropertyCategory.COMMERCIAL,
     )
 
-    // A sale drops the room type and offers land under the residential use only (a plot to build on is residential);
-    // a rental never offers land. A building sold as a whole is offered under Commercial only (#274): it replaces the
+    // A sale drops the room type and offers a plot of land under both usages, residential and commercial (#293); a
+    // rental never offers land. A building sold as a whole is offered under Commercial only (#274): it replaces the
     // residential category the rental map gives it, keeping its form position.
     private val SALE_CATEGORIES_BY_TYPE: Map<PropertyType, Set<PropertyCategory>> =
         (CATEGORIES_BY_TYPE - PropertyType.ROOM)
             .mapValues { (_, category) -> setOf(category) } +
-            (PropertyType.LAND to setOf(PropertyCategory.RESIDENTIAL)) +
+            (PropertyType.LAND to setOf(PropertyCategory.RESIDENTIAL, PropertyCategory.COMMERCIAL)) +
             (PropertyType.BUILDING to setOf(PropertyCategory.COMMERCIAL))
 
     private val WITHOUT_ROOMS = setOf(PropertyType.ROOM, PropertyType.STUDIO, PropertyType.BUILDING)
