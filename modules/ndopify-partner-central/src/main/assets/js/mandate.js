@@ -319,13 +319,15 @@
             var category = checked("propertyCategory");
             if (name === "documents") return RULES.asksDocuments(listingType);
             if (name === "furnitureType" && savedRentalBuilding()) return true;
+            // The group is furnitureType, the rule table's field furniture: map it once, for every branch below.
+            var field = name === "furnitureType" ? "furniture" : name;
             if (!type || type === "ANY") {
-                if (name === "area") return category === "COMMERCIAL" || sale;
-                if (name === "counts") return false;
+                if (field === "area") return category === "COMMERCIAL" || sale;
+                if (field === "counts") return false;
                 return category === "RESIDENTIAL" &&
-                    (name === "rooms" || name === "furnitureType" || name === "parkings");
+                    (field === "rooms" || field === "furniture" || field === "parkings");
             }
-            return RULES.asks(type, listingType, name);
+            return RULES.asks(type, listingType, field);
         }
 
         // Shows only the questions of the chosen type; a hidden one keeps its answer (the template posts it, the
