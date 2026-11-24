@@ -133,7 +133,8 @@
                     <ol class="tracker mandate-steps" data-mandate-steps>
                         <li th:each="step, it : ${m.steps}" th:attr="data-step=${step.status},
                                 data-state=${step.done} ? 'done' : (${it.index == m.currentStep} ? 'current' : 'todo'),
-                                aria-current=${it.index == m.currentStep} ? 'step' : null">
+                                aria-current=${it.index == m.currentStep} ? 'step' : null"
+                            th:classappend="${step.cancelled} ? 'mandate-steps__step--cancelled'">
                             <span class="tracker__mark"><span class="visually-hidden" th:if="${step.done}">Terminé</span></span>
                             <span class="mandate-steps__text"><span class="mandate-steps__label" th:text="${step.label}">Assigné</span>
                                 <span class="mandate-steps__date" data-step-date th:text="${step.date}"></span></span>
