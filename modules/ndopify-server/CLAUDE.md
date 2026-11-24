@@ -181,7 +181,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `titleDocuments` (`TitleDocumentType` list, comma-separated, empty when none). `MandateService.create`/`update`
   normalize them — financing kept only for a `SALE` listing type, documents only for a `SALE` land purchase, `UNKNOWN`
   dropped, distinct, and an empty list preserved — since they are the buyer's brief and never validated nor used to
-  filter in M1; the delivered price per m² is display-only and never stored. Tenant-scoped.
+  filter in M1; the delivered price per m² is display-only and never stored. A building sale's two counts
+  (`T_MANDATE.levels`/`units`, `V18_0`) — its étages and its unités — are kept only for a `SALE` mandate whose
+  `propertyType` is `BUILDING`, and cleared for any other type (a rental building keeps today's model: neither count);
+  the server validates neither, and the wizards and edit pages bound them. The offer message and the sale contract
+  word them (`MandateMailLabels.building`, *3 étages · 12 unités*), not the rooms or amenities a building doesn't have.
+  Tenant-scoped.
   **Access** (`MandateAccessService`): every endpoint but create (public) needs a JWT (401
   `AUTH_UNAUTHORIZED`), and the caller must be an admin (`CallerService.isAdmin`: `admin-console` token with the
   `admin` role, `RoleCode`) or the mandate's agent (JWT user → membership → party → agent), else 403
@@ -361,9 +366,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   for an admin or the listing's agent (the mandate's, for create): 401 without a token, 403 `HTTP_ACCESS_DENIED`
   otherwise, after the 404 and before any 409, checked by the services. `ListingService.create` copies the mandate's
   property (404 `MANDATE_NOT_FOUND`, 409 `MANDATE_NOT_ASSIGNED` without agent, since the listing's agent is the
-  mandate's; 409 `LISTING_ALREADY_EXISTS`) and starts it as `DRAFT`. A mandate's listing is found with
+  mandate's; 409 `LISTING_ALREADY_EXISTS`) and starts it as `DRAFT`, copying its `levels` and `units` too (a sold
+  building's counts, `T_LISTING.units`, `V18_1`). A mandate's listing is found with
   `GET /v1/listings?mandate-id=` (repeatable; with the agent's own `agent-id` for a DRAFT): the `mandate` domain doesn't depend on
-  `listing`, so `Mandate` has no `listingId`. **Checklist**: an update saves *one* `ListingSection` (`LOCATION`, `GPS`, `PROPERTY`, `AMENITIES`,
+  `listing`, so `Mandate` has no `listingId`. **Checklist**: a sold `BUILDING` has six sections
+  (`ListingSectionService.soldBuilding`): `AMENITIES` leaves its checklist and a save of that section is 400, and its
+  `PROPERTY` section drops the bathrooms and parkings an agent posts. An update saves *one* `ListingSection` (`LOCATION`, `GPS`, `PROPERTY`, `AMENITIES`,
   `TERMS`, `REMARKS`), only that section's fields, as sent (a null clears an optional field), and marks it
   `VERIFIED` (`ListingSectionService.verify`): a section counts only once the agent saved it, the landlord's answers
   alone don't. `PHOTOS` is never saved: it's `VERIFIED` once there are `MIN_PHOTOS` (5) photos and none `REJECTED`.
@@ -397,7 +405,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   **Publish**: `POST /{id}/publish` moves a `VERIFIED` listing
   to `PUBLISHING` (404 `LISTING_NOT_FOUND`, then 409 `LISTING_NOT_VERIFIED`), `retries` reset; `ListingJobs.publish`
   then has `ListingPublisherService` generate its title, summary and description (`ListingContentGenerator`, text
-  LLM, `ChatClients.TEXT`, from the listing's details, verified photos and agent remarks) and its hero image (the
+  LLM, `ChatClients.TEXT`, from the listing's details, verified photos and agent remarks; a sold building is described
+  by its units and étages instead of its bedrooms), and its hero image (the
   model's, else the verified photo of highest quality, then largest), and its public `url`, the path `/<city>/<neighborhood>/listing/<id>/<slug of the title>` (no host: the
   tenant's `publicPortalUrl`; no neighbourhood nor title segment without them): `PUBLISHED`, or still `PUBLISHING` to be retried after a failure; after `MAX_RETRIES` failed attempts
   it's `PUBLISHED` without title, summary nor description (the UIs handle it), its last error kept. Either way it
@@ -457,7 +466,11 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `price-tolerance`, an incompatible property type) or scores it (neighbourhood, price, rooms, amenities, availability,
   furniture) multiplied by a property-type factor: 1.0 exact or no preference, 0.9 `OFFICE`/`RETAIL`, 0.85
   `BUILDING`/`OFFICE`/`RETAIL`, 0.8 `INDUSTRIAL` siblings, 0.0 veto (`LAND` against non-land, residential
-  cross-types, unknown listed type). Under `min-score` it isn't stored. Each score also keeps what explains it to
+  cross-types, unknown listed type). A `SALE` `BUILDING`↔`BUILDING` pair uses the building weight set instead:
+  neighbourhood 0.30, price 0.25, units 0.20, levels 0.15, availability 0.10, with rooms, amenities and furniture
+  neither weighed nor listed as gaps; its `units`/`levels` partials are the closeness `1 - |listing - search| / search`
+  clamped 0..1 and `1.0` when either side states none (never a rule-out), stored as `unitsScore`/`levelsScore`
+  (`T_MATCH`, `V18_2`). Every other pair keeps today's six weights. Under `min-score` it isn't stored. Each score also keeps what explains it to
   the agent (`V9_1`, `V10_3`): `distanceKm` (to the nearest searched neighbourhood: 0 inside one, null when not nearby
   or none searched), `missingAmenities` (the amenities searched that the listing lacks, by DTO field name, ex:
   `waterTank`) and `typeScore` (the property-type factor). `ACTIVE` rows are created, re-scored or deleted; any other status (`SHORTLISTED`, `DISMISSED`,

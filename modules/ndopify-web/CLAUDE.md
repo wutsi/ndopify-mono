@@ -26,7 +26,9 @@ Package `com.wutsi.ndopify.web`:
   its public page, marked "Vendu"/"Loué": its price card and bottom bar show its last published listing price, never a
   closing price, its conditions are left out, and it has no call to action. Its *Conditions de location* note is
   `ListingPage.termsNote`: on the public page the neutral *Les visites sont organisées par votre agent.* (never the
-  Pass Visite promise), which the match page replaces with the fee.
+  Pass Visite promise), which the match page replaces with the fee. A building sold as a whole shows its unités and
+  étages as its key facts and specs (no bedroom, bathroom nor parking), no *Équipements vérifiés* block, and its
+  interest search copies the two counts from the listing.
   "Être contacté par un agent" (price card, and bottom bar below 1024px) opens the `#visit` popup: the
   `ListingInterestForm` posts to `POST /listings/{id}/interest` the visitor's contact, its moving period and the
   `website` honeypot (`ListingInterestRules` validates them in French), and `NdMandateClient.create` creates a SEARCH
@@ -43,7 +45,8 @@ Package `com.wutsi.ndopify.web`:
   Signed in → `match.html` (from `proposition.html`), the `MatchPage` that `MatchPages` builds from the match, its
   mandate (the search summary), its agent and its listing (the listing body is `ListingPages`'s, never
   `agentRemarks`); "Pourquoi ce logement ?" lists the criteria fully met that the mandate sets, and the missing
-  amenities. One answer block per `AnswerState`: PENDING (match PROPOSED) → "Ça m'intéresse" (`POST /match/{id}/accept`)
+  amenities (a building sale's proposition words its unités and étages instead, and summarizes the search as
+  *immeuble de 12 unités sur 3 étages*). One answer block per `AnswerState`: PENDING (match PROPOSED) → "Ça m'intéresse" (`POST /match/{id}/accept`)
   and "Pas pour moi" (`#reject` popup, `RejectForm`: `POST /match/{id}/reject`, missing reason → `OTHER`, blank comment
   → none); ACCEPTED / REJECTED → the answer, no form (answers are final: no "change my mind", unlike the prototype);
   EXPIRED (not answered within ndopify-server's `ndopify.match.expire.days`) → the listing, "Cette proposition a
