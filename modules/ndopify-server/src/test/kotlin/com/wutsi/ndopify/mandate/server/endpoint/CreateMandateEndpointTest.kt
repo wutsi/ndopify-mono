@@ -402,13 +402,13 @@ class CreateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `drop the documents of a non-land sale`() {
+    fun `keep the documents of a house sale`() {
         val created = rest.postForEntity(
             "/v1/mandates",
             request.copy(
                 listingType = ListingType.SALE,
                 propertyCategory = PropertyCategory.RESIDENTIAL,
-                propertyType = PropertyType.VILLA,
+                propertyType = PropertyType.HOUSE,
                 titleDocuments = listOf(TitleDocumentType.LAND_TITLE),
             ),
             CreateMandateResponse::class.java,
@@ -417,7 +417,7 @@ class CreateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.OK, created.statusCode)
         val mandate = rest.getForEntity("/v1/mandates/${created.body!!.mandateId}", GetMandateResponse::class.java)
             .body!!.mandate
-        assertEquals(emptyList(), mandate.titleDocuments)
+        assertEquals(listOf(TitleDocumentType.LAND_TITLE), mandate.titleDocuments)
     }
 
     @Test
@@ -467,14 +467,14 @@ class CreateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `drop the ownership documents of a non-land sale`() {
+    fun `keep the ownership documents of a house sale`() {
         val created = rest.postForEntity(
             "/v1/mandates",
             request.copy(
                 listingType = ListingType.SALE,
                 propertyCategory = PropertyCategory.RESIDENTIAL,
-                propertyType = PropertyType.VILLA,
-                ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE),
+                propertyType = PropertyType.HOUSE,
+                ownershipDocuments = listOf(TitleDocumentType.SURVEY_PLAN),
             ),
             CreateMandateResponse::class.java,
         )
@@ -482,7 +482,7 @@ class CreateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.OK, created.statusCode)
         val mandate = rest.getForEntity("/v1/mandates/${created.body!!.mandateId}", GetMandateResponse::class.java)
             .body!!.mandate
-        assertEquals(emptyList(), mandate.ownershipDocuments)
+        assertEquals(listOf(TitleDocumentType.SURVEY_PLAN), mandate.ownershipDocuments)
     }
 
     @Test

@@ -166,9 +166,9 @@ class MandateService(
     }
 
     /**
-     * Creates the mandate. The purchase answers are the buyer's brief: a rental keeps no financing, and only a land
-     * purchase keeps documents (empty is a valid answer). The seller's ownership documents are the seller's brief in
-     * the same way: a rental and any non-land sale have none, and they filter nothing. A building sold as a whole
+     * Creates the mandate. The purchase answers are the buyer's brief: a rental keeps no financing, and a sale of any
+     * type keeps its documents (empty is a valid answer). The seller's ownership documents are the seller's brief in
+     * the same way: any sale keeps them, a rental has none, and they filter nothing. A building sold as a whole
      * keeps its storeys and its units; any other mandate stores neither. The implied price per m² is
      * computed on the page and never stored.
      */
@@ -186,10 +186,10 @@ class MandateService(
         // A building sold as a whole is captured by its storeys and its units; a rental building keeps today's model
         val buildingSale = sale && criteria.propertyType == PropertyType.BUILDING
         val titleDocuments = criteria.titleDocuments
-            .filter { sale && criteria.propertyType == PropertyType.LAND && it != TitleDocumentType.UNKNOWN }
+            .filter { sale && it != TitleDocumentType.UNKNOWN }
             .distinct()
         val ownershipDocuments = criteria.ownershipDocuments
-            .filter { sale && criteria.propertyType == PropertyType.LAND && it != TitleDocumentType.UNKNOWN }
+            .filter { sale && it != TitleDocumentType.UNKNOWN }
             .distinct()
         val customer = customerService.findOrCreate(
             CreateCustomerRequest(
@@ -308,8 +308,8 @@ class MandateService(
      * change made since. A PENDING_APPROVAL mandate goes back to ASSIGNED and its contract is cancelled: the customer
      * mustn't sign the terms of before the change, and request-approval creates a new one. Like a signature, the
      * contract is locked before the mandate. The purchase answers are kept the same way as on create: no financing for
-     * a rental, documents only for a land purchase; the seller's ownership documents are kept for a land sale only and
-     * filter nothing. A building sale keeps its storeys and its units, and any other type clears them. The implied price
+     * a rental, documents for any sale; the seller's ownership documents are kept for any sale too and filter nothing.
+     * A building sale keeps its storeys and its units, and any other type clears them. The implied price
      * per m² is never stored.
      */
     @Transactional
@@ -342,10 +342,10 @@ class MandateService(
         // Leaving BUILDING (a sale land, or any rental) drops the counts: only a building sale stores them
         val buildingSale = sale && request.propertyType == PropertyType.BUILDING
         val titleDocuments = request.titleDocuments
-            .filter { sale && request.propertyType == PropertyType.LAND && it != TitleDocumentType.UNKNOWN }
+            .filter { sale && it != TitleDocumentType.UNKNOWN }
             .distinct()
         val ownershipDocuments = request.ownershipDocuments
-            .filter { sale && request.propertyType == PropertyType.LAND && it != TitleDocumentType.UNKNOWN }
+            .filter { sale && it != TitleDocumentType.UNKNOWN }
             .distinct()
         return dao.save(
             mandate.copy(

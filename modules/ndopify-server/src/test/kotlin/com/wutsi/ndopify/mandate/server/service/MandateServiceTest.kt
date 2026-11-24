@@ -22,11 +22,13 @@ import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
 import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.mandate.server.dao.AssignmentRepository
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
@@ -251,6 +253,48 @@ class MandateServiceTest {
         assertEquals(42L, service.create(visitor).id)
     }
 
+    @Test
+    fun `create stores the documents of a sale whatever its type`() {
+        givenCustomer()
+
+        val mandate = service.create(
+            CreateMandateRequest(
+                mandateType = MandateType.SEARCH,
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
+                propertyType = PropertyType.HOUSE,
+                titleDocuments = listOf(TitleDocumentType.SURVEY_PLAN),
+                ownershipDocuments = listOf(
+                    TitleDocumentType.LAND_TITLE,
+                    TitleDocumentType.LAND_TITLE,
+                    TitleDocumentType.UNKNOWN,
+                ),
+            ),
+        )
+
+        assertEquals(listOf(TitleDocumentType.SURVEY_PLAN), mandate.titleDocuments)
+        assertEquals(listOf(TitleDocumentType.LAND_TITLE), mandate.ownershipDocuments)
+    }
+
+    @Test
+    fun `create keeps no documents for a rental`() {
+        givenCustomer()
+
+        val mandate = service.create(
+            CreateMandateRequest(
+                mandateType = MandateType.SEARCH,
+                listingType = ListingType.RENTAL,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
+                propertyType = PropertyType.HOUSE,
+                titleDocuments = listOf(TitleDocumentType.LAND_TITLE),
+                ownershipDocuments = listOf(TitleDocumentType.SURVEY_PLAN),
+            ),
+        )
+
+        assertEquals(emptyList(), mandate.titleDocuments)
+        assertEquals(emptyList(), mandate.ownershipDocuments)
+    }
+
     @BeforeTest
     fun setUp() {
         TenantContext.set(1L)
@@ -469,6 +513,48 @@ class MandateServiceTest {
         assertEquals(ErrorCode.MANDATE_VERSION_CONFLICT, ex.error.code)
         verify(dao, never()).save(any())
         verify(contractService, never()).cancel(any())
+    }
+
+    @Test
+    fun `update stores the documents of a sale whatever its type`() {
+        givenMandate(mandate(MandateStatus.ASSIGNED))
+
+        val updated = service.update(
+            1L,
+            UpdateMandateRequest(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
+                propertyType = PropertyType.HOUSE,
+                titleDocuments = listOf(TitleDocumentType.SURVEY_PLAN),
+                ownershipDocuments = listOf(
+                    TitleDocumentType.LAND_TITLE,
+                    TitleDocumentType.LAND_TITLE,
+                    TitleDocumentType.UNKNOWN,
+                ),
+            ),
+        )
+
+        assertEquals(listOf(TitleDocumentType.SURVEY_PLAN), updated.titleDocuments)
+        assertEquals(listOf(TitleDocumentType.LAND_TITLE), updated.ownershipDocuments)
+    }
+
+    @Test
+    fun `update keeps no documents for a rental`() {
+        givenMandate(mandate(MandateStatus.ASSIGNED))
+
+        val updated = service.update(
+            1L,
+            UpdateMandateRequest(
+                listingType = ListingType.RENTAL,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
+                propertyType = PropertyType.LAND,
+                titleDocuments = listOf(TitleDocumentType.LAND_TITLE),
+                ownershipDocuments = listOf(TitleDocumentType.SURVEY_PLAN),
+            ),
+        )
+
+        assertEquals(emptyList(), updated.titleDocuments)
+        assertEquals(emptyList(), updated.ownershipDocuments)
     }
 
     @Test
