@@ -436,9 +436,9 @@ class ListingRulesTest {
     }
 
     @Test
-    fun `a commercial sale lists the building before the offices`() {
+    fun `a commercial sale lists the building first and the plot of land last`() {
         assertEquals(
-            listOf(PropertyType.BUILDING, PropertyType.OFFICE, PropertyType.RETAIL, PropertyType.INDUSTRIAL),
+            listOf(PropertyType.BUILDING, PropertyType.OFFICE, PropertyType.RETAIL, PropertyType.INDUSTRIAL, PropertyType.LAND),
             ListingRules.types(PropertyCategory.COMMERCIAL, sale = true),
         )
         assertEquals(
@@ -453,6 +453,40 @@ class ListingRulesTest {
             ListingRules.TYPES.getValue(PropertyCategory.RESIDENTIAL) - PropertyType.LAND,
             ListingRules.types(PropertyCategory.RESIDENTIAL, sale = false),
         )
+    }
+
+    @Test
+    fun `a sale land fits both categories, a rental only none`() {
+        assertTrue(ListingRules.typeFits(PropertyCategory.RESIDENTIAL, PropertyType.LAND, sale = true))
+        assertTrue(ListingRules.typeFits(PropertyCategory.COMMERCIAL, PropertyType.LAND, sale = true))
+        assertFalse(ListingRules.typeFits(PropertyCategory.RESIDENTIAL, PropertyType.LAND, sale = false))
+        assertFalse(ListingRules.typeFits(PropertyCategory.COMMERCIAL, PropertyType.LAND, sale = false))
+        assertEquals(
+            listOf(PropertyCategory.RESIDENTIAL, PropertyCategory.COMMERCIAL),
+            ListingRules.typeCategories(PropertyType.LAND, sale = true),
+        )
+        assertEquals(listOf(PropertyCategory.RESIDENTIAL), ListingRules.typeCategories(PropertyType.LAND, sale = false))
+    }
+
+    @Test
+    fun `every type is listed once and a rental lists no land`() {
+        assertEquals(
+            listOf(
+                PropertyType.APARTMENT,
+                PropertyType.HOUSE,
+                PropertyType.VILLA,
+                PropertyType.DUPLEX,
+                PropertyType.STUDIO,
+                PropertyType.ROOM,
+                PropertyType.BUILDING,
+                PropertyType.OFFICE,
+                PropertyType.RETAIL,
+                PropertyType.INDUSTRIAL,
+                PropertyType.LAND,
+            ),
+            ListingRules.allTypes(sale = true),
+        )
+        assertEquals(ListingRules.allTypes(sale = true) - PropertyType.LAND, ListingRules.allTypes(sale = false))
     }
 
     @Test
