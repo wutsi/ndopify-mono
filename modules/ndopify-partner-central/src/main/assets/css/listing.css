@@ -289,6 +289,15 @@ a.checklist__row:focus-visible {
     font-weight: 600;
 }
 
+/* The coordinates, then "Voir sur la carte" on the same line (wrapped under them on a narrow phone). */
+.gps__line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: var(--space-3);
+    row-gap: var(--space-1);
+}
+
 /* Counts side by side from 480px: they're short. */
 .count-grid {
     display: grid;

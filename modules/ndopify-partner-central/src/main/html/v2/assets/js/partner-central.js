@@ -5550,8 +5550,7 @@
             if (!lat) return;
             $("[data-gps-coords]", result).textContent = Number(lat).toFixed(5) + ", " + Number(lng).toFixed(5) +
                 (accuracy ? " (± " + accuracy + " m)" : "");
-            $("[data-gps-map]", result).href = "https://www.openstreetmap.org/?mlat=" + lat + "&mlon=" + lng +
-                "#map=18/" + lat + "/" + lng;
+            $("[data-gps-map]", result).href = "https://www.google.com/maps/search/?api=1&query=" + lat + "," + lng;
             // Indoors or under a roof the phone guesses: the agent takes it again outside, at the door
             weak.hidden = !(accuracy > 50);
             button.textContent = "Relever à nouveau";

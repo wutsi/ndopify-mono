@@ -201,10 +201,13 @@ class ListingSectionTemplateTest {
         assertEquals("text", form.selectFirst("input[name=latitude]")?.attr("type"))
         assertEquals("9.6942", form.selectFirst("input[name=longitude]")?.attr("value"))
         assertNotNull(form.selectFirst("button[data-gps][hidden]"))
-        assertEquals(
-            "https://www.openstreetmap.org/?mlat=4.0335&mlon=9.6942#map=18/4.0335/9.6942",
-            form.selectFirst("a[data-gps-map]")?.attr("href"),
-        )
+        // Beside the coordinates, on Google Maps
+        val line = form.selectFirst("p.gps__line")!!
+        assertEquals("4.0335, 9.6942", line.selectFirst("[data-gps-coords]")?.text())
+        val map = line.selectFirst("a[data-gps-map]")!!
+        assertEquals("https://www.google.com/maps/search/?api=1&query=4.0335,9.6942", map.attr("href"))
+        assertEquals("_blank", map.attr("target"))
+        assertEquals("Voir sur la carte (Google Maps, nouvel onglet)", map.text())
     }
 
     @Test
@@ -566,6 +569,22 @@ class ListingSectionTemplateTest {
         assertTrue(alert.text().startsWith("Cette annonce a été modifiée entre-temps."))
         assertEquals("3", page.selectFirst("input[name=version]")?.attr("value"))
         assertEquals("4.0335", page.selectFirst("input[name=latitude]")?.attr("value"))
+    }
+
+    @Test
+    fun `gps - a typed comma is a dot in the map link`() {
+        val ex = HttpClientErrorException(HttpStatus.CONFLICT)
+        ex.setBodyConvertFunction { ErrorResponse(Error(code = ErrorCode.LISTING_VERSION_CONFLICT)) }
+        doThrow(ex).whenever(listingClient).update(any(), any())
+
+        val page = render(
+            post("/listings/501/gps").param("version", "2").param("latitude", "4,0335").param("longitude", "9,6942"),
+        )
+
+        assertEquals(
+            "https://www.google.com/maps/search/?api=1&query=4.0335,9.6942",
+            page.selectFirst("a[data-gps-map]")?.attr("href"),
+        )
     }
 
     @Test

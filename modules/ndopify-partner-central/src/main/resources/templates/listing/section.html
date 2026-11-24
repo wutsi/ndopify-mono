@@ -123,9 +123,10 @@
                             </div>
                             <input name="accuracy" type="hidden">
                             <div class="gps__result" th:hidden="${#strings.isEmpty(a.latitude) or #strings.isEmpty(a.longitude)}" data-gps-result>
-                                <p class="gps__coords" th:text="|${a.latitude}, ${a.longitude}|" data-gps-coords></p>
-                                <p><a target="_blank" rel="noopener" data-gps-map
-                                      th:href="|https://www.openstreetmap.org/?mlat=${a.latitude}&mlon=${a.longitude}#map=18/${a.latitude}/${a.longitude}|">Voir sur la carte</a></p>
+                                <!-- The position, then the same point on Google Maps beside it (a typed "4,0335" as 4.0335). -->
+                                <p class="gps__line"><span class="gps__coords" th:text="|${a.latitude}, ${a.longitude}|" data-gps-coords></span>
+                                    <a target="_blank" rel="noopener" data-gps-map
+                                       th:href="|https://www.google.com/maps/search/?api=1&query=${#strings.replace(a.latitude, ',', '.')},${#strings.replace(a.longitude, ',', '.')}|">Voir sur la carte<span class="visually-hidden"> (Google Maps, nouvel onglet)</span></a></p>
                             </div>
                             <p class="owner-value" hidden data-gps-weak>Précision faible&nbsp;: relevez à nouveau la position à
                                 l'extérieur, devant l'entrée.</p>

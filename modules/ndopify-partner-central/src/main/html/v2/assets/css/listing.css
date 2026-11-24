@@ -325,6 +325,15 @@ a.checklist__row:focus-visible {
     font-weight: 600;
 }
 
+/* The coordinates, then "Voir sur la carte" on the same line (wrapped under them on a narrow phone). */
+.gps__line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: var(--space-3);
+    row-gap: var(--space-1);
+}
+
 /* #287: every count takes a full row, at every width — no two-column grid on *Le bien*. */
 .count-grid {
     display: grid;
