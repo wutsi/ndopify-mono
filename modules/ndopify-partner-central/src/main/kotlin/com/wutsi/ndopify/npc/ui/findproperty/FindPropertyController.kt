@@ -186,9 +186,10 @@ class FindPropertyController(
         val answers = pending.copy(
             propertyType = typeAnswer,
             rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(pending.propertyCategory, type, pending.listingType) },
-            furnitureType = form.furnitureType?.takeIf { FindPropertyRules.needsFurniture(type, pending.listingType) },
+            furnitureType = form.furnitureType
+                ?.takeIf { FindPropertyRules.needsFurniture(pending.propertyCategory, type, pending.listingType) },
             parkings = form.parkings?.takeIf {
-                it.isNotEmpty() && FindPropertyRules.asksParkings(type, pending.listingType)
+                it.isNotEmpty() && FindPropertyRules.asksParkings(pending.propertyCategory, type, pending.listingType)
             },
             area = area,
             // A building sale's counts: kept as typed (the page shows them again on error), sent as null when
@@ -210,7 +211,7 @@ class FindPropertyController(
                     null
                 },
             "furnitureType" to
-                if (FindPropertyRules.needsFurniture(type, pending.listingType)) {
+                if (FindPropertyRules.needsFurniture(pending.propertyCategory, type, pending.listingType)) {
                     FindPropertyRules.furnitureType(answers.furnitureType)
                 } else {
                     null
@@ -468,10 +469,10 @@ class FindPropertyController(
                 FindPropertyRules.needsRooms(answers.propertyCategory, type, answers.listingType)
             },
             MandateLabels.FURNITURE_LABELS[answers.furnitureType]?.takeIf {
-                FindPropertyRules.needsFurniture(type, answers.listingType)
+                FindPropertyRules.needsFurniture(answers.propertyCategory, type, answers.listingType)
             },
             MandateLabels.PARKING_LABELS[answers.parkings]?.takeIf {
-                FindPropertyRules.asksParkings(type, answers.listingType)
+                FindPropertyRules.asksParkings(answers.propertyCategory, type, answers.listingType)
             },
             answers.area?.let { MandateLabels.formatNumber(it) + " m² minimum" },
         )

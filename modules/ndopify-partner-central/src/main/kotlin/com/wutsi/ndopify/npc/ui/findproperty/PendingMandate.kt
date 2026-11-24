@@ -88,7 +88,7 @@ data class PendingMandate(
         FindPropertyController.STEP_PROPERTY ->
             FindPropertyRules.propertyType(propertyCategory, propertyType, listingType) == null &&
                 (!FindPropertyRules.needsRooms(propertyCategory, type(), listingType) || FindPropertyRules.rooms(rooms) == null) &&
-                (!FindPropertyRules.needsFurniture(type(), listingType) || FindPropertyRules.furnitureType(furnitureType) == null) &&
+                (!FindPropertyRules.needsFurniture(propertyCategory, type(), listingType) || FindPropertyRules.furnitureType(furnitureType) == null) &&
                 FindPropertyRules.area(area, FindPropertyRules.needsArea(propertyCategory, type(), listingType)) == null &&
                 (!buildingSale() || countsAnswered())
 
@@ -142,9 +142,11 @@ data class PendingMandate(
             propertyType = type,
             furnitureType = FurnitureType.entries
                 .firstOrNull { it.name == furnitureType }
-                ?.takeIf { FindPropertyRules.needsFurniture(type, listingType) },
+                ?.takeIf { FindPropertyRules.needsFurniture(propertyCategory, type, listingType) },
             rooms = rooms?.takeIf { FindPropertyRules.needsRooms(propertyCategory, type, listingType) },
-            parkings = parkings?.takeIf { FindPropertyRules.asksParkings(type, listingType) && it != FindPropertyRules.ANY },
+            parkings = parkings?.takeIf {
+                FindPropertyRules.asksParkings(propertyCategory, type, listingType) && it != FindPropertyRules.ANY
+            },
             area = area,
             // A building sale's two counts; another type sends none, and "Indifférent" is null.
             levels = levels.takeIf { buildingSale() },

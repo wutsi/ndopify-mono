@@ -53,12 +53,12 @@ object MandateEditRules {
             unitsError?.let { "units" to it },
             ("furnitureType" to "Indiquez si le bien est meublé.")
                 .takeIf {
-                    FindPropertyRules.needsFurniture(type, mandate.listingType) &&
+                    FindPropertyRules.needsFurniture(form.propertyCategory, type, mandate.listingType) &&
                         (FindPropertyRules.furnitureType(form.furnitureType) != null || (owner && form.furnitureType == ANY))
                 },
             ("parkings" to "Choisissez un nombre de places proposé.")
                 .takeIf {
-                    !building && FindPropertyRules.asksParkings(type, mandate.listingType) &&
+                    !building && FindPropertyRules.asksParkings(form.propertyCategory, type, mandate.listingType) &&
                         (FindPropertyRules.parkings(form.parkings) != null || (owner && form.parkings == ANY))
                 },
             ("area" to "Indiquez la surface en m², ou laissez le champ vide.")
@@ -93,13 +93,16 @@ object MandateEditRules {
             neighbourhoodIds = form.neighborhoodIds.distinct(),
             propertyType = type,
             furnitureType = form.furnitureType
-                ?.takeIf { FindPropertyRules.needsFurniture(type, mandate.listingType) && it != ANY }
+                ?.takeIf { FindPropertyRules.needsFurniture(form.propertyCategory, type, mandate.listingType) && it != ANY }
                 ?.let { FurnitureType.valueOf(it) },
             rooms = form.rooms?.takeIf {
                 !building && FindPropertyRules.needsRooms(form.propertyCategory, type, mandate.listingType)
             },
             parkings = form.parkings?.ifEmpty { null }
-                ?.takeIf { !building && FindPropertyRules.asksParkings(type, mandate.listingType) && it != ANY },
+                ?.takeIf {
+                    !building && FindPropertyRules.asksParkings(form.propertyCategory, type, mandate.listingType) &&
+                        it != ANY
+                },
             area = area(form.area).getOrNull(),
             levels = count(form.levels).takeIf { building },
             units = count(form.units).takeIf { building },

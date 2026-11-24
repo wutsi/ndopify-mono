@@ -254,11 +254,11 @@ object MandateLabels {
             mandate.levels?.takeIf { building }?.let { "Étages" to it.toString() },
             mandate.units?.takeIf { building }?.let { "Unités" to it.toString() },
             ("Meublé" to furniture(mandate.furnitureType))
-                .takeIf { !sale && FindPropertyRules.needsFurniture(type, mandate.listingType) },
+                .takeIf { !sale && FindPropertyRules.needsFurniture(mandate.propertyCategory, type, mandate.listingType) },
             mandate.rooms?.let { "Chambres" to it }
                 ?.takeIf { !building && FindPropertyRules.needsRooms(mandate.propertyCategory, type, mandate.listingType) },
             ("Parking" to (mandate.parkings?.let { PARKING_VALUES[it] ?: it } ?: "Indifférent"))
-                .takeIf { !building && FindPropertyRules.asksParkings(type, mandate.listingType) },
+                .takeIf { !building && FindPropertyRules.asksParkings(mandate.propertyCategory, type, mandate.listingType) },
             mandate.area?.let { (if (owner) "Surface" else "Surface souhaitée") to formatNumber(it) + " m²" },
         ) + listOfNotNull(
             mandate.financingType?.takeIf { sale }?.let { "Financement" to (FINANCING_LABELS[it] ?: NONE) },
