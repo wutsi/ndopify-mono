@@ -65,6 +65,12 @@ class TenantFormatter(private val tenant: Tenant) {
     fun currency(): String = tenant.currencySymbol.ifBlank { tenant.currencyCode }
 
     /**
+     * The tenant's decimal separator ("," in French, "." in English), for a page script that formats an amount in the
+     * browser exactly as [compactMoney] does. Emitted on the page as `data-decimal-separator`.
+     */
+    fun decimalSeparator(): String = DecimalFormatSymbols.getInstance(locale).decimalSeparator.toString()
+
+    /**
      * An amount in short, for a card ("80K FCFA", "152,5K FCFA", "1,25M FCFA", "1,5G FCFA"): in the tenant's locale,
      * followed by its currency. See [compactNumber] for the unit and its decimals.
      */

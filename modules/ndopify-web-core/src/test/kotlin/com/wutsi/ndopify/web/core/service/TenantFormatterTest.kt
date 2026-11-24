@@ -96,6 +96,13 @@ class TenantFormatterTest {
     }
 
     @Test
+    fun `decimal separator in the tenant's locale`() {
+        assertEquals(",", TenantFormatter(TENANT).decimalSeparator())
+        assertEquals(".", TenantFormatter(TENANT.copy(locales = listOf("en"))).decimalSeparator())
+        assertEquals(",", TenantFormatter(TENANT.copy(locales = emptyList())).decimalSeparator())
+    }
+
+    @Test
     fun `local date with a pattern in the tenant's locale`() {
         assertEquals("sam.", TenantFormatter(TENANT).date(LocalDate.of(2026, 10, 31), "EEE"))
         assertEquals("oct.", TenantFormatter(TENANT).date(LocalDate.of(2026, 10, 31), "MMM"))
