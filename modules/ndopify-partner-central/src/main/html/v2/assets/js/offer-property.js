@@ -12,7 +12,8 @@
  *  - asks a "Prix de vente" in FCFA, sent with periodicity NONE, of at least MIN_SALE_PRICE;
  *  - has no advance nor deposit (hidden, sent as null) and no furnishing question; availableFrom is kept
  *    ("Disponible à partir du" reads as well for a sale);
- *  - offers no room (ROOM), and a plot (LAND) under Résidentiel only (data-sale-categories in the page);
+ *  - offers no room (ROOM), and a plot (LAND) under Résidentiel and Commercial, whichever use is picked
+ *    (data-sale-categories in the page);
  *  - asks the ownership documents (ownershipDocuments) of a plot of land only (Titre foncier / Plan de bornage /
  *    Certificat de propriété, optional and several, none being a valid answer), sent only for a SALE · LAND and
  *    shown on the review as "Document de propriété";
@@ -37,8 +38,8 @@
  * #275 — a plot of land is sold, never let:
  *  - a rental offers Terrain under neither category (data-categories is empty in the page): a posted
  *    propertyType=LAND is refused by the rules ("Choisissez le type de bien."), as the BFF does;
- *  - a sale offers it under Résidentiel (data-sale-categories, SALE_CATEGORIES), with its documents, surface and
- *    rate.
+ *  - a sale offers it under Résidentiel and Commercial (#293, data-sale-categories, SALE_CATEGORIES), with its
+ *    documents, surface and rate; it is one choice, kept when the use changes.
  *
  * #274 — a building sold as a whole is captured by two counts, its levels and its units (whole numbers, both
  * required), in place of the rooms and the parking, and without the amenities step: six steps for that branch (the
@@ -190,9 +191,9 @@
         ["securedFenced", "Barrière, clôture sécurisée"]
     ];
 
-    // For a sale, a room isn't offered, a plot is offered under Résidentiel and a building under Commercial only
-    // (#274), as data-sale-categories says in the page; a rental offers no plot at all (#275).
-    var SALE_CATEGORIES = { ROOM: [], LAND: ["RESIDENTIAL"], BUILDING: ["COMMERCIAL"] };
+    // For a sale, a room isn't offered, a plot is offered under Résidentiel and Commercial (#293) and a building
+    // under Commercial only (#274), as data-sale-categories says in the page; a rental offers no plot at all (#275).
+    var SALE_CATEGORIES = { ROOM: [], LAND: ["RESIDENTIAL", "COMMERCIAL"], BUILDING: ["COMMERCIAL"] };
 
     function isSale(a) {
         return a.listingType === "SALE";

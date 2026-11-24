@@ -108,9 +108,10 @@
                                 habiter&nbsp;: chambre, studio, appartement, villa, immeuble…</span><span
                                 class="choice__detail" data-for="SALE" hidden>Pour y habiter&nbsp;: appartement,
                                 villa, terrain à bâtir…</span></span></label>
-                        <!-- A plot of land is residential and sold, never let (#275): the commercial description
-                             names no land, the residential sale one does. A building is sold under Commercial only
-                             (#274): the sale's residential list no longer names it. -->
+                        <!-- A plot of land is sold, never let (#275, #293): a sale offers it under both uses, but
+                             the commercial description here deliberately names no land (the residential sale one
+                             does). A building is sold under Commercial only (#274): the sale's residential list no
+                             longer names it. -->
                         <label class="choice choice--described">
                             <input name="propertyCategory" required type="radio" value="COMMERCIAL">
                             <span>Commercial <span class="choice__detail" data-for="RENTAL">Pour une
@@ -312,9 +313,10 @@
                                                                                   type="radio" value="INDUSTRIAL">
                             Entrepôt, local industriel</label>
                         <!-- data-sale-categories: the categories of the type for a sale (none: not offered). A plot
-                             of land is residential and sold, never let (#275): no rental category offers it (empty
-                             data-categories), a sale offers it under Résidentiel. -->
-                        <label class="choice" data-categories="" data-sale-categories="RESIDENTIAL"><input
+                             of land is sold, never let (#275): no rental category offers it (empty
+                             data-categories), a sale offers it under Résidentiel and Commercial (#293) — one
+                             choice, kept when the use changes. -->
+                        <label class="choice" data-categories="" data-sale-categories="RESIDENTIAL COMMERCIAL"><input
                             name="propertyType" required type="radio" value="LAND">
                             Terrain</label>
                     </div>

@@ -28,6 +28,8 @@
     *Proposer un bien*; the listing pre-fills them and the agent checks them at the audit, so the seller's
     declaration shows under the fieldset whenever the agent's answer differs. Once sent, they are read-only with the
     other answers — a section with none still shows the seller's declaration.
+    v2 (#293): a sale offers *Terrain* under both *Résidentiel* and *Commercial* (one row, one choice, kept when the
+    usage changes); a rental still never shows it.
     Once sent (en vérification, publiée), the section is read-only: only the answers given, no action.
     Layout (review of #287): one field per row and one option per row at every width — a plain single-column
     choices__grid in every fieldset (never a two-column one) and a single-column count grid.
@@ -115,7 +117,9 @@
                                 <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="OFFICE"> Bureau</label>
                                 <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="RETAIL"> Boutique, local commercial</label>
                                 <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="INDUSTRIAL"> Entrepôt, local industriel</label>
-                                <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="LAND"> Terrain</label>
+                                <!-- v2 (#293): a sale offers *Terrain* under both uses — one row, one choice; a
+                                     rental never shows it (a legacy rental *Terrain* included). -->
+                                <label class="choice" data-categories="RESIDENTIAL COMMERCIAL"><input name="propertyType" type="radio" value="LAND"> Terrain</label>
                         </div>
                         <p class="owner-value" hidden data-owner-for="propertyType"></p>
                         <p class="field__error" id="propertyType-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>

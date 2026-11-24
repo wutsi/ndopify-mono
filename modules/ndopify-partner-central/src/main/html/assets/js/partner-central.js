@@ -4357,7 +4357,8 @@
 
     /* listing/*.html: one section of the checklist. Its form only holds the section's fields. */
 
-    // The questions of "Le bien" that apply to a property type (as offer-property.js: LAND is residential).
+    // The questions of "Le bien" that apply to a property type (as offer-property.js: a plot of land asks neither
+    // rooms, furniture, bathrooms, kitchens nor parking, whatever its usage).
     var LISTING_APPLIES = {
         furniture: function (a) {
             return a.propertyCategory === "RESIDENTIAL" && ["BUILDING", "LAND"].indexOf(a.propertyType) === -1;

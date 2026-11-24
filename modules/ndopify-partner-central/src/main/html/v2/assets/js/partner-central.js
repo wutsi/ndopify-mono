@@ -1568,10 +1568,10 @@
             }
         },
         // #275: rental mandates stored before land stopped being let. Their saved Terrain stays readable and
-        // savable — mandate/edit.html shows it checked and enabled, though a rental no longer offers it — and
-        // #290 realigns a stored land row to Résidentiel in the data, not in this prototype. 208 a renter's search,
-        // 209 a landlord's property; neither has a card on index.html, so they are opened by id
-        // (mandate/edit.html?id=208, ?id=209).
+        // savable — mandate/edit.html shows it checked and enabled, though a rental no longer offers it. #293 keeps
+        // the usage a stored row was saved under (the #290 realignment to Résidentiel is dropped), so a sale offers
+        // it under both. 208 a renter's search, 209 a landlord's property; neither has a card on index.html, so they
+        // are opened by id (mandate/edit.html?id=208, ?id=209).
         208: {
             party: "client",
             createdAt: -45,
@@ -5110,8 +5110,8 @@
 
     /* listing/*.html: one section of the checklist. Its form only holds the section's fields. */
 
-    // The questions of "Le bien" that apply to a property type (as offer-property.js: a plot of land is residential,
-    // sold only, and asks neither rooms, bathrooms, kitchens nor parking — #273, #275).
+    // The questions of "Le bien" that apply to a property type (as offer-property.js: a plot of land is sold only,
+    // under either use, and asks neither rooms, bathrooms, kitchens nor parking — #273, #275, #293).
     var LISTING_APPLIES = {
         furniture: function (a) {
             // v2: furniture is a rental question only
@@ -5340,8 +5340,9 @@
         function sync() {
             var category = ($('[name="propertyCategory"]:checked', form) || {}).value;
             $all('[name="propertyType"]', form).forEach(function (radio) {
-                // v2 (#275): a plot of land is residential and sold, never let, so a sale offers *Terrain* under
-                // Résidentiel and a rental never offers it at all — a rental land stored before #275 is hidden too.
+                // v2 (#275): a plot of land is sold, never let, so a rental never offers *Terrain* at all — a rental
+                // land stored before #275 is hidden too. v2 (#293): a sale offers it under Résidentiel and Commercial
+                // alike (its data-categories), one row for both.
                 // v2 (#274): a building sold is stored *Commercial*, which keeps the listing's usage: its row stays
                 // offered under Résidentiel too (a legacy listing stored there), and a rental offers it there only.
                 var fits = radio.closest("[data-categories]").getAttribute("data-categories").split(" ")
