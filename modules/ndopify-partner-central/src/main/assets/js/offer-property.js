@@ -51,8 +51,8 @@
             intro: "Un Agent Vérifié de votre quartier vérifie votre bien, le photographie et le présente aux " +
                 "acheteurs. L'audit et la publication sont gratuits.",
             residential: "Pour y habiter\u00a0: appartement, villa, immeuble, terrain à bâtir…",
-            // Land is sold, never let: only the sale's description names it.
-            commercial: "Pour une activité\u00a0: bureau, boutique, entrepôt, terrain…"
+            // Land is sold, never let: only the sale's residential description names it.
+            commercial: "Pour une activité\u00a0: bureau, boutique, entrepôt…"
         }
     };
 
