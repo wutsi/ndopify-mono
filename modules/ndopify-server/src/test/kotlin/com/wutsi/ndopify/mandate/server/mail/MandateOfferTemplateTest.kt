@@ -89,11 +89,13 @@ class MandateOfferTemplateTest {
     }
 
     @Test
-    fun `a building sale lists its étages and its unités`() {
+    fun `a building sale lists its étages and its unités, not its rooms`() {
         val html = resolver.resolve(
             MandateOfferMailet.TEMPLATE_LISTING,
             listingContext + mapOf(
                 "property_type" to "Immeuble",
+                // The mailet clears a building's rooms, even when its mandate stores them
+                "rooms" to null,
                 "levels" to 3,
                 "units" to 12,
             ),
@@ -102,8 +104,28 @@ class MandateOfferTemplateTest {
         assertTrue(html.contains("Étages"))
         assertTrue(html.contains("Unités"))
         assertTrue(html.contains("12"))
+        assertFalse(html.contains("Pièces"))
         assertFalse(html.contains("Équipements"))
         assertFalse(html.contains("Accès à l'eau"))
+    }
+
+    @Test
+    fun `a building sale search lists its étages and its unités, not its rooms`() {
+        val html = resolver.resolve(
+            MandateOfferMailet.TEMPLATE,
+            context + mapOf(
+                "property_type" to "Immeuble",
+                // The mailet clears a building's rooms, even when its mandate stores them
+                "rooms" to null,
+                "levels" to 3,
+                "units" to 12,
+            ),
+        )
+
+        assertTrue(html.contains("Étages"))
+        assertTrue(html.contains("Unités"))
+        assertTrue(html.contains("12"))
+        assertFalse(html.contains("Pièces"))
     }
 
     @Test

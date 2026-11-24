@@ -256,12 +256,12 @@ class MandateOfferMailetTest {
     }
 
     @Test
-    fun `a building sale offers its levels and its units`() {
+    fun `a building sale offers its levels and its units, never the rooms it stores`() {
         val building = mandate.copy(
             mandateType = MandateType.LISTING,
             listingType = ListingType.SALE,
             propertyType = PropertyType.BUILDING,
-            rooms = null,
+            rooms = "2",
             levels = 3,
             units = 12,
             pricePeriodicityType = PeriodicityType.NONE,
@@ -271,6 +271,25 @@ class MandateOfferMailetTest {
 
         assertEquals(3, context["levels"])
         assertEquals(12, context["units"])
+        assertEquals(null, context["rooms"])
+    }
+
+    @Test
+    fun `a building sale search offers its levels and its units, never the rooms it stores`() {
+        val building = mandate.copy(
+            listingType = ListingType.SALE,
+            propertyType = PropertyType.BUILDING,
+            rooms = "2",
+            levels = 3,
+            units = 12,
+            pricePeriodicityType = PeriodicityType.NONE,
+        )
+
+        val context = context(assignment.copy(mandate = building))
+
+        assertEquals(3, context["levels"])
+        assertEquals(12, context["units"])
+        assertEquals(null, context["rooms"])
     }
 
     @Test
