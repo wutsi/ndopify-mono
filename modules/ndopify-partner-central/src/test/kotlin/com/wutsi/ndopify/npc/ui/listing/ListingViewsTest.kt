@@ -550,6 +550,28 @@ class ListingViewsTest {
     }
 
     @Test
+    fun `owner hints - a building's counts`() {
+        val mandate = MANDATE.copy(
+            listingType = ListingType.SALE,
+            propertyType = PropertyType.BUILDING,
+            rooms = null,
+            area = 850,
+            levels = 3,
+            units = 12,
+        )
+        val form = ListingSectionForm.of(BUILDING, formatter)
+
+        val changed = ListingViews.ownerHints(form.copy(levels = "4"), mandate, locations, formatter)
+        assertEquals("Indiqué par le propriétaire : 3", changed["levels"])
+        assertNull(changed["units"])
+
+        assertEquals(
+            "Indiqué par le propriétaire : 12",
+            ListingViews.ownerHints(form.copy(units = "10"), mandate, locations, formatter)["units"],
+        )
+    }
+
+    @Test
     fun `owner hints - nothing the landlord didn't answer`() {
         val form = ListingSectionForm(rooms = "2", landmark = "École")
         val mandate = Mandate(id = 203)

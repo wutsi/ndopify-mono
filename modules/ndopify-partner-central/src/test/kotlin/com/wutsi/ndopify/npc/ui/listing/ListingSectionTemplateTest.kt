@@ -19,6 +19,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdviceTest
+import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.BUILDING
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.LISTING
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.MANDATE
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.SALE
@@ -266,6 +267,26 @@ class ListingSectionTemplateTest {
         assertNull(form.selectFirst("[data-applies=units] .field__optional"))
         assertNull(form.selectFirst("input[name=bathrooms]"))
         assertNull(form.selectFirst("input[name=parkings]"))
+    }
+
+    @Test
+    fun `a building's counts show the landlord's answers`() {
+        doReturn(
+            MANDATE.copy(
+                listingType = ListingType.SALE,
+                propertyType = PropertyType.BUILDING,
+                rooms = null,
+                area = 850,
+                levels = 3,
+                units = 12,
+            ),
+        ).whenever(mandateClient).get(203)
+
+        // The agent's listing states other counts, so both hints show under the fields.
+        val form = form(render("property", BUILDING.copy(levels = 4, units = 10)))
+
+        assertEquals("Indiqué par le propriétaire : 3", form.selectFirst("[data-owner-for=levels]")?.text())
+        assertEquals("Indiqué par le propriétaire : 12", form.selectFirst("[data-owner-for=units]")?.text())
     }
 
     @Test

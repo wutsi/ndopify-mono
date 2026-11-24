@@ -200,6 +200,7 @@
                             <div class="field" data-applies="levels" th:if="${e or !#strings.isEmpty(a.levels)}">
                                 <label class="field__label" for="levels">Étages <span class="field__optional" data-levels-optional th:unless="${building}">(facultatif)</span></label>
                                 <input th:replace="~{:: count('levels', ${a.levels})}">
+                                <p class="owner-value" th:if="${ownerHints['levels']}" th:text="${ownerHints['levels']}" data-owner-for="levels"></p>
                                 <p th:replace="~{:: error('levels')}"></p>
                             </div>
                             <div class="field" data-applies="units" th:if="${e or !#strings.isEmpty(a.units)}">

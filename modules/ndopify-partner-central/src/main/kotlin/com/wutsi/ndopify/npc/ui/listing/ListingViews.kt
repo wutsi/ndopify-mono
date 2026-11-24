@@ -351,6 +351,12 @@ object ListingViews {
                 val count = answer?.trim()?.removeSuffix("+")?.toIntOrNull() ?: return@forEach
                 if (ListingRules.count(value) != count) owner[field] = answer.trim()
             }
+        // A building sale's counts: the same rule as rooms, worded as the landlord answered them.
+        mapOf("levels" to (mandate.levels to form.levels), "units" to (mandate.units to form.units))
+            .forEach { (field, values) ->
+                val (answer, value) = values
+                if (answer != null && ListingRules.count(value) != answer) owner[field] = answer.toString()
+            }
         mandate.area?.let { area ->
             if (ListingRules.count(form.area) != area) owner["area"] = "${formatter.count(area.toLong())} m²"
         }
