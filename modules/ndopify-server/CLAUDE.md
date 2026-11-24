@@ -179,9 +179,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   availability date (the date from which the property can be let): stored and returned, not checked by the server.
   A buyer's purchase answers are stored on the mandate (`V16_0`): `financingType` (`FinancingType`, nullable) and
   `titleDocuments` (`TitleDocumentType` list, comma-separated, empty when none). `MandateService.create`/`update`
-  normalize them — financing kept only for a `SALE` listing type, documents only for a `SALE` land purchase, `UNKNOWN`
-  dropped, distinct, and an empty list preserved — since they are the buyer's brief and never validated nor used to
-  filter in M1; the delivered price per m² is display-only and never stored. A building sale's two counts
+  normalize them — financing kept only for a `SALE` listing type, both document lists kept for every `SALE` whatever its
+  property type, `UNKNOWN` dropped, distinct, and an empty list preserved — the matcher's document veto reads the
+  buyer's list against the seller's; the delivered price per m² and per unit are display-only and never stored. A building sale's two counts
   (`T_MANDATE.levels`/`units`, `V18_0`) — its étages and its unités — are kept only for a `SALE` mandate whose
   `propertyType` is `BUILDING`, and cleared for any other type (a rental building keeps today's model: neither count);
   the server validates neither, and the wizards and edit pages bound them. The offer message and the sale contract

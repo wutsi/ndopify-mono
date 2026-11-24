@@ -16,6 +16,9 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class FindPropertyRulesTest {
+    private val residential = PropertyCategory.RESIDENTIAL
+    private val commercial = PropertyCategory.COMMERCIAL
+
     @Test
     fun propertyCategory() {
         assertNull(FindPropertyRules.propertyCategory(PropertyCategory.RESIDENTIAL))
@@ -85,8 +88,8 @@ class FindPropertyRulesTest {
                 PropertyType.RETAIL,
                 PropertyType.OFFICE,
                 PropertyType.INDUSTRIAL,
-                PropertyType.BUILDING,
                 PropertyType.LAND,
+                PropertyType.BUILDING,
             ),
             FindPropertyRules.propertyTypes(PropertyCategory.COMMERCIAL, ListingType.SALE),
         )
@@ -102,7 +105,7 @@ class FindPropertyRulesTest {
             FindPropertyRules.propertyTypes(PropertyCategory.RESIDENTIAL, ListingType.RENTAL),
         )
         assertEquals(
-            listOf(PropertyType.RETAIL, PropertyType.OFFICE, PropertyType.INDUSTRIAL, PropertyType.BUILDING),
+            listOf(PropertyType.RETAIL, PropertyType.OFFICE, PropertyType.INDUSTRIAL),
             FindPropertyRules.propertyTypes(PropertyCategory.COMMERCIAL, ListingType.RENTAL),
         )
         assertFalse(FindPropertyRules.typeFits(PropertyCategory.RESIDENTIAL, "ROOM", ListingType.SALE))
@@ -120,15 +123,15 @@ class FindPropertyRulesTest {
                 PropertyType.RETAIL,
                 PropertyType.OFFICE,
                 PropertyType.INDUSTRIAL,
-                PropertyType.BUILDING,
                 PropertyType.LAND,
+                PropertyType.BUILDING,
             ),
             FindPropertyRules.propertyTypes(PropertyCategory.COMMERCIAL, ListingType.SALE),
         )
         assertFalse(FindPropertyRules.needsRooms(PropertyCategory.COMMERCIAL, PropertyType.LAND, ListingType.SALE))
-        assertFalse(FindPropertyRules.asksParkings(PropertyType.LAND, ListingType.SALE))
+        assertFalse(FindPropertyRules.asksParkings(PropertyCategory.COMMERCIAL, PropertyType.LAND, ListingType.SALE))
         assertTrue(FindPropertyRules.needsArea(PropertyCategory.COMMERCIAL, PropertyType.LAND, ListingType.SALE))
-        assertFalse(FindPropertyRules.needsFurniture(PropertyType.LAND, ListingType.SALE))
+        assertFalse(FindPropertyRules.needsFurniture(PropertyCategory.RESIDENTIAL, PropertyType.LAND, ListingType.SALE))
     }
 
     @Test
@@ -140,10 +143,12 @@ class FindPropertyRulesTest {
         assertFalse(FindPropertyRules.needsRooms(PropertyCategory.COMMERCIAL, null, null))
         assertFalse(FindPropertyRules.needsRooms(PropertyCategory.COMMERCIAL, PropertyType.OFFICE, null))
         assertFalse(FindPropertyRules.needsRooms(null, null, null))
-        assertFalse(FindPropertyRules.needsFurniture(PropertyType.LAND, null))
-        assertTrue(FindPropertyRules.needsFurniture(null, null))
-        assertFalse(FindPropertyRules.asksParkings(PropertyType.ROOM, null))
-        assertTrue(FindPropertyRules.asksParkings(null, null))
+        assertFalse(FindPropertyRules.needsFurniture(PropertyCategory.RESIDENTIAL, PropertyType.LAND, null))
+        assertTrue(FindPropertyRules.needsFurniture(PropertyCategory.RESIDENTIAL, null, null))
+        assertFalse(FindPropertyRules.needsFurniture(PropertyCategory.COMMERCIAL, null, null))
+        assertTrue(FindPropertyRules.asksParkings(PropertyCategory.RESIDENTIAL, PropertyType.ROOM, null))
+        assertTrue(FindPropertyRules.asksParkings(PropertyCategory.RESIDENTIAL, null, null))
+        assertFalse(FindPropertyRules.asksParkings(PropertyCategory.COMMERCIAL, null, null))
     }
 
     @Test
@@ -163,9 +168,9 @@ class FindPropertyRulesTest {
         assertTrue(FindPropertyRules.needsAmenities(PropertyCategory.COMMERCIAL, null, ListingType.SALE))
         assertTrue(FindPropertyRules.needsAmenities(PropertyCategory.RESIDENTIAL, null, null))
 
-        assertFalse(FindPropertyRules.asksParkings(PropertyType.BUILDING, ListingType.SALE))
-        assertTrue(FindPropertyRules.asksParkings(PropertyType.BUILDING, ListingType.RENTAL))
-        assertTrue(FindPropertyRules.asksParkings(PropertyType.VILLA, ListingType.SALE))
+        assertFalse(FindPropertyRules.asksParkings(PropertyCategory.COMMERCIAL, PropertyType.BUILDING, ListingType.SALE))
+        assertFalse(FindPropertyRules.asksParkings(PropertyCategory.COMMERCIAL, PropertyType.BUILDING, ListingType.RENTAL))
+        assertTrue(FindPropertyRules.asksParkings(PropertyCategory.RESIDENTIAL, PropertyType.VILLA, ListingType.SALE))
     }
 
     @Test
@@ -203,14 +208,50 @@ class FindPropertyRulesTest {
     }
 
     @Test
-    fun `a sale asks no furniture and a land purchase asks no rooms`() {
-        assertFalse(FindPropertyRules.needsFurniture(PropertyType.APARTMENT, ListingType.SALE))
-        assertTrue(FindPropertyRules.needsFurniture(PropertyType.APARTMENT, ListingType.RENTAL))
+    fun `a residential purchase asks furniture, a room asks its parkings, a commercial type asks none`() {
+        assertTrue(FindPropertyRules.needsFurniture(residential, PropertyType.HOUSE, ListingType.SALE))
+        assertTrue(FindPropertyRules.needsFurniture(residential, null, ListingType.SALE)) // "Indifférent"
+        assertFalse(FindPropertyRules.needsFurniture(residential, PropertyType.BUILDING, ListingType.SALE))
+        assertFalse(FindPropertyRules.needsFurniture(commercial, PropertyType.OFFICE, ListingType.RENTAL))
+        assertTrue(FindPropertyRules.asksParkings(residential, PropertyType.ROOM, ListingType.RENTAL))
+        assertFalse(FindPropertyRules.asksParkings(commercial, PropertyType.OFFICE, ListingType.RENTAL))
+        assertFalse(FindPropertyRules.asksParkings(residential, PropertyType.LAND, ListingType.SALE))
+        assertFalse(FindPropertyRules.asksParkings(commercial, PropertyType.BUILDING, ListingType.SALE))
+    }
+
+    @Test
+    fun `a purchase asks no rooms for a plot, a studio or a room`() {
         assertFalse(FindPropertyRules.needsRooms(PropertyCategory.RESIDENTIAL, PropertyType.LAND, ListingType.SALE))
         assertTrue(FindPropertyRules.needsRooms(PropertyCategory.RESIDENTIAL, PropertyType.HOUSE, ListingType.SALE))
         assertTrue(FindPropertyRules.needsRooms(PropertyCategory.RESIDENTIAL, PropertyType.VILLA, ListingType.SALE))
         assertTrue(FindPropertyRules.needsRooms(PropertyCategory.RESIDENTIAL, null, ListingType.SALE))
         assertFalse(FindPropertyRules.needsRooms(PropertyCategory.RESIDENTIAL, PropertyType.STUDIO, ListingType.SALE))
+        assertFalse(FindPropertyRules.needsRooms(PropertyCategory.RESIDENTIAL, PropertyType.ROOM, ListingType.SALE))
+    }
+
+    @Test
+    fun `a residential non-land purchase asks no surface`() {
+        assertFalse(FindPropertyRules.needsArea(residential, PropertyType.VILLA, ListingType.SALE))
+        assertTrue(FindPropertyRules.needsArea(commercial, PropertyType.OFFICE, ListingType.SALE))
+        assertTrue(FindPropertyRules.needsArea(commercial, PropertyType.OFFICE, ListingType.RENTAL))
+        assertTrue(FindPropertyRules.needsArea(residential, PropertyType.LAND, ListingType.SALE))
+    }
+
+    @Test
+    fun `a rental never offers a building`() {
+        assertFalse(
+            FindPropertyRules.propertyTypes(PropertyCategory.COMMERCIAL, ListingType.RENTAL)
+                .contains(PropertyType.BUILDING),
+        )
+        assertFalse(
+            FindPropertyRules.propertyTypes(PropertyCategory.RESIDENTIAL, ListingType.RENTAL)
+                .contains(PropertyType.BUILDING),
+        )
+        assertTrue(
+            FindPropertyRules.propertyTypes(PropertyCategory.COMMERCIAL, ListingType.SALE)
+                .contains(PropertyType.BUILDING),
+        )
+        assertFalse(FindPropertyRules.typeFits(PropertyCategory.COMMERCIAL, "BUILDING", ListingType.RENTAL))
     }
 
     @Test
@@ -357,17 +398,13 @@ class FindPropertyRulesTest {
     }
 
     @Test
-    fun `the documents are asked for a land sale only`() {
-        assertEquals(
-            listOf(
-                TitleDocumentType.LAND_TITLE,
-                TitleDocumentType.SURVEY_PLAN,
-                TitleDocumentType.CERTIFICATE_OF_OWNERSHIP,
-            ),
-            FindPropertyRules.titleDocumentTypes(ListingType.SALE, PropertyType.LAND),
+    fun `every purchase may require its documents`() {
+        val three = listOf(
+            TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN, TitleDocumentType.CERTIFICATE_OF_OWNERSHIP,
         )
-        assertEquals(emptyList(), FindPropertyRules.titleDocumentTypes(ListingType.SALE, PropertyType.VILLA))
-        assertEquals(emptyList(), FindPropertyRules.titleDocumentTypes(ListingType.RENTAL, PropertyType.LAND))
+        assertEquals(three, FindPropertyRules.titleDocumentTypes(ListingType.SALE, PropertyType.LAND))
+        assertEquals(three, FindPropertyRules.titleDocumentTypes(ListingType.SALE, PropertyType.APARTMENT))
+        assertEquals(emptyList(), FindPropertyRules.titleDocumentTypes(ListingType.RENTAL, PropertyType.APARTMENT))
         assertEquals(emptyList(), FindPropertyRules.titleDocumentTypes(null, null))
     }
 

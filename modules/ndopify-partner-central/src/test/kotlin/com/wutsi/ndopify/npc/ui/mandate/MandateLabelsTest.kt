@@ -371,10 +371,11 @@ class MandateLabelsTest {
 
     @Test
     fun `criteria - client, any type`() {
+        // The follow-up questions need a usage: without a category, only the facts are read (#304).
         val rows = MandateLabels.criteria(Mandate(mandateType = MandateType.SEARCH, cityId = 1), LOCATIONS, FORMATTER)
 
         assertEquals("Type de propriété" to "Indifférent", rows[4])
-        assertEquals("Parking" to "Indifférent", rows[6])
+        assertTrue(rows.none { it.first == "Meublé" || it.first == "Parking" })
     }
 
     companion object {
@@ -386,7 +387,7 @@ class MandateLabelsTest {
     }
 
     @Test
-    fun `a sale criteria has no furniture row and shows the documents`() {
+    fun `a land sale has no furniture row and shows its documents`() {
         val mandate = Mandate(
             mandateType = MandateType.LISTING,
             listingType = ListingType.SALE,
@@ -432,6 +433,7 @@ class MandateLabelsTest {
                 "Étages" to "3",
                 "Unités" to "12",
                 "Surface souhaitée" to "850 m²",
+                "Documents exigés" to "Aucun document exigé",
             ),
             MandateLabels.criteria(mandate, LOCATIONS, FORMATTER),
         )
@@ -501,5 +503,73 @@ class MandateLabelsTest {
         assertTrue(rows.any { it.first == "Meublé" })
         assertTrue(rows.none { it.first == "Document de propriété" })
         assertEquals("150K\u00a0FCFA / mois", rows.first { it.first == "Loyer" }.second)
+    }
+
+    @Test
+    fun `a sale of any type shows its documents`() {
+        val villa = Mandate(
+            mandateType = MandateType.LISTING,
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = PropertyType.HOUSE,
+            cityId = 1,
+            ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE),
+        )
+
+        assertEquals("Titre foncier", MandateLabels.criteria(villa, emptyMap(), FORMATTER).toMap()["Document de propriété"])
+        assertNull(
+            MandateLabels.criteria(villa.copy(ownershipDocuments = emptyList()), emptyMap(), FORMATTER)
+                .toMap()["Document de propriété"],
+        )
+
+        val search = Mandate(
+            mandateType = MandateType.SEARCH,
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = PropertyType.APARTMENT,
+            cityId = 1,
+            titleDocuments = emptyList(),
+        )
+        assertEquals(
+            "Aucun document exigé",
+            MandateLabels.criteria(search, emptyMap(), FORMATTER).toMap()["Documents exigés"],
+        )
+    }
+
+    @Test
+    fun `a residential sale shows its furniture, a rental office none`() {
+        val villa = Mandate(
+            mandateType = MandateType.SEARCH,
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = PropertyType.VILLA,
+            cityId = 1,
+            furnitureType = FurnitureType.FULLY_FURNISHED,
+        )
+        assertEquals("Oui", MandateLabels.criteria(villa, emptyMap(), FORMATTER).toMap()["Meublé"])
+
+        val office = Mandate(
+            mandateType = MandateType.SEARCH,
+            listingType = ListingType.RENTAL,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.OFFICE,
+            cityId = 1,
+            furnitureType = FurnitureType.FULLY_FURNISHED,
+        )
+        assertNull(MandateLabels.criteria(office, emptyMap(), FORMATTER).toMap()["Meublé"])
+    }
+
+    @Test
+    fun `a room's parkings show`() {
+        val room = Mandate(
+            mandateType = MandateType.SEARCH,
+            listingType = ListingType.RENTAL,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = PropertyType.ROOM,
+            cityId = 1,
+            parkings = "1",
+        )
+
+        assertEquals("1", MandateLabels.criteria(room, emptyMap(), FORMATTER).toMap()["Parking"])
     }
 }

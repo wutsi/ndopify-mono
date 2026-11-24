@@ -959,7 +959,7 @@ class MandateTemplateTest {
         assertEquals("Documents exigés", documents.selectFirst("dt")?.text())
         assertEquals("Titre foncier · Plan de bornage", documents.selectFirst("dd")?.text())
         assertEquals(
-            "Les terrains à vendre dont le vendeur n'a déclaré aucun de ces documents ne vous sont pas proposés. " +
+            "Les biens à vendre dont le vendeur n'a déclaré aucun de ces documents ne vous sont pas proposés. " +
                 "Un seul de ces documents déclaré suffit.",
             page.selectFirst("[data-mandate-documents-note]")?.text(),
         )
@@ -982,13 +982,20 @@ class MandateTemplateTest {
     }
 
     @Test
-    fun `no documents note nor row for a non-land sale`() {
+    fun `a non-land sale shows its documents and the note`() {
         val page = render(LAND_SALE.copy(propertyType = PropertyType.HOUSE))
 
-        assertNull(page.selectFirst("[data-mandate-documents-note]"))
-        assertFalse(
+        assertEquals(
+            "Les biens à vendre dont le vendeur n'a déclaré aucun de ces documents ne vous sont pas proposés. " +
+                "Un seul de ces documents déclaré suffit.",
+            page.selectFirst("[data-mandate-documents-note]")?.text(),
+        )
+        assertTrue(
             (page.select("[data-mandate-key-criteria] .review__item") + page.select("[data-mandate-criteria] .review__item"))
-                .any { it.selectFirst("dt")?.text() == "Documents exigés" },
+                .any {
+                    it.selectFirst("dt")?.text() == "Documents exigés" &&
+                        it.selectFirst("dd")?.text() == "Titre foncier · Plan de bornage"
+                },
         )
     }
 

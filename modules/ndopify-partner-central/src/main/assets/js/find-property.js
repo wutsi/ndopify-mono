@@ -3,13 +3,14 @@
  * The server drives the wizard (FindPropertyController): it renders one step at a time, validates what each step
  * posts and keeps the answers in the HTTP session. This script only enhances the current step's fields, and every
  * step still posts without it:
- * - property: shows only the follow-up questions that apply to the chosen type (rooms, furnished, parking, the land
- *   documents of a purchase), and disables the others so they don't post — the server ignores them anyway; a plot of
- *   land bought has a required surface. A building bought as a whole (#274) asks its two counts instead — its étages
- *   and its unités, each with an "Indifférent" answer stored as null — and no parking; its branch has six steps,
- *   which the server renders (FindPropertyController.steps), so the amenities step simply isn't there;
- * - budget and surface: "150 000" as you type (the server reads the digits), and, for a plot of land bought, the
- *   implied price per m² — display only, never sent nor stored;
+ * - property: shows only the follow-up questions the shared rule table says the chosen type asks (#304,
+ *   window.NdUtil.propertyRules: rooms, furnished, parking, surface, a building's counts), and disables the others so
+ *   they don't post — the server ignores them anyway; a plot of land bought has a required surface, every purchase
+ *   asks its documents. A building bought as a whole (#274) asks its two counts instead — its étages and its
+ *   unités, each with an "Indifférent" answer stored as null — and no parking; its branch has six steps, which the
+ *   server renders (FindPropertyController.steps), so the amenities step simply isn't there;
+ * - budget and surface: "150 000" as you type (the server reads the digits) and, for a plot of land bought, the
+ *   implied price per m², for a building bought the implied price per unit — display only, never sent nor stored;
  * - city: a slim-select type-ahead over GET /locations?type=CITY&q=…;
  * - neighbourhoods: the chosen city's, loaded from GET /locations?type=NEIGHBORHOOD&parent-id=…, at most 3;
  * - WhatsApp: intl-tel-input formats it and posts E.164 ("+237677123456");
@@ -37,11 +38,9 @@
     };
     var PHONE_INVALID = "Ce numéro n'est pas un numéro mobile valide. Exemple : 6 77 12 34 56";
 
-    // Same rules as FindPropertyRules (needsRooms, needsFurniture, asksParkings, titleDocumentTypes).
-    var WITHOUT_ROOMS = ["STUDIO", "ROOM"];
-    var SALE_WITH_ROOMS = ["APARTMENT", "HOUSE", "VILLA", "DUPLEX"];
-    var WITHOUT_FURNITURE = ["LAND", "BUILDING", "INDUSTRIAL"];
-    var WITHOUT_PARKINGS = ["LAND", "ROOM"];
+    // The property-type rule table shared by the three pages (#304): the category its types are offered under, and the
+    // follow-up questions it asks. The server's Kotlin rules are the source of truth (FindPropertyRules).
+    var RULES = window.NdUtil.propertyRules;
 
     /* The project the page was rendered for (a purchase or a rental): never another step's radio. */
     function listingTypeOf(form) {
@@ -387,16 +386,21 @@
     /* ---------- Step: property ---------- */
     function initProperty(form, refresh) {
         var sale = isSale(form);
+        var listingType = sale ? "SALE" : "RENTAL";
         var groups = {
             rooms: $('[data-group="rooms"]', form),
             furnitureType: $('[data-group="furnitureType"]', form),
             parkings: $('[data-group="parkings"]', form),
+            area: $('[data-group="area"]', form),
             titleDocuments: $('[data-group="titleDocuments"]', form)
         };
         var area = $("#area", form);
         var areaLabel = $("[data-area-label]", form);
         var areaOptional = $("[data-area-optional]", form);
         var counts = $("[data-building-counts]", form);
+        // The page renders the rooms and the furniture questions for a residential search only: their presence is the
+        // chosen usage, which no attribute carries.
+        var residential = !!groups.furnitureType;
         var countFields = [
             { name: "levels", noun: "d'étages", max: MAX_LEVELS },
             { name: "units", noun: "d'unités", max: MAX_UNITS }
@@ -413,9 +417,29 @@
             return input ? input.value : "";
         }
 
+        // No type yet, or "Indifférent" (a UI answer sent as null): the search may still match any type of its usage.
+        function isAny(type) {
+            return !type || type === "ANY";
+        }
+
+        /*
+         * Whether the chosen type is asked [field], as the shared table has it (#304; the server re-checks): rooms,
+         * furniture, parkings, area, counts. An *Indifférent* search keeps the questions of its usage — a
+         * residential one asks rooms, furniture and parking, a commercial one its surface — and a purchase its
+         * surface too, as it may match a plot of land.
+         */
+        function asks(type, field) {
+            if (isAny(type)) {
+                if (field === "area") return !residential || sale;
+                if (field === "counts") return false;
+                return residential;
+            }
+            return RULES.asks(type, listingType, field);
+        }
+
         // A building bought as a whole (#274): its two counts replace the rooms and the parking.
         function isBuildingSale(type) {
-            return sale && type === "BUILDING";
+            return asks(type, "counts");
         }
 
         // The count's rules, as FindPropertyRules has them (the server re-checks): a whole number within its bounds,
@@ -466,21 +490,14 @@
         function updateQuestions() {
             var type = checkedType();
             var landSale = sale && type === "LAND";
-            var buildingSale = isBuildingSale(type);
-            // "Indifférent" (value "ANY") parses to no type server-side, which asks the bedrooms of a sale too.
-            show(
-                "rooms",
-                sale ? (type === "" || type === "ANY" || SALE_WITH_ROOMS.indexOf(type) !== -1)
-                    : WITHOUT_ROOMS.indexOf(type) === -1,
-                true,
-            );
-            show("furnitureType", !sale && WITHOUT_FURNITURE.indexOf(type) === -1, true);
-            show("parkings", WITHOUT_PARKINGS.indexOf(type) === -1 && !buildingSale, false);
-            // The documents are asked for a plot of land bought only, and are always optional.
-            show("titleDocuments", landSale, false);
+            show("rooms", asks(type, "rooms"), true);
+            show("furnitureType", asks(type, "furniture"), true);
+            show("parkings", asks(type, "parkings"), false);
+            // Every purchase asks the documents it requires, whatever its type; always optional (#304).
+            show("titleDocuments", RULES.asksDocuments(listingType), false);
             // A building's levels and units replace the rooms and the parking.
             if (counts) {
-                counts.hidden = !buildingSale;
+                counts.hidden = !isBuildingSale(type);
                 countFields.forEach(function (field) {
                     if (counts.hidden) setFieldError(field.input, field.error, "");
                     syncCount(field);
@@ -489,7 +506,9 @@
             areaLabel.textContent = landSale ? "Surface du terrain"
                 : type === "LAND" ? "Surface du terrain minimale" : "Surface minimale";
             if (areaOptional) areaOptional.hidden = landSale;
-            area.required = landSale;
+            // A residential type has no surface; a plot's is required, a commercial property's optional.
+            show("area", asks(type, "area"), false);
+            if (area) area.required = landSale;
             refresh();
         }
 
@@ -500,35 +519,60 @@
     }
 
     /* ---------- Step: budget ---------- */
-    // The implied price per m² of a plot of land bought: total budget ÷ surface, rounded to the nearest 100. Display
-    // only — never stored, never validated, never posted. Hidden without a budget or a usable surface.
+    // The implied rate a buyer's budget makes: per m² for a plot of land (total budget ÷ surface), per unit for a
+    // building bought as a whole (#304, total budget ÷ unités), rounded to the nearest 100. Display only — never
+    // stored, never validated, never posted. Hidden without a budget or a usable divisor, and while the units are
+    // "Indifférent".
     function initBudget(form) {
         var perSqm = $("[data-price-per-sqm]", form);
+        var perUnit = $("[data-price-per-unit]", form);
         var price = $("#priceAmount", form);
         if (!perSqm || !price) return;
 
         var sale = isSale(form);
-        var landSale = sale && form.getAttribute("data-property-type") === "LAND";
+        var type = form.getAttribute("data-property-type") || "";
+        var landSale = sale && type === "LAND";
+        var buildingSale = sale && type === "BUILDING";
         var area = Number(form.getAttribute("data-area") || 0);
+        // The saved count of a building answer, and whether the buyer answered "Indifférent" to it.
+        var units = Number(form.getAttribute("data-units") || 0);
+        var unitsAny = form.getAttribute("data-units-any") === "true";
         var currency = form.getAttribute("data-currency") || "";
         var decimalSeparator = form.getAttribute("data-decimal-separator") || ",";
 
-        function update() {
+        function rateOf(divisor) {
             var budget = Number(digitsOf(price.value) || 0);
-            if (!landSale || !(area >= 5) || !(budget > 0)) {
-                perSqm.hidden = true;
-                perSqm.textContent = "";
-                return;
-            }
-            var rate = Math.round((budget / area) / 100) * 100;
+            if (!(divisor > 0) || !(budget > 0)) return 0;
+            return Math.round((budget / divisor) / 100) * 100;
+        }
+
+        function hide(line) {
+            if (!line) return;
+            line.hidden = true;
+            line.textContent = "";
+        }
+
+        function show(line, text) {
+            line.textContent = text;
+            line.hidden = false;
+        }
+
+        function update() {
+            var rate = landSale && area >= 5 ? rateOf(area) : 0;
             if (rate <= 0) {
-                perSqm.hidden = true;
-                perSqm.textContent = "";
-                return;
+                hide(perSqm);
+            } else {
+                show(perSqm, "Soit ≈ " + window.NdUtil.compactNumber(rate, decimalSeparator) + "\u00a0" + currency +
+                    "/m² pour " + formatNumber(area) + " m²");
             }
-            perSqm.textContent = "Soit ≈ " + window.NdUtil.compactNumber(rate, decimalSeparator) + "\u00a0" + currency +
-                "/m² pour " + formatNumber(area) + " m²";
-            perSqm.hidden = false;
+            var perUnitRate = buildingSale && !unitsAny && units >= 1 ? rateOf(units) : 0;
+            if (perUnitRate <= 0) {
+                hide(perUnit);
+            } else {
+                show(perUnit, "Soit ≈ " + window.NdUtil.compactNumber(perUnitRate, decimalSeparator) +
+                    "\u00a0" + currency + "/unité pour " + formatNumber(units) +
+                    (units > 1 ? " unités" : " unité"));
+            }
         }
 
         price.addEventListener("input", update);

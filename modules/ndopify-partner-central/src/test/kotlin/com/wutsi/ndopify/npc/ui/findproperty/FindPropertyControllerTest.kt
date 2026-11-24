@@ -79,6 +79,7 @@ class FindPropertyControllerTest {
         parkings = null,
         levels = 3,
         units = 12,
+        area = 850,
         priceAmount = 250_000_000,
         financingType = FinancingType.CASH,
     )
@@ -157,8 +158,7 @@ class FindPropertyControllerTest {
             listOf(
                 PropertyType.RETAIL,
                 PropertyType.OFFICE,
-                PropertyType.INDUSTRIAL,
-                PropertyType.BUILDING
+                PropertyType.INDUSTRIAL
             ),
             model(result)["propertyTypes"],
         )
@@ -182,7 +182,7 @@ class FindPropertyControllerTest {
         assertEquals("review", model(result)["step"])
         assertEquals("Location, usage résidentiel", model(result)["categoryLabel"])
         assertEquals(
-            "Appartement · 3 chambres · Meublé ou non · 1 place de parking · 80 m² minimum",
+            "Appartement · 3 chambres · Meublé ou non · 1 place de parking",
             model(result)["propertyLabel"],
         )
         assertEquals("150K\u00a0FCFA par mois", model(result)["priceLabel"])
@@ -213,7 +213,8 @@ class FindPropertyControllerTest {
         val result = mvc.perform(get("/find-property?step=review").session(session)).andReturn()
 
         assertEquals("Achat, usage résidentiel", model(result)["categoryLabel"])
-        assertEquals("10M\u00a0FCFA", model(result)["priceLabel"])
+        assertEquals("Terrain · 400 m² minimum", model(result)["propertyLabel"])
+        assertEquals("10M\u00a0FCFA\n≈ 25K\u00a0FCFA/m² pour 400 m²", model(result)["priceLabel"])
         assertEquals("Achat prévu", model(result)["moveInTerm"])
         assertEquals("Comptant", model(result)["financingLabel"])
         assertEquals("Aucun document exigé", model(result)["titleDocumentsLabel"])
@@ -580,7 +581,7 @@ class FindPropertyControllerTest {
     }
 
     @Test
-    fun `a villa purchase drops the documents`() {
+    fun `a villa purchase keeps its documents`() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
             complete.copy(listingType = ListingType.SALE, propertyType = null, rooms = null),
@@ -589,6 +590,66 @@ class FindPropertyControllerTest {
         mvc.perform(
             post("/find-property/property").session(session)
                 .param("propertyType", "VILLA")
+                .param("rooms", "3")
+                .param("furnitureType", "ANY")
+                .param("titleDocuments", "LAND_TITLE"),
+        ).andReturn()
+
+        assertEquals(listOf(TitleDocumentType.LAND_TITLE), pending()?.titleDocuments)
+    }
+
+    @Test
+    fun `a residential purchase drops a surface it no longer asks`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(listingType = ListingType.SALE, propertyType = null, rooms = null, area = null),
+        )
+
+        mvc.perform(
+            post("/find-property/property").session(session)
+                .param("propertyType", "VILLA")
+                .param("rooms", "3")
+                .param("furnitureType", "ANY")
+                .param("area", "400"),
+        ).andReturn()
+
+        assertNull(pending()?.area)
+    }
+
+    @Test
+    fun `a house purchase sends its documents and a rental none`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(
+                listingType = ListingType.SALE,
+                propertyType = null,
+                rooms = null,
+                furnitureType = null,
+                priceAmount = 10_000_000,
+                financingType = FinancingType.CASH,
+            ),
+        )
+
+        mvc.perform(
+            post("/find-property/property").session(session)
+                .param("propertyType", "HOUSE")
+                .param("rooms", "3")
+                .param("furnitureType", "ANY")
+                .param("titleDocuments", "LAND_TITLE"),
+        ).andReturn()
+        doReturn(CreateMandateResponse(mandateId = 42)).whenever(mandateClient).create(any())
+        mvc.perform(post("/find-property/review").session(session)).andReturn()
+
+        val request = argumentCaptor<CreateMandateRequest>()
+        verify(mandateClient).create(request.capture())
+        assertEquals(listOf(TitleDocumentType.LAND_TITLE), request.firstValue.titleDocuments)
+
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete.copy(propertyType = null, rooms = null))
+        mvc.perform(
+            post("/find-property/property").session(session)
+                .param("propertyType", "HOUSE")
+                .param("rooms", "3")
+                .param("furnitureType", "ANY")
                 .param("titleDocuments", "LAND_TITLE"),
         ).andReturn()
 
@@ -705,12 +766,14 @@ class FindPropertyControllerTest {
 
     @Test
     fun propertyAreaWithSeparators() {
-        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete.copy(propertyType = null, rooms = null))
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = null, rooms = null),
+        )
 
         mvc.perform(
             post("/find-property/property").session(session)
-                .param("propertyType", "STUDIO")
-                .param("furnitureType", "ANY")
+                .param("propertyType", "OFFICE")
                 .param("area", "1 200"),
         ).andReturn()
 
@@ -719,12 +782,14 @@ class FindPropertyControllerTest {
 
     @Test
     fun propertyAreaNotANumber() {
-        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete.copy(propertyType = null, rooms = null))
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = null, rooms = null),
+        )
 
         val result = mvc.perform(
             post("/find-property/property").session(session)
-                .param("propertyType", "STUDIO")
-                .param("furnitureType", "ANY")
+                .param("propertyType", "OFFICE")
                 .param("area", "abc"),
         ).andReturn()
 
@@ -733,12 +798,14 @@ class FindPropertyControllerTest {
 
     @Test
     fun propertyAreaTooLarge() {
-        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete.copy(propertyType = null, rooms = null))
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = null, rooms = null),
+        )
 
         val result = mvc.perform(
             post("/find-property/property").session(session)
-                .param("propertyType", "STUDIO")
-                .param("furnitureType", "ANY")
+                .param("propertyType", "OFFICE")
                 .param("area", "99999999999"),
         ).andReturn()
 
@@ -815,7 +882,8 @@ class FindPropertyControllerTest {
             post("/find-property/property").session(session)
                 .param("propertyType", "BUILDING")
                 .param("levels", "3")
-                .param("units", "12"),
+                .param("units", "12")
+                .param("area", "850"),
         ).andReturn()
 
         // The amenities step leaves a building sale's wizard.
@@ -835,7 +903,8 @@ class FindPropertyControllerTest {
             post("/find-property/property").session(session)
                 .param("propertyType", "BUILDING")
                 .param("levelsAny", "on")
-                .param("unitsAny", "on"),
+                .param("unitsAny", "on")
+                .param("area", "850"),
         ).andReturn()
 
         assertEquals("redirect:/find-property?step=budget", result.modelAndView?.viewName)
@@ -867,12 +936,12 @@ class FindPropertyControllerTest {
     }
 
     @Test
-    fun `a rental building asks no counts`() {
+    fun `a rental office asks no counts`() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
             complete.copy(
                 propertyCategory = PropertyCategory.COMMERCIAL,
-                propertyType = "BUILDING",
+                propertyType = "OFFICE",
                 rooms = null,
                 furnitureType = null,
             ),
@@ -880,9 +949,10 @@ class FindPropertyControllerTest {
 
         val result = mvc.perform(
             post("/find-property/property").session(session)
-                .param("propertyType", "BUILDING")
+                .param("propertyType", "OFFICE")
                 .param("levels", "3")
-                .param("units", "12"),
+                .param("units", "12")
+                .param("area", "80"),
         ).andReturn()
 
         assertEquals("redirect:/find-property?step=amenities", result.modelAndView?.viewName)

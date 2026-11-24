@@ -118,7 +118,7 @@ object MandateLabels {
         FinancingType.UNDECIDED to "Pas encore décidé",
     )
 
-    /** The land documents a buyer may require (prototype's TITLE_DOCUMENT_LABELS). */
+    /** The title documents a buyer may require of a purchase, whatever its type (prototype's TITLE_DOCUMENT_LABELS). */
     val TITLE_DOCUMENT_LABELS: Map<TitleDocumentType, String> = linkedMapOf(
         TitleDocumentType.LAND_TITLE to "Titre foncier",
         TitleDocumentType.SURVEY_PLAN to "Plan de bornage",
@@ -219,8 +219,9 @@ object MandateLabels {
     /**
      * The mandate's criteria as term → value rows, in the prototype's order (`criteriaOf`): sector, amount and moving
      * date first (a card's three facts), the category and the type (with them, the page's key criteria), then the
-     * follow-up questions that apply to the type, the amenities by group, and the comments. A purchase has no
-     * furniture row, and adds the buyer's financing and the documents it requires for a plot of land.
+     * follow-up questions that apply to the type (a residential type asks its furniture, sale and rental alike), the
+     * amenities by group, and the comments. A purchase adds the buyer's financing and its documents: what a search
+     * requires (or none), what a listing's owner declared (only when there are some).
      */
     fun criteria(
         mandate: Mandate,
@@ -254,18 +255,18 @@ object MandateLabels {
             mandate.levels?.takeIf { building }?.let { "Étages" to it.toString() },
             mandate.units?.takeIf { building }?.let { "Unités" to it.toString() },
             ("Meublé" to furniture(mandate.furnitureType))
-                .takeIf { !sale && FindPropertyRules.needsFurniture(type, mandate.listingType) },
+                .takeIf { FindPropertyRules.needsFurniture(mandate.propertyCategory, type, mandate.listingType) },
             mandate.rooms?.let { "Chambres" to it }
                 ?.takeIf { !building && FindPropertyRules.needsRooms(mandate.propertyCategory, type, mandate.listingType) },
             ("Parking" to (mandate.parkings?.let { PARKING_VALUES[it] ?: it } ?: "Indifférent"))
-                .takeIf { !building && FindPropertyRules.asksParkings(type, mandate.listingType) },
+                .takeIf { !building && FindPropertyRules.asksParkings(mandate.propertyCategory, type, mandate.listingType) },
             mandate.area?.let { (if (owner) "Surface" else "Surface souhaitée") to formatNumber(it) + " m²" },
         ) + listOfNotNull(
             mandate.financingType?.takeIf { sale }?.let { "Financement" to (FINANCING_LABELS[it] ?: NONE) },
             ("Documents exigés" to titleDocuments(mandate.titleDocuments))
-                .takeIf { sale && !owner && type == PropertyType.LAND },
+                .takeIf { sale && !owner },
             ("Document de propriété" to ownershipDocuments(mandate.ownershipDocuments))
-                .takeIf { sale && owner && type == PropertyType.LAND && mandate.ownershipDocuments.isNotEmpty() },
+                .takeIf { sale && owner && mandate.ownershipDocuments.isNotEmpty() },
         ) + (if (building) emptyList() else amenityGroups(mandate)) + listOfNotNull(mandate.comments?.trim()?.ifEmpty { null }
             ?.let { "Autres précisions" to it })
     }

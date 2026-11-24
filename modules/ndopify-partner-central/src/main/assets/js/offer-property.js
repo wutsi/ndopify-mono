@@ -7,14 +7,15 @@
  *   (GET /locations?type=NEIGHBORHOOD&parent-id=…), a single choice;
  * - property: the project's texts follow the rent / sell choice as it changes;
  * - terms: the rent (or the sale price) as "150 000" as you type (the server reads the digits);
- * - features: shows only the questions that apply to the chosen type (furnishing, rooms, parking, and the number of
- *   places only after "Oui"), disables the hidden ones so they don't post; a sale whose type isn't saved yet keeps
- *   them visible but not required; the surface of a commercial property is formatted like the rent. A building sold
- *   as a whole (#274) asks its two counts instead — its étages and its unités, both required, no "Indifférent" — and
- *   no parking; its branch has six steps, which the server renders (OfferPropertyController.steps), so the amenities
- *   step simply isn't there. For a sale, the
- *   documents appear for every sale from the first render, then for a plot only once its type is saved, and a plot
- *   shows its implied price per m² (display only, never sent nor stored);
+ * - features: shows only the questions the shared rule table says the chosen type asks (#304,
+ *   window.NdUtil.propertyRules: furnishing, rooms, parking and the number of places after "Oui", the surface where
+ *   the type is measured), and disables the hidden ones so they don't post; no follow-up question shows before a type
+ *   is chosen, the ownership documents of a sale excepted (optional, several or none). The surface is grouped as
+ *   typed, like the price. A building sold as a whole (#274) asks its two counts instead — its étages and its
+ *   unités, both required, no "Indifférent" — and no parking; its branch has six steps, which the server renders
+ *   (OfferPropertyController.steps), so the amenities step simply isn't there. A sold building shows its implied
+ *   price per unit under its unités, a sold plot its implied price per m² under its surface (display only, never sent
+ *   nor stored);
  * - contact: intl-tel-input formats the WhatsApp number and posts E.164 ("+237677123456");
  * - "Suivant" stays inactive until every required field of the step is filled (the server still validates them);
  * - the review's submit button can't be pressed twice.
@@ -37,14 +38,9 @@
     };
     var PHONE_INVALID = "Ce numéro n'est pas un numéro mobile valide. Exemple : 6 77 12 34 56";
 
-    // Same rules as OfferPropertyRules (needsFurniture, needsRooms, needsParking, needsArea, the building's counts).
-    // The server renders only the chosen category's types, and a sale renders its residential questions until its
-    // type is saved (not required), then only those its type needs: a saved plot of land gets no rooms nor parking,
-    // and a building sold as a whole gets its two counts instead. A commercial property asks the surface; only the
-    // type narrows the residential questions down.
-    var WITHOUT_ROOMS = ["ROOM", "STUDIO", "BUILDING"];
-    var WITHOUT_FURNITURE = ["BUILDING"];
-    var WITHOUT_PARKING = ["ROOM"];
+    // The property-type rule table shared by the three pages (#304): the category its types are offered under, and the
+    // follow-up questions it asks. The server's Kotlin rules are the source of truth (OfferPropertyRules).
+    var RULES = window.NdUtil.propertyRules;
 
     // The project's texts, as the server renders them (the prototype's data-for pairs): they follow the choice.
     var PROJECT_TEXTS = {
@@ -392,8 +388,8 @@
 
     /* ---------- Step: features ---------- */
     function initFeatures(form, refresh) {
-        // The controller renders the saved answers on the form: the project, and the asking price the price per m²
-        // is derived from. Neither is read from another step's radio (this page has only its own).
+        // The controller renders the saved answers on the form: the project, and the asking price the implied rates
+        // are derived from. Neither is read from another step's radio (this page has only its own).
         var sale = (form.getAttribute("data-listing-type") || "RENTAL") === "SALE";
         var askingPrice = Number(form.getAttribute("data-price-amount")) || 0;
         var currency = form.getAttribute("data-currency") || "";
@@ -409,6 +405,7 @@
         var areaLabel = $("[data-area-label]", form);
         var areaInput = $("#area", form);
         var perSqm = $("[data-price-per-sqm]", form);
+        var perUnit = $("[data-price-per-unit]", form);
         var counts = $("[data-building-counts]", form);
         var countFields = [
             { name: "levels", noun: "d'étages", max: MAX_LEVELS },
@@ -452,22 +449,30 @@
             });
         });
 
-        function needsFurniture(type) {
-            return !sale && WITHOUT_FURNITURE.indexOf(type) === -1;
+        // The questions of the chosen type, as the shared table has them (#304; the server re-checks). No type means
+        // no question: only the documents of a sale show before one is chosen.
+        function asks(type, field) {
+            return RULES.asks(type, sale ? "SALE" : "RENTAL", field);
         }
 
-        // A plot has no bedrooms nor parking; neither has a building sold as a whole; a sale never asks the furnishing.
+        function needsFurniture(type) {
+            return asks(type, "furniture");
+        }
+
         function needsRooms(type) {
-            return WITHOUT_ROOMS.indexOf(type) === -1 && !isLand(type);
+            return asks(type, "rooms");
         }
 
         function needsParking(type) {
-            return WITHOUT_PARKING.indexOf(type) === -1 && !isLand(type) && !isBuildingSale(type);
+            return asks(type, "parkings");
         }
 
-        // The server renders the surface of a commercial property only; a sold plot always asks it.
         function needsArea(type) {
-            return !!groups.area && (!sale || isLand(type));
+            return !!groups.area && asks(type, "area");
+        }
+
+        function needsCounts(type) {
+            return asks(type, "counts");
         }
 
         function areaValue() {
@@ -492,9 +497,25 @@
             perSqm.hidden = false;
         }
 
+        // A sold building's implied price per unit (#304), asking price ÷ unités rounded to the nearest 100: display
+        // only, never sent nor stored. Hidden without a valid price or count, for another type or a rental.
+        function updatePricePerUnit(type) {
+            if (!perUnit || !countFields[1].input) return;
+            var units = Number(digitsOf(countFields[1].input.value));
+            var usable = isBuildingSale(type) && askingPrice > 0 && units >= 1 && units <= MAX_UNITS;
+            var rate = usable ? Math.round((askingPrice / units) / 100) * 100 : 0;
+            if (rate <= 0) {
+                perUnit.hidden = true;
+                perUnit.textContent = "";
+                return;
+            }
+            perUnit.textContent = "Soit ≈ " + window.NdUtil.compactNumber(rate, decimalSeparator) + "\u00a0" +
+                currency + "/unité pour " + formatNumber(units) + (units > 1 ? " unités" : " unité");
+            perUnit.hidden = false;
+        }
+
         // A hidden question is disabled (it doesn't post) and never in error; a shown one gates "Suivant" when
-        // [required]. The documents are optional, and a sale's questions shown before its type is saved aren't
-        // required yet — the server renders the same state (#273).
+        // [required]. The documents are optional.
         function show(key, shown, required) {
             var group = groups[key];
             if (!group) return; // only rendered for the category that asks it
@@ -506,40 +527,21 @@
             if (!shown) setFieldError(group, $("#" + key + "-error", form), "");
         }
 
-        // A sale whose type isn't saved yet keeps the questions visible, but not required; once the type is saved, its
-        // own rules decide. A rental waits for its type, as before.
-        function showsRooms(type) {
-            return sale ? (!type || needsRooms(type)) : needsRooms(type);
-        }
-
-        function requiresRooms(type) {
-            return sale ? (!!type && needsRooms(type)) : showsRooms(type);
-        }
-
-        function showsParking(type) {
-            return sale ? (!type || needsParking(type)) : needsParking(type);
-        }
-
-        function requiresParking(type) {
-            return sale ? (!!type && needsParking(type)) : showsParking(type);
-        }
-
         function updateQuestions() {
             var type = checkedValue("propertyType", form);
             var hasParking = checkedValue("hasParking", form);
-            // The number of places only after "Oui" (the server reads "Non" as 0 places); a sale's first render keeps
-            // it visible until "Non", as the server rendered it.
-            var places = showsParking(type) && (hasParking === "YES" || (sale && !type && hasParking !== "NO"));
+            // The number of places only after "Oui" (the server reads "Non" as 0 places).
+            var places = needsParking(type) && hasParking === "YES";
             show("furnitureType", needsFurniture(type), true);
-            show("rooms", showsRooms(type), requiresRooms(type));
-            show("hasParking", showsParking(type), requiresParking(type));
-            show("parkings", places, requiresParking(type));
+            show("rooms", needsRooms(type), true);
+            show("hasParking", needsParking(type), true);
+            show("parkings", places, true);
             show("area", needsArea(type), true);
-            // The documents of ownership a seller declares: every sale until its type is saved, then a Terrain only.
-            show("ownershipDocuments", sale && (!type || isLand(type)), false);
+            // The documents of ownership a seller declares: every sale, whatever its type, always optional (#304).
+            show("ownershipDocuments", RULES.asksDocuments(sale ? "SALE" : "RENTAL"), false);
             // A building's levels and units replace the rooms and the parking.
             if (counts) {
-                counts.hidden = !isBuildingSale(type);
+                counts.hidden = !needsCounts(type);
                 countFields.forEach(function (field) {
                     if (counts.hidden) setFieldError(field.input, field.error, "");
                     syncCount(field);
@@ -549,6 +551,7 @@
                 areaLabel.textContent = isLand(type) ? "Surface du terrain estimée" : "Surface estimée";
             }
             updatePricePerSqm(type);
+            updatePricePerUnit(type);
             refresh();
         }
 
@@ -557,6 +560,10 @@
         });
         if (areaInput) areaInput.addEventListener("input", function () {
             updatePricePerSqm(checkedValue("propertyType", form));
+        });
+        // The price per unit follows the count as it is typed.
+        countFields[1].input.addEventListener("input", function () {
+            updatePricePerUnit(checkedValue("propertyType", form));
         });
         updateQuestions();
     }

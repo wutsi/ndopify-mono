@@ -42,7 +42,7 @@ internal object MandateMailLabels {
         FinancingType.UNDECIDED to "Pas encore décidé",
     )
 
-    // The land documents a buyer requires (TitleDocumentType).
+    // The title documents a buyer may require (TitleDocumentType).
     private val TITLE_DOCUMENTS = mapOf(
         TitleDocumentType.LAND_TITLE to "Titre foncier",
         TitleDocumentType.SURVEY_PLAN to "Plan de bornage",
@@ -109,10 +109,11 @@ internal object MandateMailLabels {
             .joinToString(" · ")
             .ifEmpty { null }
 
-    // Ex: "Titre foncier · Plan de bornage"; null without documents, and outside a land sale (a rental, another type).
+    // Ex: "Titre foncier · Plan de bornage"; null without documents, and outside a sale (a rental). A sale declares its
+    // ownership documents whatever its property type: a villa's land title counts as much as a land's.
     // "·", never a comma: a document name may contain one.
     fun ownershipDocuments(mandate: MandateEntity): String? =
-        if (mandate.listingType == ListingType.SALE && mandate.propertyType == PropertyType.LAND) {
+        if (mandate.listingType == ListingType.SALE) {
             mandate.ownershipDocuments
                 .mapNotNull { TITLE_DOCUMENTS[it] }
                 .joinToString(" · ")

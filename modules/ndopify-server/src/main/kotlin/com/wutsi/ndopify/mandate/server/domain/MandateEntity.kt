@@ -58,11 +58,11 @@ data class MandateEntity(
     /** How a buyer declares they will pay; null for a rental (a display-only answer). */
     val financingType: FinancingType? = null,
 
-    /** The land documents a buyer requires: land purchases only, empty otherwise. */
+    /** The documents a buyer requires of a sale, whatever its type; empty otherwise (a rental). */
     @Convert(converter = TitleDocumentTypeListConverter::class)
     val titleDocuments: List<TitleDocumentType> = emptyList(),
 
-    /** The documents of ownership the seller declares: land sales only, empty otherwise. */
+    /** The documents of ownership the seller declares: every sale, whatever its type; empty otherwise (a rental). */
     @Convert(converter = TitleDocumentTypeListConverter::class)
     val ownershipDocuments: List<TitleDocumentType> = emptyList(),
 

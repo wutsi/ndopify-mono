@@ -5,9 +5,9 @@
   One page, seven steps then the confirmation: OfferPropertyController picks the step (model attribute "step") and
   only renders that one. Each step is its own form, posted to /offer-property/{step}; the answers live in the HTTP
   session, so a step's fields are pre-filled from "answers" and its errors come from "errors" (field name → message).
-  Without JavaScript every step still works: the features step then shows every follow-up question of the category
-  (the server ignores those that don't apply to the chosen type), and the neighbourhoods of a city are only loaded
-  by offer-property.js (slim-select, GET /locations) — see data-locations-url.
+  Without JavaScript every step still works: the features step shows no follow-up question until its type is saved,
+  then the ones that type asks (the server ignores those that don't apply), and the neighbourhoods of a city are only
+  loaded by offer-property.js (slim-select, GET /locations) — see data-locations-url.
 */-->
 <body data-page="offer-property">
 <a class="skip-link" href="#main">Aller au contenu</a>
@@ -274,16 +274,20 @@
                         <p th:replace="~{:: error('propertyType')}"></p>
                     </fieldset>
 
-                    <!--/* The follow-up questions: offer-property.js hides those that don't apply to the type. */-->
+                    <!--/* The follow-up questions: only those the chosen type asks (#304). No question shows before a type
+                         is saved, the documents excepted. Without JS the step still works: post the type, then answer the
+                         questions it asks. offer-property.js hides and requires them as the visitor picks. */-->
                     <fieldset aria-describedby="furnitureType-error" class="choices" data-group="furnitureType"
                               th:attr="aria-invalid=${errors['furnitureType'] != null ? 'true' : null}"
-                              th:if="${residential and !sale}">
+                              th:hidden="${!needsFurniture}" th:if="${residential}">
                         <legend class="choices__legend">Ameublement</legend>
                         <div class="choices__grid choices__grid--2">
-                            <label class="choice"><input name="furnitureType" required
+                            <label class="choice"><input name="furnitureType"
+                                                         th:attr="required=${needsFurniture} ? 'required' : null"
                                                          th:checked="${answers.furnitureType == 'UNFURNISHED'}"
                                                          type="radio" value="UNFURNISHED"> <th:block th:text="${furnitureLabels['UNFURNISHED']}">Non meublé</th:block></label>
-                            <label class="choice"><input name="furnitureType" required
+                            <label class="choice"><input name="furnitureType"
+                                                         th:attr="required=${needsFurniture} ? 'required' : null"
                                                          th:checked="${answers.furnitureType == 'FULLY_FURNISHED'}"
                                                          type="radio" value="FULLY_FURNISHED"> <th:block th:text="${furnitureLabels['FULLY_FURNISHED']}">Meublé</th:block></label>
                         </div>
@@ -292,7 +296,7 @@
 
                     <fieldset aria-describedby="rooms-error" class="choices" data-group="rooms"
                               th:attr="aria-invalid=${errors['rooms'] != null ? 'true' : null}"
-                              th:hidden="${!showsRooms}" th:if="${residential}">
+                              th:hidden="${!requiresRooms}" th:if="${residential}">
                         <legend class="choices__legend">Nombre de chambres</legend>
                         <div class="choices__grid">
                             <label class="choice" th:each="rooms : ${ {'1', '2', '3', '4'} }"><input name="rooms"
@@ -310,7 +314,7 @@
                     <!--/* "Non" is stored as 0 places; hasParking only exists in the form. */-->
                     <fieldset aria-describedby="hasParking-error" class="choices" data-group="hasParking"
                               th:attr="aria-invalid=${errors['hasParking'] != null ? 'true' : null}"
-                              th:hidden="${!showsParking}" th:if="${residential}">
+                              th:hidden="${!requiresParking}" th:if="${residential}">
                         <legend class="choices__legend">Parking ou garage</legend>
                         <div class="choices__grid choices__grid--2">
                             <label class="choice"><input name="hasParking"
@@ -327,7 +331,7 @@
 
                     <fieldset aria-describedby="parkings-error" class="choices" data-group="parkings"
                               th:attr="aria-invalid=${errors['parkings'] != null ? 'true' : null}"
-                              th:hidden="${!showsParking}" th:if="${residential}">
+                              th:hidden="${!requiresParking}" th:if="${residential}">
                         <legend class="choices__legend">Combien de places&nbsp;?</legend>
                         <div class="choices__grid">
                             <label class="choice"><input name="parkings"
@@ -367,17 +371,24 @@
                                    th:attr="aria-invalid=${errors['units'] != null ? 'true' : null}"
                                    th:value="${answers.units}">
                             <p th:replace="~{:: error('units')}"></p>
+                            <!--/* The implied price of a unit (#304), asking price ÷ unités, rounded to the nearest 100:
+                                 display only, never stored nor sent. Hidden until a usable price and count exist;
+                                 computed by offer-property.js. */-->
+                            <p class="field__counter" data-price-per-unit hidden></p>
                         </div>
                     </div>
 
-                    <div class="field" data-group="area" th:if="${asksArea}">
+                    <!--/* A surface only where the type is measured (#304): a commercial property, or a plot of land sold.
+                         Rendered even when hidden, so a post without JS still carries it; the server drops it. */-->
+                    <div class="field" data-group="area" th:hidden="${!asksArea}">
                         <label class="field__label" data-area-label for="area"
                                th:text="${landSale} ? 'Surface du terrain estimée' : 'Surface estimée'">Surface
                             estimée</label>
                         <div class="input-unit">
                             <input aria-describedby="area-error" class="input" id="area" inputmode="numeric"
-                                   name="area" required
-                                   th:attr="aria-invalid=${errors['area'] != null ? 'true' : null}"
+                                   name="area"
+                                   th:attr="aria-invalid=${errors['area'] != null ? 'true' : null},
+                                       required=${asksArea} ? 'required' : null"
                                    th:value="${answers.area != null} ? ${#numbers.formatInteger(answers.area, 1, 'WHITESPACE')} : ''"
                                    type="text">
                             <span aria-hidden="true" class="input-unit__suffix">m²</span>
@@ -387,9 +398,9 @@
                         <p class="hint" data-price-per-sqm hidden></p>
                     </div>
 
-                    <!--/* The documents of ownership a seller declares: every sale until its type is known, then a plot
-                           of land only, optional, several. Rendered even when hidden, so a post without JS still
-                           carries them; the server filters. */-->
+                    <!--/* The documents of ownership a seller declares: every sale, whatever its type (#304), optional,
+                           several. Rendered even when hidden, so a post without JS still carries them; the server
+                           filters, and a rental sends none. */-->
                     <fieldset class="choices" data-group="ownershipDocuments" th:hidden="${!asksOwnershipDocuments}">
                         <legend class="choices__legend">Document de propriété <span
                                 class="field__optional">(facultatif)</span></legend>
@@ -403,7 +414,7 @@
                         <div class="hint">
                             <svg th:replace="~{fragments/icon :: info}"></svg>
                             <div>
-                                <p>Facultatif&nbsp;: vous pouvez cocher plusieurs documents, ou aucun. Votre agent
+                                <p>Pour toute vente&nbsp;: vous pouvez cocher plusieurs documents, ou aucun. Votre agent
                                     les vérifie lors de l'audit.</p>
                             </div>
                         </div>
@@ -648,7 +659,8 @@
                                         class="visually-hidden"> les caractéristiques</span></a>
                             </dd>
                         </div>
-                        <!--/* A sold plot's declared documents only; any other sale or a rental never shows it. */-->
+                        <!--/* Every sale lists its documents, "Aucun document déclaré" for none (#304); a rental has no
+                             row. */-->
                         <div class="review__item" data-review-ownershipDocuments th:if="${ownershipDocumentsLabel != null}">
                             <dt class="review__term">Document de propriété</dt>
                             <dd class="review__value">
@@ -658,29 +670,6 @@
                                 <a class="link-button review__edit"
                                    th:href="@{/offer-property(step='features', returnTo='review')}">Modifier<span
                                         class="visually-hidden"> le document de propriété</span></a>
-                            </dd>
-                        </div>
-                        <!--/* A building sale's two counts (#274), before its (absent) equipment line. */-->
-                        <div class="review__item" th:if="${levelsLabel != null}">
-                            <dt class="review__term">Étages</dt>
-                            <dd class="review__value">
-                                <p data-review-value="levels" th:text="${levelsLabel}">3</p>
-                            </dd>
-                            <dd class="review__value">
-                                <a class="link-button review__edit"
-                                   th:href="@{/offer-property(step='features', returnTo='review')}">Modifier<span
-                                        class="visually-hidden"> le nombre d'étages</span></a>
-                            </dd>
-                        </div>
-                        <div class="review__item" th:if="${unitsLabel != null}">
-                            <dt class="review__term">Unités</dt>
-                            <dd class="review__value">
-                                <p data-review-value="units" th:text="${unitsLabel}">12</p>
-                            </dd>
-                            <dd class="review__value">
-                                <a class="link-button review__edit"
-                                   th:href="@{/offer-property(step='features', returnTo='review')}">Modifier<span
-                                        class="visually-hidden"> le nombre d'unités</span></a>
                             </dd>
                         </div>
                         <div class="review__item" th:unless="${buildingSale}">

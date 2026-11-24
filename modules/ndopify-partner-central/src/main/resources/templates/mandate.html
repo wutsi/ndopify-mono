@@ -526,7 +526,7 @@
                     <h2 id="search-title" th:text="${m.words.searchUpper}">Sa recherche</h2>
                     <!--
                         The facts that qualify a property stay visible: sector, amount, date, type (with its rooms), and
-                        the customer's own words when there are some. The rest is folded — except a land purchase's
+                        the customer's own words when there are some. The rest is folded — except a sale's
                         "Documents exigés", kept visible with the note below, since it filters the matches.
                     -->
                     <dl class="review" data-mandate-key-criteria>
@@ -535,15 +535,15 @@
                             <dd class="review__value review__multiline" th:text="${row.second}">Kotto, Logpom — Douala</dd>
                         </div>
                     </dl>
-                    <!-- A land purchase requiring documents is never matched with a land for sale whose seller declared
-                         none of them: the note explains that filter. -->
+                    <!-- A sale requiring documents is never matched with a listing whose seller declared none of them,
+                         whatever the two types (#304): the note explains that filter. -->
                     <div class="hint" th:if="${m.titleDocumentsRequired}" data-mandate-documents-note>
                         <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
                             <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
                             <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
                             <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
                         </svg>
-                        <p>Les terrains à vendre dont le vendeur n'a déclaré aucun de ces documents ne vous sont pas proposés. Un seul
+                        <p>Les biens à vendre dont le vendeur n'a déclaré aucun de ces documents ne vous sont pas proposés. Un seul
                             de ces documents déclaré suffit.</p>
                     </div>
                     <details class="assignment__details mandate-more" th:unless="${#lists.isEmpty(m.moreCriteria)}"

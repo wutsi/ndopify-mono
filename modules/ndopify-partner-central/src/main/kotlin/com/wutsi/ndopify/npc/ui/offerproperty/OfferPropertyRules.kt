@@ -18,11 +18,12 @@ import java.time.format.DateTimeParseException
  * Messages and thresholds are the ones of the `offer-property.js` prototype. ndopify-server re-checks the caution and
  * advance range only, so the other rules here are the only validation a listing gets.
  *
- * The wizard serves two projects: a rental ([ListingType.RENTAL]) and a sale ([ListingType.SALE]). A rental offers no
- * land; a sale offers it under both usages, residential and commercial (#293), and no room, asks no furniture,
- * requires the surface of a plot of land and its optional documents, has its own price floor, and has no advance nor
- * deposit. A building sold as a whole is offered under Commercial only (#274), is captured by its two counts instead of
- * a room and a parking, and skips the amenities step.
+ * The wizard serves two projects: a rental ([ListingType.RENTAL]) and a sale ([ListingType.SALE]). A rental offers
+ * neither land nor a building; a sale offers land under both usages, residential and commercial (#293), and no room,
+ * asks furniture for every residential type (sale and rental alike), requires the surface of a commercial property and
+ * of a sold plot, offers its documents whatever the type, has its own price floor, and has no advance nor deposit. A
+ * building sold as a whole is offered under Commercial only (#304), is captured by its two counts instead of a room and
+ * a parking, and skips the amenities step.
  */
 object OfferPropertyRules {
     const val STEP_PROPERTY = "property"
@@ -80,8 +81,8 @@ object OfferPropertyRules {
     )
 
     /**
-     * The category each rental property type belongs to, in form order (prototype's PROPERTY_TYPES). A rental offers
-     * no land.
+     * The category each property type belongs to, in form order (prototype's PROPERTY_TYPES). A rental offers neither
+     * land nor a building.
      */
     val CATEGORIES_BY_TYPE: Map<PropertyType, PropertyCategory> = linkedMapOf(
         PropertyType.APARTMENT to PropertyCategory.RESIDENTIAL,
@@ -89,22 +90,21 @@ object OfferPropertyRules {
         PropertyType.ROOM to PropertyCategory.RESIDENTIAL,
         PropertyType.STUDIO to PropertyCategory.RESIDENTIAL,
         PropertyType.DUPLEX to PropertyCategory.RESIDENTIAL,
-        PropertyType.BUILDING to PropertyCategory.RESIDENTIAL,
         PropertyType.OFFICE to PropertyCategory.COMMERCIAL,
         PropertyType.RETAIL to PropertyCategory.COMMERCIAL,
         PropertyType.INDUSTRIAL to PropertyCategory.COMMERCIAL,
     )
 
     // A sale drops the room type and offers a plot of land under both usages, residential and commercial (#293); a
-    // rental never offers land. A building sold as a whole is offered under Commercial only (#274): it replaces the
-    // residential category the rental map gives it, keeping its form position.
+    // rental never offers land. A building is sold only, under Commercial (#304): it is appended after the land, and the
+    // rental map no longer holds it.
     private val SALE_CATEGORIES_BY_TYPE: Map<PropertyType, Set<PropertyCategory>> =
         (CATEGORIES_BY_TYPE - PropertyType.ROOM)
             .mapValues { (_, category) -> setOf(category) } +
             (PropertyType.LAND to setOf(PropertyCategory.RESIDENTIAL, PropertyCategory.COMMERCIAL)) +
             (PropertyType.BUILDING to setOf(PropertyCategory.COMMERCIAL))
 
-    private val WITHOUT_ROOMS = setOf(PropertyType.ROOM, PropertyType.STUDIO, PropertyType.BUILDING)
+    private val WITHOUT_ROOMS = setOf(PropertyType.ROOM, PropertyType.STUDIO)
 
     private val TITLE_DOCUMENT_TYPES = listOf(
         TitleDocumentType.LAND_TITLE,
@@ -152,19 +152,19 @@ object OfferPropertyRules {
     fun projectLabel(listingType: ListingType?): String =
         if (listingType == ListingType.SALE) "Vente" else "Location"
 
-    // A whole building is let as it is, furnished or not flat by flat; a sale never asks the furnishing.
+    // A whole building has no furniture of its own, and neither has a plot: every other residential type asks it, sale
+    // and rental alike.
     fun needsFurniture(category: PropertyCategory?, type: PropertyType?, listingType: ListingType?): Boolean =
-        !isSale(listingType) && residential(category) && type != PropertyType.BUILDING
+        residential(category) && type != PropertyType.BUILDING && type != PropertyType.LAND
 
     // A plot has no bedrooms; a sale never asks them for it.
     fun needsRooms(category: PropertyCategory?, type: PropertyType?, listingType: ListingType?): Boolean =
         residential(category) && type !in WITHOUT_ROOMS && type != PropertyType.LAND
 
-    // A room is let in a shared home: its parking, if any, isn't its own. A plot has none; neither has a building
-    // sold as a whole (#274).
+    // A plot has no parking; neither has a building sold as a whole (#274). Every other residential type asks it, a room
+    // included (#304).
     fun needsParking(category: PropertyCategory?, type: PropertyType?, listingType: ListingType?): Boolean =
-        !buildingSale(listingType, type) && residential(category) && type != PropertyType.ROOM &&
-            type != PropertyType.LAND
+        !buildingSale(listingType, type) && residential(category) && type != PropertyType.LAND
 
     /**
      * A building sale's counts, without an "Indifférent" answer: a whole number in `1..[max]`, required. A blank
@@ -199,9 +199,21 @@ object OfferPropertyRules {
         return rate.takeIf { it > 0 }
     }
 
-    /** The documents a seller declares, in prototype order: a land sale only, and always optional. */
+    /**
+     * A sold building's implied rate: asking price ÷ units, rounded to the nearest 100, or null when the answers are not
+     * a SALE · BUILDING or the price/units is missing or unusable. A rate rounding to 0 is null too, as the page hides it.
+     */
+    fun pricePerUnit(listingType: ListingType?, type: PropertyType?, priceAmount: Long?, units: Int?): Long? {
+        if (!buildingSale(listingType, type)) return null
+        if (priceAmount == null || priceAmount <= 0) return null
+        if (units == null || units < 1 || units > MAX_UNITS) return null
+        val rate = Math.round((priceAmount.toDouble() / units) / 100) * 100
+        return rate.takeIf { it > 0 }
+    }
+
+    /** The documents a seller declares, in prototype order: every sale, whatever its type (#304), and always optional. */
     fun ownershipDocumentTypes(listingType: ListingType?, type: PropertyType?): List<TitleDocumentType> =
-        if (isSale(listingType) && type == PropertyType.LAND) TITLE_DOCUMENT_TYPES else emptyList()
+        if (isSale(listingType)) TITLE_DOCUMENT_TYPES else emptyList()
 
     fun propertyCategory(value: PropertyCategory?): String? =
         if (value == null || value == PropertyCategory.UNKNOWN) {

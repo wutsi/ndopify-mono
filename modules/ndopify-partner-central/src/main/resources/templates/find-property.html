@@ -174,8 +174,7 @@
                   th:attr="data-listing-type=${answers.listingType != null ? answers.listingType.name() : 'RENTAL'}">
                 <input name="returnTo" th:if="${returning}" type="hidden" value="review">
                 <fieldset class="step" data-step="property" tabindex="-1"
-                          th:with="sale=${#strings.equals(answers.listingType, 'SALE')},
-                                   landSale=${#strings.equals(answers.listingType, 'SALE') and #strings.equals(answers.propertyType, 'LAND')}">
+                          th:with="landSale=${#strings.equals(answers.listingType, 'SALE') and #strings.equals(answers.propertyType, 'LAND')}">
                     <legend class="visually-hidden"
                             th:text="|Étape ${stepNumber} sur ${stepCount} : le bien recherché|">
                         Étape 3 sur 7 : le bien recherché</legend>
@@ -195,7 +194,8 @@
                         <p th:replace="~{:: error('propertyType')}"></p>
                     </fieldset>
 
-                    <!--/* The follow-up questions: find-property.js hides those that don't apply to the type. */-->
+                    <!--/* The follow-up questions: the server hides those the saved type's rules out, find-property.js
+                         those the live answer rules out. */-->
                     <fieldset aria-describedby="rooms-error" class="choices" data-group="rooms"
                               th:attr="aria-invalid=${errors['rooms'] != null ? 'true' : null}"
                               th:if="${#strings.equals(answers.propertyCategory, 'RESIDENTIAL')}">
@@ -212,7 +212,8 @@
 
                     <fieldset aria-describedby="furnitureType-error" class="choices" data-group="furnitureType"
                               th:attr="aria-invalid=${errors['furnitureType'] != null ? 'true' : null}"
-                              th:if="${!sale}">
+                              th:if="${#strings.equals(answers.propertyCategory, 'RESIDENTIAL')}"
+                              th:hidden="${!needsFurniture}">
                         <legend class="choices__legend">Meublé&nbsp;?</legend>
                         <div class="choices__grid">
                             <label class="choice"><input name="furnitureType"
@@ -230,7 +231,7 @@
 
                     <fieldset aria-describedby="parkings-error" class="choices" data-group="parkings"
                               th:attr="aria-invalid=${errors['parkings'] != null ? 'true' : null}"
-                              th:hidden="${buildingSale}">
+                              th:hidden="${!needsParkings}">
                         <legend class="choices__legend">Places de parking <span
                                 class="field__optional">(facultatif)</span></legend>
                         <div class="choices__grid">
@@ -280,7 +281,7 @@
                         </div>
                     </div>
 
-                    <div class="field" data-group="area">
+                    <div class="field" data-group="area" th:hidden="${!showsArea}">
                         <label class="field__label" for="area"><span data-area-label
                                 th:text="${landSale ? 'Surface du terrain' : (answers.propertyType == 'LAND' ? 'Surface du terrain minimale' : 'Surface minimale')}">Surface
                             minimale</span> <span class="field__optional" data-area-optional th:unless="${landSale}">(facultatif)</span></label>
@@ -294,8 +295,9 @@
                         <p th:replace="~{:: error('area')}"></p>
                     </div>
 
-                    <!--/* Documents the buyer may require, asked only for a land purchase. Rendered even when hidden:
-                         without JS the boxes still post, and the server drops them for anything else. */-->
+                    <!--/* Documents the buyer may require: every purchase, whatever its type (#304), never a rental.
+                         Rendered even when hidden: without JS the boxes still post, and the server drops them for a
+                         rental. */-->
                     <fieldset class="choices" data-group="titleDocuments" th:hidden="${!asksTitleDocuments}">
                         <legend class="choices__legend">Quels documents exigez-vous&nbsp;? <span
                                 class="field__optional">(facultatif)</span></legend>
@@ -389,6 +391,8 @@
                   th:attr="data-listing-type=${answers.listingType != null ? answers.listingType.name() : 'RENTAL'},
                            data-area=${answers.area != null ? answers.area : ''},
                            data-property-type=${answers.propertyType != null ? answers.propertyType : ''},
+                           data-units=${answers.units != null ? answers.units : ''},
+                           data-units-any=${answers.unitsAny},
                            data-currency=${currency},
                            data-decimal-separator=${decimalSeparator}">
                 <input name="returnTo" th:if="${returning}" type="hidden" value="review">
@@ -417,6 +421,9 @@
                         <!--/* Price per m², derived from the total budget and the surface (land purchase only): display
                              only, never stored. Hidden until both exist; computed by find-property.js. */-->
                         <p class="field__counter" data-price-per-sqm hidden></p>
+                        <!--/* Price per unit (#304), derived from the total budget and the unités (a building
+                             purchase), hidden while the units are "Indifférent": display only, never stored. */-->
+                        <p class="field__counter" data-price-per-unit hidden></p>
                     </div>
                     <fieldset aria-describedby="movingPeriod-error" class="choices" data-group="movingPeriod"
                               th:attr="aria-invalid=${errors['movingPeriod'] != null ? 'true' : null}">
@@ -611,6 +618,7 @@
                                         class="visually-hidden"> le secteur</span></a>
                             </dd>
                         </div>
+                        <!--/* A building sale's two counts (#274) read once in this line (#304), never in their own rows. */-->
                         <div class="review__item">
                             <dt class="review__term">Bien recherché</dt>
                             <dd class="review__value">
@@ -622,7 +630,8 @@
                                         class="visually-hidden"> le bien recherché</span></a>
                             </dd>
                         </div>
-                        <!--/* The land documents a buyer requires: a land purchase only, and "Aucun document exigé" for none. */-->
+                        <!--/* Every purchase declares the documents it requires, whatever its type, and "Aucun document
+                             exigé" for none; a rental never shows the row (#304). */-->
                         <div class="review__item" th:if="${titleDocumentsLabel != null}">
                             <dt class="review__term">Documents exigés</dt>
                             <dd class="review__value">
@@ -634,29 +643,7 @@
                                         class="visually-hidden"> les documents exigés</span></a>
                             </dd>
                         </div>
-                        <!--/* A building sale's two counts (#274); "Indifférent" when the visitor didn't answer. */-->
-                        <div class="review__item" th:if="${levelsLabel != null}">
-                            <dt class="review__term">Étages</dt>
-                            <dd class="review__value">
-                                <p data-review-value="levels" th:text="${levelsLabel}">3</p>
-                            </dd>
-                            <dd class="review__value">
-                                <a class="link-button review__edit"
-                                   th:href="@{/find-property(step='property', returnTo='review')}">Modifier<span
-                                        class="visually-hidden"> le nombre d'étages</span></a>
-                            </dd>
-                        </div>
-                        <div class="review__item" th:if="${unitsLabel != null}">
-                            <dt class="review__term">Unités</dt>
-                            <dd class="review__value">
-                                <p data-review-value="units" th:text="${unitsLabel}">12</p>
-                            </dd>
-                            <dd class="review__value">
-                                <a class="link-button review__edit"
-                                   th:href="@{/find-property(step='property', returnTo='review')}">Modifier<span
-                                        class="visually-hidden"> le nombre d'unités</span></a>
-                            </dd>
-                        </div>
+                        <!--/* A building sale shows no amenity line: its step leaves the wizard (#274). */-->
                         <div class="review__item" th:unless="${buildingSale}">
                             <dt class="review__term">Indispensable</dt>
                             <dd class="review__value">
@@ -674,7 +661,9 @@
                         <div class="review__item">
                             <dt class="review__term" th:text="${priceTerm}">Budget mensuel</dt>
                             <dd class="review__value">
-                                <p data-review-value="price" th:text="${priceLabel}">150K FCFA par mois</p>
+                                <!--/* The budget, then the implied rate of a plot (per m²) or of a building (per unit)
+                                     on its own line (#304): display only. */-->
+                                <p class="review__multiline" data-review-value="price" th:text="${priceLabel}">150K FCFA par mois</p>
                             </dd>
                             <dd class="review__value">
                                 <a class="link-button review__edit"

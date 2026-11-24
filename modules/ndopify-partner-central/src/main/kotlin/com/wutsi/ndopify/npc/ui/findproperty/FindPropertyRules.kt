@@ -17,9 +17,10 @@ import com.wutsi.ndopify.web.core.service.TenantFormatter
  * any of this yet, so these rules are the only validation a mandate gets.
  *
  * The wizard serves two projects: a rental ([ListingType.RENTAL]) and a purchase ([ListingType.SALE]). Land is
- * bought, never rented: only a purchase offers it, under both usages (residential and commercial) (#293) and no room,
- * asks no furniture, requires the surface of a plot of land and its optional documents, has its own budget floor and
- * asks how the buyer will pay.
+ * bought, never rented: only a purchase offers it, under both usages (residential and commercial) (#293) and no room.
+ * A rental offers neither land nor a building; a purchase asks furniture and parkings for every residential type
+ * (sale and rental alike, a room included), requires the surface of a commercial property or a plot, offers its
+ * documents whatever the type, has its own budget floor and asks how the buyer will pay.
  */
 object FindPropertyRules {
     const val MAX_NEIGHBORHOODS = 3
@@ -49,7 +50,8 @@ object FindPropertyRules {
 
     /**
      * The categories each property type can be searched under, in form order (prototype's PROPERTY_TYPES). A rental
-     * offers no land: nobody rents bare land to live on it (one buys it to build).
+     * offers neither land nor a building: nobody rents bare land to live on it (one buys it to build), and a building
+     * is sold as a whole (#304).
      */
     private val RENTAL_CATEGORIES_BY_TYPE: Map<PropertyType, Set<PropertyCategory>> = linkedMapOf(
         PropertyType.ROOM to setOf(PropertyCategory.RESIDENTIAL),
@@ -61,20 +63,18 @@ object FindPropertyRules {
         PropertyType.RETAIL to setOf(PropertyCategory.COMMERCIAL),
         PropertyType.OFFICE to setOf(PropertyCategory.COMMERCIAL),
         PropertyType.INDUSTRIAL to setOf(PropertyCategory.COMMERCIAL),
-        PropertyType.BUILDING to setOf(PropertyCategory.COMMERCIAL),
     )
 
     // A purchase drops the room type and offers a plot of land under both usages, residential and commercial (#293);
-    // a rental never offers land.
+    // a rental never offers land. A building is sold only, under Commercial (#304), appended after the land.
     private val SALE_CATEGORIES_BY_TYPE: Map<PropertyType, Set<PropertyCategory>> =
         RENTAL_CATEGORIES_BY_TYPE - PropertyType.ROOM +
-            (PropertyType.LAND to setOf(PropertyCategory.RESIDENTIAL, PropertyCategory.COMMERCIAL))
+            (PropertyType.LAND to setOf(PropertyCategory.RESIDENTIAL, PropertyCategory.COMMERCIAL)) +
+            (PropertyType.BUILDING to setOf(PropertyCategory.COMMERCIAL))
 
     private val RENTAL_WITHOUT_ROOMS = setOf(PropertyType.STUDIO, PropertyType.ROOM)
     private val SALE_WITH_ROOMS =
         setOf(PropertyType.APARTMENT, PropertyType.HOUSE, PropertyType.VILLA, PropertyType.DUPLEX)
-    private val WITHOUT_FURNITURE = setOf(PropertyType.LAND, PropertyType.BUILDING, PropertyType.INDUSTRIAL)
-    private val WITHOUT_PARKINGS = setOf(PropertyType.LAND, PropertyType.ROOM)
 
     private val TITLE_DOCUMENT_TYPES = listOf(
         TitleDocumentType.LAND_TITLE,
@@ -120,12 +120,16 @@ object FindPropertyRules {
         return type !in RENTAL_WITHOUT_ROOMS
     }
 
-    /** A purchase isn't searched by its furniture: the buyer discusses it with the seller. */
-    fun needsFurniture(type: PropertyType?, listingType: ListingType?): Boolean =
-        !isSale(listingType) && type !in WITHOUT_FURNITURE
+    /**
+     * A residential type asks its furniture, sale and rental alike; an *Indifférent* type keeps the answer, as it
+     * narrows the match. A plot and a building sold as a whole ask none.
+     */
+    fun needsFurniture(category: PropertyCategory?, type: PropertyType?, listingType: ListingType?): Boolean =
+        category == PropertyCategory.RESIDENTIAL && type != PropertyType.BUILDING && type != PropertyType.LAND
 
-    fun asksParkings(type: PropertyType?, listingType: ListingType? = null): Boolean =
-        type !in WITHOUT_PARKINGS && !buildingSale(listingType, type)
+    /** A residential type asks its parkings, a room included; a plot and a building sold as a whole ask none. */
+    fun asksParkings(category: PropertyCategory?, type: PropertyType?, listingType: ListingType?): Boolean =
+        category == PropertyCategory.RESIDENTIAL && type != PropertyType.LAND && !buildingSale(listingType, type)
 
     /**
      * A building sale's counts: a whole number in `1..[max]`, or null; [any] is the "Indifférent" answer, a UI
@@ -145,13 +149,13 @@ object FindPropertyRules {
     /** The building's unités: 1..[MAX_UNITS], or "Indifférent". */
     fun units(value: String?, any: Boolean): String? = count(value, any, MAX_UNITS, "d'unités")
 
-    /** A plot of land bought is searched by its size: its surface is required. */
+    /** A commercial property is always measured; a plot of land bought is searched by its surface. */
     fun needsArea(category: PropertyCategory?, type: PropertyType?, listingType: ListingType?): Boolean =
-        isSale(listingType) && type == PropertyType.LAND
+        category == PropertyCategory.COMMERCIAL || (isSale(listingType) && type == PropertyType.LAND)
 
-    /** The documents a buyer may require, in prototype order: a land purchase only, and always optional. */
+    /** The documents a buyer may require, in prototype order: every purchase, whatever its type (#304), and optional. */
     fun titleDocumentTypes(listingType: ListingType?, type: PropertyType?): List<TitleDocumentType> =
-        if (isSale(listingType) && type == PropertyType.LAND) TITLE_DOCUMENT_TYPES else emptyList()
+        if (isSale(listingType)) TITLE_DOCUMENT_TYPES else emptyList()
 
     /** No type, or "Indifférent", fits any category; otherwise the type must be offered for the category and project. */
     fun typeFits(category: PropertyCategory?, type: String?, listingType: ListingType?): Boolean {

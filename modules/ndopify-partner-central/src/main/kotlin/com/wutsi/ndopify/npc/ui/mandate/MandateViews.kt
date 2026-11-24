@@ -3,7 +3,6 @@ package com.wutsi.ndopify.npc.ui.mandate
 import com.wutsi.ndopify.contract.dto.Contract
 import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.listing.dto.ListingType
-import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -131,7 +130,6 @@ object MandateViews {
             moreCriteria = more,
             titleDocumentsRequired = mandate.mandateType == MandateType.SEARCH &&
                 mandate.listingType == ListingType.SALE &&
-                mandate.propertyType == PropertyType.LAND &&
                 mandate.titleDocuments.any { it != TitleDocumentType.UNKNOWN },
             editable = status in MandateRules.EDITABLE,
             customerEditable = status in MandateRules.CUSTOMER_EDITABLE,

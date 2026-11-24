@@ -29,9 +29,9 @@ import java.io.Serializable
  * answers ([levelsAny] / [unitsAny], posted as empty fields and sent as null). Its amenities step leaves the wizard
  * ([steps]), so its amenity answers are neither kept nor sent.
  *
- * `financingType` and `titleDocuments` are the buyer's brief for a purchase: a rental never sends them, and only a
- * land purchase keeps documents. The price per m² the budget step shows is derived on the page and is never an
- * answer here.
+ * `financingType` and `titleDocuments` are the buyer's brief for a purchase: a rental never sends them, and every
+ * purchase keeps the documents it declares, whatever its type. The price per m² the budget step shows is derived on
+ * the page and is never an answer here.
  */
 data class PendingMandate(
     val propertyCategory: PropertyCategory? = null,
@@ -88,8 +88,8 @@ data class PendingMandate(
         FindPropertyController.STEP_PROPERTY ->
             FindPropertyRules.propertyType(propertyCategory, propertyType, listingType) == null &&
                 (!FindPropertyRules.needsRooms(propertyCategory, type(), listingType) || FindPropertyRules.rooms(rooms) == null) &&
-                (!FindPropertyRules.needsFurniture(type(), listingType) || FindPropertyRules.furnitureType(furnitureType) == null) &&
-                FindPropertyRules.area(area, FindPropertyRules.needsArea(propertyCategory, type(), listingType)) == null &&
+                (!FindPropertyRules.needsFurniture(propertyCategory, type(), listingType) || FindPropertyRules.furnitureType(furnitureType) == null) &&
+                FindPropertyRules.area(area, isSale() && type() == PropertyType.LAND) == null &&
                 (!buildingSale() || countsAnswered())
 
         // Every criterion is optional; a building sale skips the step.
@@ -131,10 +131,10 @@ data class PendingMandate(
             mandateType = MandateType.SEARCH,
             // The wizard's project; the old hard-coded rental stays the default, never UNKNOWN.
             listingType = listingType ?: ListingType.RENTAL,
-            // A rental never sends one; a non-land purchase sends no document either.
+            // A rental never sends one; every purchase keeps the documents it declares.
             financingType = financingType.takeIf { sale },
             titleDocuments = titleDocuments
-                .filter { sale && type == PropertyType.LAND }
+                .filter { sale && it != TitleDocumentType.UNKNOWN }
                 .distinct(),
             propertyCategory = propertyCategory ?: PropertyCategory.UNKNOWN,
             cityId = cityId ?: -1,
@@ -142,9 +142,11 @@ data class PendingMandate(
             propertyType = type,
             furnitureType = FurnitureType.entries
                 .firstOrNull { it.name == furnitureType }
-                ?.takeIf { FindPropertyRules.needsFurniture(type, listingType) },
+                ?.takeIf { FindPropertyRules.needsFurniture(propertyCategory, type, listingType) },
             rooms = rooms?.takeIf { FindPropertyRules.needsRooms(propertyCategory, type, listingType) },
-            parkings = parkings?.takeIf { FindPropertyRules.asksParkings(type, listingType) && it != FindPropertyRules.ANY },
+            parkings = parkings?.takeIf {
+                FindPropertyRules.asksParkings(propertyCategory, type, listingType) && it != FindPropertyRules.ANY
+            },
             area = area,
             // A building sale's two counts; another type sends none, and "Indifférent" is null.
             levels = levels.takeIf { buildingSale() },

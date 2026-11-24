@@ -462,15 +462,21 @@ class MatcherTest {
     }
 
     @Test
-    fun `a rental never fires the documents rule`() {
+    fun `a rental still never fires the documents rule, whatever the search requires`() {
         assertNull(rule(search.copy(titleDocuments = listOf(TitleDocumentType.LAND_TITLE)), listingA))
     }
 
     @Test
-    fun `a non-land sale never fires the documents rule`() {
-        val listing = landListing.copy(propertyType = PropertyType.HOUSE, rooms = 3)
+    fun `a non-land sale fires the documents rule too`() {
+        val search = landSearch.copy(propertyType = PropertyType.HOUSE, rooms = "3")
+        val listing = landListing.copy(
+            propertyType = PropertyType.HOUSE,
+            rooms = 3,
+            mandate = landListing.mandate.copy(ownershipDocuments = emptyList()),
+        )
 
-        assertNull(rule(landSearch.copy(propertyType = PropertyType.HOUSE, rooms = "3"), listing))
+        assertNull(score(search, listing))
+        assertEquals(MatchRuleOut.TITLE_DOCUMENTS, rule(search, listing))
     }
 
     @Test

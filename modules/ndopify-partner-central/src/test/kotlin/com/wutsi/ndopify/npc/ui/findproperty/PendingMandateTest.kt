@@ -78,6 +78,22 @@ class PendingMandateTest {
     }
 
     @Test
+    fun `a commercial search needs no surface, a plot does`() {
+        assertTrue(buildingSale.copy(area = null).isComplete("property"))
+        assertFalse(
+            COMPLETE.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
+                propertyType = "LAND",
+                rooms = null,
+                furnitureType = null,
+                parkings = null,
+                area = null,
+            ).isComplete("property"),
+        )
+    }
+
+    @Test
     fun `a building sale requires both counts unless indifferent`() {
         assertTrue(buildingSale.isComplete("property"))
         assertFalse(buildingSale.copy(levels = null).isComplete("property"))
@@ -160,7 +176,7 @@ class PendingMandateTest {
         assertTrue(
             COMPLETE.copy(
                 propertyCategory = PropertyCategory.COMMERCIAL,
-                propertyType = "BUILDING",
+                propertyType = "OFFICE",
                 rooms = null,
                 furnitureType = null,
             ).isComplete("property"),
@@ -220,14 +236,28 @@ class PendingMandateTest {
     }
 
     @Test
-    fun `a villa purchase sends no document`() {
-        val pending = COMPLETE.copy(
+    fun `a purchase sends its documents whatever its type, a rental none`() {
+        val documents = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.LAND_TITLE, TitleDocumentType.UNKNOWN)
+        val purchase = COMPLETE.copy(
             listingType = ListingType.SALE,
-            propertyType = "VILLA",
-            titleDocuments = listOf(TitleDocumentType.LAND_TITLE),
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = "HOUSE",
+            rooms = null,
+            furnitureType = null,
+            priceAmount = 10_000_000,
+            financingType = FinancingType.CASH,
+            titleDocuments = documents,
         )
 
-        assertEquals(emptyList(), pending.toCreateMandateRequest("XAF").titleDocuments)
+        assertEquals(listOf(TitleDocumentType.LAND_TITLE), purchase.toCreateMandateRequest("XAF").titleDocuments)
+        assertEquals(
+            emptyList(),
+            purchase.copy(
+                listingType = ListingType.RENTAL,
+                propertyType = "APARTMENT",
+            ).toCreateMandateRequest("XAF").titleDocuments,
+        )
+        assertEquals(emptyList(), purchase.copy(titleDocuments = emptyList()).toCreateMandateRequest("XAF").titleDocuments)
     }
 
     @Test

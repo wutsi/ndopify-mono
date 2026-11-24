@@ -23,6 +23,9 @@ data class MandateEditForm(
     // A building sale's two counts (whole numbers); null for any other type
     val levels: String? = null,
     val units: String? = null,
+    // A sale's title documents, by TitleDocumentType name: the mandate's own list (ownership for a listing, required
+    // for a search). Empty for a rental.
+    val documents: List<String> = emptyList(),
     val amenities: List<String> = emptyList(),
     val priceAmount: String? = null,
     val movingPeriod: MovingPeriod? = null,
@@ -41,9 +44,11 @@ data class MandateEditForm(
                 rooms = mandate.rooms,
                 furnitureType = mandate.furnitureType?.name ?: any,
                 parkings = mandate.parkings ?: any,
-                area = mandate.area?.toString(),
+                area = mandate.area?.let { MandateLabels.formatNumber(it) },
                 levels = mandate.levels?.toString(),
                 units = mandate.units?.toString(),
+                documents = (if (mandate.mandateType == MandateType.LISTING) mandate.ownershipDocuments else mandate.titleDocuments)
+                    .map { it.name },
                 amenities = Amenity.of(mandate).map { it.key },
                 priceAmount = MandateLabels.formatNumber(mandate.price.amount),
                 movingPeriod = mandate.movingPeriod,

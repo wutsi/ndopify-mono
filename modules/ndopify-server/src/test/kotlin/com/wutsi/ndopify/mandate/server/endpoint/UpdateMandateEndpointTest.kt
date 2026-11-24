@@ -272,16 +272,16 @@ class UpdateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `update drops the documents of a non-land sale`() {
+    fun `update keeps the documents of a house sale`() {
         val response = rest.postForEntity(
             "/v1/mandates/1",
-            request.copy(propertyType = PropertyType.VILLA, titleDocuments = listOf(TitleDocumentType.LAND_TITLE)),
+            request.copy(propertyType = PropertyType.HOUSE, titleDocuments = listOf(TitleDocumentType.LAND_TITLE)),
             Any::class.java,
         )
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(
-            emptyList(),
+            listOf(TitleDocumentType.LAND_TITLE),
             rest.getForEntity("/v1/mandates/1", GetMandateResponse::class.java).body!!.mandate.titleDocuments,
         )
     }
@@ -319,16 +319,16 @@ class UpdateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `update drops the ownership documents of a non-land sale`() {
+    fun `update keeps the ownership documents of a house sale`() {
         val response = rest.postForEntity(
             "/v1/mandates/1",
-            request.copy(propertyType = PropertyType.VILLA, ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE)),
+            request.copy(propertyType = PropertyType.HOUSE, ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE)),
             Any::class.java,
         )
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(
-            emptyList(),
+            listOf(TitleDocumentType.LAND_TITLE),
             rest.getForEntity("/v1/mandates/1", GetMandateResponse::class.java).body!!.mandate.ownershipDocuments,
         )
     }

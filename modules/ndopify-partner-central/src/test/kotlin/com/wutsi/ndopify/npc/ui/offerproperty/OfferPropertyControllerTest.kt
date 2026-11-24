@@ -209,7 +209,8 @@ class OfferPropertyControllerTest {
         val result = mvc.perform(get("/offer-property?step=features").session(session)).andReturn()
 
         assertEquals(
-            listOf("APARTMENT", "HOUSE", "ROOM", "STUDIO", "DUPLEX", "BUILDING"),
+            // #304: a rental offers neither land nor a building.
+            listOf("APARTMENT", "HOUSE", "ROOM", "STUDIO", "DUPLEX"),
             (model(result)["propertyTypes"] as List<*>).map { it.toString() },
         )
         assertTrue((model(result)["propertyTypeLabels"] as Map<*, *>).isNotEmpty())
@@ -543,34 +544,45 @@ class OfferPropertyControllerTest {
     fun `a sale's feature flags follow the saved type`() {
         session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale.copy(propertyType = null))
         val first = model(mvc.perform(get("/offer-property?step=features").session(session)).andReturn())
-        assertEquals(true, first["showsRooms"])
+        assertEquals(false, first["needsFurniture"])
         assertEquals(false, first["requiresRooms"])
-        assertEquals(true, first["showsParking"])
         assertEquals(false, first["requiresParking"])
+        assertEquals(false, first["asksArea"])
         assertEquals(true, first["asksOwnershipDocuments"])
+
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            sale.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = null),
+        )
+        val commercial = model(mvc.perform(get("/offer-property?step=features").session(session)).andReturn())
+        assertEquals(false, commercial["needsFurniture"])
+        assertEquals(false, commercial["requiresRooms"])
+        assertEquals(false, commercial["requiresParking"])
+        assertEquals(false, commercial["asksArea"])
+        assertEquals(true, commercial["asksOwnershipDocuments"])
 
         session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale)
         val land = model(mvc.perform(get("/offer-property?step=features").session(session)).andReturn())
-        assertEquals(false, land["showsRooms"])
+        assertEquals(false, land["needsFurniture"])
         assertEquals(false, land["requiresRooms"])
-        assertEquals(false, land["showsParking"])
         assertEquals(false, land["requiresParking"])
+        assertEquals(true, land["asksArea"])
         assertEquals(true, land["asksOwnershipDocuments"])
 
         session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale.copy(propertyType = "HOUSE", area = null))
         val house = model(mvc.perform(get("/offer-property?step=features").session(session)).andReturn())
-        assertEquals(true, house["showsRooms"])
+        assertEquals(true, house["needsFurniture"])
         assertEquals(true, house["requiresRooms"])
-        assertEquals(true, house["showsParking"])
         assertEquals(true, house["requiresParking"])
-        assertEquals(false, house["asksOwnershipDocuments"])
+        assertEquals(false, house["asksArea"])
+        assertEquals(true, house["asksOwnershipDocuments"])
 
         session.setAttribute(PendingListing.SESSION_ATTRIBUTE, complete)
         val rental = model(mvc.perform(get("/offer-property?step=features").session(session)).andReturn())
-        assertEquals(true, rental["showsRooms"])
+        assertEquals(true, rental["needsFurniture"])
         assertEquals(true, rental["requiresRooms"])
-        assertEquals(true, rental["showsParking"])
         assertEquals(true, rental["requiresParking"])
+        assertEquals(false, rental["asksArea"])
         assertEquals(false, rental["asksOwnershipDocuments"])
     }
 
@@ -597,8 +609,9 @@ class OfferPropertyControllerTest {
 
         assertEquals("redirect:/offer-property?step=amenities", result.modelAndView?.viewName)
         assertEquals("ROOM", pending()?.propertyType)
+        // A room has no number of rooms, but it does ask its parking and its furniture (#304).
         assertNull(pending()?.rooms)
-        assertNull(pending()?.parkings)
+        assertEquals("2", pending()?.parkings)
         assertEquals("FULLY_FURNISHED", pending()?.furnitureType)
     }
 
@@ -734,13 +747,76 @@ class OfferPropertyControllerTest {
     }
 
     @Test
-    fun `a villa sale drops the documents`() {
+    fun `a villa sale keeps its documents`() {
         session.setAttribute(
             PendingListing.SESSION_ATTRIBUTE,
             sale.copy(propertyType = null, furnitureType = null),
         )
 
-        mvc.perform(features("propertyType" to "HOUSE", "ownershipDocuments" to "LAND_TITLE", "rooms" to "3", "hasParking" to "NO")).andReturn()
+        mvc.perform(
+            features(
+                "propertyType" to "HOUSE",
+                "furnitureType" to "UNFURNISHED",
+                "ownershipDocuments" to "LAND_TITLE",
+                "rooms" to "3",
+                "hasParking" to "NO",
+            ),
+        ).andReturn()
+
+        assertEquals(listOf(TitleDocumentType.LAND_TITLE), pending()?.ownershipDocuments)
+    }
+
+    @Test
+    fun `a house sale's documents reach the mandate`() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            sale.copy(
+                propertyType = null,
+                area = null,
+                rooms = null,
+                furnitureType = null,
+                parkings = null,
+            ),
+        )
+        doReturn(CreateMandateResponse(mandateId = 42)).whenever(mandateClient).create(any())
+
+        mvc.perform(
+            features(
+                "propertyType" to "HOUSE",
+                "furnitureType" to "UNFURNISHED",
+                "rooms" to "3",
+                "hasParking" to "NO",
+                "ownershipDocuments" to "LAND_TITLE",
+                "ownershipDocuments" to "SURVEY_PLAN",
+            ),
+        ).andReturn()
+        val result = mvc.perform(post("/offer-property/review").session(session)).andReturn()
+
+        assertEquals("redirect:/offer-property?step=confirmation", result.modelAndView?.viewName)
+        val request = argumentCaptor<CreateMandateRequest>()
+        verify(mandateClient).create(request.capture())
+        assertEquals(
+            listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+            request.firstValue.ownershipDocuments,
+        )
+    }
+
+    @Test
+    fun `a rental posts no documents`() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            complete.copy(propertyType = null, rooms = null, furnitureType = null, parkings = null),
+        )
+
+        mvc.perform(
+            features(
+                "propertyType" to "APARTMENT",
+                "furnitureType" to "UNFURNISHED",
+                "rooms" to "2",
+                "hasParking" to "NO",
+                "ownershipDocuments" to "LAND_TITLE",
+            ),
+        ).andReturn()
 
         assertEquals(emptyList(), pending()?.ownershipDocuments)
     }
@@ -831,12 +907,11 @@ class OfferPropertyControllerTest {
     }
 
     @Test
-    fun `a rental building asks no counts`() {
+    fun `a rental never offers a building nor keeps its counts`() {
         session.setAttribute(
             PendingListing.SESSION_ATTRIBUTE,
             complete.copy(
-                propertyCategory = PropertyCategory.RESIDENTIAL,
-                propertyType = "BUILDING",
+                propertyType = null,
                 rooms = null,
                 furnitureType = null,
                 parkings = null,
@@ -847,7 +922,9 @@ class OfferPropertyControllerTest {
             features("propertyType" to "BUILDING", "levels" to "3", "units" to "12", "hasParking" to "NO"),
         ).andReturn()
 
-        assertEquals("redirect:/offer-property?step=amenities", result.modelAndView?.viewName)
+        // A building is sold as a whole only (#304): a rental refuses the type and keeps no count.
+        assertEquals("features", model(result)["step"])
+        assertEquals("Choisissez le type de bien.", errors(result)["propertyType"])
         assertNull(pending()?.levels)
         assertNull(pending()?.units)
     }
@@ -975,26 +1052,60 @@ class OfferPropertyControllerTest {
     fun `a villa sale review has no rate line`() {
         session.setAttribute(
             PendingListing.SESSION_ATTRIBUTE,
-            sale.copy(propertyType = "HOUSE", area = null, rooms = "3", parkings = "0"),
+            sale.copy(
+                propertyType = "HOUSE",
+                area = null,
+                rooms = "3",
+                parkings = "0",
+                furnitureType = "UNFURNISHED",
+            ),
         )
 
         val result = mvc.perform(get("/offer-property?step=review").session(session)).andReturn()
 
         assertTrue((model(result)["termsLines"] as List<*>).none { it.toString().contains("FCFA/m²") })
+        assertTrue((model(result)["termsLines"] as List<*>).none { it.toString().contains("/unité") })
+        assertNull(model(result)["pricePerUnitLabel"])
     }
 
     @Test
-    fun `a villa sale review has no ownership documents row`() {
+    fun `a villa sale review lists its documents, or none`() {
         session.setAttribute(
             PendingListing.SESSION_ATTRIBUTE,
-            sale.copy(propertyType = "HOUSE", area = null, rooms = "3", parkings = "0"),
+            sale.copy(
+                propertyType = "HOUSE",
+                area = null,
+                rooms = "3",
+                parkings = "0",
+                furnitureType = "UNFURNISHED",
+            ),
         )
 
         val result = mvc.perform(get("/offer-property?step=review").session(session)).andReturn()
 
         assertEquals("review", model(result)["step"])
-        assertNull(model(result)["ownershipDocumentsLabel"])
+        assertEquals("Aucun document déclaré", model(result)["ownershipDocumentsLabel"])
         assertEquals("Vente, usage résidentiel", model(result)["categoryLabel"])
+    }
+
+    @Test
+    fun `a building sale's review reads its counts once and its rate`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, buildingSale)
+
+        val result = mvc.perform(get("/offer-property?step=review").session(session)).andReturn()
+
+        assertEquals("Immeuble entier · 3 étages · 12 unités · 850 m²", model(result)["propertyLabel"])
+        assertEquals("≈ " + FORMATTER.compactMoney(20_833_300) + "/unité pour 12 unités", model(result)["pricePerUnitLabel"])
+        assertEquals(
+            listOf(
+                FORMATTER.compactMoney(250_000_000),
+                "≈ " + FORMATTER.compactMoney(20_833_300) + "/unité pour 12 unités",
+                "Disponible dès le " + FORMATTER.date(TODAY.plusDays(10)),
+            ),
+            model(result)["termsLines"],
+        )
+        assertNull(model(result)["levelsLabel"])
+        assertNull(model(result)["unitsLabel"])
     }
 
     // POST /offer-property/review
