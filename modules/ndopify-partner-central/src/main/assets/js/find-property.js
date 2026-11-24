@@ -490,8 +490,8 @@
         function updateQuestions() {
             var type = checkedType();
             var landSale = sale && type === "LAND";
-            show("rooms", asks(type, "rooms"), false);
-            show("furnitureType", asks(type, "furniture"), false);
+            show("rooms", asks(type, "rooms"), true);
+            show("furnitureType", asks(type, "furniture"), true);
             show("parkings", asks(type, "parkings"), false);
             // Every purchase asks the documents it requires, whatever its type; always optional (#304).
             show("titleDocuments", RULES.asksDocuments(listingType), false);

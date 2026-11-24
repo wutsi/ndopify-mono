@@ -121,9 +121,9 @@ data class PendingListing(
 
     /**
      * The answers as a LISTING mandate, for the chosen project. Questions that don't apply to the chosen type are sent
-     * as null. A sale is a one-off price with no advance, deposit nor furnishing; every sale sends the documents of
-     * ownership the seller declares, whatever its type. A building sale sends its counts, and no amenity at all. The
-     * price per m² is not an answer: it is never sent.
+     * as null. A sale is a one-off price with no advance nor deposit, and asks furniture like a rental (#304); every
+     * sale sends the documents of ownership the seller declares, whatever its type. A building sale sends its counts,
+     * and no amenity at all. The price per m² and the price per unit are not answers: they are never sent.
      */
     fun toCreateMandateRequest(currency: String): CreateMandateRequest {
         val amenitiesNeeded = needsAmenities()

@@ -534,7 +534,7 @@ class FindPropertyController(
             }
         }
         if (FindPropertyRules.parsePropertyType(answers.propertyType) != PropertyType.LAND) return null
-        val area = answers.area ?: return null
+        val area = answers.area?.takeIf { it >= 5 } ?: return null
         return priceRate(amount, area)?.let {
             "≈ " + formatter.compactMoney(it) + "/m² pour " + MandateLabels.formatNumber(area) + " m²"
         }
