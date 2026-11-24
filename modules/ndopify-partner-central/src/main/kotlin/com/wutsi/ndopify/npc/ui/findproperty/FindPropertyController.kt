@@ -370,9 +370,13 @@ class FindPropertyController(
         model.addAttribute("errors", errors)
         model.addAttribute("buildingSale", answers.buildingSale())
         // "Revenir à la revue" instead of "Suivant": only once every answer is in.
+        val returning = returnTo == RETURN_TO_REVIEW && step != STEP_REVIEW && answers.firstIncompleteStep() == STEP_REVIEW
+        model.addAttribute("returning", returning)
+        // The step before this one in *this* branch: a building sale's budget goes back to property, not to the
+        // amenities step it never had. From the review, "Précédent" always goes back to the review.
         model.addAttribute(
-            "returning",
-            returnTo == RETURN_TO_REVIEW && step != STEP_REVIEW && answers.firstIncompleteStep() == STEP_REVIEW,
+            "previous",
+            if (returning) STEP_REVIEW else keys.getOrNull(keys.indexOf(step) - 1) ?: keys.first(),
         )
 
         when (step) {

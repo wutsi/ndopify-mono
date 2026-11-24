@@ -424,6 +424,21 @@ class FindPropertyTemplateTest {
     }
 
     @Test
+    fun `a building sale's previous links follow its six steps`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, buildingSale)
+
+        // Budget skips the amenities step the branch doesn't have; contact still goes back to budget.
+        assertEquals(
+            "/find-property?step=property",
+            render(get("/find-property?step=budget")).selectFirst("[data-prev]")?.attr("href"),
+        )
+        assertEquals(
+            "/find-property?step=budget",
+            render(get("/find-property?step=contact")).selectFirst("[data-prev]")?.attr("href"),
+        )
+    }
+
+    @Test
     fun `every other branch keeps the seven steps`() {
         session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
 

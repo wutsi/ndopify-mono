@@ -160,7 +160,7 @@
                     </div>
                     <div class="form__actions">
                         <a class="btn btn--outline" data-prev
-                           th:href="${returning} ? @{/find-property(step='review')} : @{/find-property(step='need')}">Précédent</a>
+                           th:href="@{/find-property(step=${previous})}">Précédent</a>
                         <button aria-describedby="sector-hint" class="btn btn--primary" data-next
                                 th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
                         </button>
@@ -312,7 +312,7 @@
 
                     <div class="form__actions">
                         <a class="btn btn--outline" data-prev
-                           th:href="${returning} ? @{/find-property(step='review')} : @{/find-property(step='area')}">Précédent</a>
+                           th:href="@{/find-property(step=${previous})}">Précédent</a>
                         <button class="btn btn--primary" data-next
                                 th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
                         </button>
@@ -373,7 +373,7 @@
                     </fieldset>
                     <div class="form__actions">
                         <a class="btn btn--outline" data-prev
-                           th:href="${returning} ? @{/find-property(step='review')} : @{/find-property(step='property')}">Précédent</a>
+                           th:href="@{/find-property(step=${previous})}">Précédent</a>
                         <button class="btn btn--primary" data-next
                                 th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
                         </button>
@@ -468,7 +468,7 @@
                     </div>
                     <div class="form__actions">
                         <a class="btn btn--outline" data-prev
-                           th:href="${returning} ? @{/find-property(step='review')} : @{/find-property(step='amenities')}">Précédent</a>
+                           th:href="@{/find-property(step=${previous})}">Précédent</a>
                         <button aria-describedby="price-hint" class="btn btn--primary" data-next
                                 th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
                         </button>
@@ -564,7 +564,7 @@
                     </div>
                     <div class="form__actions">
                         <a class="btn btn--outline" data-prev
-                           th:href="${returning} ? @{/find-property(step='review')} : @{/find-property(step='budget')}">Précédent</a>
+                           th:href="@{/find-property(step=${previous})}">Précédent</a>
                         <button aria-describedby="contact-hint" class="btn btn--primary" data-next
                                 th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
                         </button>
@@ -751,7 +751,7 @@
                     </div>
 
                     <div class="form__actions">
-                        <a class="btn btn--outline" data-prev th:href="@{/find-property(step='contact')}">Précédent</a>
+                        <a class="btn btn--outline" data-prev th:href="@{/find-property(step=${previous})}">Précédent</a>
                         <button aria-describedby="review-hint" class="btn btn--primary" data-submit type="submit">
                             Envoyer ma demande
                         </button>

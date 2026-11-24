@@ -637,6 +637,21 @@ class OfferPropertyTemplateTest {
     }
 
     @Test
+    fun `a building sale's previous links skip the amenities step`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, buildingSale)
+
+        // Contact goes back to the features step, not to the amenities step the branch doesn't have.
+        assertEquals(
+            "/offer-property?step=features",
+            render(get("/offer-property?step=contact")).selectFirst("a[data-prev]")?.attr("href"),
+        )
+        assertEquals(
+            "/offer-property?step=terms",
+            render(get("/offer-property?step=features")).selectFirst("a[data-prev]")?.attr("href"),
+        )
+    }
+
+    @Test
     fun `features step for commercial shows only the area`() {
         session.setAttribute(
             PendingListing.SESSION_ATTRIBUTE,

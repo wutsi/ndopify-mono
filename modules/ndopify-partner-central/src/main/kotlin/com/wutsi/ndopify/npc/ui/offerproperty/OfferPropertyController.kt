@@ -409,9 +409,13 @@ class OfferPropertyController(
         model.addAttribute("buildingSale", answers.buildingSale())
         model.addAttribute("exitUrl", exitUrl(answers))
         // "Revenir à la revue" instead of "Suivant": only once every answer is in.
+        val returning = returnTo == RETURN_TO_REVIEW && step != STEP_REVIEW && firstIncomplete(answers) == STEP_REVIEW
+        model.addAttribute("returning", returning)
+        // The step before this one in *this* branch: a building sale's contact goes back to features, not to the
+        // amenities step it never had. From the review, "Précédent" always goes back to the review.
         model.addAttribute(
-            "returning",
-            returnTo == RETURN_TO_REVIEW && step != STEP_REVIEW && firstIncomplete(answers) == STEP_REVIEW,
+            "previous",
+            if (returning) STEP_REVIEW else keys.getOrNull(keys.indexOf(step) - 1) ?: keys.first(),
         )
 
         if (step == STEP_PROPERTY) {
