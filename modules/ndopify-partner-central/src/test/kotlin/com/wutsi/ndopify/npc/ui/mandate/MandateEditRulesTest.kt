@@ -673,6 +673,56 @@ class MandateEditRulesTest {
     }
 
     @Test
+    fun `a stored rental land is asked its surface and saves it`() {
+        val land = MANDATE.copy(
+            listingType = ListingType.RENTAL,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = PropertyType.LAND,
+            rooms = null,
+            furnitureType = null,
+            parkings = null,
+            area = 300,
+        )
+        val form = FORM.copy(
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = "LAND",
+            rooms = null,
+            furnitureType = null,
+            parkings = null,
+            area = "300",
+        )
+
+        assertTrue(MandateEditRules.showsArea(form, land))
+        assertEquals(300, MandateEditRules.request(form, land).area)
+    }
+
+    @Test
+    fun `a surface grouped with a browser's narrow no-break space is parsed`() {
+        val land = MANDATE.copy(
+            mandateType = MandateType.LISTING,
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = PropertyType.LAND,
+            rooms = null,
+            furnitureType = null,
+            parkings = null,
+            price = Money(15_000_000, "XAF", PeriodicityType.NONE),
+        )
+        val form = FORM.copy(
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = "LAND",
+            rooms = null,
+            furnitureType = null,
+            parkings = null,
+            area = "120\u202F000",
+            priceAmount = "15 000 000",
+        )
+
+        assertEquals(emptyMap(), MandateEditRules.errors(form, land, FORMATTER))
+        assertEquals(120_000, MandateEditRules.request(form, land).area)
+    }
+
+    @Test
     fun `an indifferent sale search keeps its surface`() {
         val search = SALE_SEARCH.copy(propertyType = null, area = 120)
         val form = FORM.copy(propertyType = "ANY")

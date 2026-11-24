@@ -217,13 +217,14 @@ object MandateEditRules {
             FindPropertyRules.asksParkings(form.propertyCategory, type(form), mandate.listingType)
 
     /**
-     * Whether the page asks the surface: a commercial property or a plot of land bought; a stored rental building keeps
-     * the surface its commercial usage already asked for. A search without a type (*Indifférent*) keeps it when it may
+     * Whether the page asks the surface: a commercial property or a plot of land bought; a stored rental building or
+     * plot keeps the surface its usage already asked for. A search without a type (*Indifférent*) keeps it when it may
      * still match a plot or a commercial property, as *Trouver un bien* does.
      */
     fun showsArea(form: MandateEditForm, mandate: Mandate): Boolean =
         FindPropertyRules.needsArea(form.propertyCategory, type(form), mandate.listingType) ||
             storedRentalBuilding(form, mandate, type(form)) ||
+            storedRentalLand(form, mandate, type(form)) ||
             (
                 mandate.mandateType == MandateType.SEARCH && type(form) == null &&
                     (form.propertyCategory == PropertyCategory.COMMERCIAL || FindPropertyRules.isSale(mandate.listingType))
@@ -264,6 +265,16 @@ object MandateEditRules {
             type == PropertyType.BUILDING &&
             form.propertyCategory == mandate.propertyCategory
 
+    /**
+     * A rental plot of land stored before #275 keeps its type while it is still the answer and in its saved usage: like
+     * the rental building, it keeps the surface it had, so its answer stays editable and saves unchanged.
+     */
+    private fun storedRentalLand(form: MandateEditForm, mandate: Mandate, type: PropertyType?): Boolean =
+        !FindPropertyRules.isSale(mandate.listingType) &&
+            mandate.propertyType == PropertyType.LAND &&
+            type == PropertyType.LAND &&
+            form.propertyCategory == mandate.propertyCategory
+
     /** The posted document names as types: unknown names and UNKNOWN dropped, duplicates removed, in form order. */
     private fun documents(form: MandateEditForm): List<TitleDocumentType> =
         form.documents
@@ -278,10 +289,7 @@ object MandateEditRules {
         val answer = form.propertyType?.takeIf { it.isNotEmpty() && it != ANY }
         val owner = mandate.mandateType == MandateType.LISTING
         // A rental land stored before #275 keeps its answer: only unchanged, in its saved category.
-        val storedLand = !FindPropertyRules.isSale(mandate.listingType) &&
-            mandate.propertyType == PropertyType.LAND &&
-            form.propertyType == PropertyType.LAND.name &&
-            form.propertyCategory == mandate.propertyCategory
+        val storedLand = storedRentalLand(form, mandate, type(form))
         return when {
             answer == null && owner -> "Choisissez un type de bien proposé."
             answer != null && type(form) == null -> "Choisissez un type de bien proposé."
@@ -326,9 +334,13 @@ object MandateEditRules {
         return if (number != null && number in 1..max) null else "Indiquez un nombre entier, de 1 à $max."
     }
 
-    /** Blank → null (optional); digits only (spaces and dots as separators) → the surface; else a failure. */
+    /**
+     * Blank → null (optional); digits only (spaces and dots as separators) → the surface; else a failure. A browser's
+     * grouped text uses U+202F (`toLocaleString("fr-FR")`), an input the page itself rendered U+00A0: both are dropped
+     * like every other space, so a shown surface can always be saved.
+     */
     private fun area(value: String?): Result<Int?> {
-        val text = value.orEmpty().filterNot { it.isWhitespace() || it == '.' || it == ' ' }
+        val text = value.orEmpty().filterNot { it.isWhitespace() || it == '.' || it == '\u00a0' || it == '\u202f' }
         return when {
             text.isEmpty() -> Result.success(null)
             text.all { it.isDigit() } && text.length <= MAX_AREA_DIGITS -> Result.success(text.toInt())
