@@ -11,6 +11,8 @@ import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
@@ -235,6 +237,18 @@ class ListingSectionTemplateTest {
             "RESIDENTIAL",
             form.selectFirst("input[name=propertyType][value=LAND]")?.parent()?.attr("data-categories"),
         )
+    }
+
+    @Test
+    fun `property - a legacy rental land is hidden`() {
+        // #275: a rental land stored before land became sale-only is neither offered nor checked
+        val form = form(
+            render("property", LISTING.copy(propertyCategory = PropertyCategory.RESIDENTIAL, propertyType = PropertyType.LAND)),
+        )
+
+        assertEquals(10, form.select("input[name=propertyType]").size)
+        assertNull(form.selectFirst("input[name=propertyType][value=LAND]"))
+        assertNull(form.selectFirst("input[name=propertyType][checked]"))
     }
 
     @Test

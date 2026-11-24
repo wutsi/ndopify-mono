@@ -1,11 +1,13 @@
 package com.wutsi.ndopify.npc.ui.listing
 
 import com.wutsi.ndopify.listing.dto.FurnitureType
+import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.LISTING
+import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.SALE
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
@@ -19,8 +21,8 @@ class ListingFormRulesTest {
     private val formatter = TenantFormatter(TENANT)
     private val today = LocalDate.of(2026, 10, 26)
 
-    private fun errors(section: ListingSection, form: ListingSectionForm) =
-        ListingRules.errors(section, form, LISTING, today, formatter)
+    private fun errors(section: ListingSection, form: ListingSectionForm, listing: Listing = LISTING) =
+        ListingRules.errors(section, form, listing, today, formatter)
 
     // A valid answer for each section
     private val location = ListingSectionForm(neighborhoodId = "3001", landmark = "Derrière l'école")
@@ -84,6 +86,50 @@ class ListingFormRulesTest {
             mapOf("propertyCategory" to "Choisissez l'usage du bien."),
             errors(ListingSection.PROPERTY, property.copy(propertyCategory = "UNKNOWN")),
         )
+    }
+
+    @Test
+    fun `property - land is refused on a rental`() {
+        // #275: a plot of land is sold, never let, whatever the category it is posted under
+        val message = mapOf("propertyType" to "Choisissez le type de bien.")
+        assertEquals(message, errors(ListingSection.PROPERTY, property.copy(propertyType = "LAND")))
+        assertEquals(
+            message,
+            errors(ListingSection.PROPERTY, property.copy(propertyCategory = "COMMERCIAL", propertyType = "LAND")),
+        )
+    }
+
+    @Test
+    fun `property - a sale land asks no follow-up`() {
+        // #275: land is residential, so without its own exclusions the sale would ask rooms, kitchens and parking
+        val land = ListingSectionForm(
+            version = 4,
+            propertyCategory = "RESIDENTIAL",
+            propertyType = "LAND",
+            furnitureType = "FULLY_FURNISHED",
+            rooms = "3",
+            livingRooms = "1",
+            bathrooms = "2",
+            kitchens = "1",
+            parkings = "2",
+            levels = "1",
+            floorLevel = "1",
+            area = "800",
+        )
+
+        assertEquals(emptyMap(), errors(ListingSection.PROPERTY, land, SALE))
+        val request = ListingRules.request(ListingSection.PROPERTY, land, SALE)
+        assertEquals(PropertyCategory.RESIDENTIAL, request.propertyCategory)
+        assertEquals(PropertyType.LAND, request.propertyType)
+        assertNull(request.furnitureType)
+        assertNull(request.rooms)
+        assertNull(request.livingRooms)
+        assertNull(request.bathrooms)
+        assertNull(request.kitchens)
+        assertNull(request.parkings)
+        assertNull(request.levels)
+        assertNull(request.floorLevel)
+        assertEquals(800, request.area)
     }
 
     @Test
