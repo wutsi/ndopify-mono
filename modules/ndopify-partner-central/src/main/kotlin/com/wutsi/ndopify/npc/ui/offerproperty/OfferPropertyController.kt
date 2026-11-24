@@ -521,15 +521,15 @@ class OfferPropertyController(
             val type = FindPropertyRules.parsePropertyType(answers.propertyType)
             val rate = OfferPropertyRules.pricePerSqm(answers.listingType, type, answers.priceAmount, answers.area)
             return listOfNotNull(
-                answers.priceAmount?.let { formatter.money(it) },
+                answers.priceAmount?.let { formatter.compactMoney(it) },
                 rate?.let {
-                    "≈ " + formatter.money(it) + "/m² pour " + MandateLabels.formatNumber(answers.area!!) + " m²"
+                    "≈ " + formatter.compactMoney(it) + "/m² pour " + MandateLabels.formatNumber(answers.area!!) + " m²"
                 },
                 availability,
             )
         }
         return listOfNotNull(
-            answers.priceAmount?.let { formatter.money(it) + " par mois" },
+            answers.priceAmount?.let { formatter.compactMoney(it) + " par mois" },
             answers.advanceRent?.let { "Avance de $it mois" } ?: "Sans avance de loyer",
             answers.securityDeposit?.let { "Caution de $it mois" } ?: "Sans caution",
             availability,

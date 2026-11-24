@@ -223,7 +223,7 @@ class MandateCloseTemplateTest {
 
         assertEquals("Appartement · 3 chambres, Bonapriso — annonce n° 3012", text(page.selectFirst("[data-recap-property]")))
         assertEquals("Ray Sponsible", text(page.selectFirst("[data-recap-client]")))
-        assertEquals("240 000 FCFA / mois", text(page.selectFirst("[data-recap-rent]")))
+        assertEquals("240K FCFA / mois", text(page.selectFirst("[data-recap-rent]")))
         assertEquals(
             "À la confirmation : le mandat n° 201 est fermé, l'annonce est retirée du marché et le mandat du bailleur est fermé. Cette action est définitive.",
             text(page.selectFirst("[data-recap-note]")),
@@ -246,7 +246,7 @@ class MandateCloseTemplateTest {
 
         assertEquals("Appartement · 2 chambres, Bonapriso — annonce n° 501", text(page.selectFirst("[data-recap-property]")))
         assertEquals("Sandrine Eboa", text(page.selectFirst("[data-recap-client]")))
-        assertEquals("150 000 FCFA / mois", text(page.selectFirst("[data-recap-rent]")))
+        assertEquals("150K FCFA / mois", text(page.selectFirst("[data-recap-rent]")))
         assertEquals(
             "À la confirmation : le mandat n° 201 est fermé, l'annonce est retirée du marché et la recherche du client est fermée. Cette action est définitive.",
             text(page.selectFirst("[data-recap-note]")),
@@ -265,7 +265,7 @@ class MandateCloseTemplateTest {
 
         assertEquals("Un bien hors de vos annonces", text(page.selectFirst("[data-recap-property]")))
         assertEquals("Ray Sponsible", text(page.selectFirst("[data-recap-client]")))
-        assertEquals("240 000 FCFA / mois", text(page.selectFirst("[data-recap-rent]")))
+        assertEquals("240K FCFA / mois", text(page.selectFirst("[data-recap-rent]")))
         assertEquals(
             "À la confirmation : le mandat n° 201 est fermé. Aucune annonce n'est retirée du marché. Cette action est définitive.",
             text(page.selectFirst("[data-recap-note]")),
@@ -412,7 +412,7 @@ class MandateCloseTemplateTest {
             listOf("Bien", "Acheteur", "Prix de vente final"),
             confirm.select(".close-recap .review__term").map { it.text() },
         )
-        assertEquals("15 000 000 FCFA", text(confirm.selectFirst("[data-recap-rent]")))
+        assertEquals("15M FCFA", text(confirm.selectFirst("[data-recap-rent]")))
         assertTrue(text(confirm.selectFirst("[data-recap-note]"))!!.contains("l'annonce est marquée vendue"))
         assertTrue(text(confirm.selectFirst("[data-recap-note]"))!!.contains("le mandat de l'acheteur est fermé"))
     }

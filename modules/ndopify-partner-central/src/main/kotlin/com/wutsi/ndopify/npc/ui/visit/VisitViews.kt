@@ -87,7 +87,7 @@ object VisitViews {
         val noShowFrom = VisitRules.noShowFrom(visit)?.let { VisitSlots.dateTimeLabel(Date(it), tenant, formatter) }
         val visitFee = if (visit.status in VisitRules.OPEN) {
             visit.visitFee.takeIf { it.amount > 0 }?.let {
-                "Frais de visite : ${formatter.money(it.amount, it.currency)}, à encaisser auprès du client à la visite."
+                "Frais de visite : ${formatter.compactMoney(it.amount, it.currency)}, à encaisser auprès du client à la visite."
             } ?: "Aucun frais de visite."
         } else {
             null
@@ -210,7 +210,6 @@ object VisitViews {
             MandateLabels.price(
                 Money(listing.price, listing.currencyCode, listing.pricePeriodicityType),
                 formatter,
-                compact = true,
             )
 
     private fun address(listing: Listing?): String? =

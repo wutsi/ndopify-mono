@@ -139,7 +139,6 @@ object MandateCloseViews {
             rent = MandateLabels.price(
                 Money(listing.price, listing.currencyCode, listing.pricePeriodicityType),
                 formatter,
-                compact = true,
             ),
             priceAmount = listing.price.takeIf { it > 0 },
             interestLabel = interestLabel(match, formatter),
@@ -164,7 +163,6 @@ object MandateCloseViews {
             rent = MandateLabels.price(
                 Money(listing.price, listing.currencyCode, listing.pricePeriodicityType),
                 formatter,
-                compact = true,
             ),
             priceAmount = listing.price.takeIf { it > 0 },
             interestLabel = interestLabel(match, formatter),
@@ -215,7 +213,7 @@ object MandateCloseViews {
         return CloseRecapView(
             property = propertyLabel(owner, selected, outside, listing, locations),
             client = clientLabel(owner, sale, selected, outside, customer),
-            price = formatter.money(amount) + if (sale) "" else " / mois",
+            price = formatter.compactMoney(amount) + if (sale) "" else " / mois",
             note = note(owner, sale, matchId != null, mandate.id),
         )
     }

@@ -212,13 +212,13 @@ object FindPropertyRules {
         if (isSale(listingType)) {
             when {
                 value == null || value <= 0 -> "Indiquez votre budget total."
-                value < MIN_SALE_PRICE -> "Indiquez un budget d'au moins ${formatter.money(MIN_SALE_PRICE)}."
+                value < MIN_SALE_PRICE -> "Indiquez un budget d'au moins ${formatter.compactMoney(MIN_SALE_PRICE)}."
                 else -> null
             }
         } else {
             when {
                 value == null || value <= 0 -> "Indiquez votre budget mensuel."
-                value < MIN_RENT -> "Indiquez un loyer d'au moins ${formatter.money(MIN_RENT)} par mois."
+                value < MIN_RENT -> "Indiquez un loyer d'au moins ${formatter.compactMoney(MIN_RENT)} par mois."
                 else -> null
             }
         }

@@ -169,7 +169,7 @@ object MandateEditRules {
                 else -> "$amenities critères"
             },
             "budget" to listOfNotNull(
-                price?.let { formatter.money(it) + if (sale) "" else " / mois" } ?: "Montant à indiquer",
+                price?.let { formatter.compactMoney(it) + if (sale) "" else " / mois" } ?: "Montant à indiquer",
                 MandateLabels.MOVE_IN_LABELS[form.movingPeriod],
             ).joinToString(" · "),
             "comments" to when {
@@ -220,7 +220,7 @@ object MandateEditRules {
             }
             // A seller's floor, worded as the offer wizard's (OfferPropertyRules): a sale price, not a budget.
             sale && owner -> if (amount < FindPropertyRules.MIN_SALE_PRICE) {
-                "Indiquez un prix d'au moins ${formatter.money(FindPropertyRules.MIN_SALE_PRICE)}."
+                "Indiquez un prix d'au moins ${formatter.compactMoney(FindPropertyRules.MIN_SALE_PRICE)}."
             } else {
                 null
             }

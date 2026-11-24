@@ -65,7 +65,7 @@ class OfferPropertyRulesTest {
         assertEquals("Indiquez le loyer mensuel souhaité.", OfferPropertyRules.priceAmount(null, FORMATTER, null))
         assertEquals("Indiquez le loyer mensuel souhaité.", OfferPropertyRules.priceAmount(0, FORMATTER, null))
         assertEquals(
-            "Indiquez un loyer d'au moins ${FORMATTER.money(5000)} par mois.",
+            "Indiquez un loyer d'au moins 5K\u00a0FCFA par mois.",
             OfferPropertyRules.priceAmount(4999, FORMATTER, null),
         )
         assertNull(OfferPropertyRules.priceAmount(5000, FORMATTER, null))
@@ -248,7 +248,7 @@ class OfferPropertyRulesTest {
     fun `a sale has its own price floor`() {
         assertNull(OfferPropertyRules.priceAmount(1_000_000L, FORMATTER, ListingType.SALE))
         assertEquals(
-            "Indiquez un prix d'au moins ${FORMATTER.money(1_000_000)}.",
+            "Indiquez un prix d'au moins 1M\u00a0FCFA.",
             OfferPropertyRules.priceAmount(900_000L, FORMATTER, ListingType.SALE),
         )
         assertEquals("Indiquez le prix de vente souhaité.", OfferPropertyRules.priceAmount(null, FORMATTER, ListingType.SALE))

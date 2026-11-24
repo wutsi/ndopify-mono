@@ -117,7 +117,7 @@ class MandateViewsTest {
 
         assertTrue(view.hasContract)
         assertEquals("3 mois", view.contractDuration)
-        assertEquals("5 000 FCFA", view.visitFee!!.replace('\u00a0', ' '))
+        assertEquals("5K FCFA", view.visitFee!!.replace('\u00a0', ' '))
     }
 
     @Test
@@ -185,7 +185,7 @@ class MandateViewsTest {
         assertEquals(listOf(true, true, true, true), view.steps.map { it.done })
         assertEquals("Fermé", view.steps.last().label)
         assertEquals("01 nov. 2026", view.closedAt)
-        assertEquals("240\u00a0000\u00a0FCFA / mois", view.finalPrice)
+        assertEquals("240K\u00a0FCFA / mois", view.finalPrice)
         assertEquals("12 jours", view.age)
         assertFalse(view.editable)
         assertFalse(view.closable)
@@ -199,7 +199,7 @@ class MandateViewsTest {
         )
 
         assertTrue(view.sale)
-        assertEquals("15\u00a0000\u00a0000\u00a0FCFA", view.finalPrice)
+        assertEquals("15M\u00a0FCFA", view.finalPrice)
     }
 
     @Test
@@ -207,7 +207,7 @@ class MandateViewsTest {
         val view = view(APPROVED.copy(status = MandateStatus.CLOSED, finalPrice = 240000))
 
         assertFalse(view.sale)
-        assertEquals("240\u00a0000\u00a0FCFA / mois", view.finalPrice)
+        assertEquals("240K\u00a0FCFA / mois", view.finalPrice)
     }
 
     @Test
@@ -318,7 +318,7 @@ class MandateViewsTest {
         assertTrue(view.sale)
         assertEquals("Acheteur · Maison", view.title)
         assertEquals("Acheteur", view.words.role)
-        assertEquals("Budget" to "15\u00a0000\u00a0000\u00a0FCFA", view.keyCriteria[1])
+        assertEquals("Budget" to "15M\u00a0FCFA", view.keyCriteria[1])
         assertEquals("Achat prévu" to "Dans 1 à 3\u00a0mois", view.keyCriteria[2])
         assertEquals("Proposez des biens à l'acheteur et organisez les visites.", view.nextStepHint)
     }
@@ -336,7 +336,7 @@ class MandateViewsTest {
         assertTrue(view.sale)
         assertEquals("Vendeur · Maison", view.title)
         assertEquals("Vendeur", view.words.role)
-        assertEquals("Prix" to "45\u00a0000\u00a0000\u00a0FCFA", view.keyCriteria[1])
+        assertEquals("Prix" to "45M\u00a0FCFA", view.keyCriteria[1])
         assertEquals("Disponibilité" to "Dans 1 à 3\u00a0mois", view.keyCriteria[2])
         assertEquals("Présentez le bien aux acheteurs et organisez les visites.", view.nextStepHint)
     }
@@ -348,7 +348,7 @@ class MandateViewsTest {
         assertEquals(
             listOf(
                 "Secteurs" to "Bonapriso, Akwa — Douala",
-                "Budget" to "250\u00a0000\u00a0FCFA / mois",
+                "Budget" to "250K\u00a0FCFA / mois",
                 "Emménagement" to "Dans 1 à 3\u00a0mois",
                 "Type de bien" to "Maison, 3 chambres",
                 "Autres précisions" to "Près d'une école",

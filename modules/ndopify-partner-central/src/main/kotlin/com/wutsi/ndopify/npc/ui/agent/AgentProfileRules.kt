@@ -80,7 +80,6 @@ object AgentProfileRules {
             MandateLabels.price(
                 Money(amount = it, currency = summary.currencyCode, periodicity = summary.pricePeriodicityType),
                 formatter,
-                compact = true,
             )
         }
 

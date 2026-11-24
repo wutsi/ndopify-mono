@@ -30,7 +30,7 @@ object AssignmentViews {
             sectorTerm = if (mandate.neighborhoodIds.size > 1) "Secteurs" else "Secteur",
             sector = sector(mandate, neighborhoods),
             priceTerm = MandateLabels.amountTerm(owner, mandate.listingType),
-            price = MandateLabels.price(mandate.price, formatter, compact = true),
+            price = MandateLabels.price(mandate.price, formatter),
             movingTerm = MandateLabels.dateTerm(owner, mandate.listingType),
             moving = MandateLabels.MOVE_IN_LABELS[mandate.movingPeriod],
             expiresAt = assignment.expiresAt.time,

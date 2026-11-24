@@ -542,7 +542,7 @@ class ListingViewsTest {
                 "parkings" to "Indiqué par le propriétaire : 2+",
                 "area" to "Indiqué par le propriétaire : 85 m²",
                 "amenities" to "Indiqué par le propriétaire : Compteur d'eau",
-                "price" to "Indiqué par le propriétaire : 150\u00a0000\u00a0FCFA / mois",
+                "price" to "Indiqué par le propriétaire : 150K\u00a0FCFA / mois",
                 "advanceRent" to "Indiqué par le propriétaire : 3 mois",
             ),
             ListingViews.ownerHints(form, mandate, locations, formatter),

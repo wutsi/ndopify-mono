@@ -310,7 +310,7 @@ class MandateEditTemplateTest {
         val budget = form.selectFirst("[data-edit-group=budget] [data-group-value]")?.text()
             ?.replace('\u00a0', ' ')
             ?.replace('\u202f', ' ')
-        assertEquals("15 000 000 FCFA · Dans 1 à 3 mois", budget)
+        assertEquals("15M FCFA · Dans 1 à 3 mois", budget)
     }
 
     @Test

@@ -141,7 +141,7 @@ object MandateViews {
             hasContract = contract != null,
             contractDuration = contract?.durationMonths?.takeIf { it > 0 }?.let { "$it mois" },
             visitFee = contract?.visitFee?.takeIf { it.amount > 0 }
-                ?.let { formatter.money(it.amount, it.currency.ifBlank { mandate.price.currency }) },
+                ?.let { formatter.compactMoney(it.amount, it.currency.ifBlank { mandate.price.currency }) },
             commission = if (mandate.listingType == ListingType.SALE) {
                 contract?.commissionRate?.takeIf { it > 0 }?.let { "$it % du prix de vente" }
             } else {

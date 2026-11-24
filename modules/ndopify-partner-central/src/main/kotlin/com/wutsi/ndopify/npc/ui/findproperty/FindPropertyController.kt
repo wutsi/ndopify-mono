@@ -436,7 +436,7 @@ class FindPropertyController(
             model.addAttribute("priceTerm", if (answers.isSale()) "Budget total" else "Budget mensuel")
             model.addAttribute(
                 "priceLabel",
-                answers.priceAmount?.let { formatter().money(it) + if (answers.isSale()) "" else " par mois" },
+                answers.priceAmount?.let { formatter().compactMoney(it) + if (answers.isSale()) "" else " par mois" },
             )
             model.addAttribute("moveInTerm", MandateLabels.moveInTerm(answers.listingType, answers.propertyCategory))
             model.addAttribute("movingPeriodLabel", MandateLabels.MOVE_IN_LABELS[answers.movingPeriod])
