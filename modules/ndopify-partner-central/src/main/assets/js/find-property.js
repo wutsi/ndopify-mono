@@ -5,7 +5,9 @@
  * step still posts without it:
  * - property: shows only the follow-up questions that apply to the chosen type (rooms, furnished, parking, the land
  *   documents of a purchase), and disables the others so they don't post — the server ignores them anyway; a plot of
- *   land bought has a required surface;
+ *   land bought has a required surface. A building bought as a whole (#274) asks its two counts instead — its étages
+ *   and its unités, each with an "Indifférent" answer stored as null — and no parking; its branch has six steps,
+ *   which the server renders (FindPropertyController.steps), so the amenities step simply isn't there;
  * - budget and surface: "150 000" as you type (the server reads the digits), and, for a plot of land bought, the
  *   implied price per m² — display only, never sent nor stored;
  * - city: a slim-select type-ahead over GET /locations?type=CITY&q=…;
@@ -21,6 +23,9 @@
     var MAX_NEIGHBORHOODS = 3;
     var MAX_COMMENTS = 500;
     var MIN_CITY_SEARCH = 2;
+    // A building sale's counts' bounds, as FindPropertyRules has them (the server re-checks them).
+    var MAX_LEVELS = 30;
+    var MAX_UNITS = 500;
     // LocationController's cap: neighbourhoods are fetched page by page.
     var PAGE_SIZE = 50;
     var MAX_PAGES = 10;
@@ -391,11 +396,60 @@
         var area = $("#area", form);
         var areaLabel = $("[data-area-label]", form);
         var areaOptional = $("[data-area-optional]", form);
+        var counts = $("[data-building-counts]", form);
+        var countFields = [
+            { name: "levels", noun: "d'étages", max: MAX_LEVELS },
+            { name: "units", noun: "d'unités", max: MAX_UNITS }
+        ].map(function (count) {
+            return Object.assign(count, {
+                input: $("#" + count.name, form),
+                any: $('input[name="' + count.name + 'Any"]', form),
+                error: $("#" + count.name + "-error", form)
+            });
+        });
 
         function checkedType() {
             var input = $('input[name="propertyType"]:checked', form);
             return input ? input.value : "";
         }
+
+        // A building bought as a whole (#274): its two counts replace the rooms and the parking.
+        function isBuildingSale(type) {
+            return sale && type === "BUILDING";
+        }
+
+        // The count's rules, as FindPropertyRules has them (the server re-checks): a whole number within its bounds,
+        // or "Indifférent" (stored as null).
+        function countError(field) {
+            if (!isBuildingSale(checkedType())) return "";
+            if (field.any.checked) return "";
+            var raw = field.input.value.trim();
+            if (!raw) return "Indiquez le nombre " + field.noun + ", ou cochez Indifférent.";
+            if (!/^\d+$/.test(raw) || Number(raw) < 1 || Number(raw) > field.max) {
+                return "Indiquez un nombre entier, de 1 à " + field.max + ".";
+            }
+            return "";
+        }
+
+        // "Indifférent" takes the count's input away, so an answer is never both a number and a blank; the counts of
+        // a hidden block are disabled too, so they don't post (the server drops them anyway).
+        function syncCount(field) {
+            field.input.disabled = field.any.checked || counts.hidden;
+            if (field.any.checked) setFieldError(field.input, field.error, "");
+        }
+
+        countFields.forEach(function (field) {
+            field.any.addEventListener("change", function () {
+                syncCount(field);
+                refresh();
+            });
+            field.input.addEventListener("input", function () {
+                if (field.input.value.trim()) field.any.checked = false;
+            });
+            field.input.addEventListener("focusout", function () {
+                setFieldError(field.input, field.error, countError(field));
+            });
+        });
 
         // A hidden question is disabled (it doesn't post) and never in error; a shown required one gates "Suivant".
         function show(key, shown, required) {
@@ -412,6 +466,7 @@
         function updateQuestions() {
             var type = checkedType();
             var landSale = sale && type === "LAND";
+            var buildingSale = isBuildingSale(type);
             // "Indifférent" (value "ANY") parses to no type server-side, which asks the bedrooms of a sale too.
             show(
                 "rooms",
@@ -420,9 +475,17 @@
                 true,
             );
             show("furnitureType", !sale && WITHOUT_FURNITURE.indexOf(type) === -1, true);
-            show("parkings", WITHOUT_PARKINGS.indexOf(type) === -1, false);
+            show("parkings", WITHOUT_PARKINGS.indexOf(type) === -1 && !buildingSale, false);
             // The documents are asked for a plot of land bought only, and are always optional.
             show("titleDocuments", landSale, false);
+            // A building's levels and units replace the rooms and the parking.
+            if (counts) {
+                counts.hidden = !buildingSale;
+                countFields.forEach(function (field) {
+                    if (counts.hidden) setFieldError(field.input, field.error, "");
+                    syncCount(field);
+                });
+            }
             areaLabel.textContent = landSale ? "Surface du terrain"
                 : type === "LAND" ? "Surface du terrain minimale" : "Surface minimale";
             if (areaOptional) areaOptional.hidden = landSale;

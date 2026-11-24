@@ -9,7 +9,10 @@
  * - terms: the rent (or the sale price) as "150 000" as you type (the server reads the digits);
  * - features: shows only the questions that apply to the chosen type (furnishing, rooms, parking, and the number of
  *   places only after "Oui"), disables the hidden ones so they don't post; a sale whose type isn't saved yet keeps
- *   them visible but not required; the surface of a commercial property is formatted like the rent. For a sale, the
+ *   them visible but not required; the surface of a commercial property is formatted like the rent. A building sold
+ *   as a whole (#274) asks its two counts instead — its étages and its unités, both required, no "Indifférent" — and
+ *   no parking; its branch has six steps, which the server renders (OfferPropertyController.steps), so the amenities
+ *   step simply isn't there. For a sale, the
  *   documents appear for every sale from the first render, then for a plot only once its type is saved, and a plot
  *   shows its implied price per m² (display only, never sent nor stored);
  * - contact: intl-tel-input formats the WhatsApp number and posts E.164 ("+237677123456");
@@ -23,6 +26,9 @@
     // LocationController's cap: neighbourhoods are fetched page by page.
     var PAGE_SIZE = 50;
     var MAX_PAGES = 10;
+    // A building sale's counts' bounds, as OfferPropertyRules has them (the server re-checks them).
+    var MAX_LEVELS = 30;
+    var MAX_UNITS = 500;
 
     var PHONE_ERRORS = {
         1: "Cet indicatif de pays n'existe pas. Choisissez votre pays dans la liste.",
@@ -31,10 +37,11 @@
     };
     var PHONE_INVALID = "Ce numéro n'est pas un numéro mobile valide. Exemple : 6 77 12 34 56";
 
-    // Same rules as OfferPropertyRules (needsFurniture, needsRooms, needsParking, needsArea). The server renders
-    // only the chosen category's types, and a sale renders its residential questions until its type is saved (not
-    // required), then only those its type needs: a saved plot of land gets no rooms nor parking. A commercial
-    // property asks the surface; only the type narrows the residential questions down.
+    // Same rules as OfferPropertyRules (needsFurniture, needsRooms, needsParking, needsArea, the building's counts).
+    // The server renders only the chosen category's types, and a sale renders its residential questions until its
+    // type is saved (not required), then only those its type needs: a saved plot of land gets no rooms nor parking,
+    // and a building sold as a whole gets its two counts instead. A commercial property asks the surface; only the
+    // type narrows the residential questions down.
     var WITHOUT_ROOMS = ["ROOM", "STUDIO", "BUILDING"];
     var WITHOUT_FURNITURE = ["BUILDING"];
     var WITHOUT_PARKING = ["ROOM"];
@@ -401,22 +408,60 @@
         var areaLabel = $("[data-area-label]", form);
         var areaInput = $("#area", form);
         var perSqm = $("[data-price-per-sqm]", form);
+        var counts = $("[data-building-counts]", form);
+        var countFields = [
+            { name: "levels", noun: "d'étages", max: MAX_LEVELS },
+            { name: "units", noun: "d'unités", max: MAX_UNITS }
+        ].map(function (count) {
+            return Object.assign(count, {
+                input: $("#" + count.name, form),
+                error: $("#" + count.name + "-error", form)
+            });
+        });
 
         function isLand(type) {
             return type === "LAND";
         }
 
+        // A building sold as a whole (#274): its two counts replace the rooms and the parking.
+        function isBuildingSale(type) {
+            return sale && type === "BUILDING";
+        }
+
+        // The count's rules, as OfferPropertyRules has them (the server re-checks): a whole number within its
+        // bounds, required — the seller has no "Indifférent" answer.
+        function countError(field) {
+            if (!isBuildingSale(checkedValue("propertyType", form))) return "";
+            var raw = field.input.value.trim();
+            if (!raw) return "Indiquez le nombre " + field.noun + ".";
+            if (!/^\d+$/.test(raw) || Number(raw) < 1 || Number(raw) > field.max) {
+                return "Indiquez un nombre entier, de 1 à " + field.max + ".";
+            }
+            return "";
+        }
+
+        // A hidden block's counts are disabled, so they don't post (the server drops them anyway).
+        function syncCount(field) {
+            field.input.disabled = counts.hidden;
+        }
+
+        countFields.forEach(function (field) {
+            field.input.addEventListener("focusout", function () {
+                setFieldError(field.input, field.error, countError(field));
+            });
+        });
+
         function needsFurniture(type) {
             return !sale && WITHOUT_FURNITURE.indexOf(type) === -1;
         }
 
-        // A plot has no bedrooms nor parking; a sale never asks the furnishing.
+        // A plot has no bedrooms nor parking; neither has a building sold as a whole; a sale never asks the furnishing.
         function needsRooms(type) {
             return WITHOUT_ROOMS.indexOf(type) === -1 && !isLand(type);
         }
 
         function needsParking(type) {
-            return WITHOUT_PARKING.indexOf(type) === -1 && !isLand(type);
+            return WITHOUT_PARKING.indexOf(type) === -1 && !isLand(type) && !isBuildingSale(type);
         }
 
         // The server renders the surface of a commercial property only; a sold plot always asks it.
@@ -491,6 +536,14 @@
             show("area", needsArea(type), true);
             // The documents of ownership a seller declares: every sale until its type is saved, then a Terrain only.
             show("ownershipDocuments", sale && (!type || isLand(type)), false);
+            // A building's levels and units replace the rooms and the parking.
+            if (counts) {
+                counts.hidden = !isBuildingSale(type);
+                countFields.forEach(function (field) {
+                    if (counts.hidden) setFieldError(field.input, field.error, "");
+                    syncCount(field);
+                });
+            }
             if (areaLabel) {
                 areaLabel.textContent = isLand(type) ? "Surface du terrain estimée" : "Surface estimée";
             }

@@ -229,7 +229,8 @@
                     </fieldset>
 
                     <fieldset aria-describedby="parkings-error" class="choices" data-group="parkings"
-                              th:attr="aria-invalid=${errors['parkings'] != null ? 'true' : null}">
+                              th:attr="aria-invalid=${errors['parkings'] != null ? 'true' : null}"
+                              th:hidden="${buildingSale}">
                         <legend class="choices__legend">Places de parking <span
                                 class="field__optional">(facultatif)</span></legend>
                         <div class="choices__grid">
@@ -246,6 +247,38 @@
                         </div>
                         <p th:replace="~{:: error('parkings')}"></p>
                     </fieldset>
+
+                    <!--/* A building bought as a whole (#274): its étages and its unités, whole numbers, each with an
+                         "Indifférent" answer stored as null. Rendered even when hidden: without JS they still post,
+                         and the server drops them for any other type. */-->
+                    <div class="count-fields" data-building-counts th:hidden="${!buildingSale}">
+                        <div class="field">
+                            <label class="field__label" for="levels">Nombre d'étages <span
+                                    class="field__optional">(1 à 30)</span></label>
+                            <input aria-describedby="levels-error" autocomplete="off" class="input" id="levels"
+                                   inputmode="numeric" name="levels" required type="text"
+                                   th:attr="aria-invalid=${errors['levels'] != null ? 'true' : null}"
+                                   th:value="${answers.levels}">
+                            <div class="choices__grid">
+                                <label class="choice"><input name="levelsAny" th:checked="${answers.levelsAny}"
+                                                             type="checkbox"> Indifférent</label>
+                            </div>
+                            <p th:replace="~{:: error('levels')}"></p>
+                        </div>
+                        <div class="field">
+                            <label class="field__label" for="units">Nombre d'unités <span
+                                    class="field__optional">(1 à 500)</span></label>
+                            <input aria-describedby="units-error" autocomplete="off" class="input" id="units"
+                                   inputmode="numeric" name="units" required type="text"
+                                   th:attr="aria-invalid=${errors['units'] != null ? 'true' : null}"
+                                   th:value="${answers.units}">
+                            <div class="choices__grid">
+                                <label class="choice"><input name="unitsAny" th:checked="${answers.unitsAny}"
+                                                             type="checkbox"> Indifférent</label>
+                            </div>
+                            <p th:replace="~{:: error('units')}"></p>
+                        </div>
+                    </div>
 
                     <div class="field" data-group="area">
                         <label class="field__label" for="area"><span data-area-label
@@ -600,7 +633,30 @@
                                         class="visually-hidden"> les documents exigés</span></a>
                             </dd>
                         </div>
-                        <div class="review__item">
+                        <!--/* A building sale's two counts (#274); "Indifférent" when the visitor didn't answer. */-->
+                        <div class="review__item" th:if="${levelsLabel != null}">
+                            <dt class="review__term">Étages</dt>
+                            <dd class="review__value">
+                                <p data-review-value="levels" th:text="${levelsLabel}">3</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/find-property(step='property', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> le nombre d'étages</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item" th:if="${unitsLabel != null}">
+                            <dt class="review__term">Unités</dt>
+                            <dd class="review__value">
+                                <p data-review-value="units" th:text="${unitsLabel}">12</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/find-property(step='property', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> le nombre d'unités</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item" th:unless="${buildingSale}">
                             <dt class="review__term">Indispensable</dt>
                             <dd class="review__value">
                                 <!--/* Optional answers are never "missing", only empty. */-->

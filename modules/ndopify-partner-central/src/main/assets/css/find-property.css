@@ -56,3 +56,14 @@
 .review__multiline {
     white-space: pre-line;
 }
+
+/* A building sale's two counts: one field per row (#274). */
+.count-fields {
+    display: grid;
+    gap: var(--space-4);
+}
+
+/* A grid display would beat the hidden attribute. */
+.count-fields[hidden] {
+    display: none;
+}

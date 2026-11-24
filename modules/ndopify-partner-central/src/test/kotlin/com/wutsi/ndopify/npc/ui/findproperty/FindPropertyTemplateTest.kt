@@ -60,6 +60,19 @@ class FindPropertyTemplateTest {
 
     private val complete = PendingMandateTest.COMPLETE
 
+    private val buildingSale = complete.copy(
+        listingType = ListingType.SALE,
+        propertyCategory = PropertyCategory.COMMERCIAL,
+        propertyType = "BUILDING",
+        rooms = null,
+        furnitureType = null,
+        parkings = null,
+        levels = 3,
+        units = 12,
+        priceAmount = 250_000_000,
+        financingType = FinancingType.CASH,
+    )
+
     private val tenant = TENANT.copy(
         name = "Ndopify Cameroun",
         logoUrl = "https://cdn.ndopify.com/tenant/1/logo.png",
@@ -327,6 +340,96 @@ class FindPropertyTemplateTest {
         assertTrue(page.selectFirst("input[name=titleDocuments][value=LAND_TITLE]")!!.hasAttr("checked"))
         assertTrue(page.selectFirst("input[name=titleDocuments][value=SURVEY_PLAN]")!!.hasAttr("checked"))
         assertFalse(page.selectFirst("input[name=titleDocuments][value=CERTIFICATE_OF_OWNERSHIP]")!!.hasAttr("checked"))
+    }
+
+    @Test
+    fun `a building sale's property step asks its counts and no parking`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, buildingSale)
+
+        val page = render(get("/find-property?step=property"))
+
+        val counts = assertNotNull(page.selectFirst("[data-building-counts]"))
+        assertFalse(counts.hasAttr("hidden"))
+        assertEquals(
+            "Nombre d'étages (1 à 30)",
+            page.selectFirst("label[for=levels]")?.text()?.replace('\u00a0', ' '),
+        )
+        assertEquals(
+            "Nombre d'unités (1 à 500)",
+            page.selectFirst("label[for=units]")?.text()?.replace('\u00a0', ' '),
+        )
+        assertEquals("3", page.selectFirst("#levels")?.attr("value"))
+        assertEquals("12", page.selectFirst("#units")?.attr("value"))
+        assertEquals(2, page.select("input[name=levelsAny], input[name=unitsAny]").size)
+        assertEquals("checkbox", page.selectFirst("input[name=levelsAny]")?.attr("type"))
+        assertEquals("checkbox", page.selectFirst("input[name=unitsAny]")?.attr("type"))
+        assertTrue(page.selectFirst("[data-group=parkings]")!!.hasAttr("hidden"))
+    }
+
+    @Test
+    fun `a rental building is asked no counts and keeps its parking`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = "BUILDING",
+                rooms = null,
+                furnitureType = null,
+            ),
+        )
+
+        val page = render(get("/find-property?step=property"))
+
+        assertTrue(page.selectFirst("[data-building-counts]")!!.hasAttr("hidden"))
+        assertFalse(page.selectFirst("[data-group=parkings]")!!.hasAttr("hidden"))
+    }
+
+    @Test
+    fun `a building sale shows its counts on the review and no amenity row`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, buildingSale)
+
+        val page = render(get("/find-property?step=review"))
+
+        val terms = page.select(".review__term").map { it.text() }
+        assertTrue(terms.contains("Étages"))
+        assertTrue(terms.contains("Unités"))
+        assertFalse(terms.contains("Indispensable"))
+        assertEquals("3", value(page, "levels"))
+        assertEquals("12", value(page, "units"))
+    }
+
+    @Test
+    fun `a building sale indifferent counts read Indifferent on the review`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            buildingSale.copy(levels = null, levelsAny = true, units = null, unitsAny = true),
+        )
+
+        val page = render(get("/find-property?step=review"))
+
+        assertEquals("Indifférent", value(page, "levels"))
+        assertEquals("Indifférent", value(page, "units"))
+    }
+
+    @Test
+    fun `the progress follows the building sale's six steps`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, buildingSale)
+
+        val page = render(get("/find-property?step=budget"))
+
+        assertEquals("budget", page.selectFirst("[data-step]")?.attr("data-step"))
+        assertEquals("Étape 4 sur 6", page.selectFirst("[data-progress-label]")?.text())
+        assertEquals("6", page.selectFirst("[data-progress]")?.attr("aria-valuemax"))
+        assertEquals("Étape 4 sur 6 : votre budget et votre date d'emménagement", page.selectFirst("[data-step] legend")?.text())
+    }
+
+    @Test
+    fun `every other branch keeps the seven steps`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
+
+        val page = render(get("/find-property?step=budget"))
+
+        assertEquals("Étape 5 sur 7", page.selectFirst("[data-progress-label]")?.text())
     }
 
     @Test
