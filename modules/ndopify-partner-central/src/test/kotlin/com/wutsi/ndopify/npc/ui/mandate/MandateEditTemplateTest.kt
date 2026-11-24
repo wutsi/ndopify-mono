@@ -5,11 +5,13 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
@@ -204,10 +206,9 @@ class MandateEditTemplateTest {
         assertEquals("false", form.attr("data-sale"))
         val land = assertNotNull(page.selectFirst("input[name=propertyType][value=LAND]"))
         assertTrue(land.hasAttr("checked"))
-        // #293: both usages on the one radio; a rental keeps data-rental-categories empty, so mandate.js offers it only
-        // while it is the saved answer.
-        assertEquals("RESIDENTIAL COMMERCIAL", land.parent()!!.attr("data-categories"))
-        assertEquals("", land.parent()!!.attr("data-rental-categories"))
+        // #304: the types come from NdUtil.propertyRules, not from per-radio attributes.
+        assertFalse(land.parent()!!.hasAttr("data-categories"))
+        assertFalse(land.parent()!!.hasAttr("data-rental-categories"))
     }
 
     @Test
@@ -219,9 +220,88 @@ class MandateEditTemplateTest {
         assertEquals("true", form.attr("data-sale"))
         val land = assertNotNull(page.selectFirst("input[name=propertyType][value=LAND]"))
         assertFalse(land.hasAttr("checked"))
-        assertEquals("RESIDENTIAL COMMERCIAL", land.parent()!!.attr("data-categories"))
+        assertFalse(land.parent()!!.hasAttr("data-categories"))
         // One radio, never one per usage
         assertEquals(1, page.select("input[name=propertyType][value=LAND]").size)
+        // "Indifférent" is the client's answer only: the script hides it on a landlord's page.
+        assertTrue(page.selectFirst("input[name=propertyType][value=ANY]")!!.parent()!!.hasAttr("data-tenant-only"))
+    }
+
+    @Test
+    fun `a sale's edit page shows its documents and its rate`() {
+        val page = render(
+            MANDATE.copy(
+                mandateType = MandateType.LISTING,
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
+                propertyType = PropertyType.LAND,
+                rooms = null,
+                furnitureType = null,
+                parkings = null,
+                area = 300,
+                price = Money(45_000_000, "XAF", PeriodicityType.NONE),
+                ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE),
+            ),
+        )
+
+        assertNotNull(page.selectFirst("[data-group=documents]:not([hidden])"))
+        assertNotNull(page.selectFirst("input[name=documents][value=LAND_TITLE][checked]"))
+        assertNull(page.selectFirst("input[name=documents][value=SURVEY_PLAN][checked]"))
+        assertTrue(page.select("[data-rate]").text().contains("FCFA/m²"))
+    }
+
+    @Test
+    fun `a search's edit page shows the documents it requires`() {
+        val page = render(
+            MANDATE.copy(
+                listingType = ListingType.SALE,
+                propertyCategory = PropertyCategory.RESIDENTIAL,
+                propertyType = PropertyType.HOUSE,
+                price = Money(15_000_000, "XAF", PeriodicityType.NONE),
+                titleDocuments = listOf(TitleDocumentType.SURVEY_PLAN),
+            ),
+        )
+        val form = page.selectFirst("form[data-edit-form]")!!
+
+        assertNotNull(page.selectFirst("[data-group=documents]:not([hidden])"))
+        assertEquals("Documents exigés", form.selectFirst("[data-group=documents] legend")?.text()?.substringBefore(" (facultatif)"))
+        assertNotNull(page.selectFirst("input[name=documents][value=SURVEY_PLAN][checked]"))
+        // A house is not sold by its surface: no rate line.
+        assertTrue(page.select("[data-rate]").text().isEmpty())
+    }
+
+    @Test
+    fun `a rental's edit page has no documents and a grouped surface`() {
+        val page = render(MANDATE.copy(area = 150))
+        val form = page.selectFirst("form[data-edit-form]")!!
+
+        assertTrue(form.selectFirst("[data-group=documents]")!!.hasAttr("hidden"))
+        assertEquals("150", form.selectFirst("input[name=area]")?.`val`())
+        assertTrue(form.selectFirst("[data-group=area]")!!.hasAttr("hidden"))
+    }
+
+    @Test
+    fun `a stored rental building keeps its type`() {
+        val page = render(
+            MANDATE.copy(
+                listingType = ListingType.RENTAL,
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = PropertyType.BUILDING,
+                area = 300,
+                furnitureType = FurnitureType.UNFURNISHED,
+            ),
+        )
+        val form = page.selectFirst("form[data-edit-form]")!!
+        val building = page.selectFirst("input[name=propertyType][value=BUILDING]")!!
+
+        assertTrue(building.hasAttr("checked"))
+        assertFalse(building.hasAttr("disabled"))
+        // The questions a rental building had, while it stays the saved answer.
+        assertFalse(form.selectFirst("[data-group=furnitureType]")!!.hasAttr("hidden"))
+        assertFalse(form.selectFirst("[data-group=area]")!!.hasAttr("hidden"))
+        assertTrue(form.selectFirst("[data-group=rooms]")!!.hasAttr("hidden"))
+        assertTrue(form.selectFirst("[data-group=parkings]")!!.hasAttr("hidden"))
+        assertTrue(form.selectFirst("[data-group=levels]")!!.hasAttr("hidden"))
     }
 
     @Test
@@ -304,7 +384,8 @@ class MandateEditTemplateTest {
         assertEquals("Budget", form.selectFirst("label[for=priceAmount]")?.text())
         assertEquals("FCFA", form.selectFirst("input[name=priceAmount] + .input-unit__suffix")?.text())
         assertEquals("Quand souhaitez-vous acheter ?", form.selectFirst("fieldset[data-group=movingPeriod] legend")?.text())
-        assertNull(form.selectFirst("[data-group=furnitureType]"))
+        // #304: a residential sale asks its furniture too.
+        assertFalse(form.selectFirst("[data-group=furnitureType]")!!.hasAttr("hidden"))
         assertFalse(page.text().contains("Budget mensuel"))
         assertFalse(page.text().contains("/ mois"))
 
@@ -328,7 +409,7 @@ class MandateEditTemplateTest {
         assertEquals("Prix et disponibilité", form.selectFirst("[data-edit-group=budget] .edit-group__title")?.text())
         assertEquals("Prix", form.selectFirst("label[for=priceAmount]")?.text())
         assertEquals("Disponibilité du bien", form.selectFirst("fieldset[data-group=movingPeriod] legend")?.text())
-        assertNull(form.selectFirst("[data-group=furnitureType]"))
+        assertFalse(form.selectFirst("[data-group=furnitureType]")!!.hasAttr("hidden"))
         assertFalse(page.text().contains("/ mois"))
     }
 
@@ -435,7 +516,11 @@ class MandateEditTemplateTest {
         assertEquals(",", page.body().attr("data-decimal-separator"))
         val form = page.selectFirst("form[data-edit-form]")!!
         assertEquals("/locations", form.attr("data-locations-url"))
-        assertEquals(11, form.select("[data-categories]").size)
+        // #304: the script reads NdUtil.propertyRules; the type radios no longer carry their categories.
+        assertTrue(form.select("[data-categories]").isEmpty())
+        assertTrue(form.select("[data-rental-categories]").isEmpty())
+        assertNotNull(form.selectFirst("[data-group=propertyType] [data-tenant-only]"))
+        assertNotNull(form.selectFirst("[data-rate]"))
         assertEquals(5, form.select("[data-edit-group] [data-group-value]").size)
         assertEquals(DOUALA.toString(), form.selectFirst("[data-city-id]")?.attr("data-city-id"))
         assertNotNull(form.selectFirst("[data-group=rooms]"))
