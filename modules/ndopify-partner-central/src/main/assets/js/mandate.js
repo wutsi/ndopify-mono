@@ -112,9 +112,9 @@
         return document.body.getAttribute("data-currency") || "";
     }
 
-    // 150000 → "150 000 FCFA / mois", close to MandateLabels.price (the tenant's monetaryFormat is server-side only).
+    // 150000 → "150K FCFA / mois", as MandateLabels.price renders it server-side.
     function formatRent(amount) {
-        return formatNumber(amount) + "\u00a0" + currency() + " / mois";
+        return window.NdUtil.compactNumber(amount) + "\u00a0" + currency() + " / mois";
     }
 
     // A form's submit button, once pressed: disabled and relabelled, so the form can't be posted twice.

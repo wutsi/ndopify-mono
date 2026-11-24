@@ -525,7 +525,7 @@
                 perSqm.textContent = "";
                 return;
             }
-            perSqm.textContent = "Soit ≈ " + formatNumber(rate) + " " + currency + "/m² pour " +
+            perSqm.textContent = "Soit ≈ " + window.NdUtil.compactNumber(rate) + "\u00a0" + currency + "/m² pour " +
                 formatNumber(area) + " m²";
             perSqm.hidden = false;
         }
