@@ -982,13 +982,16 @@ class MandateTemplateTest {
     }
 
     @Test
-    fun `no documents note nor row for a non-land sale`() {
+    fun `a non-land sale shows its documents without the note`() {
         val page = render(LAND_SALE.copy(propertyType = PropertyType.HOUSE))
 
         assertNull(page.selectFirst("[data-mandate-documents-note]"))
-        assertFalse(
+        assertTrue(
             (page.select("[data-mandate-key-criteria] .review__item") + page.select("[data-mandate-criteria] .review__item"))
-                .any { it.selectFirst("dt")?.text() == "Documents exigés" },
+                .any {
+                    it.selectFirst("dt")?.text() == "Documents exigés" &&
+                        it.selectFirst("dd")?.text() == "Titre foncier · Plan de bornage"
+                },
         )
     }
 
