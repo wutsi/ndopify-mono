@@ -209,8 +209,8 @@
             var meters = Number(accuracy.value);
             $("[data-gps-coords]", result).textContent = Number(lat).toFixed(5) + ", " + Number(lng).toFixed(5) +
                 (meters ? " (± " + meters + " m)" : "");
-            $("[data-gps-map]", result).href = "https://www.openstreetmap.org/?mlat=" + lat + "&mlon=" + lng +
-                "#map=18/" + lat + "/" + lng;
+            $("[data-gps-map]", result).href = "https://www.google.com/maps/search/?api=1&query=" +
+                lat.replace(",", ".") + "," + lng.replace(",", ".");
             weak.hidden = !(meters > WEAK_ACCURACY);
             button.textContent = "Relever à nouveau";
         }

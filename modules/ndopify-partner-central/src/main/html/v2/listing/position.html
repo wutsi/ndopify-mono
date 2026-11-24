@@ -88,8 +88,10 @@
                         <input name="longitude" type="hidden" data-kind="number">
                         <input name="accuracy" type="hidden" data-kind="number">
                         <div class="gps__result" hidden data-gps-result>
-                            <p class="gps__coords" data-gps-coords></p>
-                            <p><a target="_blank" rel="noopener" data-gps-map>Voir sur la carte</a></p>
+                            <!-- The position and, beside it, the same point on Google Maps (new tab); the link wraps under
+                                 the coordinates only when both don't fit. -->
+                            <p class="gps__line"><span class="gps__coords" data-gps-coords></span>
+                                <a target="_blank" rel="noopener" data-gps-map>Voir sur la carte<span class="visually-hidden"> (Google Maps, nouvel onglet)</span></a></p>
                         </div>
                         <p class="owner-value" hidden data-gps-weak>Précision faible&nbsp;: relevez à nouveau la position à
                             l'extérieur, devant l'entrée.</p>
