@@ -28,6 +28,7 @@
               th:href="${#strings.isEmpty(tenantTouchIcon)} ? @{/assets/images/apple-touch-icon.png} : ${tenantTouchIcon}">
     </th:block>
     <link rel="manifest" th:href="@{/manifest.json}">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title"
           th:content="${!brand or #strings.isEmpty(tenant?.name)} ? 'Ndopify' : ${tenant.name}">

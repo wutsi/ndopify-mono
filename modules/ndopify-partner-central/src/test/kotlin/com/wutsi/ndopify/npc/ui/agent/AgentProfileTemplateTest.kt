@@ -160,6 +160,7 @@ class AgentProfileTemplateTest {
         )
         assertNotNull(page.selectFirst("meta[name=apple-mobile-web-app-title]"))
         assertNotNull(page.selectFirst("meta[name=apple-mobile-web-app-capable]"))
+        assertNotNull(page.selectFirst("meta[name=mobile-web-app-capable]"))
         assertNotNull(page.selectFirst("nav.user-menu"))
         assertEquals("/", page.selectFirst(".agent-back a")?.attr("href"))
         assertEquals("← Retour à l'espace agent", page.selectFirst(".agent-back a")?.text())
