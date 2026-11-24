@@ -295,6 +295,7 @@ class MandateController(
         error: String?,
         model: Model,
     ): String {
+        val type = FindPropertyRules.parsePropertyType(answers.propertyType)
         // Names of the city and the chosen neighbourhoods (the select's initial options). Capped: a form shown again
         // with its errors may carry whatever ids were posted.
         val neighborhoodIds = answers.neighborhoodIds.take(FindPropertyRules.MAX_NEIGHBORHOODS)
@@ -318,10 +319,12 @@ class MandateController(
         )
         model.addAttribute("owner", mandate.mandateType == MandateType.LISTING)
         model.addAttribute("sale", mandate.listingType == ListingType.SALE)
-        model.addAttribute(
-            "building",
-            FindPropertyRules.buildingSale(mandate.listingType, FindPropertyRules.parsePropertyType(answers.propertyType)),
-        )
+        model.addAttribute("building", FindPropertyRules.buildingSale(mandate.listingType, type))
+        // The questions this type asks (#304): the template renders each group and hides the ones it doesn't.
+        model.addAttribute("roomsShown", MandateEditRules.showsRooms(answers, mandate))
+        model.addAttribute("furnitureShown", MandateEditRules.showsFurniture(answers, mandate))
+        model.addAttribute("parkingsShown", MandateEditRules.showsParkings(answers, mandate))
+        model.addAttribute("areaShown", MandateEditRules.showsArea(answers, mandate))
         model.addAttribute("mandateId", mandate.id.toString())
         model.addAttribute("city", names[mandate.cityId])
         model.addAttribute("cityId", mandate.cityId)
@@ -331,6 +334,9 @@ class MandateController(
         model.addAttribute("error", error)
         model.addAttribute("currency", formatter().currency())
         model.addAttribute("decimalSeparator", formatter().decimalSeparator())
+        model.addAttribute("documentLabels", MandateLabels.byName(MandateLabels.TITLE_DOCUMENT_LABELS))
+        model.addAttribute("documentNames", answers.documents)
+        model.addAttribute("rate", MandateEditRules.rate(answers, mandate, formatter()))
         model.addAttribute("categoryLabels", MandateLabels.byName(MandateLabels.CATEGORY_LABELS))
         model.addAttribute("propertyTypeLabels", MandateLabels.byName(MandateLabels.PROPERTY_TYPE_LABELS))
         model.addAttribute("furnitureLabels", MandateLabels.byName(MandateLabels.FURNITURE_TYPE_LABELS))

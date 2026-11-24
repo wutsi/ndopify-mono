@@ -5,8 +5,10 @@ import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
+import com.wutsi.ndopify.npc.ui.offerproperty.OfferPropertyRules
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 
 /**
@@ -14,6 +16,9 @@ import com.wutsi.ndopify.web.core.service.TenantFormatter
  * so this is the only check it gets: the find-property wizard's rules ([FindPropertyRules]), with the edit page's
  * messages (`initMandateEdit` in the prototype's partner-central.js). A landlord describes a property that exists:
  * "Indifférent" isn't an answer for it.
+ *
+ * The page asks the questions [FindPropertyRules] gives the chosen type (#304). A question it doesn't show keeps the
+ * mandate's stored answer: only a shown answer is saved, so a hidden field never wipes what the agent already said.
  */
 object MandateEditRules {
     private const val MAX_AREA_DIGITS = 7
@@ -62,7 +67,10 @@ object MandateEditRules {
                         (FindPropertyRules.parkings(form.parkings) != null || (owner && form.parkings == ANY))
                 },
             ("area" to "Indiquez la surface en m², ou laissez le champ vide.")
-                .takeIf { area.isFailure || FindPropertyRules.area(area.getOrNull(), false) != null },
+                .takeIf {
+                    showsArea(form, mandate) &&
+                        (area.isFailure || FindPropertyRules.area(area.getOrNull(), false) != null)
+                },
             priceError(form.priceAmount, mandate, formatter)?.let { "priceAmount" to it },
             ("movingPeriod" to when {
                 owner -> "Indiquez quand le bien est disponible."
@@ -75,37 +83,35 @@ object MandateEditRules {
     }
 
     /**
-     * The whole search, as ndopify-server's update replaces it: the form's answers, "Indifférent" and the follow-up
-     * questions that don't apply to the type as null; the rest (city, listing type, currency, lease terms) the
-     * mandate's.
+     * The whole search, as ndopify-server's update replaces it: the form's answers, "Indifférent" as null, and every
+     * question the page doesn't show for the type as the mandate's stored answer (#304) — a hidden field must never
+     * wipe what the mandate already says. The documents go to the mandate's own list (a listing's ownership, a search's
+     * requirement); the rest (city, listing type, currency, lease terms) the mandate's.
      */
     fun request(form: MandateEditForm, mandate: Mandate): UpdateMandateRequest {
         val type = type(form)
         val building = FindPropertyRules.buildingSale(mandate.listingType, type)
-        val amenities = if (building) emptySet() else form.amenities.toSet()
+        val documents = documents(form)
+        val sale = FindPropertyRules.isSale(mandate.listingType)
+        val owner = mandate.mandateType == MandateType.LISTING
+        // A building sale has no amenities group on the page: its stored criteria travel, never the (empty) posted set.
+        val amenities = if (building) Amenity.of(mandate).map { it.key }.toSet() else form.amenities.toSet()
         return UpdateMandateRequest(
             propertyCategory = form.propertyCategory ?: mandate.propertyCategory,
             listingType = mandate.listingType,
             // Not editable here: the wizard's purchase answers travel unchanged, or the update would clear them.
             financingType = mandate.financingType,
-            titleDocuments = mandate.titleDocuments,
+            titleDocuments = if (sale && !owner) documents else mandate.titleDocuments,
             cityId = mandate.cityId,
             neighbourhoodIds = form.neighborhoodIds.distinct(),
             propertyType = type,
-            furnitureType = form.furnitureType
-                ?.takeIf { FindPropertyRules.needsFurniture(form.propertyCategory, type, mandate.listingType) && it != ANY }
-                ?.let { FurnitureType.valueOf(it) },
-            rooms = form.rooms?.takeIf {
-                !building && FindPropertyRules.needsRooms(form.propertyCategory, type, mandate.listingType)
-            },
-            parkings = form.parkings?.ifEmpty { null }
-                ?.takeIf {
-                    !building && FindPropertyRules.asksParkings(form.propertyCategory, type, mandate.listingType) &&
-                        it != ANY
-                },
-            area = area(form.area).getOrNull(),
-            levels = count(form.levels).takeIf { building },
-            units = count(form.units).takeIf { building },
+            furnitureType = if (showsFurniture(form, mandate)) furniture(form.furnitureType) else mandate.furnitureType,
+            rooms = if (showsRooms(form, mandate)) form.rooms else mandate.rooms,
+            parkings = if (showsParkings(form, mandate)) form.parkings?.ifEmpty { null }?.takeIf { it != ANY } else mandate.parkings,
+            area = if (showsArea(form, mandate)) area(form.area).getOrNull() else mandate.area,
+            levels = if (building) count(form.levels) else mandate.levels,
+            units = if (building) count(form.units) else mandate.units,
+            ownershipDocuments = if (sale && owner) documents else mandate.ownershipDocuments,
             waterMeter = "waterMeter" in amenities,
             dedicatedWaterMeter = "dedicatedWaterMeter" in amenities,
             waterTank = "waterTank" in amenities,
@@ -145,7 +151,8 @@ object MandateEditRules {
             !building && FindPropertyRules.needsRooms(form.propertyCategory, type, mandate.listingType) &&
                 FindPropertyRules.rooms(it) == null
         }
-        val area = area(form.area).getOrNull()
+        // A residential non-land type isn't asked its surface, so a hidden one isn't summarised either (#304).
+        val area = area(form.area).getOrNull().takeIf { showsArea(form, mandate) }
         val levels = count(form.levels).takeIf { building && it != null && it > 0 }
         val units = count(form.units).takeIf { building && it != null && it > 0 }
         val amenities = form.amenities.distinct().size
@@ -190,8 +197,76 @@ object MandateEditRules {
         else -> "Date d'emménagement souhaitée"
     }
 
+    /** Whether the page asks the rooms: a home that isn't a studio or a room, and not a building sold as a whole. */
+    fun showsRooms(form: MandateEditForm, mandate: Mandate): Boolean =
+        !FindPropertyRules.buildingSale(mandate.listingType, type(form)) &&
+            FindPropertyRules.needsRooms(form.propertyCategory, type(form), mandate.listingType)
+
+    /**
+     * Whether the page asks the furniture: a residential type sale and rental alike (#304), and a stored rental
+     * building, which had that question before rentals stopped offering it.
+     */
+    fun showsFurniture(form: MandateEditForm, mandate: Mandate): Boolean =
+        FindPropertyRules.needsFurniture(form.propertyCategory, type(form), mandate.listingType) ||
+            storedRentalBuilding(form, mandate, type(form))
+
+    /** Whether the page asks the parking: a residential type, a room included, never a building sold as a whole. */
+    fun showsParkings(form: MandateEditForm, mandate: Mandate): Boolean =
+        !FindPropertyRules.buildingSale(mandate.listingType, type(form)) &&
+            FindPropertyRules.asksParkings(form.propertyCategory, type(form), mandate.listingType)
+
+    /**
+     * Whether the page asks the surface: a commercial property or a plot of land bought; a stored rental building keeps
+     * the surface its commercial usage already asked for.
+     */
+    fun showsArea(form: MandateEditForm, mandate: Mandate): Boolean =
+        FindPropertyRules.needsArea(form.propertyCategory, type(form), mandate.listingType) ||
+            storedRentalBuilding(form, mandate, type(form))
+
+    /**
+     * A sale's implied rate under the price, as the page shows it before its script recomputes it (#304): the price per
+     * m² for a plot of land, per unit for a building sold as a whole; null for any other mandate or without a usable
+     * price and surface/count. Display only: it is never sent nor stored.
+     */
+    fun rate(form: MandateEditForm, mandate: Mandate, formatter: TenantFormatter): String? {
+        val type = type(form)
+        val price = FindPropertyRules.parseAmount(form.priceAmount) ?: return null
+        val area = area(form.area).getOrNull()
+        val sqm = OfferPropertyRules.pricePerSqm(mandate.listingType, type, price, area)
+        if (sqm != null && area != null) {
+            return "Soit ≈ " + formatter.compactMoney(sqm) + "/m² pour " + MandateLabels.formatNumber(area) + " m²"
+        }
+        val units = count(form.units)
+        val unit = OfferPropertyRules.pricePerUnit(mandate.listingType, type, price, units)
+        if (unit != null && units != null) {
+            return "Soit ≈ " + formatter.compactMoney(unit) + "/unité pour " + units +
+                (if (units > 1) " unités" else " unité")
+        }
+        return null
+    }
+
     /** The type; null for "Indifférent", no answer, or a value that isn't a type ([typeError] rejects it). */
     private fun type(form: MandateEditForm): PropertyType? = FindPropertyRules.parsePropertyType(form.propertyType)
+
+    /**
+     * A rental building stored before #304 keeps its type, while it is still the answer and in its saved usage: the
+     * rules no longer offer it, but the mandate's questions (surface, furniture) stay those it had.
+     */
+    private fun storedRentalBuilding(form: MandateEditForm, mandate: Mandate, type: PropertyType?): Boolean =
+        !FindPropertyRules.isSale(mandate.listingType) &&
+            mandate.propertyType == PropertyType.BUILDING &&
+            type == PropertyType.BUILDING &&
+            form.propertyCategory == mandate.propertyCategory
+
+    /** The posted document names as types: unknown names and UNKNOWN dropped, duplicates removed, in form order. */
+    private fun documents(form: MandateEditForm): List<TitleDocumentType> =
+        form.documents
+            .mapNotNull { name -> TitleDocumentType.entries.firstOrNull { it != TitleDocumentType.UNKNOWN && it.name == name } }
+            .distinct()
+
+    /** A posted furniture answer: "Indifférent", blank, an unknown name or no answer → null. */
+    private fun furniture(value: String?): FurnitureType? =
+        FurnitureType.entries.firstOrNull { it != FurnitureType.UNKNOWN && it.name == value && it.name != ANY }
 
     private fun typeError(form: MandateEditForm, mandate: Mandate): String? {
         val answer = form.propertyType?.takeIf { it.isNotEmpty() && it != ANY }
@@ -205,6 +280,8 @@ object MandateEditRules {
             answer == null && owner -> "Choisissez un type de bien proposé."
             answer != null && type(form) == null -> "Choisissez un type de bien proposé."
             storedLand -> null
+            // A rental building stored before #304 keeps its answer the same way.
+            storedRentalBuilding(form, mandate, type(form)) -> null
             else -> FindPropertyRules.propertyType(form.propertyCategory, answer, mandate.listingType)
         }
     }

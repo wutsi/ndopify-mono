@@ -21,6 +21,7 @@ import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
@@ -1422,6 +1423,33 @@ class MandateControllerTest {
         assertEquals(PropertyCategory.RESIDENTIAL, request.firstValue.propertyCategory)
         assertEquals(true, request.firstValue.waterWell)
         assertEquals(null, request.firstValue.furnitureType)
+    }
+
+    @Test
+    fun `save - a sale's documents travel on its own list`() {
+        doReturn(MANDATE.copy(listingType = ListingType.SALE, price = Money(15_000_000, "XAF", PeriodicityType.NONE)))
+            .whenever(mandateClient).get(201)
+
+        val result = mvc.perform(
+            post("/mandates/201/edit")
+                .param("neighborhoodIds", BONAPRISO.toString())
+                .param("propertyCategory", "RESIDENTIAL")
+                .param("propertyType", "HOUSE")
+                .param("rooms", "3")
+                .param("furnitureType", "UNFURNISHED")
+                .param("priceAmount", "15 000 000")
+                .param("movingPeriod", "WITHIN_1_MONTH")
+                .param("documents", "LAND_TITLE")
+                .param("documents", "SURVEY_PLAN"),
+        ).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        val request = argumentCaptor<UpdateMandateRequest>()
+        verify(mandateClient).update(com.nhaarman.mockitokotlin2.eq(201L), request.capture())
+        assertEquals(
+            listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+            request.firstValue.titleDocuments,
+        )
     }
 
     @Test

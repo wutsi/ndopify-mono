@@ -20,6 +20,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class MandateEditRulesTest {
     companion object {
@@ -118,15 +119,25 @@ class MandateEditRulesTest {
             "Indiquez un budget d'au moins 1M FCFA.",
             text(MandateEditRules.errors(FORM.copy(priceAmount = "1 000"), SALE_SEARCH, FORMATTER)["priceAmount"]),
         )
-        assertEquals(emptyMap(), MandateEditRules.errors(FORM.copy(priceAmount = "15 000 000"), SALE_LISTING, FORMATTER))
+        assertEquals(
+            emptyMap(),
+            MandateEditRules.errors(
+                FORM.copy(priceAmount = "15 000 000", furnitureType = "UNFURNISHED"),
+                SALE_LISTING,
+                FORMATTER,
+            ),
+        )
     }
 
     @Test
-    fun `a sale asks no furniture and no rental term`() {
+    fun `a sale asks its furniture and no rental term`() {
         val form = FORM.copy(priceAmount = "15 000 000", furnitureType = null)
 
-        assertEquals(emptyMap(), MandateEditRules.errors(form, SALE_SEARCH, FORMATTER))
-        assertEquals(emptyMap(), MandateEditRules.errors(form, SALE_LISTING, FORMATTER))
+        assertEquals("Indiquez si le bien est meublé.", MandateEditRules.errors(form, SALE_SEARCH, FORMATTER)["furnitureType"])
+        assertEquals("Indiquez si le bien est meublé.", MandateEditRules.errors(form, SALE_LISTING, FORMATTER)["furnitureType"])
+        val furnished = form.copy(furnitureType = "UNFURNISHED")
+        assertEquals(emptyMap(), MandateEditRules.errors(furnished, SALE_SEARCH, FORMATTER))
+        assertEquals(emptyMap(), MandateEditRules.errors(furnished, SALE_LISTING, FORMATTER))
 
         assertEquals(
             "15M FCFA · Dans moins d'1 mois",
@@ -265,18 +276,20 @@ class MandateEditRulesTest {
     }
 
     @Test
-    fun `request - the purchase answers travel unchanged`() {
+    fun `request - the purchase financing travels, its documents are the page's`() {
         val sale = MANDATE.copy(
             listingType = ListingType.SALE,
             financingType = FinancingType.CASH,
-            titleDocuments = listOf(TitleDocumentType.LAND_TITLE),
+            ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE),
         )
 
-        val request = MandateEditRules.request(FORM, sale)
+        val request = MandateEditRules.request(FORM.copy(documents = listOf("SURVEY_PLAN")), sale)
 
         assertEquals(ListingType.SALE, request.listingType)
         assertEquals(FinancingType.CASH, request.financingType)
-        assertEquals(listOf(TitleDocumentType.LAND_TITLE), request.titleDocuments)
+        // A search's page edits the documents it requires; its other list travels untouched.
+        assertEquals(listOf(TitleDocumentType.SURVEY_PLAN), request.titleDocuments)
+        assertEquals(listOf(TitleDocumentType.LAND_TITLE), request.ownershipDocuments)
     }
 
     @Test
@@ -445,14 +458,12 @@ class MandateEditRulesTest {
             comments = "x".repeat(501),
         )
 
+        // A commercial type asks neither the furniture, the parking nor, under an unanswered usage, the surface.
         assertEquals(
             mapOf(
                 "neighborhoodIds" to "Choisissez au plus 3 quartiers.",
                 "propertyCategory" to "Indiquez si le bien est pour y habiter ou pour une activité.",
                 "propertyType" to "Choisissez un type de bien proposé.",
-                "furnitureType" to "Indiquez si le bien est meublé.",
-                "parkings" to "Choisissez un nombre de places proposé.",
-                "area" to "Indiquez la surface en m², ou laissez le champ vide.",
                 "priceAmount" to "Indiquez le budget, en FCFA par mois.",
                 "movingPeriod" to "Indiquez la date d'emménagement.",
                 "comments" to "Votre message ne doit pas dépasser 500 caractères.",
@@ -475,10 +486,14 @@ class MandateEditRulesTest {
             "Indiquez un loyer d'au moins 5K\u00a0FCFA par mois.",
             MandateEditRules.errors(FORM.copy(priceAmount = "1 000"), MANDATE, FORMATTER)["priceAmount"],
         )
+        // A commercial property is measured; a residential one is not asked its surface any more (#304).
+        val office = MANDATE.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = PropertyType.OFFICE)
+        val officeForm = FORM.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = "OFFICE", area = "2")
         assertEquals(
             "Indiquez la surface en m², ou laissez le champ vide.",
-            MandateEditRules.errors(FORM.copy(area = "2"), MANDATE, FORMATTER)["area"],
+            MandateEditRules.errors(officeForm, office, FORMATTER)["area"],
         )
+        assertEquals(emptyMap(), MandateEditRules.errors(officeForm.copy(area = "  "), office, FORMATTER))
         assertEquals(emptyMap(), MandateEditRules.errors(FORM.copy(area = "  "), MANDATE, FORMATTER))
     }
 
@@ -496,7 +511,8 @@ class MandateEditRulesTest {
                 furnitureType = null,
                 rooms = "3",
                 parkings = "1",
-                area = 80,
+                // A residential property is not asked its surface (#304): the mandate's stored one travels.
+                area = null,
                 waterWell = true,
                 securityGuard = true,
                 price = Money(150000, "XAF", PeriodicityType.MONTHLY),
@@ -517,23 +533,158 @@ class MandateEditRulesTest {
     }
 
     @Test
-    fun `request - drops follow-ups that don't apply`() {
-        val storedLand = MANDATE.copy(propertyCategory = PropertyCategory.RESIDENTIAL, propertyType = PropertyType.LAND)
+    fun `request - the follow-ups of a type the page doesn't ask stay as stored`() {
+        val storedLand = MANDATE.copy(
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = PropertyType.LAND,
+            rooms = "3",
+            furnitureType = FurnitureType.UNFURNISHED,
+            parkings = "2",
+        )
         val request = MandateEditRules.request(
             FORM.copy(
                 propertyCategory = PropertyCategory.RESIDENTIAL,
                 propertyType = "LAND",
-                rooms = "3",
+                rooms = "1",
                 furnitureType = "FULLY_FURNISHED",
-                parkings = "2",
+                parkings = "1",
             ),
             storedLand,
         )
 
         assertEquals(PropertyType.LAND, request.propertyType)
-        assertEquals(null, request.rooms)
-        assertEquals(null, request.furnitureType)
-        assertEquals(null, request.parkings)
+        assertEquals("3", request.rooms)
+        assertEquals(FurnitureType.UNFURNISHED, request.furnitureType)
+        assertEquals("2", request.parkings)
+    }
+
+    @Test
+    fun `a sale's edit page saves the documents on the mandate's own list`() {
+        val listing = MANDATE.copy(
+            mandateType = MandateType.LISTING,
+            listingType = ListingType.SALE,
+            propertyType = PropertyType.HOUSE,
+            titleDocuments = listOf(TitleDocumentType.SURVEY_PLAN),
+        )
+        val request = MandateEditRules.request(
+            FORM.copy(propertyType = "HOUSE", area = "120 000", documents = listOf("LAND_TITLE", "UNKNOWN")),
+            listing,
+        )
+        assertEquals(listOf(TitleDocumentType.LAND_TITLE), request.ownershipDocuments)
+        assertEquals(listing.titleDocuments, request.titleDocuments)
+
+        val search = MANDATE.copy(
+            mandateType = MandateType.SEARCH,
+            listingType = ListingType.SALE,
+            propertyType = PropertyType.HOUSE,
+            ownershipDocuments = listOf(TitleDocumentType.CERTIFICATE_OF_OWNERSHIP),
+        )
+        val searchRequest = MandateEditRules.request(
+            FORM.copy(propertyType = "HOUSE", documents = listOf("SURVEY_PLAN", "LAND_TITLE", "SURVEY_PLAN")),
+            search,
+        )
+        assertEquals(listOf(TitleDocumentType.SURVEY_PLAN, TitleDocumentType.LAND_TITLE), searchRequest.titleDocuments)
+        assertEquals(search.ownershipDocuments, searchRequest.ownershipDocuments)
+    }
+
+    @Test
+    fun `a question the page doesn't ask keeps its stored answer`() {
+        val rental = MANDATE.copy(listingType = ListingType.RENTAL, propertyType = PropertyType.APARTMENT, area = 150)
+        assertEquals(150, MandateEditRules.request(FORM.copy(propertyType = "APARTMENT", area = ""), rental).area)
+        val office = MANDATE.copy(
+            listingType = ListingType.RENTAL,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.OFFICE,
+            furnitureType = FurnitureType.UNFURNISHED,
+        )
+        assertEquals(
+            FurnitureType.UNFURNISHED,
+            MandateEditRules.request(
+                FORM.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = "OFFICE", furnitureType = null),
+                office,
+            ).furnitureType,
+        )
+    }
+
+    @Test
+    fun `a hidden question keeps its stored counts and its stored documents`() {
+        val stored = MANDATE.copy(rooms = "3", parkings = "2", levels = 2, units = 4)
+        val request = MandateEditRules.request(
+            FORM.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = "OFFICE", rooms = "", parkings = ""),
+            stored,
+        )
+
+        assertEquals("3", request.rooms)
+        assertEquals("2", request.parkings)
+        assertEquals(2, request.levels)
+        assertEquals(4, request.units)
+
+        val rental = MANDATE.copy(titleDocuments = listOf(TitleDocumentType.LAND_TITLE))
+        val rentalRequest = MandateEditRules.request(FORM.copy(documents = listOf("SURVEY_PLAN")), rental)
+        assertEquals(rental.titleDocuments, rentalRequest.titleDocuments)
+    }
+
+    @Test
+    fun `a hidden amenities group keeps the mandate's stored answers`() {
+        val building = BUILDING_SEARCH.copy(waterWell = true, securityGuard = true)
+
+        val request = MandateEditRules.request(BUILDING_FORM.copy(amenities = emptyList()), building)
+
+        assertTrue(request.waterWell)
+        assertTrue(request.securityGuard)
+    }
+
+    @Test
+    fun `a stored rental building keeps its type and its rental answers`() {
+        val building = MANDATE.copy(
+            listingType = ListingType.RENTAL,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.BUILDING,
+            area = 300,
+            furnitureType = FurnitureType.UNFURNISHED,
+        )
+        val request = MandateEditRules.request(
+            FORM.copy(
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = "BUILDING",
+                area = "300",
+                furnitureType = "UNFURNISHED",
+            ),
+            building,
+        )
+        assertEquals(PropertyType.BUILDING, request.propertyType)
+        assertEquals(FurnitureType.UNFURNISHED, request.furnitureType)
+        assertNull(request.levels)
+    }
+
+    @Test
+    fun `a stored rental building is asked its surface and its furniture`() {
+        val building = MANDATE.copy(
+            listingType = ListingType.RENTAL,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.BUILDING,
+            area = 300,
+            furnitureType = FurnitureType.UNFURNISHED,
+        )
+        val form = FORM.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = "BUILDING")
+
+        assertTrue(MandateEditRules.showsArea(form, building))
+        assertTrue(MandateEditRules.showsFurniture(form, building))
+    }
+
+    @Test
+    fun `of - a sale's documents and a grouped surface`() {
+        val sale = MANDATE.copy(
+            mandateType = MandateType.LISTING,
+            listingType = ListingType.SALE,
+            area = 120_000,
+            ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+        )
+
+        val form = MandateEditForm.of(sale)
+
+        assertEquals(listOf("LAND_TITLE", "SURVEY_PLAN"), form.documents)
+        assertEquals(MandateLabels.formatNumber(120_000), form.area)
     }
 
     @Test
