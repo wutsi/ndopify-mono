@@ -207,13 +207,61 @@ class MandateOfferBotletTest {
     }
 
     @Test
-    fun `a villa sale has no ownership document line`() {
+    fun `a sale of any type carries its ownership documents`() {
         val assignment = AssignmentEntity(
             id = 99L,
             mandate = MandateEntity(
                 id = 2L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
                 listingType = ListingType.SALE, propertyType = PropertyType.VILLA,
                 price = 25_000_000, currencyCode = "XAF", mandateType = MandateType.LISTING,
+                ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE),
+            ),
+            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
+        )
+
+        botlet.send(assignment, agent, 1000L)
+
+        val text = argumentCaptor<String>()
+        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        assertEquals(
+            """
+            📋 Nouveau mandat : Vente - Villa (Bastos) — Prix : 25 000 000 XAF
+            document de propriété : Titre foncier
+            Expire le 15/01/2027 à 09:00.
+            """.trimIndent(),
+            text.firstValue,
+        )
+    }
+
+    @Test
+    fun `a sale without ownership documents has no document line`() {
+        val assignment = AssignmentEntity(
+            id = 99L,
+            mandate = MandateEntity(
+                id = 2L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
+                listingType = ListingType.SALE, propertyType = PropertyType.VILLA,
+                price = 25_000_000, currencyCode = "XAF", mandateType = MandateType.LISTING,
+                ownershipDocuments = emptyList(),
+            ),
+            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
+        )
+
+        botlet.send(assignment, agent, 1000L)
+
+        val text = argumentCaptor<String>()
+        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        assertFalse(text.firstValue.contains("document de propriété"))
+    }
+
+    @Test
+    fun `a rental never carries ownership documents`() {
+        val assignment = AssignmentEntity(
+            id = 99L,
+            mandate = MandateEntity(
+                id = 2L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
+                listingType = ListingType.RENTAL, propertyType = PropertyType.VILLA,
+                price = 150_000, currencyCode = "XAF", pricePeriodicityType = PeriodicityType.MONTHLY,
+                mandateType = MandateType.LISTING,
                 ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE),
             ),
             agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),

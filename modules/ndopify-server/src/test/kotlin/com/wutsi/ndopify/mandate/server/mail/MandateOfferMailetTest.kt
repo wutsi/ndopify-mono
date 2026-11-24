@@ -323,7 +323,7 @@ class MandateOfferMailetTest {
     }
 
     @Test
-    fun `say no ownership document for a villa sale`() {
+    fun `offer the ownership documents of a sale of any type`() {
         val listing = mandate.copy(
             mandateType = MandateType.LISTING,
             listingType = ListingType.SALE,
@@ -333,6 +333,33 @@ class MandateOfferMailetTest {
         )
 
         val context = context(assignment.copy(mandate = listing), "/mail/mandate/offer_listing.mjml")
+
+        assertEquals("Titre foncier", context["ownership_documents"])
+    }
+
+    @Test
+    fun `a sale without ownership documents has no document line`() {
+        val listing = mandate.copy(
+            mandateType = MandateType.LISTING,
+            listingType = ListingType.SALE,
+            propertyType = PropertyType.VILLA,
+            pricePeriodicityType = PeriodicityType.NONE,
+            ownershipDocuments = emptyList(),
+        )
+
+        val context = context(assignment.copy(mandate = listing), "/mail/mandate/offer_listing.mjml")
+
+        assertEquals(null, context["ownership_documents"])
+    }
+
+    @Test
+    fun `a rental never offers ownership documents`() {
+        val rental = mandate.copy(
+            mandateType = MandateType.LISTING,
+            ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE),
+        )
+
+        val context = context(assignment.copy(mandate = rental), "/mail/mandate/offer_listing.mjml")
 
         assertEquals(null, context["ownership_documents"])
     }

@@ -109,10 +109,11 @@ internal object MandateMailLabels {
             .joinToString(" · ")
             .ifEmpty { null }
 
-    // Ex: "Titre foncier · Plan de bornage"; null without documents, and outside a land sale (a rental, another type).
+    // Ex: "Titre foncier · Plan de bornage"; null without documents, and outside a sale (a rental). A sale declares its
+    // ownership documents whatever its property type: a villa's land title counts as much as a land's.
     // "·", never a comma: a document name may contain one.
     fun ownershipDocuments(mandate: MandateEntity): String? =
-        if (mandate.listingType == ListingType.SALE && mandate.propertyType == PropertyType.LAND) {
+        if (mandate.listingType == ListingType.SALE) {
             mandate.ownershipDocuments
                 .mapNotNull { TITLE_DOCUMENTS[it] }
                 .joinToString(" · ")
