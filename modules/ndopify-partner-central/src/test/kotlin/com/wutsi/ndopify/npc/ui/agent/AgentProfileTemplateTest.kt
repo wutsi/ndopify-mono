@@ -149,7 +149,11 @@ class AgentProfileTemplateTest {
         assertEquals("/assets/dist/app.min.css", page.selectFirst("link[href=/assets/dist/app.min.css]")?.attr("href"))
         assertNotNull(page.selectFirst("script[src=/assets/dist/app.min.js]"))
         assertEquals("/manifest.json", page.selectFirst("link[rel=manifest]")?.attr("href"))
-        assertNull(page.selectFirst("link[rel=icon]"))
+        assertEquals(
+            listOf("/favicon.ico", "/assets/images/favicon-32.png", "/assets/images/favicon-16.png"),
+            page.select("link[rel=icon]").map { it.attr("href") },
+        )
+        assertEquals(listOf("any", "32x32", "16x16"), page.select("link[rel=icon]").map { it.attr("sizes") })
         assertEquals(
             "/assets/images/apple-touch-icon.png",
             page.selectFirst("link[rel=apple-touch-icon]")?.attr("href"),
