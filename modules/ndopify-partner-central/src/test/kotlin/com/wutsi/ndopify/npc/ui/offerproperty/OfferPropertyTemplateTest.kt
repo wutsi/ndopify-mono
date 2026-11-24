@@ -8,6 +8,7 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
@@ -386,7 +387,8 @@ class OfferPropertyTemplateTest {
         val page = render(get("/offer-property?step=features"))
 
         assertEquals(
-            listOf("APARTMENT", "HOUSE", "ROOM", "STUDIO", "DUPLEX", "BUILDING"),
+            // #304: a rental offers neither land nor a building.
+            listOf("APARTMENT", "HOUSE", "ROOM", "STUDIO", "DUPLEX"),
             page.select("input[name=propertyType]").map { it.attr("value") },
         )
         assertEquals("Villa, maison", page.select("input[name=propertyType][value=HOUSE]").first()!!.parent()!!.text())
@@ -395,7 +397,7 @@ class OfferPropertyTemplateTest {
         assertTrue(page.select("input[name=rooms][value=3]").first()!!.hasAttr("checked"))
         assertTrue(page.select("input[name=hasParking][value=NO]").first()!!.hasAttr("checked"))
         assertEquals(listOf("1", "2", "3+"), page.select("input[name=parkings]").map { it.attr("value") })
-        assertNull(page.selectFirst("input[name=area]"))
+        assertTrue(page.selectFirst("[data-group=area]")!!.hasAttr("hidden"))
         assertEquals(listOf("1", "2", "3", "4", "5+"), page.select("input[name=rooms]").map { it.attr("value") })
     }
 
@@ -409,9 +411,10 @@ class OfferPropertyTemplateTest {
             listOf("APARTMENT", "HOUSE", "STUDIO", "DUPLEX", "LAND"),
             page.select("input[name=propertyType]").map { it.attr("value") },
         )
-        assertNull(page.selectFirst("input[name=furnitureType]"))
-        assertNotNull(page.selectFirst("input[name=rooms]"))
-        assertNotNull(page.selectFirst("input[name=hasParking]"))
+        // No follow-up question shows before the type is chosen (#304), the furniture included.
+        assertTrue(page.select("[data-group=furnitureType]").attr("hidden").isNotEmpty())
+        assertTrue(page.select("[data-group=rooms]").attr("hidden").isNotEmpty())
+        assertTrue(page.select("[data-group=hasParking]").attr("hidden").isNotEmpty())
         assertEquals("Terrain", page.selectFirst("input[name=propertyType][value=LAND]")!!.parent()!!.text())
         assertEquals("SALE", page.selectFirst("form[data-offer-form]")?.attr("data-listing-type"))
     }
@@ -426,7 +429,8 @@ class OfferPropertyTemplateTest {
         val page = render(get("/offer-property?step=features"))
 
         assertEquals(
-            listOf("BUILDING", "OFFICE", "RETAIL", "INDUSTRIAL", "LAND"),
+            // A building is appended after the land it no longer shares (#304).
+            listOf("OFFICE", "RETAIL", "INDUSTRIAL", "LAND", "BUILDING"),
             page.select("input[name=propertyType]").map { it.attr("value") },
         )
         assertTrue(page.selectFirst("input[name=propertyType][value=LAND]")!!.hasAttr("checked"))
@@ -440,6 +444,8 @@ class OfferPropertyTemplateTest {
         val page = render(get("/offer-property?step=features"))
 
         assertEquals("Surface du terrain estimée", page.selectFirst("[data-area-label]")?.text())
+        assertFalse(page.selectFirst("[data-group=area]")!!.hasAttr("hidden"))
+        assertTrue(page.select("input[name=area]").all { it.hasAttr("required") })
         assertFalse(page.selectFirst("[data-group=ownershipDocuments]")!!.hasAttr("hidden"))
         assertEquals(
             listOf("LAND_TITLE", "SURVEY_PLAN", "CERTIFICATE_OF_OWNERSHIP"),
@@ -450,28 +456,53 @@ class OfferPropertyTemplateTest {
     }
 
     @Test
-    fun `a villa sale hides the documents`() {
+    fun `a villa sale keeps its documents`() {
         session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale.copy(propertyType = "HOUSE", area = null))
 
         val page = render(get("/offer-property?step=features"))
 
-        assertTrue(page.selectFirst("[data-group=ownershipDocuments]")!!.hasAttr("hidden"))
+        assertFalse(page.selectFirst("[data-group=ownershipDocuments]")!!.hasAttr("hidden"))
         assertEquals("Surface estimée", page.selectFirst("[data-area-label]")?.text())
+        assertTrue(page.selectFirst("[data-group=area]")!!.hasAttr("hidden"))
     }
 
     @Test
-    fun `a sale without a type shows its questions as optional and its documents`() {
+    fun `a sale shows no follow-up question before its type is chosen`() {
         session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale.copy(propertyType = null))
 
         val page = render(get("/offer-property?step=features"))
 
-        assertTrue(page.select("input[name=rooms]").isNotEmpty())
-        assertTrue(page.select("input[name=hasParking]").isNotEmpty())
-        assertTrue(page.select("input[name=parkings]").isNotEmpty())
+        assertTrue(page.select("[data-group=rooms]").attr("hidden").isNotEmpty())
+        assertTrue(page.select("[data-group=hasParking]").attr("hidden").isNotEmpty())
+        assertTrue(page.select("[data-group=parkings]").attr("hidden").isNotEmpty())
+        assertTrue(page.select("[data-group=furnitureType]").attr("hidden").isNotEmpty())
+        assertTrue(page.select("[data-group=area]").attr("hidden").isNotEmpty())
         assertTrue(page.select("input[name=rooms]").none { it.hasAttr("required") })
         assertTrue(page.select("input[name=hasParking]").none { it.hasAttr("required") })
         assertTrue(page.select("input[name=parkings]").none { it.hasAttr("required") })
+        // The documents are the exception: every sale shows them from the step's first render (#304).
+        assertNotNull(page.selectFirst("[data-group=ownershipDocuments]:not([hidden])"))
+    }
+
+    @Test
+    fun `a sold villa asks its furniture, its rooms and shows its documents`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale.copy(propertyType = null))
+
+        mvc.perform(
+            post("/offer-property/features").session(session)
+                .param("propertyType", "HOUSE")
+                .param("furnitureType", "UNFURNISHED")
+                .param("rooms", "3")
+                .param("hasParking", "NO"),
+        ).andReturn()
+        val page = render(get("/offer-property?step=features"))
+
+        assertTrue(page.select("[data-group=furnitureType]").attr("hidden").isEmpty())
+        assertTrue(page.select("[data-group=rooms]").attr("hidden").isEmpty())
+        // A residential non-land type has no surface (#304).
+        assertTrue(page.select("[data-group=area]").attr("hidden").isNotEmpty())
         assertFalse(page.selectFirst("[data-group=ownershipDocuments]")!!.hasAttr("hidden"))
+        assertNotNull(page.selectFirst("input[name=ownershipDocuments][value=LAND_TITLE]"))
     }
 
     @Test
@@ -491,7 +522,7 @@ class OfferPropertyTemplateTest {
     }
 
     @Test
-    fun `a house sale requires its rooms and parking and hides the documents`() {
+    fun `a house sale requires its rooms and parking and keeps its documents`() {
         session.setAttribute(PendingListing.SESSION_ATTRIBUTE, sale.copy(propertyType = "HOUSE", area = null))
 
         val page = render(get("/offer-property?step=features"))
@@ -502,7 +533,7 @@ class OfferPropertyTemplateTest {
         assertTrue(page.select("input[name=rooms]").all { it.hasAttr("required") })
         assertTrue(page.select("input[name=hasParking]").all { it.hasAttr("required") })
         assertTrue(page.select("input[name=parkings]").all { it.hasAttr("required") })
-        assertTrue(page.selectFirst("[data-group=ownershipDocuments]")!!.hasAttr("hidden"))
+        assertFalse(page.selectFirst("[data-group=ownershipDocuments]")!!.hasAttr("hidden"))
     }
 
     @Test
@@ -544,7 +575,7 @@ class OfferPropertyTemplateTest {
         val commercial = render(get("/offer-property?step=features"))
 
         assertEquals(
-            listOf("BUILDING", "OFFICE", "RETAIL", "INDUSTRIAL", "LAND"),
+            listOf("OFFICE", "RETAIL", "INDUSTRIAL", "LAND", "BUILDING"),
             commercial.select("input[name=propertyType]").map { it.attr("value") },
         )
         assertEquals(
@@ -615,17 +646,20 @@ class OfferPropertyTemplateTest {
     }
 
     @Test
-    fun `a building sale's review shows its counts and no equipment row`() {
+    fun `a building sale's review reads its counts once`() {
         session.setAttribute(PendingListing.SESSION_ATTRIBUTE, buildingSale)
 
         val page = render(get("/offer-property?step=review"))
 
-        val terms = page.select(".review__term").map { it.text() }
-        assertTrue(terms.contains("Étages"))
-        assertTrue(terms.contains("Unités"))
-        assertFalse(terms.contains("Équipements"))
-        assertEquals("3", value(page, "levels"))
-        assertEquals("12", value(page, "units"))
+        // "Immeuble entier" comes from the labels map even though #304 dropped the type from CATEGORIES_BY_TYPE.
+        assertEquals("Immeuble entier · 3 étages · 12 unités · 850 m²", value(page, "property"))
+        assertNull(page.selectFirst("[data-review-value=levels]"))
+        assertNull(page.selectFirst("[data-review-value=units]"))
+        assertFalse(page.select(".review__term").map { it.text() }.contains("Équipements"))
+        assertTrue(
+            value(page, "terms")
+                .contains("≈ " + FORMATTER.compactMoney(20_833_300) + "/unité pour 12 unités"),
+        )
     }
 
     @Test
@@ -789,12 +823,44 @@ class OfferPropertyTemplateTest {
     fun `a villa sale review has no rate line`() {
         session.setAttribute(
             PendingListing.SESSION_ATTRIBUTE,
-            sale.copy(propertyType = "HOUSE", area = null, rooms = "3", parkings = "0"),
+            sale.copy(
+                propertyType = "HOUSE",
+                area = null,
+                rooms = "3",
+                parkings = "0",
+                furnitureType = "UNFURNISHED",
+            ),
         )
 
         val page = render(get("/offer-property?step=review"))
 
         assertFalse(value(page, "terms").contains("FCFA/m²"))
+        assertFalse(value(page, "terms").contains("/unité"))
+    }
+
+    @Test
+    fun `a sold villa's review lists its documents, or none`() {
+        val villa = sale.copy(
+            propertyType = "HOUSE",
+            area = null,
+            rooms = "3",
+            parkings = "0",
+            furnitureType = "UNFURNISHED",
+        )
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            villa.copy(
+                ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
+            ),
+        )
+
+        assertEquals("Titre foncier · Plan de bornage", value(render(get("/offer-property?step=review")), "ownershipDocuments"))
+
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, villa.copy(ownershipDocuments = emptyList()))
+
+        val none = render(get("/offer-property?step=review"))
+        assertEquals("Aucun document déclaré", value(none, "ownershipDocuments"))
+        assertEquals("Document de propriété", none.selectFirst("[data-review-ownershipDocuments] .review__term")?.text())
     }
 
     @Test

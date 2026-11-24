@@ -220,7 +220,7 @@ class OfferPropertyController(
         val pending = pending(session)
         if (!isAllowed(STEP_FEATURES, pending)) return redirect(firstIncomplete(pending))
 
-        // Questions that don't apply to the posted type are dropped: without JS the page shows them all.
+        // Questions that don't apply to the posted type are dropped: without JS the page shows those of the saved type.
         val category = pending.propertyCategory
         val listingType = pending.listingType
         val typeAnswer = form.propertyType?.takeIf { it.isNotEmpty() }
@@ -454,27 +454,26 @@ class OfferPropertyController(
             model.addAttribute("decimalSeparator", formatter().decimalSeparator())
             model.addAttribute("ownershipDocumentLabels", MandateLabels.byName(MandateLabels.TITLE_DOCUMENT_LABELS))
             model.addAttribute("ownershipDocumentNames", HashSet(answers.ownershipDocuments.map { it.name }))
-            // A sale renders the follow-up questions until its type is known, then only the ones its type needs.
+            // #304: no follow-up question before a type is chosen; then only the ones its type needs, the furniture
+            // included (sale and rental alike). A question is hidden, not removed, so a post without JS still carries
+            // its answer and the server drops the ones that don't apply.
             model.addAttribute(
-                "showsRooms",
-                residential && (!sale || type == null || OfferPropertyRules.needsRooms(category, type, answers.listingType)),
+                "needsFurniture",
+                type != null && OfferPropertyRules.needsFurniture(category, type, answers.listingType),
             )
             model.addAttribute(
                 "requiresRooms",
-                residential && (!sale || (type != null && OfferPropertyRules.needsRooms(category, type, answers.listingType))),
-            )
-            model.addAttribute(
-                "showsParking",
-                residential && (!sale || type == null || OfferPropertyRules.needsParking(category, type, answers.listingType)),
+                residential && type != null && OfferPropertyRules.needsRooms(category, type, answers.listingType),
             )
             model.addAttribute(
                 "requiresParking",
-                residential && (!sale || (type != null && OfferPropertyRules.needsParking(category, type, answers.listingType))),
+                residential && type != null && OfferPropertyRules.needsParking(category, type, answers.listingType),
             )
-            // Every sale may declare its documents until its type is known; only a plot of land then keeps them.
-            model.addAttribute("asksOwnershipDocuments", sale && (type == null || type == PropertyType.LAND))
-            model.addAttribute("asksArea", !residential(category) || sale)
+            // Every sale asks its documents whatever its type (#304), from the step's first render; a rental never does.
+            model.addAttribute("asksOwnershipDocuments", sale)
+            model.addAttribute("asksArea", OfferPropertyRules.needsArea(category, type, answers.listingType))
             model.addAttribute("landSale", sale && type == PropertyType.LAND)
+            model.addAttribute("pricePerUnitLabel", pricePerUnitLabel(answers))
         }
         if (step == STEP_AMENITIES) {
             // The owner's wording, as the listing's (road access: one radio, in the mandates' wording)
@@ -485,18 +484,13 @@ class OfferPropertyController(
             model.addAttribute("locationLabel", locationLabel(model))
             model.addAttribute("termsLines", termsLines(answers))
             model.addAttribute("propertyLabel", propertyLabel(answers))
-            // A building sale's two counts.
-            if (answers.buildingSale()) {
-                model.addAttribute("levelsLabel", answers.levels?.toString())
-                model.addAttribute("unitsLabel", answers.units?.toString())
-            }
             model.addAttribute("amenitiesLabel", amenitiesLabel(answers))
             model.addAttribute("contactLines", contactLines(answers))
+            model.addAttribute("pricePerUnitLabel", pricePerUnitLabel(answers))
+            // Every sale lists its documents, "Aucun document déclaré" for none (#304); a rental has no row.
             model.addAttribute(
                 "ownershipDocumentsLabel",
-                answers.ownershipDocuments
-                    .takeIf { answers.isSale() && FindPropertyRules.parsePropertyType(answers.propertyType) == PropertyType.LAND }
-                    ?.let { MandateLabels.ownershipDocuments(it) },
+                answers.takeIf { it.isSale() }?.let { MandateLabels.ownershipDocuments(it.ownershipDocuments) },
             )
         }
         return VIEW
@@ -511,7 +505,8 @@ class OfferPropertyController(
 
     /**
      * "150K FCFA par mois", "Avance de 3 mois", "Caution de 2 mois", "Disponible dès maintenant"; a sale's price
-     * has no "/ mois" and no advance nor deposit line, and a sold plot adds its implied rate right after it.
+     * has no "/ mois" and no advance nor deposit line, and adds its implied rate right after it: per m² for a sold
+     * plot, per unit for a sold building (#304).
      */
     private fun termsLines(answers: PendingListing): List<String> {
         val formatter = formatter()
@@ -526,6 +521,7 @@ class OfferPropertyController(
                 rate?.let {
                     "≈ " + formatter.compactMoney(it) + "/m² pour " + MandateLabels.formatNumber(answers.area!!) + " m²"
                 },
+                pricePerUnitLabel(answers),
                 availability,
             )
         }
@@ -537,10 +533,29 @@ class OfferPropertyController(
         )
     }
 
-    /** "Appartement · Non meublé · 3 chambres · Sans parking", as the prototype's describeProperty. */
+    /**
+     * "≈ 20,83M FCFA/unité pour 12 unités", the implied price of a sold building's unit, or null for any other type
+     * and without a usable price and unit count. Display only: it is never sent.
+     */
+    private fun pricePerUnitLabel(answers: PendingListing): String? {
+        val units = answers.units ?: return null
+        val rate = OfferPropertyRules.pricePerUnit(
+            answers.listingType,
+            FindPropertyRules.parsePropertyType(answers.propertyType),
+            answers.priceAmount,
+            units,
+        ) ?: return null
+        return "≈ " + formatter().compactMoney(rate) + "/unité pour " + units + (if (units > 1) " unités" else " unité")
+    }
+
+    /**
+     * "Appartement · Non meublé · 3 chambres · Sans parking", as the prototype's describeProperty; a sold building
+     * folds its two counts in once, between the parking and the area ("Immeuble entier · 3 étages · 12 unités · 850 m²").
+     */
     private fun propertyLabel(answers: PendingListing): String {
         val category = answers.propertyCategory
         val type = FindPropertyRules.parsePropertyType(answers.propertyType)
+        val buildingSale = answers.buildingSale()
         val parts = listOfNotNull(
             PROPERTY_TYPE_LABELS[type],
             MandateLabels.FURNITURE_LABELS[answers.furnitureType]
@@ -549,6 +564,8 @@ class OfferPropertyController(
                 ?.takeIf { OfferPropertyRules.needsRooms(category, type, answers.listingType) },
             MandateLabels.PARKING_LABELS[answers.parkings]
                 ?.takeIf { OfferPropertyRules.needsParking(category, type, answers.listingType) },
+            answers.levels?.takeIf { buildingSale }?.let { if (it > 1) "$it étages" else "$it étage" },
+            answers.units?.takeIf { buildingSale }?.let { if (it > 1) "$it unités" else "$it unité" },
             answers.area?.takeIf { OfferPropertyRules.needsArea(category, type, answers.listingType) }
                 ?.let { MandateLabels.formatNumber(it) + " m²" },
         )
@@ -637,9 +654,10 @@ private val CATEGORY_DETAIL_LABELS: Map<String, String> = mapOf(
 )
 
 // "Villa, maison" is one answer, as in the prototype: it is sent as HOUSE. Land is only a sale's: it keeps its label
-// even though the rental map no longer lists it. A building sold as a whole reads "Immeuble entier" (#274).
+// even though the rental map no longer lists it. A building sold as a whole reads "Immeuble entier" (#274): #304 took
+// it out of CATEGORIES_BY_TYPE, so it is appended here explicitly.
 private val PROPERTY_TYPE_LABELS: Map<PropertyType, String> =
-    (OfferPropertyRules.CATEGORIES_BY_TYPE.keys + PropertyType.LAND).associateWith { type ->
+    (OfferPropertyRules.CATEGORIES_BY_TYPE.keys + PropertyType.LAND + PropertyType.BUILDING).associateWith { type ->
         when (type) {
             PropertyType.HOUSE -> "Villa, maison"
             PropertyType.BUILDING -> "Immeuble entier"
