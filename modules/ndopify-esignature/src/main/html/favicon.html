@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Favicon de l'onglet — Ndopify e-Signature</title>
+    <meta name="description" content="Planche d'approbation des icônes du portail de signature : le stylo sur son disque bleu à 16, 32 et 48 px, sur un navigateur clair et sombre, et la tuile d'écran d'accueil à 180 px.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="apple-touch-icon" href="assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="assets/css/esignature.css">
+    <style>
+        /*
+         * favicon.html only: the approval sheet of the e-signature portal's browser icons (#288). A static sheet,
+         * not linked from the app's pages. Tokens come from esignature.css / DESIGN.md — no new colour, size or
+         * font. The committed tab mark: the #1d7edf disc, the white pen and the black signature line as supplied,
+         * cut to the disc so that the surround is fully transparent (alpha 0, never an opaque white square, never
+         * a full-bleed tile). The hotlinked source is opaque, so every preview of the delivered tab file clips it
+         * to a circle inside the disc's antialiased edge (.fav-mark) — a stand-in for its transparent pixels, not
+         * the recipe. The 180 apple-touch tile is the opposite composition on purpose: a full-bleed opaque
+         * #1d7edf square, the artwork at 90 % of it and clipped to the disc, seen through iOS's rounded-square
+         * mask.
+         *
+         * The tab strips are mock browser chrome. Light chrome uses the page's neutral surfaces; dark chrome uses
+         * text-default for the bar and the border tokens around it, because DESIGN.md defines no dark palette —
+         * nothing new is invented, the neutrals are only inverted.
+         */
+
+        .fav-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: var(--space-4);
+        }
+
+        /* The 180 px tile and the 16 px tab mark are of very different heights: centre their captions. */
+        .fav-row--center {
+            align-items: center;
+        }
+
+        .fav-figure {
+            margin: 0;
+            min-width: 0; /* lets a 500 px source shrink on a 390 px viewport instead of overflowing */
+        }
+
+        .fav-figure > * + * {
+            margin-top: var(--space-2);
+        }
+
+        .fav-figure figcaption {
+            font-size: var(--step-hint);
+        }
+
+        .fav-figure figcaption strong {
+            display: block;
+            font-weight: 600;
+        }
+
+        /* The source is an opaque white square: on the white page a hairline keeps its extent visible. */
+        .fav-any {
+            display: block;
+            height: auto;
+            border: 1px solid var(--color-border);
+            background: var(--color-bg);
+        }
+
+        /* Sizes (px). width + max-width keeps the true pixel size on desktop and shrinks on a narrow viewport.
+           The 16/32/48 previews carry no border: at 16 px it would eat the icon, and an ungarnished white
+           square on white is exactly what a light tab shows. */
+        .fav-500 { width: 500px; max-width: 100%; }
+        .fav-180 { width: 180px; max-width: 100%; }
+        .fav-48 { width: 48px; }
+        .fav-32 { width: 32px; }
+        .fav-16 { width: 16px; }
+
+        /* The delivered tab files are transparent around the disc; the linked source is not. Every preview of
+           the delivered file clips the source inside the disc's antialiased edge (47 % of the image = ≈ 235 px
+           at 500, inside the disc's ≈ 244 px radius) — the sheet's stand-in for the files' alpha-0 pixels,
+           never the production recipe. */
+        .fav-mark {
+            clip-path: circle(47% at 50% 50%);
+        }
+
+        /* The mark at 48 px over the two tab backgrounds: the corners must show the background, not white. */
+        .fav-swatch {
+            display: inline-block;
+            padding: var(--space-3);
+            line-height: 0;
+        }
+
+        .fav-swatch--light {
+            border: 1px solid var(--color-border);
+            background: var(--color-bg);
+        }
+
+        .fav-swatch--dark {
+            background: var(--color-fg);
+        }
+
+        /* ---------- Apple-touch tile ---------- */
+
+        /* A full-bleed opaque #1d7edf square: the artwork covers 90 % of it (inset 5 %) and is clipped to the
+           disc, whose white margin therefore disappears into the tile's own blue. No transparent pixel, no
+           white corner, no white ring. */
+        .fav-tile {
+            display: block; /* a span would ignore width/aspect-ratio */
+            position: relative;
+            width: 180px;
+            max-width: 100%;
+            aspect-ratio: 1;
+            overflow: hidden;
+            background: var(--color-accent);
+        }
+
+        .fav-tile__art {
+            position: absolute;
+            inset: 5%; /* 90 % of the tile, centred */
+        }
+
+        .fav-tile__art img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            clip-path: circle(47% at 50% 50%);
+        }
+
+        /* The same tile at a smaller size, to show the file as it is (square corners). */
+        .fav-tile.fav-90 {
+            width: 90px;
+        }
+
+        /* iOS adds its own rounded-square mask (~22 % radius) to the home-screen icon. */
+        .fav-apple {
+            border-radius: 22.5%;
+        }
+
+        /* A control guide, not part of any delivered file: the inner 80 %-diameter safe circle of the
+           apple-touch tile. */
+        .fav-safe {
+            position: absolute;
+            inset: 10%;
+            border: 1px dashed var(--color-on-accent);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        /* The neutral surface the tile is judged on: not white, not blue, so its full-bleed extent reads. */
+        .fav-surface {
+            display: inline-block;
+            padding: var(--space-4);
+            border: 1px solid var(--color-border);
+            background: var(--color-surface-alt);
+            line-height: 0;
+        }
+
+        .fav-note {
+            font-size: var(--step-hint);
+        }
+
+        /* ---------- Mock browser tab strips ---------- */
+
+        .fav-strips > * + * {
+            margin-top: var(--space-4);
+        }
+
+        .fav-strip {
+            display: flex;
+            align-items: flex-end;
+            gap: var(--space-1);
+            max-width: 100%;
+            padding: var(--space-2) var(--space-2) 0;
+            overflow: hidden;
+            border: 1px solid var(--color-border);
+            background: var(--color-surface-alt);
+        }
+
+        .fav-strip--dark {
+            border-color: var(--color-border-strong);
+            background: var(--color-fg);
+        }
+
+        .fav-tab {
+            display: inline-flex;
+            flex: 1 1 0;
+            align-items: center;
+            gap: var(--space-2);
+            min-width: 0;
+            max-width: 15rem;
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid transparent;
+            border-bottom: 0;
+            border-radius: var(--space-2) var(--space-2) 0 0;
+            color: var(--color-fg-disabled);
+            font-size: var(--step-hint);
+        }
+
+        .fav-tab--active {
+            flex-grow: 2; /* the active tab gets the room, as in a real tab bar */
+            border-color: var(--color-border);
+            background: var(--color-bg);
+            color: var(--color-fg);
+            font-weight: 600;
+        }
+
+        .fav-strip--dark .fav-tab--active {
+            border-color: var(--color-border-strong);
+            background: var(--color-fg);
+            color: var(--color-bg);
+        }
+
+        /* The mark under review, at the strip's own size — true CSS pixels, never zoomed. */
+        .fav-tab__icon {
+            display: block;
+            flex: none;
+        }
+
+        .fav-strip--16 .fav-tab__icon {
+            width: 16px;
+            height: 16px;
+        }
+
+        .fav-strip--32 .fav-tab__icon {
+            width: 32px;
+            height: 32px;
+        }
+
+        .fav-strip--48 .fav-tab__icon {
+            width: 48px;
+            height: 48px;
+        }
+
+        /* A neighbour's icon: a neutral tile, no application named. */
+        .fav-tab__icon--blank {
+            border-radius: 2px;
+            background: var(--color-border);
+        }
+
+        .fav-strip--dark .fav-tab__icon--blank {
+            background: var(--color-border-strong);
+        }
+
+        .fav-tab__label {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .fav-tab__close {
+            flex: none;
+            color: var(--color-fg-disabled);
+        }
+
+        /* ---------- Files and the head lines ---------- */
+
+        .fav-files {
+            margin: 0;
+            padding-inline-start: 1.25em;
+            max-width: var(--measure);
+        }
+
+        .fav-files li + li {
+            margin-top: var(--space-2);
+        }
+
+        .fav-files code,
+        .fav-files li {
+            overflow-wrap: anywhere;
+        }
+
+        /* Wraps instead of scrolling sideways on a phone: the page never scrolls horizontally. */
+        .fav-code {
+            margin: 0;
+            max-width: 100%;
+            padding: var(--space-3);
+            border: 1px solid var(--color-border);
+            border-radius: var(--space-1);
+            background: var(--color-surface-alt);
+            font-size: var(--step-hint);
+            line-height: 1.5;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+        }
+    </style>
+</head>
+<!--
+    Approval sheet of the e-signature portal's browser icons (#288). A standalone page, not linked from the app:
+    it shows the delivered tab mark at the real size of a tab, on light and dark browser chrome, the 180 px
+    apple-touch tile through iOS's rounded mask, and the five files the story commits (favicon.png,
+    favicon-16.png, favicon-32.png, favicon.ico, apple-touch-icon.png). The artwork is linked
+    (user-attachments), not copied into the tree; the tab files are transparent around the disc, so the opaque
+    source is clipped to a circle here — a stand-in for their alpha-0 pixels, not the recipe.
+-->
+<body data-page="favicon">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <span class="site-header__brand">
+                <img src="assets/images/logo.png" alt="Ndopify" width="84" height="40">
+            </span>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <div class="page-intro">
+                <h1>Favicon de l'onglet</h1>
+                <p>L'onglet du portail de signature porte désormais sa propre icône&nbsp;: le stylo et sa ligne de
+                    signature sur le disque bleu <code>#1d7edf</code>, découpés de l'illustration fournie. Le carré
+                    blanc du fond disparaît, remplacé par un pourtour entièrement transparent, pour que l'onglet ne
+                    ressemble plus à celui du site public ni à celui de Partner Central. Cette planche le montre à la
+                    taille réelle d'un onglet, sur un navigateur clair et sur un navigateur sombre, puis la tuile
+                    pleine de l'écran d'accueil.</p>
+            </div>
+
+            <section class="section" aria-labelledby="source-title">
+                <h2 id="source-title">La source (500 × 500)</h2>
+                <p>Le fichier fourni, tel quel&nbsp;: le stylo blanc, ses détails noirs et le trait de signature
+                    noir, sur un disque <code>#1d7edf</code> à environ 6 px du bord, posé sur un carré blanc opaque.
+                    Ce carré n'est que le fond de l'illustration, pas l'icône. Le master livré
+                    (<code>assets/images/favicon.png</code>) garde le disque, le stylo et la signature, et perd ce
+                    fond&nbsp;: son pourtour est entièrement transparent — alpha 0 sur les coins et les bords — et le
+                    disque reste, car c'est le corps de la marque.</p>
+                <p>La recette&nbsp;: l'illustration est coupée au disque, à 47&nbsp;% de sa largeur (rayon
+                    ≈ 235 px à 500), donc à l'intérieur du bord antialiasé du disque (rayon ≈ 244 px), pour qu'aucune
+                    frange blanche ne subsiste sur un onglet sombre. Le disque n'est ni redimensionné ni recoloré, et
+                    le stylo reste opaque&nbsp;: seule la bordure extérieure du disque, là où passe la coupe, est
+                    retirée.</p>
+                <figure class="fav-figure">
+                    <img class="fav-any fav-500"
+                         src="https://github.com/user-attachments/assets/4a1c07e3-c1b1-4539-8762-fb2f3f86a613"
+                         alt="Illustration source du favicon : un stylo blanc sur un disque bleu, avec sa ligne de signature noire, posé sur un carré blanc"
+                         width="500" height="500">
+                    <figcaption><strong>500 × 500</strong> source fournie, son carré blanc de fond compris — le master
+                        livré, lui, est découpé au disque</figcaption>
+                </figure>
+            </section>
+
+            <section class="section" aria-labelledby="sizes-title">
+                <h2 id="sizes-title">Aux tailles de l'onglet</h2>
+                <p>Les tailles réelles, sans agrandissement&nbsp;: c'est à cette échelle que le stylo doit se lire.
+                    Les aperçus ci-dessous sont l'illustration rééchantillonnée et découpée au disque, comme les
+                    fichiers livrés. Le découpage circulaire de cette planche est un substitut au fichier livré,
+                    qu'elle ne peut pas générer&nbsp;: les fichiers, eux, portent ces pixels du pourtour en
+                    transparent (alpha 0).</p>
+                <div class="fav-row">
+                    <figure class="fav-figure">
+                        <img class="fav-mark fav-16"
+                             src="https://github.com/user-attachments/assets/4a1c07e3-c1b1-4539-8762-fb2f3f86a613"
+                             alt="" width="16" height="16">
+                        <figcaption><strong>16 × 16</strong> <code>favicon-16.png</code></figcaption>
+                    </figure>
+                    <figure class="fav-figure">
+                        <img class="fav-mark fav-32"
+                             src="https://github.com/user-attachments/assets/4a1c07e3-c1b1-4539-8762-fb2f3f86a613"
+                             alt="" width="32" height="32">
+                        <figcaption><strong>32 × 32</strong> <code>favicon-32.png</code></figcaption>
+                    </figure>
+                    <figure class="fav-figure">
+                        <img class="fav-mark fav-48"
+                             src="https://github.com/user-attachments/assets/4a1c07e3-c1b1-4539-8762-fb2f3f86a613"
+                             alt="" width="48" height="48">
+                        <figcaption><strong>48 × 48</strong> calque de <code>favicon.ico</code></figcaption>
+                    </figure>
+                </div>
+                <p class="fav-note">Le <code>.ico</code> porte les trois calques, 16, 32 et 48 px&nbsp;; il n'y a pas
+                    de PNG à 48. Aucun carré blanc, opaque ni tuile pleine n'est livré pour l'onglet&nbsp;: le fond de
+                    l'onglet passe sous les coins. Le point à juger ici&nbsp;: que le stylo se détache nettement du
+                    disque à 16 px, et que le bord du disque reste net sur chrome sombre. Aucune variante sombre,
+                    monochrome ni SVG&nbsp;: le stylo, la signature et le disque sont repris tels quels, sans
+                    redessin ni recoloration.</p>
+
+                <p>Le même fichier, à 48 px, sur les deux fonds qu'un onglet peut avoir&nbsp;:</p>
+                <div class="fav-row">
+                    <figure class="fav-figure">
+                        <span class="fav-swatch fav-swatch--light">
+                            <img class="fav-mark fav-48"
+                                 src="https://github.com/user-attachments/assets/4a1c07e3-c1b1-4539-8762-fb2f3f86a613"
+                                 alt="" width="48" height="48">
+                        </span>
+                        <figcaption><strong>48 px, fond clair</strong> le fichier est transparent autour du
+                            disque</figcaption>
+                    </figure>
+                    <figure class="fav-figure">
+                        <span class="fav-swatch fav-swatch--dark">
+                            <img class="fav-mark fav-48"
+                                 src="https://github.com/user-attachments/assets/4a1c07e3-c1b1-4539-8762-fb2f3f86a613"
+                                 alt="" width="48" height="48">
+                        </span>
+                        <figcaption><strong>48 px, fond sombre</strong> aucun carré blanc, aucun halo clair</figcaption>
+                    </figure>
+                </div>
+            </section>
+
+            <section class="section" aria-labelledby="tabs-title">
+                <h2 id="tabs-title">Dans une barre d'onglets</h2>
+                <p>Six barres simulées, avec deux onglets voisins, pour juger la reconnaissance d'un coup d'œil.
+                    Les vignettes voisines sont neutres&nbsp;: elles ne représentent aucune application. L'onglet
+                    actif est celui du portail de signature&nbsp;; il porte le titre de la page de signature servie.</p>
+                <div class="fav-strips">
+                    <figure class="fav-figure">
+                        <div class="fav-strip fav-strip--16" aria-hidden="true">
+                            <span class="fav-tab">
+                                <span class="fav-tab__icon fav-tab__icon--blank"></span>
+                                <span class="fav-tab__label">Boîte de réception</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                            <span class="fav-tab fav-tab--active">
+                                <img class="fav-tab__icon fav-mark"
+                                     src="https://github.com/user-attachments/assets/4a1c07e3-c1b1-4539-8762-fb2f3f86a613"
+                                     alt="" width="16" height="16">
+                                <span class="fav-tab__label">Signature de votre contrat — Ndopify</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                            <span class="fav-tab">
+                                <span class="fav-tab__icon fav-tab__icon--blank"></span>
+                                <span class="fav-tab__label">Agenda</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                        </div>
+                        <figcaption><strong>Chrome clair, vignettes de 16 px</strong></figcaption>
+                    </figure>
+
+                    <figure class="fav-figure">
+                        <div class="fav-strip fav-strip--32" aria-hidden="true">
+                            <span class="fav-tab">
+                                <span class="fav-tab__icon fav-tab__icon--blank"></span>
+                                <span class="fav-tab__label">Boîte de réception</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                            <span class="fav-tab fav-tab--active">
+                                <img class="fav-tab__icon fav-mark"
+                                     src="https://github.com/user-attachments/assets/4a1c07e3-c1b1-4539-8762-fb2f3f86a613"
+                                     alt="" width="32" height="32">
+                                <span class="fav-tab__label">Signature de votre contrat — Ndopify</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                            <span class="fav-tab">
+                                <span class="fav-tab__icon fav-tab__icon--blank"></span>
+                                <span class="fav-tab__label">Agenda</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                        </div>
+                        <figcaption><strong>Chrome clair, vignettes de 32 px</strong></figcaption>
+                    </figure>
+
+                    <figure class="fav-figure">
+                        <div class="fav-strip fav-strip--48" aria-hidden="true">
+                            <span class="fav-tab">
+                                <span class="fav-tab__icon fav-tab__icon--blank"></span>
+                                <span class="fav-tab__label">Boîte de réception</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                            <span class="fav-tab fav-tab--active">
+                                <img class="fav-tab__icon fav-mark"
+                                     src="https://github.com/user-attachments/assets/4a1c07e3-c1b1-4539-8762-fb2f3f86a613"
+                                     alt="" width="48" height="48">
+                                <span class="fav-tab__label">Signature de votre contrat — Ndopify</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                            <span class="fav-tab">
+                                <span class="fav-tab__icon fav-tab__icon--blank"></span>
+                                <span class="fav-tab__label">Agenda</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                        </div>
+                        <figcaption><strong>Chrome clair, vignettes de 48 px</strong> calque de
+                            <code>favicon.ico</code></figcaption>
+                    </figure>
+
+                    <figure class="fav-figure">
+                        <div class="fav-strip fav-strip--dark fav-strip--16" aria-hidden="true">
+                            <span class="fav-tab">
+                                <span class="fav-tab__icon fav-tab__icon--blank"></span>
+                                <span class="fav-tab__label">Boîte de réception</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                            <span class="fav-tab fav-tab--active">
+                                <img class="fav-tab__icon fav-mark"
+                                     src="https://github.com/user-attachments/assets/4a1c07e3-c1b1-4539-8762-fb2f3f86a613"
+                                     alt="" width="16" height="16">
+                                <span class="fav-tab__label">Signature de votre contrat — Ndopify</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                            <span class="fav-tab">
+                                <span class="fav-tab__icon fav-tab__icon--blank"></span>
+                                <span class="fav-tab__label">Agenda</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                        </div>
+                        <figcaption><strong>Chrome sombre, vignettes de 16 px</strong></figcaption>
+                    </figure>
+
+                    <figure class="fav-figure">
+                        <div class="fav-strip fav-strip--dark fav-strip--32" aria-hidden="true">
+                            <span class="fav-tab">
+                                <span class="fav-tab__icon fav-tab__icon--blank"></span>
+                                <span class="fav-tab__label">Boîte de réception</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                            <span class="fav-tab fav-tab--active">
+                                <img class="fav-tab__icon fav-mark"
+                                     src="https://github.com/user-attachments/assets/4a1c07e3-c1b1-4539-8762-fb2f3f86a613"
+                                     alt="" width="32" height="32">
+                                <span class="fav-tab__label">Signature de votre contrat — Ndopify</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                            <span class="fav-tab">
+                                <span class="fav-tab__icon fav-tab__icon--blank"></span>
+                                <span class="fav-tab__label">Agenda</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                        </div>
+                        <figcaption><strong>Chrome sombre, vignettes de 32 px</strong></figcaption>
+                    </figure>
+
+                    <figure class="fav-figure">
+                        <div class="fav-strip fav-strip--dark fav-strip--48" aria-hidden="true">
+                            <span class="fav-tab">
+                                <span class="fav-tab__icon fav-tab__icon--blank"></span>
+                                <span class="fav-tab__label">Boîte de réception</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                            <span class="fav-tab fav-tab--active">
+                                <img class="fav-tab__icon fav-mark"
+                                     src="https://github.com/user-attachments/assets/4a1c07e3-c1b1-4539-8762-fb2f3f86a613"
+                                     alt="" width="48" height="48">
+                                <span class="fav-tab__label">Signature de votre contrat — Ndopify</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                            <span class="fav-tab">
+                                <span class="fav-tab__icon fav-tab__icon--blank"></span>
+                                <span class="fav-tab__label">Agenda</span>
+                                <span class="fav-tab__close">×</span>
+                            </span>
+                        </div>
+                        <figcaption><strong>Chrome sombre, vignettes de 48 px</strong> calque de
+                            <code>favicon.ico</code></figcaption>
+                    </figure>
+                </div>
+                <p>Sur chrome clair comme sur chrome sombre, c'est le disque bleu qui porte le stylo&nbsp;: aucun
+                    carré blanc, aucun halo clair ne l'entoure — le fond de l'onglet passe sous les coins. Dans les
+                    deux cas, c'est le stylo et sa signature qui identifient le portail de signature, et non le N
+                    partagé par le site public et Partner Central.</p>
+                <p class="fav-note">Sur un téléphone (390 px), les barres gardent les trois tailles&nbsp;: les
+                    libellés se tronquent comme dans un vrai navigateur, les vignettes ne changent pas, et la page ne
+                    défile jamais horizontalement.</p>
+            </section>
+
+            <section class="section" aria-labelledby="apple-title">
+                <h2 id="apple-title">L'écran d'accueil (180 × 180)</h2>
+                <p>L'icône d'écran d'accueil est le contraire du favicon&nbsp;: une tuile carrée pleine, opaque,
+                    <code>#1d7edf</code>. L'illustration y est réduite à 90&nbsp;% de la tuile, centrée, et rognée au
+                    disque, si bien que sa marge blanche disparaît dans le bleu de la tuile&nbsp;: aucun coin
+                    transparent, aucun liseré blanc. Le stylo reste dans le cercle de sécurité interne (80&nbsp;% du
+                    diamètre). iOS ajoute son propre masque carré arrondi (≈ 22&nbsp;% de rayon) en posant l'icône&nbsp;:
+                    c'est sous ce masque qu'elle est montrée ici.</p>
+                <p>Pourquoi les deux traitements diffèrent&nbsp;: dans une barre d'onglets, l'icône doit se fondre dans
+                    le fond du navigateur, donc être transparente autour du disque&nbsp;; sur l'écran d'accueil, iOS
+                    masque les coins lui-même, et une tuile transparente ou à coins blancs produirait un liseré clair
+                    autour de l'icône. Le fichier livré est plein&nbsp;; c'est le masque du système qui l'arrondit.</p>
+                <div class="fav-row fav-row--center">
+                    <figure class="fav-figure">
+                        <span class="fav-surface">
+                            <span class="fav-tile fav-apple">
+                                <span class="fav-tile__art">
+                                    <img src="https://github.com/user-attachments/assets/4a1c07e3-c1b1-4539-8762-fb2f3f86a613"
+                                         alt="Tuile d'écran d'accueil : un stylo blanc avec sa signature noire sur un carré bleu plein, vu à travers le masque carré arrondi d'iOS">
+                                </span>
+                            </span>
+                        </span>
+                        <figcaption><strong>180 × 180</strong> <code>apple-touch-icon.png</code>, sous le masque
+                            d'iOS</figcaption>
+                    </figure>
+                    <figure class="fav-figure">
+                        <span class="fav-surface">
+                            <span class="fav-tile fav-90">
+                                <span class="fav-tile__art">
+                                    <img src="https://github.com/user-attachments/assets/4a1c07e3-c1b1-4539-8762-fb2f3f86a613"
+                                         alt="">
+                                </span>
+                                <span class="fav-safe" aria-hidden="true"></span>
+                            </span>
+                        </span>
+                        <figcaption><strong>La tuile, non masquée</strong> les quatre coins sont bleus&nbsp;; le
+                            cercle en pointillés est le guide des 80&nbsp;%, non imprimé dans le fichier</figcaption>
+                    </figure>
+                    <figure class="fav-figure">
+                        <img class="fav-mark fav-16"
+                             src="https://github.com/user-attachments/assets/4a1c07e3-c1b1-4539-8762-fb2f3f86a613"
+                             alt="Favicon de l'onglet, à sa taille réelle : un stylo blanc sur un disque bleu, sans fond"
+                             width="16" height="16">
+                        <figcaption><strong>Onglet, 16 px</strong> transparent autour du disque</figcaption>
+                    </figure>
+                </div>
+            </section>
+
+            <section class="section" aria-labelledby="files-title">
+                <h2 id="files-title">Les fichiers livrés et les lignes du head</h2>
+                <p>Cinq fichiers, tous dans les ressources servies, sous
+                    <code>src/main/resources/public/assets/images/</code>&nbsp;; le carré blanc de la source n'est
+                    dupliqué dans aucun&nbsp;:</p>
+                <ul class="fav-files">
+                    <li><code>favicon.png</code> — l'illustration 500 × 500 découpée au disque, stylo et signature
+                        seuls, pourtour transparent (alpha 0)&nbsp;; le maître des quatre autres&nbsp;;</li>
+                    <li><code>favicon-32.png</code> — 32 × 32, même découpe et même transparence&nbsp;;</li>
+                    <li><code>favicon-16.png</code> — 16 × 16, même découpe et même transparence, la taille de
+                        l'onglet&nbsp;;</li>
+                    <li><code>favicon.ico</code> — les calques 16, 32 et 48 px, même transparence&nbsp;; l'icône
+                        multi-calques que chaque page lie explicitement (<code>rel=&quot;icon&quot;</code>,
+                        <code>sizes=&quot;any&quot;</code>), et non une ressource demandée à la racine&nbsp;;</li>
+                    <li><code>apple-touch-icon.png</code> — 180 × 180, tuile <code>#1d7edf</code> pleine et opaque,
+                        coins bleus (le seul fichier sans transparence).</li>
+                </ul>
+                <p>Les quatre lignes que reçoivent les quatre pages servies — <code>templates/sign.html</code>,
+                    <code>templates/verify.html</code>, <code>templates/error/403.html</code> et
+                    <code>templates/error/404.html</code>, chacune avec son propre <code>&lt;head&gt;</code>, sans
+                    fragment partagé&nbsp;:</p>
+                <pre class="fav-code">&lt;link rel="icon" th:href="@{/assets/images/favicon.ico}" sizes="any"&gt;
+&lt;link rel="icon" type="image/png" sizes="32x32" th:href="@{/assets/images/favicon-32.png}"&gt;
+&lt;link rel="icon" type="image/png" sizes="16x16" th:href="@{/assets/images/favicon-16.png}"&gt;
+&lt;link rel="apple-touch-icon" sizes="180x180" th:href="@{/assets/images/apple-touch-icon.png}"&gt;</pre>
+                <p>Dans le prototype (<code>src/main/html/sign.html</code> et <code>verify.html</code>), les mêmes
+                    lignes portent le chemin relatif (<code>assets/images/favicon.ico</code>, etc.)&nbsp;; les fichiers
+                    n'y sont pas encore, ils arrivent à l'implémentation. Le reste du <code>&lt;head&gt;</code> ne
+                    bouge pas&nbsp;: <code>theme-color</code> et <code>noindex</code> restent en place, ainsi que
+                    <code>no-referrer</code> sur les pages de signature et de vérification.</p>
+                <p><code>icon.png</code> — l'ancien signe partagé — reste dans le dossier, pour une page en cache ou
+                    un aperçu externe, mais plus aucune page ne le lie. Aucun <code>/favicon.ico</code> à la racine
+                    n'est servi&nbsp;: le module ne sert que <code>/assets/**</code>, <code>/sign/**</code>,
+                    <code>/verify/**</code> et <code>/error</code>, et les quatre lignes ci-dessus suffisent — la
+                    configuration de sécurité ne change pas.</p>
+            </section>
+        </div>
+    </main>
+</body>
+</html>
