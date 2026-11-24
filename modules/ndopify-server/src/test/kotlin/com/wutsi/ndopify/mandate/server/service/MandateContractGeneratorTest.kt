@@ -324,17 +324,18 @@ class MandateContractGeneratorTest {
     }
 
     @Test
-    fun `a building sale contract words its étages and its unités, never its stored utilities`() {
+    fun `a building sale contract words its étages and its unités, never its stored rooms, parkings nor utilities`() {
         val building = mandate.copy(
             listingType = ListingType.SALE,
             propertyCategory = PropertyCategory.COMMERCIAL,
             propertyType = PropertyType.BUILDING,
-            rooms = null,
-            parkings = null,
+            // An interest-seeded search, or a legacy row, may still store the rooms, the parkings and the utilities
+            // the wizards no longer ask
+            rooms = "2",
+            parkings = "1",
             area = 850,
             levels = 3,
             units = 12,
-            // An interest-seeded search, or a legacy row, may still store the utilities the wizards no longer ask
             waterMeter = true,
             dedicatedWaterMeter = true,
             waterTank = true,
@@ -356,8 +357,9 @@ class MandateContractGeneratorTest {
 
         assertTrue(html.contains("<b>Étages</b> : 3"))
         assertTrue(html.contains("<b>Unités</b> : 12"))
-        assertFalse(html.contains("Chambres"))
         listOf(
+            "Chambres",
+            "Parking",
             "Les équipements souhaités",
             "Accès à l'eau",
             "Compteur électrique",
@@ -368,17 +370,18 @@ class MandateContractGeneratorTest {
     }
 
     @Test
-    fun `a building sale listing contract never words its stored utilities`() {
+    fun `a building sale listing contract never words its stored rooms, parkings nor utilities`() {
         val building = mandate.copy(
             mandateType = MandateType.LISTING,
             listingType = ListingType.SALE,
             propertyCategory = PropertyCategory.COMMERCIAL,
             propertyType = PropertyType.BUILDING,
-            rooms = null,
-            parkings = null,
+            rooms = "2",
+            parkings = "1",
             area = 850,
             levels = 3,
             units = 12,
+            // An interest-seeded search, or a legacy row, may still store the utilities the wizards no longer ask
             waterMeter = true,
             generatorSet = true,
             roadPaved = true,
@@ -391,6 +394,8 @@ class MandateContractGeneratorTest {
         assertTrue(html.contains("<b>Étages</b> : 3"))
         assertTrue(html.contains("<b>Unités</b> : 12"))
         listOf(
+            "Chambres",
+            "Parking",
             "Les équipements du bien",
             "Accès à l'eau",
             "Compteur électrique",
