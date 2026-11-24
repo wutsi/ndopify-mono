@@ -86,6 +86,22 @@ class OfferPropertyControllerTest {
         parkings = null,
     )
 
+    private val buildingSale = complete.copy(
+        listingType = ListingType.SALE,
+        propertyCategory = PropertyCategory.COMMERCIAL,
+        propertyType = "BUILDING",
+        area = 850,
+        priceAmount = 250_000_000L,
+        advanceRent = null,
+        securityDeposit = null,
+        rooms = null,
+        furnitureType = null,
+        parkings = null,
+        levels = 3,
+        units = 12,
+        roadAccess = null,
+    )
+
     @BeforeEach
     fun setUp() {
         doReturn(TENANT).whenever(tenantContext).getTenant()
@@ -768,6 +784,72 @@ class OfferPropertyControllerTest {
         assertNull(pending()?.furnitureType)
         assertNull(pending()?.parkings)
         assertEquals(800, pending()?.area)
+    }
+
+    // The building branch (#274)
+
+    @Test
+    fun `a building sale has no amenities step`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, buildingSale.copy(email = null))
+
+        val result = mvc.perform(get("/offer-property?step=amenities").session(session)).andReturn()
+
+        assertEquals("redirect:/offer-property?step=contact", result.modelAndView?.viewName)
+        assertEquals(302, result.response.status)
+    }
+
+    @Test
+    fun `the features step keeps a building's counts`() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            buildingSale.copy(propertyType = null, area = null, levels = null, units = null),
+        )
+
+        val result = mvc.perform(
+            features("propertyType" to "BUILDING", "levels" to "3", "units" to "12", "area" to "850"),
+        ).andReturn()
+
+        assertEquals("redirect:/offer-property?step=contact", result.modelAndView?.viewName)
+        assertEquals(3, pending()?.levels)
+        assertEquals(12, pending()?.units)
+        assertNull(pending()?.parkings)
+    }
+
+    @Test
+    fun `the features step requires a building's counts`() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            buildingSale.copy(propertyType = null, area = null, levels = null, units = null),
+        )
+
+        val result = mvc.perform(features("propertyType" to "BUILDING", "levels" to "3", "area" to "850")).andReturn()
+
+        assertEquals("features", model(result)["step"])
+        assertEquals("Indiquez le nombre d'unités.", errors(result)["units"])
+        assertNull(errors(result)["levels"])
+        assertNull(pending()?.propertyType)
+    }
+
+    @Test
+    fun `a rental building asks no counts`() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            complete.copy(
+                propertyCategory = PropertyCategory.RESIDENTIAL,
+                propertyType = "BUILDING",
+                rooms = null,
+                furnitureType = null,
+                parkings = null,
+            ),
+        )
+
+        val result = mvc.perform(
+            features("propertyType" to "BUILDING", "levels" to "3", "units" to "12", "hasParking" to "NO"),
+        ).andReturn()
+
+        assertEquals("redirect:/offer-property?step=amenities", result.modelAndView?.viewName)
+        assertNull(pending()?.levels)
+        assertNull(pending()?.units)
     }
 
     // POST /offer-property/amenities

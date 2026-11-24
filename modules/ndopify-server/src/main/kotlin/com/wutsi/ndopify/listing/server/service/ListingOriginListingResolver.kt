@@ -40,6 +40,9 @@ class ListingOriginListingResolver(
         rooms = listing.rooms?.toString(),
         parkings = listing.parkings?.toString(),
         area = listing.area,
+        // A building sold as a whole: copied like the other property facts, so the search keeps the counts it viewed.
+        levels = listing.levels,
+        units = listing.units,
         waterMeter = listing.waterMeter,
         dedicatedWaterMeter = listing.dedicatedWaterMeter,
         waterTank = listing.waterTank,

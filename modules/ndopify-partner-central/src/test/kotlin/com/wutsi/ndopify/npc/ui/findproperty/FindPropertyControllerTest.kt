@@ -70,6 +70,19 @@ class FindPropertyControllerTest {
 
     private val complete = PendingMandateTest.COMPLETE
 
+    private val buildingSale = complete.copy(
+        listingType = ListingType.SALE,
+        propertyCategory = PropertyCategory.COMMERCIAL,
+        propertyType = "BUILDING",
+        rooms = null,
+        furnitureType = null,
+        parkings = null,
+        levels = 3,
+        units = 12,
+        priceAmount = 250_000_000,
+        financingType = FinancingType.CASH,
+    )
+
     @BeforeEach
     fun setUp() {
         doReturn(TENANT).whenever(tenantContext).getTenant()
@@ -777,6 +790,104 @@ class FindPropertyControllerTest {
         val result = mvc.perform(post("/find-property/amenities").session(session)).andReturn()
 
         assertEquals("redirect:/find-property?step=property", result.modelAndView?.viewName)
+    }
+
+    // The building branch (#274)
+
+    @Test
+    fun `a building sale has no amenities step`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, buildingSale.copy(priceAmount = null))
+
+        val result = mvc.perform(get("/find-property?step=amenities").session(session)).andReturn()
+
+        assertEquals("redirect:/find-property?step=budget", result.modelAndView?.viewName)
+        assertEquals(302, result.response.status)
+    }
+
+    @Test
+    fun `the property step keeps a building's counts`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            buildingSale.copy(propertyType = null, levels = null, units = null),
+        )
+
+        val result = mvc.perform(
+            post("/find-property/property").session(session)
+                .param("propertyType", "BUILDING")
+                .param("levels", "3")
+                .param("units", "12"),
+        ).andReturn()
+
+        // The amenities step leaves a building sale's wizard.
+        assertEquals("redirect:/find-property?step=budget", result.modelAndView?.viewName)
+        assertEquals(3, pending()?.levels)
+        assertEquals(12, pending()?.units)
+    }
+
+    @Test
+    fun `the property step stores an indifferent count as null`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            buildingSale.copy(propertyType = null, levels = null, units = null),
+        )
+
+        val result = mvc.perform(
+            post("/find-property/property").session(session)
+                .param("propertyType", "BUILDING")
+                .param("levelsAny", "on")
+                .param("unitsAny", "on"),
+        ).andReturn()
+
+        assertEquals("redirect:/find-property?step=budget", result.modelAndView?.viewName)
+        assertNull(pending()?.levels)
+        assertNull(pending()?.units)
+    }
+
+    @Test
+    fun `the property step requires a building's counts`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            buildingSale.copy(propertyType = null, levels = null, units = null),
+        )
+
+        val result = mvc.perform(
+            post("/find-property/property").session(session).param("propertyType", "BUILDING"),
+        ).andReturn()
+
+        assertEquals("property", model(result)["step"])
+        assertEquals(
+            "Indiquez le nombre d'étages, ou cochez Indifférent.",
+            errors(result)["levels"],
+        )
+        assertEquals(
+            "Indiquez le nombre d'unités, ou cochez Indifférent.",
+            errors(result)["units"],
+        )
+        assertNull(pending()?.levels)
+    }
+
+    @Test
+    fun `a rental building asks no counts`() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = "BUILDING",
+                rooms = null,
+                furnitureType = null,
+            ),
+        )
+
+        val result = mvc.perform(
+            post("/find-property/property").session(session)
+                .param("propertyType", "BUILDING")
+                .param("levels", "3")
+                .param("units", "12"),
+        ).andReturn()
+
+        assertEquals("redirect:/find-property?step=amenities", result.modelAndView?.viewName)
+        assertNull(pending()?.levels)
+        assertNull(pending()?.units)
     }
 
     // POST /find-property/budget

@@ -84,6 +84,20 @@ internal object MandateMailLabels {
     fun propertyType(mandate: MandateEntity): String? =
         mandate.propertyType?.let { PROPERTY_TYPES[it] }
 
+    // "3 étages · 12 unités", for a building sold as a whole; null for any other mandate
+    fun building(mandate: MandateEntity): String? =
+        if (mandate.listingType != ListingType.SALE || mandate.propertyType != PropertyType.BUILDING) {
+            null
+        } else {
+            listOfNotNull(
+                mandate.levels?.let { count(it, "étage", "étages") },
+                mandate.units?.let { count(it, "unité", "unités") },
+            ).joinToString(" · ").ifEmpty { null }
+        }
+
+    // "1 étage", "3 étages": the same rule as the match card's (MatchRules.levels / units).
+    private fun count(value: Int, one: String, many: String): String = "$value " + if (value > 1) many else one
+
     // Ex: "Comptant"; null for a rental, and for no usable answer.
     fun financingType(mandate: MandateEntity): String? =
         if (mandate.listingType == ListingType.SALE) mandate.financingType?.let { FINANCING_TYPES[it] } else null

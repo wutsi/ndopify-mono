@@ -99,6 +99,8 @@ class MandateOfferMailetTest {
                 "listing_type" to "Location",
                 "property_type" to "Appartement",
                 "rooms" to "2",
+                "levels" to null,
+                "units" to null,
                 "city" to "Yaounde",
                 "neighbourhoods" to "Bastos, Mvan",
                 "budget" to "1 500 000 XAF / mois",
@@ -235,6 +237,8 @@ class MandateOfferMailetTest {
                 "listing_type" to "Location",
                 "property_type" to "Appartement",
                 "rooms" to "2",
+                "levels" to null,
+                "units" to null,
                 "city" to "Yaounde",
                 "neighbourhoods" to "Bastos, Mvan",
                 "deadline_date" to "15/10/2026",
@@ -249,6 +253,43 @@ class MandateOfferMailetTest {
             ),
             context,
         )
+    }
+
+    @Test
+    fun `a building sale offers its levels and its units, never the rooms it stores`() {
+        val building = mandate.copy(
+            mandateType = MandateType.LISTING,
+            listingType = ListingType.SALE,
+            propertyType = PropertyType.BUILDING,
+            rooms = "2",
+            levels = 3,
+            units = 12,
+            pricePeriodicityType = PeriodicityType.NONE,
+        )
+
+        val context = context(assignment.copy(mandate = building), "/mail/mandate/offer_listing.mjml")
+
+        assertEquals(3, context["levels"])
+        assertEquals(12, context["units"])
+        assertEquals(null, context["rooms"])
+    }
+
+    @Test
+    fun `a building sale search offers its levels and its units, never the rooms it stores`() {
+        val building = mandate.copy(
+            listingType = ListingType.SALE,
+            propertyType = PropertyType.BUILDING,
+            rooms = "2",
+            levels = 3,
+            units = 12,
+            pricePeriodicityType = PeriodicityType.NONE,
+        )
+
+        val context = context(assignment.copy(mandate = building))
+
+        assertEquals(3, context["levels"])
+        assertEquals(12, context["units"])
+        assertEquals(null, context["rooms"])
     }
 
     @Test

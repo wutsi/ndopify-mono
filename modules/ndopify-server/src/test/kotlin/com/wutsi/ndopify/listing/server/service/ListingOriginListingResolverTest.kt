@@ -76,6 +76,27 @@ class ListingOriginListingResolverTest {
     }
 
     @Test
+    fun `a building listing seeds the search with its counts`() {
+        doReturn(
+            Optional.of(
+                listing.copy(
+                    listingType = ListingType.SALE,
+                    propertyType = PropertyType.BUILDING,
+                    rooms = null,
+                    parkings = null,
+                    levels = 3,
+                    units = 12,
+                ),
+            ),
+        ).whenever(dao).findById(7)
+
+        val criteria = resolver.resolve(7)!!.criteria
+
+        assertEquals(3, criteria.levels)
+        assertEquals(12, criteria.units)
+    }
+
+    @Test
     fun `a sold listing resolves, not published`() {
         doReturn(Optional.of(listing.copy(status = ListingStatus.SOLD))).whenever(dao).findById(7)
 

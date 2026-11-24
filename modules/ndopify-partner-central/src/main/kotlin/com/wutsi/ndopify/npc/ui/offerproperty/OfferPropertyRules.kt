@@ -20,7 +20,9 @@ import java.time.format.DateTimeParseException
  *
  * The wizard serves two projects: a rental ([ListingType.RENTAL]) and a sale ([ListingType.SALE]). A rental offers no
  * land; a sale offers it under the residential use only and no room, asks no furniture, requires the surface of a plot
- * of land and its optional documents, has its own price floor, and has no advance nor deposit.
+ * of land and its optional documents, has its own price floor, and has no advance nor deposit. A building sold as a
+ * whole is offered under Commercial only (#274), is captured by its two counts instead of a room and a parking, and
+ * skips the amenities step.
  */
 object OfferPropertyRules {
     const val STEP_PROPERTY = "property"
@@ -46,6 +48,10 @@ object OfferPropertyRules {
 
     /** The smallest sale price worth a listing, one amount for every property type. */
     const val MIN_SALE_PRICE = 1_000_000L
+
+    /** The bounds of a building sale's two counts: whole numbers, a wizard-side rule only. */
+    const val MAX_LEVELS = 30
+    const val MAX_UNITS = 500
 
     /** How far ahead the availability date may be, in days. */
     const val MAX_AVAILABILITY_DAYS = 365L
@@ -90,11 +96,13 @@ object OfferPropertyRules {
     )
 
     // A sale drops the room type and offers land under the residential use only (a plot to build on is residential);
-    // a rental never offers land.
+    // a rental never offers land. A building sold as a whole is offered under Commercial only (#274): it replaces the
+    // residential category the rental map gives it, keeping its form position.
     private val SALE_CATEGORIES_BY_TYPE: Map<PropertyType, Set<PropertyCategory>> =
         (CATEGORIES_BY_TYPE - PropertyType.ROOM)
             .mapValues { (_, category) -> setOf(category) } +
-            (PropertyType.LAND to setOf(PropertyCategory.RESIDENTIAL))
+            (PropertyType.LAND to setOf(PropertyCategory.RESIDENTIAL)) +
+            (PropertyType.BUILDING to setOf(PropertyCategory.COMMERCIAL))
 
     private val WITHOUT_ROOMS = setOf(PropertyType.ROOM, PropertyType.STUDIO, PropertyType.BUILDING)
 
@@ -107,6 +115,14 @@ object OfferPropertyRules {
     private fun residential(category: PropertyCategory?) = category == PropertyCategory.RESIDENTIAL
 
     private fun isSale(listingType: ListingType?): Boolean = listingType == ListingType.SALE
+
+    /** A building sold as a whole: its two counts replace the rooms and the parking, and its amenities step leaves. */
+    fun buildingSale(listingType: ListingType?, type: PropertyType?): Boolean =
+        isSale(listingType) && type == PropertyType.BUILDING
+
+    /** A building sale has no amenity step: its answers are dropped, and its step leaves the wizard. */
+    fun needsAmenities(category: PropertyCategory?, type: PropertyType?, listingType: ListingType?): Boolean =
+        !buildingSale(listingType, type)
 
     private fun categoriesByType(listingType: ListingType?): Map<PropertyType, Set<PropertyCategory>> =
         if (isSale(listingType)) {
@@ -144,9 +160,28 @@ object OfferPropertyRules {
     fun needsRooms(category: PropertyCategory?, type: PropertyType?, listingType: ListingType?): Boolean =
         residential(category) && type !in WITHOUT_ROOMS && type != PropertyType.LAND
 
-    // A room is let in a shared home: its parking, if any, isn't its own. A plot has none.
+    // A room is let in a shared home: its parking, if any, isn't its own. A plot has none; neither has a building
+    // sold as a whole (#274).
     fun needsParking(category: PropertyCategory?, type: PropertyType?, listingType: ListingType?): Boolean =
-        residential(category) && type != PropertyType.ROOM && type != PropertyType.LAND
+        !buildingSale(listingType, type) && residential(category) && type != PropertyType.ROOM &&
+            type != PropertyType.LAND
+
+    /**
+     * A building sale's counts, without an "Indifférent" answer: a whole number in `1..[max]`, required. A blank
+     * answer is the question's own error.
+     */
+    private fun count(value: String?, max: Int, noun: String): String? {
+        val text = value?.trim().orEmpty()
+        if (text.isEmpty()) return "Indiquez le nombre $noun."
+        val number = text.takeIf { text.all(Char::isDigit) }?.toIntOrNull()
+        return if (number != null && number in 1..max) null else "Indiquez un nombre entier, de 1 à $max."
+    }
+
+    /** The building's étages: 1..[MAX_LEVELS]. */
+    fun levels(value: String?): String? = count(value, MAX_LEVELS, "d'étages")
+
+    /** The building's unités: 1..[MAX_UNITS]. */
+    fun units(value: String?): String? = count(value, MAX_UNITS, "d'unités")
 
     /** A commercial property is always measured; a plot of land sold is sold by its surface. */
     fun needsArea(category: PropertyCategory?, type: PropertyType?, listingType: ListingType?): Boolean =

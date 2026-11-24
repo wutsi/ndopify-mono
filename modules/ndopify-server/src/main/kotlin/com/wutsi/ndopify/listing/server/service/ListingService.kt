@@ -159,6 +159,8 @@ class ListingService(
                 rooms = count(mandate.rooms),
                 parkings = count(mandate.parkings),
                 area = mandate.area,
+                levels = mandate.levels,
+                units = mandate.units,
                 waterMeter = mandate.waterMeter,
                 dedicatedWaterMeter = mandate.dedicatedWaterMeter,
                 waterTank = mandate.waterTank,
@@ -193,7 +195,8 @@ class ListingService(
      * agent, 409 LISTING_VERSION_CONFLICT if [UpdateListingRequest.version] isn't
      * the listing's, 409 LISTING_NOT_DRAFT once sent; then 400 for no section, PHOTOS (uploaded, not saved), a
      * required field missing or a neighbourhood that isn't one of the listing's city. The city never changes: it's
-     * the mandate's, the agent's area.
+     * the mandate's, the agent's area. A building sold as a whole has no bathrooms nor parkings, and its AMENITIES
+     * section is refused.
      */
     @Transactional
     fun update(id: Long, request: UpdateListingRequest): ListingEntity {
@@ -229,16 +232,21 @@ class ListingService(
                 propertyType = required("propertyType", request.propertyType),
                 furnitureType = request.furnitureType,
                 rooms = request.rooms,
-                bathrooms = request.bathrooms,
+                // A building sold as a whole has no bathrooms nor parkings
+                bathrooms = request.bathrooms.takeIf { !ListingSectionService.soldBuilding(listing) },
                 livingRooms = request.livingRooms,
                 kitchens = request.kitchens,
-                parkings = request.parkings,
+                parkings = request.parkings.takeIf { !ListingSectionService.soldBuilding(listing) },
                 area = required("area", request.area?.takeIf { it > 0 }),
                 levels = request.levels,
+                units = request.units,
                 floorLevel = request.floorLevel,
             )
 
             ListingSection.AMENITIES -> {
+                if (ListingSectionService.soldBuilding(listing)) {
+                    throw invalid("section")
+                }
                 // The road access is one answer
                 val roadAccess = listOf(request.roadPaved, request.trackAccessibleByCar, request.trackInaccessibleByCar)
                 if (roadAccess.count { it == true } != 1) {
@@ -295,7 +303,7 @@ class ListingService(
         if (listing.status != ListingStatus.DRAFT) {
             throw ConflictException(Error(ErrorCode.LISTING_NOT_DRAFT))
         }
-        if (sectionService.summaries(id).any { it.required && it.status != ListingSectionStatus.VERIFIED }) {
+        if (sectionService.summaries(listing).any { it.required && it.status != ListingSectionStatus.VERIFIED }) {
             throw ConflictException(Error(ErrorCode.LISTING_INCOMPLETE))
         }
 

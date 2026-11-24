@@ -318,6 +318,10 @@ class MandateController(
         )
         model.addAttribute("owner", mandate.mandateType == MandateType.LISTING)
         model.addAttribute("sale", mandate.listingType == ListingType.SALE)
+        model.addAttribute(
+            "building",
+            FindPropertyRules.buildingSale(mandate.listingType, FindPropertyRules.parsePropertyType(answers.propertyType)),
+        )
         model.addAttribute("mandateId", mandate.id.toString())
         model.addAttribute("city", names[mandate.cityId])
         model.addAttribute("cityId", mandate.cityId)

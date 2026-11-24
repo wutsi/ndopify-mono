@@ -25,6 +25,10 @@ import java.io.Serializable
  * `propertyType`, `furnitureType` and `parkings` are kept as text because they can be "Indifférent"
  * ([FindPropertyRules.ANY]), a UI answer the server doesn't know.
  *
+ * A building bought as a whole keeps its two counts — `levels` (étages) and `units` — and their "Indifférent"
+ * answers ([levelsAny] / [unitsAny], posted as empty fields and sent as null). Its amenities step leaves the wizard
+ * ([steps]), so its amenity answers are neither kept nor sent.
+ *
  * `financingType` and `titleDocuments` are the buyer's brief for a purchase: a rental never sends them, and only a
  * land purchase keeps documents. The price per m² the budget step shows is derived on the page and is never an
  * answer here.
@@ -39,6 +43,10 @@ data class PendingMandate(
     val furnitureType: String? = null,
     val parkings: String? = null,
     val area: Int? = null,
+    val levels: Int? = null,
+    val units: Int? = null,
+    val levelsAny: Boolean = false,
+    val unitsAny: Boolean = false,
     val titleDocuments: List<TitleDocumentType> = emptyList(),
     val amenities: Set<String> = emptySet(),
     val priceAmount: Long? = null,
@@ -64,6 +72,12 @@ data class PendingMandate(
 
     private fun type() = FindPropertyRules.parsePropertyType(propertyType)
 
+    /** A building bought as a whole: six steps, the amenities one left out. */
+    fun buildingSale(): Boolean = FindPropertyRules.buildingSale(listingType, type())
+
+    /** The branch's steps, in order: a building sale has no amenities step. */
+    fun steps(): List<String> = FindPropertyController.steps(this)
+
     fun isComplete(step: String): Boolean = when (step) {
         FindPropertyController.STEP_NEED ->
             FindPropertyRules.listingType(listingType) == null && FindPropertyRules.propertyCategory(propertyCategory) == null
@@ -75,9 +89,10 @@ data class PendingMandate(
             FindPropertyRules.propertyType(propertyCategory, propertyType, listingType) == null &&
                 (!FindPropertyRules.needsRooms(propertyCategory, type(), listingType) || FindPropertyRules.rooms(rooms) == null) &&
                 (!FindPropertyRules.needsFurniture(type(), listingType) || FindPropertyRules.furnitureType(furnitureType) == null) &&
-                FindPropertyRules.area(area, FindPropertyRules.needsArea(propertyCategory, type(), listingType)) == null
+                FindPropertyRules.area(area, FindPropertyRules.needsArea(propertyCategory, type(), listingType)) == null &&
+                (!buildingSale() || countsAnswered())
 
-        // Every criterion is optional.
+        // Every criterion is optional; a building sale skips the step.
         FindPropertyController.STEP_AMENITIES -> true
 
         FindPropertyController.STEP_BUDGET ->
@@ -97,15 +112,21 @@ data class PendingMandate(
         else -> false
     }
 
+    /** Both counts are required for a building sale: a whole number within its bounds, or "Indifférent". */
+    private fun countsAnswered(): Boolean =
+        FindPropertyRules.levels(levels?.toString(), levelsAny) == null &&
+            FindPropertyRules.units(units?.toString(), unitsAny) == null
+
     /** The first step that still needs answers, or the review step when they're all done. */
     fun firstIncompleteStep(): String =
-        FindPropertyController.STEPS.dropLast(1).firstOrNull { step -> !isComplete(step) }
+        steps().dropLast(1).firstOrNull { step -> !isComplete(step) }
             ?: FindPropertyController.STEP_REVIEW
 
     /** The answers as a TENANT mandate. Questions that don't apply to the chosen type or project are sent as null. */
     fun toCreateMandateRequest(currency: String): CreateMandateRequest {
         val type = type()
         val sale = isSale()
+        val amenitiesNeeded = FindPropertyRules.needsAmenities(propertyCategory, type, listingType)
         return CreateMandateRequest(
             mandateType = MandateType.SEARCH,
             // The wizard's project; the old hard-coded rental stays the default, never UNKNOWN.
@@ -123,22 +144,25 @@ data class PendingMandate(
                 .firstOrNull { it.name == furnitureType }
                 ?.takeIf { FindPropertyRules.needsFurniture(type, listingType) },
             rooms = rooms?.takeIf { FindPropertyRules.needsRooms(propertyCategory, type, listingType) },
-            parkings = parkings?.takeIf { FindPropertyRules.asksParkings(type) && it != FindPropertyRules.ANY },
+            parkings = parkings?.takeIf { FindPropertyRules.asksParkings(type, listingType) && it != FindPropertyRules.ANY },
             area = area,
-            waterMeter = has("waterMeter"),
-            dedicatedWaterMeter = has("dedicatedWaterMeter"),
-            waterTank = has("waterTank"),
-            waterWell = has("waterWell"),
-            electricityMeter = has("electricityMeter"),
-            dedicatedElectricityMeter = has("dedicatedElectricityMeter"),
-            generatorSet = has("generatorSet"),
-            solarPanel = has("solarPanel"),
-            roadPaved = has("roadPaved"),
-            trackAccessibleByCar = has("trackAccessibleByCar"),
-            trackInaccessibleByCar = has("trackInaccessibleByCar"),
-            securedFenced = has("securedFenced"),
-            securityGuard = has("securityGuard"),
-            videoSurveillance = has("videoSurveillance"),
+            // A building sale's two counts; another type sends none, and "Indifférent" is null.
+            levels = levels.takeIf { buildingSale() },
+            units = units.takeIf { buildingSale() },
+            waterMeter = has("waterMeter") && amenitiesNeeded,
+            dedicatedWaterMeter = has("dedicatedWaterMeter") && amenitiesNeeded,
+            waterTank = has("waterTank") && amenitiesNeeded,
+            waterWell = has("waterWell") && amenitiesNeeded,
+            electricityMeter = has("electricityMeter") && amenitiesNeeded,
+            dedicatedElectricityMeter = has("dedicatedElectricityMeter") && amenitiesNeeded,
+            generatorSet = has("generatorSet") && amenitiesNeeded,
+            solarPanel = has("solarPanel") && amenitiesNeeded,
+            roadPaved = has("roadPaved") && amenitiesNeeded,
+            trackAccessibleByCar = has("trackAccessibleByCar") && amenitiesNeeded,
+            trackInaccessibleByCar = has("trackInaccessibleByCar") && amenitiesNeeded,
+            securedFenced = has("securedFenced") && amenitiesNeeded,
+            securityGuard = has("securityGuard") && amenitiesNeeded,
+            videoSurveillance = has("videoSurveillance") && amenitiesNeeded,
             price = Money(
                 amount = priceAmount ?: 0,
                 currency = currency,

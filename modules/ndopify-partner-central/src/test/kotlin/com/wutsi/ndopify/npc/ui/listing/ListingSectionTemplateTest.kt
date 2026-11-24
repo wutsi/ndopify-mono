@@ -19,6 +19,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdviceTest
+import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.BUILDING
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.LISTING
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.MANDATE
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.SALE
@@ -249,6 +250,72 @@ class ListingSectionTemplateTest {
         assertEquals(10, form.select("input[name=propertyType]").size)
         assertNull(form.selectFirst("input[name=propertyType][value=LAND]"))
         assertNull(form.selectFirst("input[name=propertyType][checked]"))
+    }
+
+    @Test
+    fun `a building sale's property asks its units and étages, no bathroom nor parking`() {
+        val page = render("property", ListingViewsTest.BUILDING)
+        val form = form(page)
+
+        val levels = assertNotNull(form.selectFirst("input[name=levels]"))
+        assertEquals("3", levels.attr("value"))
+        assertEquals("Étages", form.selectFirst("label[for=levels]")?.text())
+        assertNull(form.selectFirst("[data-applies=levels] .field__optional"))
+        val units = assertNotNull(form.selectFirst("input[name=units]"))
+        assertEquals("12", units.attr("value"))
+        assertEquals("Unités", form.selectFirst("label[for=units]")?.text())
+        assertNull(form.selectFirst("[data-applies=units] .field__optional"))
+        assertNull(form.selectFirst("input[name=bathrooms]"))
+        assertNull(form.selectFirst("input[name=parkings]"))
+    }
+
+    @Test
+    fun `a building's counts show the landlord's answers`() {
+        doReturn(
+            MANDATE.copy(
+                listingType = ListingType.SALE,
+                propertyType = PropertyType.BUILDING,
+                rooms = null,
+                area = 850,
+                levels = 3,
+                units = 12,
+            ),
+        ).whenever(mandateClient).get(203)
+
+        // The agent's listing states other counts, so both hints show under the fields.
+        val form = form(render("property", BUILDING.copy(levels = 4, units = 10)))
+
+        assertEquals("Indiqué par le propriétaire : 3", form.selectFirst("[data-owner-for=levels]")?.text())
+        assertEquals("Indiqué par le propriétaire : 12", form.selectFirst("[data-owner-for=units]")?.text())
+    }
+
+    @Test
+    fun `a building keeps the listing's usage`() {
+        // A new sale building stores Commercial: Le bien offers it there and keeps the legacy Residential row.
+        val commercial = form(render("property", BUILDING.copy(propertyCategory = PropertyCategory.COMMERCIAL)))
+
+        assertEquals("COMMERCIAL", commercial.selectFirst("input[name=propertyCategory][checked]")?.attr("value"))
+        val building = assertNotNull(commercial.selectFirst("input[name=propertyType][value=BUILDING][checked]"))
+        assertEquals("RESIDENTIAL COMMERCIAL", building.parent()?.attr("data-categories"))
+        assertEquals("3", commercial.selectFirst("input[name=levels]")?.attr("value"))
+        assertEquals("12", commercial.selectFirst("input[name=units]")?.attr("value"))
+
+        // A sale building stored Residential before this story stays selectable as it is.
+        val legacy = form(render("property", BUILDING))
+
+        assertEquals("RESIDENTIAL", legacy.selectFirst("input[name=propertyCategory][checked]")?.attr("value"))
+        assertEquals(
+            "RESIDENTIAL COMMERCIAL",
+            legacy.selectFirst("input[name=propertyType][value=BUILDING][checked]")?.parent()?.attr("data-categories"),
+        )
+
+        // A rental building is offered under Residential only, as today.
+        val rental = form(render("property", BUILDING.copy(listingType = ListingType.RENTAL)))
+
+        assertEquals(
+            "RESIDENTIAL",
+            rental.selectFirst("input[name=propertyType][value=BUILDING]")?.parent()?.attr("data-categories"),
+        )
     }
 
     @Test

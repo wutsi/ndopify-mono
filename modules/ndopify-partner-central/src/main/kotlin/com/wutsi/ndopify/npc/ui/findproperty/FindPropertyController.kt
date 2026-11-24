@@ -27,7 +27,9 @@ import org.springframework.web.client.RestClientException
 
 /**
  * The public "Trouver un bien" wizard, on a single page (`find-property.html`) like `/join`, with seven steps —
- * [STEPS]: need → area → property → amenities → budget → contact → review — then the confirmation.
+ * [STEPS]: need → area → property → amenities → budget → contact → review — then the confirmation. A building bought
+ * as a whole keeps six of them ([steps]): its property step asks its étages and its unités instead of a room and a
+ * parking, and the amenities step leaves.
  * - `GET /find-property?step=…` shows a step; `POST /find-property/{step}` validates it, stores its answers in the
  *   session's [PendingMandate] and redirects to the next step (or back to the review when `returnTo=review`).
  * - `POST /find-property/review` creates a TENANT mandate (`POST /v1/mandates`) from the session's answers, then
@@ -65,6 +67,21 @@ class FindPropertyController(
         const val RETURN_TO_REVIEW = "review"
 
         val STEPS = listOf(STEP_NEED, STEP_AREA, STEP_PROPERTY, STEP_AMENITIES, STEP_BUDGET, STEP_CONTACT, STEP_REVIEW)
+
+        /**
+         * The steps of the answers' branch: a building sale skips the amenities step (six steps), every other branch
+         * keeps the seven. A step of the seven that isn't in them is never shown.
+         */
+        fun steps(answers: PendingMandate): List<String> =
+            if (FindPropertyRules.buildingSale(
+                    answers.listingType,
+                    FindPropertyRules.parsePropertyType(answers.propertyType),
+                )
+            ) {
+                STEPS - STEP_AMENITIES
+            } else {
+                STEPS
+            }
     }
 
     /** The current tenant, for the header on every step: its logo, and "Quitter" back to its public portal. */
@@ -101,9 +118,13 @@ class FindPropertyController(
         } else {
             pending(session)
         }
-        val requested = STEPS.indexOf(requestedStep).coerceAtLeast(0)
-        val allowed = STEPS.indexOf(pending.firstIncompleteStep())
-        return step(STEPS[minOf(requested, allowed)], pending, returnTo, emptyMap(), model)
+        val keys = steps(pending)
+        // A step of another branch (a building sale's amenities) isn't shown: the wizard moves on to the branch's step.
+        if (requestedStep in STEPS && requestedStep !in keys) return redirect(pending.firstIncompleteStep())
+
+        val requested = keys.indexOf(requestedStep).coerceAtLeast(0)
+        val allowed = keys.indexOf(pending.firstIncompleteStep())
+        return step(keys[minOf(requested, allowed)], pending, returnTo, emptyMap(), model)
     }
 
     @PostMapping("/$STEP_NEED")
@@ -155,6 +176,7 @@ class FindPropertyController(
         // Questions that don't apply to the posted type are dropped: without JS the page shows them all.
         val typeAnswer = form.propertyType?.takeIf { it.isNotEmpty() }
         val type = FindPropertyRules.parsePropertyType(typeAnswer)
+        val buildingSale = FindPropertyRules.buildingSale(pending.listingType, type)
         val areaText = form.area?.trim().orEmpty()
         val area = FindPropertyRules.parseAmount(areaText)?.takeIf { it <= Int.MAX_VALUE }?.toInt()
         // Documents are kept for a land purchase only; unknown names were rejected at binding.
@@ -165,8 +187,17 @@ class FindPropertyController(
             propertyType = typeAnswer,
             rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(pending.propertyCategory, type, pending.listingType) },
             furnitureType = form.furnitureType?.takeIf { FindPropertyRules.needsFurniture(type, pending.listingType) },
-            parkings = form.parkings?.takeIf { it.isNotEmpty() && FindPropertyRules.asksParkings(type) },
+            parkings = form.parkings?.takeIf {
+                it.isNotEmpty() && FindPropertyRules.asksParkings(type, pending.listingType)
+            },
             area = area,
+            // A building sale's counts: kept as typed (the page shows them again on error), sent as null when
+            // "Indifférent" is ticked, and dropped for any other type; so is a stale amenity answer.
+            levels = form.levels?.trim()?.toIntOrNull().takeIf { buildingSale && !form.levelsAny },
+            units = form.units?.trim()?.toIntOrNull().takeIf { buildingSale && !form.unitsAny },
+            levelsAny = buildingSale && form.levelsAny,
+            unitsAny = buildingSale && form.unitsAny,
+            amenities = pending.amenities.takeIf { !buildingSale } ?: emptySet(),
             titleDocuments = documents,
         )
         val requiredArea = FindPropertyRules.needsArea(pending.propertyCategory, type, pending.listingType)
@@ -185,6 +216,8 @@ class FindPropertyController(
                     null
                 },
             "parkings" to FindPropertyRules.parkings(answers.parkings),
+            "levels" to if (buildingSale) FindPropertyRules.levels(form.levels, form.levelsAny) else null,
+            "units" to if (buildingSale) FindPropertyRules.units(form.units, form.unitsAny) else null,
             // Something typed that isn't a usable number is an error too, not a silent "no area".
             "area" to if (areaText.isNotEmpty() && area == null) {
                 FindPropertyRules.area(0, requiredArea)
@@ -204,6 +237,14 @@ class FindPropertyController(
     ): String {
         val pending = pending(session)
         if (!isAllowed(STEP_AMENITIES, pending)) return redirect(pending.firstIncompleteStep())
+
+        // A building sale has no amenities step: a hand-typed one drops the answers, as every skip does.
+        if (pending.buildingSale()) {
+            session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, pending.copy(amenities = emptySet()))
+            session.removeAttribute(SubmittedMandate.SESSION_ATTRIBUTE)
+            val next = if (returnTo == RETURN_TO_REVIEW) STEP_REVIEW else pending.firstIncompleteStep()
+            return redirect(next)
+        }
 
         // Unknown names are dropped, not errors: there's nothing the visitor could fix.
         val answers = pending.copy(amenities = form.amenities.filter { it in PendingMandate.AMENITIES }.toSet())
@@ -304,8 +345,13 @@ class FindPropertyController(
 
         session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, answers)
         session.removeAttribute(SubmittedMandate.SESSION_ATTRIBUTE)
-        val next = if (returnTo == RETURN_TO_REVIEW) STEP_REVIEW else STEPS[STEPS.indexOf(step) + 1]
-        return redirect(minOf(next, answers.firstIncompleteStep(), compareBy { STEPS.indexOf(it) }))
+        val keys = steps(answers)
+        val next = if (returnTo == RETURN_TO_REVIEW) {
+            STEP_REVIEW
+        } else {
+            keys.getOrNull(keys.indexOf(step) + 1) ?: answers.firstIncompleteStep()
+        }
+        return redirect(minOf(next, answers.firstIncompleteStep(), compareBy { keys.indexOf(it) }))
     }
 
     private fun step(
@@ -315,16 +361,22 @@ class FindPropertyController(
         errors: Map<String, String>,
         model: Model,
     ): String {
+        val keys = steps(answers)
         model.addAttribute("step", step)
-        model.addAttribute("stepNumber", STEPS.indexOf(step) + 1)
-        model.addAttribute("stepCount", STEPS.size)
+        model.addAttribute("stepNumber", keys.indexOf(step) + 1)
+        model.addAttribute("stepCount", keys.size)
         model.addAttribute("projectLabel", FindPropertyRules.projectLabel(answers.listingType))
         model.addAttribute("answers", answers)
         model.addAttribute("errors", errors)
+        model.addAttribute("buildingSale", answers.buildingSale())
         // "Revenir à la revue" instead of "Suivant": only once every answer is in.
+        val returning = returnTo == RETURN_TO_REVIEW && step != STEP_REVIEW && answers.firstIncompleteStep() == STEP_REVIEW
+        model.addAttribute("returning", returning)
+        // The step before this one in *this* branch: a building sale's budget goes back to property, not to the
+        // amenities step it never had. From the review, "Précédent" always goes back to the review.
         model.addAttribute(
-            "returning",
-            returnTo == RETURN_TO_REVIEW && step != STEP_REVIEW && answers.firstIncompleteStep() == STEP_REVIEW,
+            "previous",
+            if (returning) STEP_REVIEW else keys.getOrNull(keys.indexOf(step) - 1) ?: keys.first(),
         )
 
         when (step) {
@@ -376,6 +428,11 @@ class FindPropertyController(
         if (step == STEP_REVIEW) {
             model.addAttribute("categoryLabel", MandateLabels.project(answers.propertyCategory, answers.listingType))
             model.addAttribute("propertyLabel", propertyLabel(answers))
+            // A building sale's two counts, "Indifférent" when the visitor didn't answer.
+            if (answers.buildingSale()) {
+                model.addAttribute("levelsLabel", answers.levels?.toString() ?: "Indifférent")
+                model.addAttribute("unitsLabel", answers.units?.toString() ?: "Indifférent")
+            }
             model.addAttribute("priceTerm", if (answers.isSale()) "Budget total" else "Budget mensuel")
             model.addAttribute(
                 "priceLabel",
@@ -412,7 +469,9 @@ class FindPropertyController(
             MandateLabels.FURNITURE_LABELS[answers.furnitureType]?.takeIf {
                 FindPropertyRules.needsFurniture(type, answers.listingType)
             },
-            MandateLabels.PARKING_LABELS[answers.parkings]?.takeIf { FindPropertyRules.asksParkings(type) },
+            MandateLabels.PARKING_LABELS[answers.parkings]?.takeIf {
+                FindPropertyRules.asksParkings(type, answers.listingType)
+            },
             answers.area?.let { MandateLabels.formatNumber(it) + " m² minimum" },
         )
         return parts.joinToString(" · ")
@@ -432,8 +491,10 @@ class FindPropertyController(
 
     private fun formatter(): TenantFormatter = TenantFormatter(tenantContext.getTenant())
 
-    private fun isAllowed(step: String, pending: PendingMandate): Boolean =
-        STEPS.indexOf(step) <= STEPS.indexOf(pending.firstIncompleteStep())
+    private fun isAllowed(step: String, pending: PendingMandate): Boolean {
+        val keys = steps(pending)
+        return keys.indexOf(step) <= keys.indexOf(pending.firstIncompleteStep())
+    }
 
     /** Every step has its own URL: the bare `/find-property` is the entry point, which starts a new run. */
     private fun redirect(step: String): String = "redirect:/find-property?step=$step"

@@ -33,7 +33,9 @@ import java.time.LocalDate
 
 /**
  * The public "Proposer un bien" wizard, on a single page (`offer-property.html`), built like `/find-property`: seven
- * steps — [STEPS]: property → address → terms → features → amenities → contact → review — then the confirmation.
+ * steps — [STEPS]: property → address → terms → features → amenities → contact → review — then the confirmation. A
+ * building sold as a whole keeps six of them ([steps]): its features step asks its étages and its unités instead of a
+ * room and a parking, and the amenities step leaves.
  * - `GET /offer-property?step=…` shows a step; `POST /offer-property/{step}` validates it ([OfferPropertyRules]),
  *   stores its answers in the session's [PendingListing] and redirects to the next step (or back to the review when
  *   `returnTo=review`).
@@ -75,6 +77,21 @@ class OfferPropertyController(
 
         private const val HAS_PARKING = "YES"
         private const val HAS_NO_PARKING = "NO"
+
+        /**
+         * The steps of the answers' branch: a building sale skips the amenities step (six steps), every other branch
+         * keeps the seven. A step of the seven that isn't in them is never shown.
+         */
+        fun steps(answers: PendingListing): List<String> =
+            if (OfferPropertyRules.buildingSale(
+                    answers.listingType,
+                    FindPropertyRules.parsePropertyType(answers.propertyType),
+                )
+            ) {
+                STEPS - STEP_AMENITIES
+            } else {
+                STEPS
+            }
     }
 
     /** The current tenant, for the header on every step: its logo. */
@@ -112,9 +129,13 @@ class OfferPropertyController(
         } else {
             pending(session)
         }
-        val requested = STEPS.indexOf(requestedStep).coerceAtLeast(0)
-        val allowed = STEPS.indexOf(firstIncomplete(pending))
-        return step(STEPS[minOf(requested, allowed)], pending, returnTo, emptyMap(), model)
+        val keys = steps(pending)
+        // A step of another branch (a building sale's amenities) isn't shown: the wizard moves on to the branch's step.
+        if (requestedStep in STEPS && requestedStep !in keys) return redirect(firstIncomplete(pending))
+
+        val requested = keys.indexOf(requestedStep).coerceAtLeast(0)
+        val allowed = keys.indexOf(firstIncomplete(pending))
+        return step(keys[minOf(requested, allowed)], pending, returnTo, emptyMap(), model)
     }
 
     @PostMapping("/$STEP_PROPERTY")
@@ -204,6 +225,7 @@ class OfferPropertyController(
         val listingType = pending.listingType
         val typeAnswer = form.propertyType?.takeIf { it.isNotEmpty() }
         val type = FindPropertyRules.parsePropertyType(typeAnswer)
+        val buildingSale = OfferPropertyRules.buildingSale(listingType, type)
         val needsParking = OfferPropertyRules.needsParking(category, type, listingType)
         val hasParking = form.hasParking
         val places = form.parkings?.takeIf { it.isNotEmpty() }
@@ -228,6 +250,9 @@ class OfferPropertyController(
                 else -> null
             },
             area = area.takeIf { needsArea },
+            // A building sale's counts: kept as typed (the page shows them again on error), dropped for any other type.
+            levels = form.levels?.trim()?.toIntOrNull().takeIf { buildingSale },
+            units = form.units?.trim()?.toIntOrNull().takeIf { buildingSale },
             ownershipDocuments = documents,
         )
         val errors = errors(
@@ -244,6 +269,8 @@ class OfferPropertyController(
                 hasParking == HAS_PARKING && places == null -> OfferPropertyRules.PARKING_PLACES_REQUIRED
                 else -> OfferPropertyRules.parkings(answers.parkings)
             },
+            "levels" to if (buildingSale) OfferPropertyRules.levels(form.levels) else null,
+            "units" to if (buildingSale) OfferPropertyRules.units(form.units) else null,
             // Something typed that isn't a usable number is an error too, not a silent "no area".
             "area" to when {
                 !needsArea -> null
@@ -265,6 +292,17 @@ class OfferPropertyController(
     ): String {
         val pending = pending(session)
         if (!isAllowed(STEP_AMENITIES, pending)) return redirect(firstIncomplete(pending))
+
+        // A building sale has no amenities step: a hand-typed one drops the answers, as every skip does.
+        if (pending.buildingSale()) {
+            session.setAttribute(
+                PendingListing.SESSION_ATTRIBUTE,
+                pending.copy(roadAccess = null, amenities = emptySet()),
+            )
+            session.removeAttribute(SUBMITTED_ATTRIBUTE)
+            val next = if (returnTo == RETURN_TO_REVIEW) STEP_REVIEW else firstIncomplete(pending)
+            return redirect(next)
+        }
 
         // Unknown names are dropped, not errors: there's nothing the visitor could fix.
         val answers = pending.copy(
@@ -345,8 +383,13 @@ class OfferPropertyController(
 
         session.setAttribute(PendingListing.SESSION_ATTRIBUTE, answers)
         session.removeAttribute(SUBMITTED_ATTRIBUTE)
-        val next = if (returnTo == RETURN_TO_REVIEW) STEP_REVIEW else STEPS[STEPS.indexOf(step) + 1]
-        return redirect(minOf(next, firstIncomplete(answers), compareBy { STEPS.indexOf(it) }))
+        val keys = steps(answers)
+        val next = if (returnTo == RETURN_TO_REVIEW) {
+            STEP_REVIEW
+        } else {
+            keys.getOrNull(keys.indexOf(step) + 1) ?: firstIncomplete(answers)
+        }
+        return redirect(minOf(next, firstIncomplete(answers), compareBy { keys.indexOf(it) }))
     }
 
     private fun step(
@@ -356,17 +399,23 @@ class OfferPropertyController(
         errors: Map<String, String>,
         model: Model,
     ): String {
+        val keys = steps(answers)
         model.addAttribute("step", step)
-        model.addAttribute("stepNumber", STEPS.indexOf(step) + 1)
-        model.addAttribute("stepCount", STEPS.size)
+        model.addAttribute("stepNumber", keys.indexOf(step) + 1)
+        model.addAttribute("stepCount", keys.size)
         model.addAttribute("projectLabel", OfferPropertyRules.projectLabel(answers.listingType))
         model.addAttribute("answers", answers)
         model.addAttribute("errors", errors)
+        model.addAttribute("buildingSale", answers.buildingSale())
         model.addAttribute("exitUrl", exitUrl(answers))
         // "Revenir à la revue" instead of "Suivant": only once every answer is in.
+        val returning = returnTo == RETURN_TO_REVIEW && step != STEP_REVIEW && firstIncomplete(answers) == STEP_REVIEW
+        model.addAttribute("returning", returning)
+        // The step before this one in *this* branch: a building sale's contact goes back to features, not to the
+        // amenities step it never had. From the review, "Précédent" always goes back to the review.
         model.addAttribute(
-            "returning",
-            returnTo == RETURN_TO_REVIEW && step != STEP_REVIEW && firstIncomplete(answers) == STEP_REVIEW,
+            "previous",
+            if (returning) STEP_REVIEW else keys.getOrNull(keys.indexOf(step) - 1) ?: keys.first(),
         )
 
         if (step == STEP_PROPERTY) {
@@ -435,6 +484,11 @@ class OfferPropertyController(
             model.addAttribute("locationLabel", locationLabel(model))
             model.addAttribute("termsLines", termsLines(answers))
             model.addAttribute("propertyLabel", propertyLabel(answers))
+            // A building sale's two counts.
+            if (answers.buildingSale()) {
+                model.addAttribute("levelsLabel", answers.levels?.toString())
+                model.addAttribute("unitsLabel", answers.units?.toString())
+            }
             model.addAttribute("amenitiesLabel", amenitiesLabel(answers))
             model.addAttribute("contactLines", contactLines(answers))
             model.addAttribute(
@@ -558,8 +612,10 @@ class OfferPropertyController(
 
     private fun firstIncomplete(pending: PendingListing): String = pending.firstIncompleteStep(today())
 
-    private fun isAllowed(step: String, pending: PendingListing): Boolean =
-        STEPS.indexOf(step) <= STEPS.indexOf(firstIncomplete(pending))
+    private fun isAllowed(step: String, pending: PendingListing): Boolean {
+        val keys = steps(pending)
+        return keys.indexOf(step) <= keys.indexOf(firstIncomplete(pending))
+    }
 
     /** Every step has its own URL: the bare `/offer-property` is the entry point, which starts a new run. */
     private fun redirect(step: String): String = "redirect:/offer-property?step=$step"
@@ -580,8 +636,12 @@ private val CATEGORY_DETAIL_LABELS: Map<String, String> = mapOf(
 )
 
 // "Villa, maison" is one answer, as in the prototype: it is sent as HOUSE. Land is only a sale's: it keeps its label
-// even though the rental map no longer lists it.
+// even though the rental map no longer lists it. A building sold as a whole reads "Immeuble entier" (#274).
 private val PROPERTY_TYPE_LABELS: Map<PropertyType, String> =
     (OfferPropertyRules.CATEGORIES_BY_TYPE.keys + PropertyType.LAND).associateWith { type ->
-        if (type == PropertyType.HOUSE) "Villa, maison" else MandateLabels.propertyType(type)
+        when (type) {
+            PropertyType.HOUSE -> "Villa, maison"
+            PropertyType.BUILDING -> "Immeuble entier"
+            else -> MandateLabels.propertyType(type)
+        }
     }

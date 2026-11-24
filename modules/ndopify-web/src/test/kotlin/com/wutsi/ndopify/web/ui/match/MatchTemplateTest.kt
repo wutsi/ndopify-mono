@@ -128,6 +128,28 @@ class MatchTemplateTest {
         title = "Villa 4 chambres à Bonapriso",
     )
 
+    /** A building SALE SEARCH: 12 unités on 3 étages, no rooms. */
+    private val buildingMandate = saleMandate.copy(
+        propertyType = PropertyType.BUILDING,
+        rooms = null,
+        units = 12,
+        levels = 3,
+    )
+
+    /** The building proposed to that buyer. */
+    private val buildingListing = saleListing.copy(
+        propertyType = PropertyType.BUILDING,
+        rooms = null,
+        bathrooms = 4,
+        parkings = 3,
+        area = 850,
+        units = 12,
+        levels = 3,
+        availableFrom = null,
+        waterWell = true,
+        title = "Immeuble 12 unités à Bonapriso",
+    )
+
     private fun page(
         status: MatchStatus = MatchStatus.PROPOSED,
         listing: Listing? = this.listing,
@@ -592,5 +614,31 @@ class MatchTemplateTest {
         assertEquals("Pourquoi ce logement ?", doc.selectFirst(".proposal__why summary")?.text())
         assertEquals("Ce logement vous intéresse ?", doc.selectFirst("[data-answer=PENDING] .answer__question")?.text())
         assertEquals("Photos du logement", doc.selectFirst(".lightbox")?.attr("aria-label"))
+    }
+
+    @Test
+    fun `a building proposal reads its units and its étages`() {
+        val doc = render(
+            page(listing = buildingListing, mandate = buildingMandate, scores = match.copy(availabilityScore = 1.0)),
+        )
+
+        assertEquals(
+            "Pour votre recherche : immeuble de 12 unités sur 3 étages à Bonapriso, jusqu'à 250M FCFA.",
+            doc.selectFirst(".proposal__subtitle")?.text(),
+        )
+        assertEquals(
+            listOf(
+                "À Bonapriso, le quartier que vous cherchez",
+                "240M FCFA, dans votre budget",
+                "12 unités, comme demandé",
+                "3 étages, comme demandé",
+                "Disponible avant votre achat",
+            ),
+            doc.select(".proposal__fit li").map { it.text() },
+        )
+        assertNull(doc.selectFirst(".proposal__amenities"))
+        assertEquals(listOf("12 unités", "3 étages", "850 m²"), doc.select(".key-facts li").map { it.text() })
+        assertFalse(doc.selectFirst(".proposal")!!.text().contains("chambre"))
+        assertNull(doc.selectFirst("#amenities-heading"))
     }
 }

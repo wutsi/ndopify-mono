@@ -158,7 +158,7 @@
 
                     <div class="form__actions">
                         <a class="btn btn--outline" data-prev
-                           th:href="${returning} ? @{/offer-property(step='review')} : @{/offer-property(step='property')}">Précédent</a>
+                           th:href="@{/offer-property(step=${previous})}">Précédent</a>
                         <button class="btn btn--primary" data-next
                                 th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
                         </button>
@@ -241,7 +241,7 @@
 
                     <div class="form__actions">
                         <a class="btn btn--outline" data-prev
-                           th:href="${returning} ? @{/offer-property(step='review')} : @{/offer-property(step='address')}">Précédent</a>
+                           th:href="@{/offer-property(step=${previous})}">Précédent</a>
                         <button aria-describedby="conditions-hint" class="btn btn--primary" data-next
                                 th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
                         </button>
@@ -346,6 +346,30 @@
                         <p th:replace="~{:: error('parkings')}"></p>
                     </fieldset>
 
+                    <!--/* A building sold as a whole (#274): its étages and its unités, whole numbers, both required.
+                         Rendered even when hidden: without JS they still post, and the server drops them for any
+                         other type. */-->
+                    <div class="count-fields" data-building-counts th:hidden="${!buildingSale}">
+                        <div class="field">
+                            <label class="field__label" for="levels">Étages <span
+                                    class="field__optional">(1 à 30)</span></label>
+                            <input aria-describedby="levels-error" autocomplete="off" class="input" id="levels"
+                                   inputmode="numeric" name="levels" required type="text"
+                                   th:attr="aria-invalid=${errors['levels'] != null ? 'true' : null}"
+                                   th:value="${answers.levels}">
+                            <p th:replace="~{:: error('levels')}"></p>
+                        </div>
+                        <div class="field">
+                            <label class="field__label" for="units">Unités <span
+                                    class="field__optional">(1 à 500)</span></label>
+                            <input aria-describedby="units-error" autocomplete="off" class="input" id="units"
+                                   inputmode="numeric" name="units" required type="text"
+                                   th:attr="aria-invalid=${errors['units'] != null ? 'true' : null}"
+                                   th:value="${answers.units}">
+                            <p th:replace="~{:: error('units')}"></p>
+                        </div>
+                    </div>
+
                     <div class="field" data-group="area" th:if="${asksArea}">
                         <label class="field__label" data-area-label for="area"
                                th:text="${landSale} ? 'Surface du terrain estimée' : 'Surface estimée'">Surface
@@ -387,7 +411,7 @@
 
                     <div class="form__actions">
                         <a class="btn btn--outline" data-prev
-                           th:href="${returning} ? @{/offer-property(step='review')} : @{/offer-property(step='terms')}">Précédent</a>
+                           th:href="@{/offer-property(step=${previous})}">Précédent</a>
                         <button class="btn btn--primary" data-next
                                 th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
                         </button>
@@ -470,7 +494,7 @@
 
                     <div class="form__actions">
                         <a class="btn btn--outline" data-prev
-                           th:href="${returning} ? @{/offer-property(step='review')} : @{/offer-property(step='features')}">Précédent</a>
+                           th:href="@{/offer-property(step=${previous})}">Précédent</a>
                         <button class="btn btn--primary" data-next
                                 th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
                         </button>
@@ -556,7 +580,7 @@
 
                     <div class="form__actions">
                         <a class="btn btn--outline" data-prev
-                           th:href="${returning} ? @{/offer-property(step='review')} : @{/offer-property(step='amenities')}">Précédent</a>
+                           th:href="@{/offer-property(step=${previous})}">Précédent</a>
                         <button aria-describedby="contact-hint" class="btn btn--primary" data-next
                                 th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
                         </button>
@@ -636,7 +660,30 @@
                                         class="visually-hidden"> le document de propriété</span></a>
                             </dd>
                         </div>
-                        <div class="review__item">
+                        <!--/* A building sale's two counts (#274), before its (absent) equipment line. */-->
+                        <div class="review__item" th:if="${levelsLabel != null}">
+                            <dt class="review__term">Étages</dt>
+                            <dd class="review__value">
+                                <p data-review-value="levels" th:text="${levelsLabel}">3</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/offer-property(step='features', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> le nombre d'étages</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item" th:if="${unitsLabel != null}">
+                            <dt class="review__term">Unités</dt>
+                            <dd class="review__value">
+                                <p data-review-value="units" th:text="${unitsLabel}">12</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/offer-property(step='features', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> le nombre d'unités</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item" th:unless="${buildingSale}">
                             <dt class="review__term">Équipements</dt>
                             <dd class="review__value">
                                 <p data-review-value="amenities"
@@ -683,7 +730,7 @@
                     </div>
 
                     <div class="form__actions">
-                        <a class="btn btn--outline" data-prev th:href="@{/offer-property(step='contact')}">Précédent</a>
+                        <a class="btn btn--outline" data-prev th:href="@{/offer-property(step=${previous})}">Précédent</a>
                         <button aria-describedby="review-hint" class="btn btn--primary" data-submit type="submit">
                             Enregistrer mon bien
                         </button>

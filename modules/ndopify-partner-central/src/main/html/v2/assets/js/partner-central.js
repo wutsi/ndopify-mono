@@ -5342,8 +5342,11 @@
             $all('[name="propertyType"]', form).forEach(function (radio) {
                 // v2 (#275): a plot of land is residential and sold, never let, so a sale offers *Terrain* under
                 // Résidentiel and a rental never offers it at all — a rental land stored before #275 is hidden too.
+                // v2 (#274): a building sold is stored *Commercial*, which keeps the listing's usage: its row stays
+                // offered under Résidentiel too (a legacy listing stored there), and a rental offers it there only.
                 var fits = radio.closest("[data-categories]").getAttribute("data-categories").split(" ")
-                    .indexOf(category) !== -1 && (radio.value !== "LAND" || currentListingSale);
+                    .indexOf(category) !== -1 && (radio.value !== "LAND" || currentListingSale) &&
+                    (radio.value !== "BUILDING" || category === "RESIDENTIAL" || currentListingSale);
                 radio.closest(".choice").hidden = !fits;
                 if (!fits) radio.checked = false;
             });

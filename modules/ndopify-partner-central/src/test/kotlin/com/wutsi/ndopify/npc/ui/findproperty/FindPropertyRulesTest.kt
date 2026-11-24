@@ -122,8 +122,64 @@ class FindPropertyRulesTest {
         assertFalse(FindPropertyRules.needsRooms(null, null, null))
         assertFalse(FindPropertyRules.needsFurniture(PropertyType.LAND, null))
         assertTrue(FindPropertyRules.needsFurniture(null, null))
-        assertFalse(FindPropertyRules.asksParkings(PropertyType.ROOM))
-        assertTrue(FindPropertyRules.asksParkings(null))
+        assertFalse(FindPropertyRules.asksParkings(PropertyType.ROOM, null))
+        assertTrue(FindPropertyRules.asksParkings(null, null))
+    }
+
+    @Test
+    fun `a building sale asks its counts, no parking and no amenities step`() {
+        assertTrue(FindPropertyRules.buildingSale(ListingType.SALE, PropertyType.BUILDING))
+        assertFalse(FindPropertyRules.buildingSale(ListingType.RENTAL, PropertyType.BUILDING))
+        assertFalse(FindPropertyRules.buildingSale(ListingType.SALE, PropertyType.VILLA))
+        assertFalse(FindPropertyRules.buildingSale(null, null))
+
+        assertFalse(
+            FindPropertyRules.needsAmenities(PropertyCategory.COMMERCIAL, PropertyType.BUILDING, ListingType.SALE),
+        )
+        assertTrue(
+            FindPropertyRules.needsAmenities(PropertyCategory.COMMERCIAL, PropertyType.BUILDING, ListingType.RENTAL),
+        )
+        assertTrue(FindPropertyRules.needsAmenities(PropertyCategory.RESIDENTIAL, PropertyType.VILLA, ListingType.SALE))
+        assertTrue(FindPropertyRules.needsAmenities(PropertyCategory.COMMERCIAL, null, ListingType.SALE))
+        assertTrue(FindPropertyRules.needsAmenities(PropertyCategory.RESIDENTIAL, null, null))
+
+        assertFalse(FindPropertyRules.asksParkings(PropertyType.BUILDING, ListingType.SALE))
+        assertTrue(FindPropertyRules.asksParkings(PropertyType.BUILDING, ListingType.RENTAL))
+        assertTrue(FindPropertyRules.asksParkings(PropertyType.VILLA, ListingType.SALE))
+    }
+
+    @Test
+    fun `a building sale's counts are whole numbers within their bounds, or indifferent`() {
+        assertEquals(30, FindPropertyRules.MAX_LEVELS)
+        assertEquals(500, FindPropertyRules.MAX_UNITS)
+
+        assertNull(FindPropertyRules.levels("1", false))
+        assertNull(FindPropertyRules.levels("3", false))
+        assertNull(FindPropertyRules.levels("30", false))
+        assertEquals(
+            "Indiquez le nombre d'étages, ou cochez Indifférent.",
+            FindPropertyRules.levels(null, false),
+        )
+        assertEquals(
+            "Indiquez le nombre d'étages, ou cochez Indifférent.",
+            FindPropertyRules.levels("", false),
+        )
+        assertEquals("Indiquez un nombre entier, de 1 à 30.", FindPropertyRules.levels("31", false))
+        assertEquals("Indiquez un nombre entier, de 1 à 30.", FindPropertyRules.levels("3,5", false))
+        assertEquals("Indiquez un nombre entier, de 1 à 30.", FindPropertyRules.levels("0", false))
+
+        // "Indifférent": a UI answer, sent to the server as null.
+        assertNull(FindPropertyRules.levels("", true))
+        assertNull(FindPropertyRules.levels("31", true))
+
+        assertNull(FindPropertyRules.units("12", false))
+        assertNull(FindPropertyRules.units("500", false))
+        assertEquals(
+            "Indiquez le nombre d'unités, ou cochez Indifférent.",
+            FindPropertyRules.units(null, false),
+        )
+        assertEquals("Indiquez un nombre entier, de 1 à 500.", FindPropertyRules.units("501", false))
+        assertNull(FindPropertyRules.units("501", true))
     }
 
     @Test

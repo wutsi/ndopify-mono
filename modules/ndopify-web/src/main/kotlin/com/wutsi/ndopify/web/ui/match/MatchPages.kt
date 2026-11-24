@@ -7,6 +7,7 @@ import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.match.dto.Match
@@ -42,6 +43,10 @@ import java.time.LocalDate
  *
  * The mandate's `listingType` picks the wording: a SALE search speaks of a *bien* and of the purchase (*avant votre
  * achat*), a RENTAL search keeps the *logement* and the moving-in (*avant votre emménagement*).
+ *
+ * A building sold as a whole reads its unités and its étages instead of its rooms, its furniture and its amenities:
+ * the fit lines give what it states, its search summary is *immeuble de 12 unités sur 3 étages*, and it lists no
+ * searched amenity.
  */
 object MatchPages {
     /** The searched amenities, by `Match.missingAmenities` field name, worded as on the listing page. */
@@ -130,7 +135,7 @@ object MatchPages {
             } else {
                 emptyList()
             },
-            criteria = if (listingPage != null) criteria(match, mandate) else emptyList(),
+            criteria = if (listingPage != null) criteria(mandate, match) else emptyList(),
             listing = listingPage,
             visitFee = visitFee,
             flash = when {
@@ -200,14 +205,32 @@ object MatchPages {
         val type = ListingPages.PROPERTY_TYPE_LABELS[mandate.propertyType]?.lowercase() ?: if (sale) "bien" else "logement"
         val places = mandate.neighborhoodIds.mapNotNull { id -> locations.find { it.id == id }?.name }
             .ifEmpty { listOfNotNull(locations.find { it.id == mandate.cityId }?.name) }
-        val what = listOfNotNull(type, mandate.rooms?.let { rooms(it) }).joinToString(" ") +
-            (places.ifEmpty { null }?.let { " à " + join(it, " ou ") } ?: "")
+        val description = if (buildingSale(mandate)) {
+            building(type, mandate)
+        } else {
+            listOfNotNull(type, mandate.rooms?.let { rooms(it) }).joinToString(" ")
+        }
+        val what = description + (places.ifEmpty { null }?.let { " à " + join(it, " ou ") } ?: "")
         val budget = mandate.price.takeIf { it.amount > 0 }?.let { price ->
             val amount = formatter.compactMoney(price.amount, price.currency.ifBlank { tenant.currencyCode })
             "jusqu'à " + listOfNotNull(amount, ListingPages.PERIODS[price.periodicity]).joinToString(" ")
         }
         return "Pour votre recherche : " + listOfNotNull(what, budget).joinToString(", ") + "."
     }
+
+    /** "immeuble de 12 unités sur 3 étages": either count left out when the search didn't answer it. */
+    private fun building(type: String, mandate: Mandate): String {
+        val counts = listOfNotNull(
+            mandate.units?.let { "$it " + plural(it, "unité", "unités") },
+            mandate.levels?.let { "$it " + plural(it, "étage", "étages") },
+        )
+        return listOfNotNull(type, counts.joinToString(" sur ").ifEmpty { null }?.let { "de $it" })
+            .joinToString(" ")
+    }
+
+    /** A building sold as a whole, as opposed to a rented building or any other sale. */
+    private fun buildingSale(mandate: Mandate): Boolean =
+        mandate.listingType == ListingType.SALE && mandate.propertyType == PropertyType.BUILDING
 
     /** A mandate's rooms ("3", "5+") as "3 chambres", "5 chambres et +"; null when it isn't a count. */
     private fun rooms(value: String): String? {
@@ -228,31 +251,64 @@ object MatchPages {
         val neighborhood = locations.find { it.id == listing.neighborhoodId }?.name
         val movingIn = mandate.movingPeriod != MovingPeriod.UNKNOWN || mandate.availableFrom != null
         val available = listing.availableFrom?.takeIf { it.isAfter(today) }
-        return listOfNotNull(
-            neighborhood?.takeIf { match.distanceKm == 0.0 }?.let { "À $it, le quartier que vous cherchez" },
-            price.takeIf { match.priceScore == 1.0 && mandate.price.amount > 0 }?.let { "$it, dans votre budget" },
-            listing.rooms?.takeIf { match.roomsScore == 1.0 && !mandate.rooms.isNullOrBlank() }
-                ?.let { "$it ${if (it > 1) "chambres" else "chambre"}, comme demandé" },
-            ListingPages.FURNITURE_LABELS[listing.furnitureType]
-                ?.takeIf { match.furnitureScore == 1.0 && mandate.furnitureType != null }
-                ?.let { "$it, comme demandé" },
-            if (match.availabilityScore == 1.0 && movingIn) {
-                available
-                    ?.let { "Disponible le ${formatter.date(it)}, avant votre " + (if (sale) "achat" else "emménagement") }
-                    ?: if (sale) "Disponible avant votre achat" else "Disponible immédiatement"
-            } else {
-                null
-            },
-        ).map { FitReason(it) }
+        val place = neighborhood?.takeIf { match.distanceKm == 0.0 }?.let { "À $it, le quartier que vous cherchez" }
+        val budget = price.takeIf { match.priceScore == 1.0 && mandate.price.amount > 0 }?.let { "$it, dans votre budget" }
+        val availability = if (match.availabilityScore == 1.0 && movingIn) {
+            available
+                ?.let { "Disponible le ${formatter.date(it)}, avant votre " + (if (sale) "achat" else "emménagement") }
+                ?: if (sale) "Disponible avant votre achat" else "Disponible immédiatement"
+        } else {
+            null
+        }
+        // A building sold as a whole reads its unités and its étages instead of its rooms, furniture and amenities
+        return if (buildingSale(mandate)) {
+            listOfNotNull(place, budget, units(match, mandate, listing), levels(match, mandate, listing), availability)
+        } else {
+            listOfNotNull(
+                place,
+                budget,
+                listing.rooms?.takeIf { match.roomsScore == 1.0 && !mandate.rooms.isNullOrBlank() }
+                    ?.let { "$it ${if (it > 1) "chambres" else "chambre"}, comme demandé" },
+                ListingPages.FURNITURE_LABELS[listing.furnitureType]
+                    ?.takeIf { match.furnitureScore == 1.0 && mandate.furnitureType != null }
+                    ?.let { "$it, comme demandé" },
+                availability,
+            )
+        }.map { FitReason(it) }
     }
 
-    /** The amenities the customer searched for, each matched or missing, worded as on the listing page. */
-    private fun criteria(match: Match, mandate: Mandate): List<AmenityMatch> =
-        AMENITIES
-            .filter { (_, _, wanted) -> wanted(mandate) }
-            .map { (field, label, _) ->
-                AmenityMatch(label.replaceFirstChar { it.uppercase() }, field !in match.missingAmenities)
-            }
+    /** A building sale's unités: no line when the search states none; a listing that states none says so. */
+    private fun units(match: Match, mandate: Mandate, listing: Listing): String? {
+        val searched = mandate.units ?: return null
+        val count = listing.units ?: return "Nombre d'unités non précisé"
+        val text = "$count " + plural(count, "unité", "unités")
+        return if (match.unitsScore == 1.0) "$text, comme demandé" else "$text au lieu de $searched"
+    }
+
+    /** A building sale's étages, worded like its unités. */
+    private fun levels(match: Match, mandate: Mandate, listing: Listing): String? {
+        val searched = mandate.levels ?: return null
+        val count = listing.levels ?: return "Nombre d'étages non précisé"
+        val text = "$count " + plural(count, "étage", "étages")
+        return if (match.levelsScore == 1.0) "$text, comme demandé" else "$text au lieu de $searched"
+    }
+
+    /**
+     * The amenities the customer searched for, each matched or missing, worded as on the listing page; none for a
+     * building sale, which asks no amenity.
+     */
+    private fun criteria(mandate: Mandate, match: Match): List<AmenityMatch> =
+        if (buildingSale(mandate)) {
+            emptyList()
+        } else {
+            AMENITIES
+                .filter { (_, _, wanted) -> wanted(mandate) }
+                .map { (field, label, _) ->
+                    AmenityMatch(label.replaceFirstChar { it.uppercase() }, field !in match.missingAmenities)
+                }
+        }
+
+    private fun plural(count: Int, one: String, many: String): String = if (count > 1) many else one
 
     /** "a", "a ou b", "a, b ou c". */
     private fun join(items: List<String>, last: String): String =

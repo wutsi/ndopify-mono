@@ -87,10 +87,20 @@ object MatchRules {
 
     /**
      * "Pourquoi ce bien ?": neighbourhood, price, rooms, amenities (only when some were asked), availability and
-     * furniture (only when asked), from the match's partial scores, which ndopify-server's `Matcher` computes.
+     * furniture (only when asked), from the match's partial scores, which ndopify-server's `Matcher` computes. A
+     * building sold as a whole reads its units and its étages instead of its rooms, amenities and furniture.
      */
-    fun fit(match: Match, mandate: Mandate, listing: ListingSummary): List<FitLine> =
-        listOfNotNull(
+    fun fit(match: Match, mandate: Mandate, listing: ListingSummary): List<FitLine> {
+        if (FindPropertyRules.buildingSale(mandate.listingType, mandate.propertyType)) {
+            return listOfNotNull(
+                neighborhood(match),
+                price(match, mandate, listing),
+                units(match, mandate, listing),
+                levels(match, mandate, listing),
+                availability(match, sale = true),
+            )
+        }
+        return listOfNotNull(
             neighborhood(match),
             price(match, mandate, listing),
             rooms(match, mandate, listing),
@@ -99,6 +109,7 @@ object MatchRules {
             availability(match, FindPropertyRules.isSale(mandate.listingType)),
             furniture(match, mandate, listing),
         )
+    }
 
     /**
      * The section's small line of what its cards hide: the refused ones and the unanswered ones, "1 refusé · 1 sans
@@ -125,6 +136,12 @@ object MatchRules {
 
     /** "3 chambres", "1 chambre". */
     fun rooms(count: Int): String = "$count " + plural(count, "chambre", "chambres")
+
+    /** "12 unités", "1 unité". */
+    fun units(count: Int): String = "$count " + plural(count, "unité", "unités")
+
+    /** "3 étages", "1 étage". */
+    fun levels(count: Int): String = "$count " + plural(count, "étage", "étages")
 
     private fun neighborhood(match: Match): FitLine =
         when {
@@ -154,6 +171,22 @@ object MatchRules {
             match.roomsScore > 0 -> FitLine(false, "$text, une de moins que demandé")
             else -> FitLine(false, "$text au lieu de $searched")
         }
+    }
+
+    /** A building sale's unités: no line when the search didn't state one; a listing that states none says so. */
+    private fun units(match: Match, mandate: Mandate, listing: ListingSummary): FitLine? {
+        val searched = mandate.units ?: return null
+        val count = listing.units ?: return FitLine(false, "Nombre d'unités non précisé")
+        val text = units(count)
+        return if (match.unitsScore >= FULL) FitLine(true, "$text, comme demandé") else FitLine(false, "$text au lieu de $searched")
+    }
+
+    /** A building sale's étages, worded like its unités. */
+    private fun levels(match: Match, mandate: Mandate, listing: ListingSummary): FitLine? {
+        val searched = mandate.levels ?: return null
+        val count = listing.levels ?: return FitLine(false, "Nombre d'étages non précisé")
+        val text = levels(count)
+        return if (match.levelsScore >= FULL) FitLine(true, "$text, comme demandé") else FitLine(false, "$text au lieu de $searched")
     }
 
     private fun type(match: Match, mandate: Mandate, listing: ListingSummary): FitLine? {

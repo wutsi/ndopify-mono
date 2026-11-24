@@ -16,8 +16,10 @@ import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class MatcherTest {
     companion object {
@@ -677,5 +679,135 @@ class MatcherTest {
         assertNotNull(score)
         assertEquals(0.0, score.type, DELTA)
         assertEquals(0.0, score.total, DELTA)
+    }
+
+    private val buildingSearch = search.copy(
+        listingType = ListingType.SALE,
+        propertyCategory = PropertyCategory.COMMERCIAL,
+        propertyType = PropertyType.BUILDING,
+        rooms = null,
+        price = 250_000_000,
+        pricePeriodicityType = PeriodicityType.NONE,
+        waterTank = false,
+        generatorSet = false,
+        securedFenced = false,
+        units = 10,
+        levels = 3,
+    )
+
+    private fun building(
+        units: Int?,
+        levels: Int?,
+        listingType: ListingType = ListingType.SALE,
+    ): ListingEntity = ListingEntity(
+        id = 21L,
+        mandate = MandateEntity(id = 3L, customerId = 600L, mandateType = MandateType.LISTING),
+        agent = AgentEntity(id = AGENT_ID),
+        status = ListingStatus.PUBLISHED,
+        listingType = listingType,
+        propertyCategory = PropertyCategory.COMMERCIAL,
+        propertyType = PropertyType.BUILDING,
+        cityId = CITY_ID,
+        neighborhoodId = N1,
+        units = units,
+        levels = levels,
+        price = 200_000_000,
+        currencyCode = "XAF",
+        pricePeriodicityType = PeriodicityType.NONE,
+    )
+
+    @Test
+    fun `a building pair scores its counts with the building weights`() {
+        val score = matcher.score(buildingSearch, building(units = 10, levels = 3), distances, TODAY)
+
+        assertNotNull(score)
+        assertEquals(1.0, score!!.units, DELTA)
+        assertEquals(1.0, score.levels, DELTA)
+        assertEquals(1.0, score.total, DELTA) // 0.30 + 0.25 + 0.20 + 0.15 + 0.10, typeScore 1.0
+        assertTrue(score.building)
+    }
+
+    @Test
+    fun `a building's counts score their closeness and never rule the pair out`() {
+        assertEquals(
+            0.8,
+            matcher.score(buildingSearch, building(units = 12, levels = 4), distances, TODAY)!!.units,
+            DELTA,
+        )
+        assertEquals(
+            0.6667,
+            matcher.score(buildingSearch, building(units = 12, levels = 4), distances, TODAY)!!.levels,
+            DELTA,
+        )
+        assertEquals(
+            0.0,
+            matcher.score(buildingSearch, building(units = 20, levels = 3), distances, TODAY)!!.units,
+            DELTA,
+        )
+        assertEquals(
+            1.0,
+            matcher.score(buildingSearch, building(units = 20, levels = 3), distances, TODAY)!!.levels,
+            DELTA,
+        )
+    }
+
+    @Test
+    fun `a missing count is neutral and does not move the total`() {
+        val answered = matcher.score(buildingSearch, building(units = 12, levels = 4), distances, TODAY)!!
+        val undeclared = matcher.score(buildingSearch, building(units = null, levels = null), distances, TODAY)!!
+
+        assertEquals(1.0, undeclared.units, DELTA)
+        assertEquals(1.0, undeclared.levels, DELTA)
+
+        val unanswered = matcher.score(
+            buildingSearch.copy(units = null, levels = null),
+            building(units = 12, levels = 4),
+            distances,
+            TODAY,
+        )!!
+        assertEquals(answered.neighborhood, unanswered.neighborhood, DELTA)
+        assertEquals(answered.price, unanswered.price, DELTA)
+        assertEquals(answered.availability, unanswered.availability, DELTA)
+    }
+
+    @Test
+    fun `a building pair has no rooms, amenities or furniture gap`() {
+        val score = matcher.score(
+            buildingSearch.copy(waterTank = true),
+            building(units = 10, levels = 3),
+            distances,
+            TODAY,
+        )!!
+
+        assertEquals(emptyList(), score.missingAmenities)
+        assertEquals(1.0, score.rooms, DELTA)
+        assertEquals(1.0, score.amenities, DELTA)
+        assertEquals(1.0, score.furniture, DELTA)
+    }
+
+    @Test
+    fun `a rented building keeps today's weights`() {
+        val score = matcher.score(
+            buildingSearch.copy(listingType = ListingType.RENTAL),
+            building(units = 10, levels = 3, listingType = ListingType.RENTAL),
+            distances,
+            TODAY,
+        )!!
+
+        assertFalse(score.building)
+        assertEquals(1.0, score.total, DELTA) // six weights, every partial 1.0
+    }
+
+    @Test
+    fun `a building against an office keeps the six weights`() {
+        val score = matcher.score(
+            buildingSearch,
+            building(units = 10, levels = 3).copy(propertyType = PropertyType.OFFICE),
+            distances,
+            TODAY,
+        )!!
+
+        assertFalse(score.building)
+        assertEquals(0.85, score.type, DELTA)
     }
 }

@@ -486,6 +486,69 @@ class CreateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `store the levels and units of a building sale`() {
+        val created = rest.postForEntity(
+            "/v1/mandates",
+            request.copy(
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                listingType = ListingType.SALE,
+                propertyType = PropertyType.BUILDING,
+                levels = 3,
+                units = 12,
+            ),
+            CreateMandateResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, created.statusCode)
+        val mandate = rest.getForEntity("/v1/mandates/${created.body!!.mandateId}", GetMandateResponse::class.java)
+            .body!!.mandate
+        assertEquals(3, mandate.levels)
+        assertEquals(12, mandate.units)
+    }
+
+    @Test
+    fun `a rental building keeps no count`() {
+        val created = rest.postForEntity(
+            "/v1/mandates",
+            request.copy(
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                listingType = ListingType.RENTAL,
+                propertyType = PropertyType.BUILDING,
+                levels = 3,
+                units = 12,
+            ),
+            CreateMandateResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, created.statusCode)
+        val mandate = rest.getForEntity("/v1/mandates/${created.body!!.mandateId}", GetMandateResponse::class.java)
+            .body!!.mandate
+        assertNull(mandate.levels)
+        assertNull(mandate.units)
+    }
+
+    @Test
+    fun `a sale land keeps no count`() {
+        val created = rest.postForEntity(
+            "/v1/mandates",
+            request.copy(
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                listingType = ListingType.SALE,
+                propertyType = PropertyType.LAND,
+                levels = 3,
+                units = 12,
+            ),
+            CreateMandateResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, created.statusCode)
+        val mandate = rest.getForEntity("/v1/mandates/${created.body!!.mandateId}", GetMandateResponse::class.java)
+            .body!!.mandate
+        assertNull(mandate.levels)
+        assertNull(mandate.units)
+    }
+
+    @Test
     fun `drop the ownership documents of a rental`() {
         val created = rest.postForEntity(
             "/v1/mandates",

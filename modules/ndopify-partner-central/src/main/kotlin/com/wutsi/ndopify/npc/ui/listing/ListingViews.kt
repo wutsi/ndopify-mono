@@ -82,7 +82,8 @@ object ListingViews {
         backLabel: String = "← Retour au mandat",
     ): ListingView {
         val editable = ListingRules.editable(listing) && !readOnly
-        val required = ListingRules.SECTIONS.filter { ListingRules.required(listing, it) }
+        val sections = ListingRules.sections(listing)
+        val required = sections.filter { ListingRules.required(listing, it) }
         val done = required.count { ListingRules.done(listing, it) }
         val left = required.filter { !ListingRules.done(listing, it) }.map { missing(listing, it, images) }
         val published = listing.status == ListingStatus.PUBLISHED
@@ -115,7 +116,7 @@ object ListingViews {
             rows = if (readOnly) {
                 emptyList()
             } else {
-                ListingRules.SECTIONS.map { section ->
+                sections.map { section ->
                     ChecklistRow(
                         section = section,
                         label = ListingRules.label(listing, section),
@@ -176,21 +177,66 @@ object ListingViews {
 
     /** "Appartement 2 chambres · Bonapriso": the listing's line on the co-brokerage blocks. */
     fun listingLabel(summary: ListingSummary, locations: Map<Long, Location>): String =
-        label(summary.propertyType, summary.rooms, summary.neighborhoodId, summary.cityId, locations)
+        label(
+            summary.propertyType,
+            summary.rooms,
+            summary.units,
+            summary.levels,
+            summary.listingType,
+            summary.neighborhoodId,
+            summary.cityId,
+            locations,
+        )
 
     fun listingLabel(listing: Listing, locations: Map<Long, Location>): String =
-        label(listing.propertyType, listing.rooms, listing.neighborhoodId, listing.cityId, locations)
+        label(
+            listing.propertyType,
+            listing.rooms,
+            listing.units,
+            listing.levels,
+            listing.listingType,
+            listing.neighborhoodId,
+            listing.cityId,
+            locations,
+        )
+
+    /**
+     * "Appartement · 3 chambres"; a building sold as a whole reads "Immeuble · 12 unités · 3 étages" instead, and a
+     * count it states none of says so rather than showing nothing. A rented building keeps its rooms.
+     */
+    fun label(type: PropertyType?, rooms: Int?, units: Int?, levels: Int?, listingType: ListingType?): String {
+        val typeLabel = MandateLabels.shortPropertyType(type) ?: "Bien"
+        if (type == PropertyType.BUILDING && listingType == ListingType.SALE) {
+            return listOf(
+                typeLabel,
+                units?.let { MatchRules.units(it) } ?: "Nombre d'unités non précisé",
+                levels?.let { MatchRules.levels(it) } ?: "Nombre d'étages non précisé",
+            ).joinToString(" · ")
+        }
+        return listOfNotNull(typeLabel, rooms?.let { MatchRules.rooms(it) }).joinToString(" · ")
+    }
 
     private fun label(
         type: PropertyType?,
         rooms: Int?,
+        units: Int?,
+        levels: Int?,
+        listingType: ListingType?,
         neighborhoodId: Long?,
         cityId: Long?,
         locations: Map<Long, Location>,
     ): String {
         val typeLabel = MandateLabels.shortPropertyType(type) ?: "Bien"
-        val roomsLabel = rooms?.let { MatchRules.rooms(it) }
         val place = listOfNotNull(neighborhoodId, cityId).firstNotNullOfOrNull { locations[it]?.name }
+        if (type == PropertyType.BUILDING && listingType == ListingType.SALE) {
+            return listOf(
+                typeLabel,
+                units?.let { MatchRules.units(it) } ?: "Nombre d'unités non précisé",
+                levels?.let { MatchRules.levels(it) } ?: "Nombre d'étages non précisé",
+                place,
+            ).filterNotNull().joinToString(" · ")
+        }
+        val roomsLabel = rooms?.let { MatchRules.rooms(it) }
         return listOfNotNull(typeLabel, roomsLabel, place?.let { "· $it" }).joinToString(" ")
     }
 
@@ -202,10 +248,20 @@ object ListingViews {
     val AMENITY_LABELS: Map<String, String> =
         MandateLabels.AMENITY_LABELS - ROAD_ACCESS.toSet() + (Amenity.WATER_TANK.key to "Château d'eau, citerne")
 
-    /** *Le bien*'s types, residential first, in the prototype's order; a rental is offered no plot of land. */
-    fun types(sale: Boolean): List<TypeChoice> = ListingRules.TYPES.keys.flatMap { category ->
-        ListingRules.types(category, sale).map { type -> TypeChoice(type.name, category.name, TYPE_LABELS.getValue(type)) }
-    }
+    /**
+     * *Le bien*'s types, in the prototype's order, each once: its categories (`data-categories`, space-separated)
+     * follow [ListingRules.typeCategories]; a rental is offered no plot of land.
+     */
+    fun types(sale: Boolean): List<TypeChoice> =
+        ListingRules.TYPES.values.flatten()
+            .filter { sale || it != PropertyType.LAND }
+            .map { type ->
+                TypeChoice(
+                    value = type.name,
+                    categories = ListingRules.typeCategories(type, sale).joinToString(" "),
+                    label = TYPE_LABELS.getValue(type),
+                )
+            }
 
     /** The photos page's list (the prototype's `initListingPhotos`): what's left to do only while it's a draft. */
     fun photos(images: List<ListingImage>, editable: Boolean): PhotosView {
@@ -304,6 +360,12 @@ object ListingViews {
                 val (answer, value) = values
                 val count = answer?.trim()?.removeSuffix("+")?.toIntOrNull() ?: return@forEach
                 if (ListingRules.count(value) != count) owner[field] = answer.trim()
+            }
+        // A building sale's counts: the same rule as rooms, worded as the landlord answered them.
+        mapOf("levels" to (mandate.levels to form.levels), "units" to (mandate.units to form.units))
+            .forEach { (field, values) ->
+                val (answer, value) = values
+                if (answer != null && ListingRules.count(value) != answer) owner[field] = answer.toString()
             }
         mandate.area?.let { area ->
             if (ListingRules.count(form.area) != area) owner["area"] = "${formatter.count(area.toLong())} m²"
@@ -491,7 +553,7 @@ object ListingViews {
             listing == null -> null
             toFix -> "Annonce à corriger : voyez les points signalés."
             draft -> {
-                val left = ListingRules.SECTIONS
+                val left = ListingRules.sections(listing)
                     .filter { ListingRules.required(listing, it) && !ListingRules.done(listing, it) }
                     .map { ListingRules.label(listing, it) }
                 "Annonce en brouillon : " +
@@ -597,11 +659,20 @@ object ListingViews {
                 "À relever devant l'entrée du bien"
             }
 
-        ListingSection.PROPERTY -> listOfNotNull(
-            listing.propertyType?.let { MandateLabels.PROPERTY_TYPE_LABELS[it] },
-            listing.rooms?.let { plural(it, "chambre", "chambres") },
-            listing.area?.let { "${formatter.count(it.toLong())} m²" },
-        ).joinToString(" · ")
+        ListingSection.PROPERTY -> if (ListingRules.soldBuilding(listing)) {
+            listOfNotNull(
+                listing.propertyType?.let { MandateLabels.PROPERTY_TYPE_LABELS[it] },
+                listing.levels?.let { MatchRules.levels(it) },
+                listing.units?.let { MatchRules.units(it) },
+                listing.area?.let { "${formatter.count(it.toLong())} m²" },
+            ).joinToString(" · ")
+        } else {
+            listOfNotNull(
+                listing.propertyType?.let { MandateLabels.PROPERTY_TYPE_LABELS[it] },
+                listing.rooms?.let { plural(it, "chambre", "chambres") },
+                listing.area?.let { "${formatter.count(it.toLong())} m²" },
+            ).joinToString(" · ")
+        }
 
         ListingSection.AMENITIES -> {
             val checked = Amenity.of(listing).map { it.key }

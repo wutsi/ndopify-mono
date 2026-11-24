@@ -412,6 +412,20 @@ class UpdateListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(ErrorCode.LISTING_NOT_FOUND, response.body?.error?.code)
     }
 
+    @Test
+    fun `a building has no amenities section - 400`() {
+        val response = update(
+            UpdateListingRequest(version = 0, section = ListingSection.AMENITIES, roadPaved = true, waterTank = true),
+            id = 103L,
+        )
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
+        assertEquals("section", response.body?.error?.parameter?.name)
+        assertNull(sectionDao.findByListingIdAndSection(103L, ListingSection.AMENITIES))
+        assertFalse(dao.findById(103L).get().waterTank)
+    }
+
     private fun update(request: UpdateListingRequest, id: Long = 100L) =
         rest.postForEntity("/v1/listings/$id", request, ErrorResponse::class.java)
 

@@ -6,6 +6,7 @@ import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.ui.agent.AgentCardViews
+import com.wutsi.ndopify.npc.ui.listing.ListingViews
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.npc.ui.visit.VisitCardView
 import com.wutsi.ndopify.refdata.dto.Location
@@ -91,7 +92,6 @@ object MatchViews {
         formatter: TenantFormatter,
         agents: Map<Long, Agent>,
     ): MatchView {
-        val type = MandateLabels.shortPropertyType(listing.propertyType) ?: "Bien"
         val available = listing.availableFrom?.takeIf { it.isAfter(today) }
         return MatchView(
             id = match.id,
@@ -104,7 +104,13 @@ object MatchViews {
             } else {
                 null
             },
-            title = listOfNotNull(type, listing.rooms?.let { MatchRules.rooms(it) }).joinToString(" · "),
+            title = ListingViews.label(
+                listing.propertyType,
+                listing.rooms,
+                listing.units,
+                listing.levels,
+                listing.listingType,
+            ),
             tag = MatchRules.tag(match),
             listingUrl = if (match.coBrokerage) "/listings/${listing.id}?match=${match.id}" else "/listings/${listing.id}",
             facts = listOf(

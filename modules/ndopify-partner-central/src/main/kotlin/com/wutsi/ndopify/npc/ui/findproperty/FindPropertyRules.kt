@@ -25,6 +25,10 @@ object FindPropertyRules {
     const val MAX_NEIGHBORHOODS = 3
     const val MAX_COMMENTS = 500
 
+    /** The bounds of a building sale's two counts: whole numbers, a wizard-side rule only. */
+    const val MAX_LEVELS = 30
+    const val MAX_UNITS = 500
+
     // Smallest monthly rent worth a search, in the tenant's currency.
     const val MIN_RENT = 5000L
 
@@ -80,6 +84,14 @@ object FindPropertyRules {
 
     fun isSale(listingType: ListingType?): Boolean = listingType == ListingType.SALE
 
+    /** A building bought as a whole: its two counts replace the rooms and the parking, and its amenities step leaves. */
+    fun buildingSale(listingType: ListingType?, type: PropertyType?): Boolean =
+        isSale(listingType) && type == PropertyType.BUILDING
+
+    /** A building sale has no amenity step: its answers are dropped, and its step leaves the wizard. */
+    fun needsAmenities(category: PropertyCategory?, type: PropertyType?, listingType: ListingType?): Boolean =
+        !buildingSale(listingType, type)
+
     /** The project a link's `?type=` preselects: SALE or RENTAL by name, null for anything else (never UNKNOWN). */
     fun parseListingType(value: String?): ListingType? =
         ListingType.entries.firstOrNull { it != ListingType.UNKNOWN && it.name == value }
@@ -112,7 +124,26 @@ object FindPropertyRules {
     fun needsFurniture(type: PropertyType?, listingType: ListingType?): Boolean =
         !isSale(listingType) && type !in WITHOUT_FURNITURE
 
-    fun asksParkings(type: PropertyType?): Boolean = type !in WITHOUT_PARKINGS
+    fun asksParkings(type: PropertyType?, listingType: ListingType? = null): Boolean =
+        type !in WITHOUT_PARKINGS && !buildingSale(listingType, type)
+
+    /**
+     * A building sale's counts: a whole number in `1..[max]`, or null; [any] is the "Indifférent" answer, a UI
+     * answer stored as null. A blank answer is the question's own error.
+     */
+    private fun count(value: String?, any: Boolean, max: Int, noun: String): String? {
+        if (any) return null
+        val text = value?.trim().orEmpty()
+        if (text.isEmpty()) return "Indiquez le nombre $noun, ou cochez Indifférent."
+        val number = text.takeIf { text.all(Char::isDigit) }?.toIntOrNull()
+        return if (number != null && number in 1..max) null else "Indiquez un nombre entier, de 1 à $max."
+    }
+
+    /** The building's étages: 1..[MAX_LEVELS], or "Indifférent". */
+    fun levels(value: String?, any: Boolean): String? = count(value, any, MAX_LEVELS, "d'étages")
+
+    /** The building's unités: 1..[MAX_UNITS], or "Indifférent". */
+    fun units(value: String?, any: Boolean): String? = count(value, any, MAX_UNITS, "d'unités")
 
     /** A plot of land bought is searched by its size: its surface is required. */
     fun needsArea(category: PropertyCategory?, type: PropertyType?, listingType: ListingType?): Boolean =

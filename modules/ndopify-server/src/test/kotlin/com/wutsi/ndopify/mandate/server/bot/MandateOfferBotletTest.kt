@@ -253,6 +253,56 @@ class MandateOfferBotletTest {
     }
 
     @Test
+    fun `a building sale offer words its units and its levels`() {
+        val assignment = AssignmentEntity(
+            id = 99L,
+            mandate = MandateEntity(
+                id = 8L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
+                listingType = ListingType.SALE, propertyType = PropertyType.BUILDING,
+                levels = 3, units = 12, area = 850,
+                price = 240_000_000, currencyCode = "XAF", mandateType = MandateType.LISTING,
+                availableFrom = LocalDate.of(2026, 12, 1),
+            ),
+            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
+        )
+
+        botlet.send(assignment, agent, 1000L)
+
+        val text = argumentCaptor<String>()
+        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        assertEquals(
+            """
+            📋 Nouveau mandat : Vente - Immeuble (Bastos) — Prix : 240 000 000 XAF
+            3 étages · 12 unités · 850 m² · disponible le 01/12/2026
+            Expire le 15/01/2027 à 09:00.
+            """.trimIndent(),
+            text.firstValue,
+        )
+        assertFalse(text.firstValue.contains("pièce"))
+    }
+
+    @Test
+    fun `a one level one unit building is singular`() {
+        val assignment = AssignmentEntity(
+            id = 99L,
+            mandate = MandateEntity(
+                id = 8L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
+                listingType = ListingType.SALE, propertyType = PropertyType.BUILDING,
+                levels = 1, units = 1, area = 85,
+                price = 240_000_000, currencyCode = "XAF", mandateType = MandateType.LISTING,
+                availableFrom = LocalDate.of(2026, 12, 1),
+            ),
+            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
+        )
+
+        botlet.send(assignment, agent, 1000L)
+
+        val text = argumentCaptor<String>()
+        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        assertTrue(text.firstValue.contains("1 étage · 1 unité · 85 m²"))
+    }
+
+    @Test
     fun `a mandate without neighbourhoods or a city has no dangling place`() {
         val assignment = AssignmentEntity(
             id = 98L,

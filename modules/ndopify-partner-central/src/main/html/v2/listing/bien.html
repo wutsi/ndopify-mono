@@ -109,7 +109,9 @@
                                 <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="DUPLEX"> Duplex</label>
                                 <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="STUDIO"> Studio</label>
                                 <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="ROOM"> Chambre</label>
-                                <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="BUILDING"> Immeuble entier</label>
+                                <!-- v2 (#274): a building sold is stored *Commercial* and keeps its row under *Résidentiel*,
+                                     where a legacy listing is stored. -->
+                                <label class="choice" data-categories="RESIDENTIAL COMMERCIAL"><input name="propertyType" type="radio" value="BUILDING"> Immeuble entier</label>
                                 <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="OFFICE"> Bureau</label>
                                 <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="RETAIL"> Boutique, local commercial</label>
                                 <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="INDUSTRIAL"> Entrepôt, local industriel</label>

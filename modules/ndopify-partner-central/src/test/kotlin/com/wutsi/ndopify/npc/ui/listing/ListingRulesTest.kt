@@ -7,6 +7,8 @@ import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingSectionStatus
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
@@ -312,5 +314,163 @@ class ListingRulesTest {
             "/listings/5001?back=/agent?id%3D30%26page%3D1",
             ListingRules.url(5001, "/agent?id=30&page=1"),
         )
+    }
+
+    /** A building sold as a whole: six sections (no amenities), its counts instead of rooms and parking. */
+    private val building = ListingViewsTest.LISTING.copy(
+        listingType = ListingType.SALE,
+        propertyCategory = PropertyCategory.RESIDENTIAL,
+        propertyType = PropertyType.BUILDING,
+        rooms = null,
+        bathrooms = null,
+        parkings = null,
+        levels = 3,
+        units = 12,
+        sections = ListingViewsTest.LISTING.sections.filter { it.section != ListingSection.AMENITIES },
+    )
+
+    private fun errors(section: ListingSection, form: ListingSectionForm, listing: Listing) =
+        ListingRules.errors(section, form, listing, today, FORMATTER)
+
+    @Test
+    fun `a building sale's checklist has no amenities section`() {
+        assertTrue(ListingRules.soldBuilding(building))
+        assertEquals(ListingRules.SECTIONS - ListingSection.AMENITIES, ListingRules.sections(building))
+        assertEquals(ListingRules.SECTIONS, ListingRules.sections(ListingViewsTest.LISTING))
+        assertFalse(ListingRules.soldBuilding(ListingViewsTest.LISTING.copy(listingType = ListingType.SALE)))
+        assertFalse(ListingRules.soldBuilding(building.copy(listingType = ListingType.RENTAL)))
+    }
+
+    @Test
+    fun `a building sale asks units and no bathroom nor parking`() {
+        val commercial = PropertyCategory.COMMERCIAL
+        val residential = PropertyCategory.RESIDENTIAL
+
+        assertTrue(ListingRules.applies("units", commercial, PropertyType.BUILDING, ListingType.SALE))
+        assertFalse(ListingRules.applies("units", commercial, PropertyType.BUILDING, ListingType.RENTAL))
+        assertFalse(ListingRules.applies("units", residential, PropertyType.VILLA, ListingType.SALE))
+        assertFalse(ListingRules.applies("bathrooms", commercial, PropertyType.BUILDING, ListingType.SALE))
+        assertTrue(ListingRules.applies("bathrooms", commercial, PropertyType.BUILDING, ListingType.RENTAL))
+        assertFalse(ListingRules.applies("parkings", residential, PropertyType.BUILDING, ListingType.SALE))
+        assertTrue(ListingRules.applies("parkings", residential, PropertyType.BUILDING, ListingType.RENTAL))
+        assertTrue(ListingRules.applies("parkings", residential, PropertyType.HOUSE, ListingType.SALE))
+    }
+
+    @Test
+    fun `a building sale's property asks its two counts`() {
+        val form = ListingSectionForm(
+            propertyCategory = "RESIDENTIAL",
+            propertyType = "BUILDING",
+            levels = "3",
+            units = "12",
+            area = "850",
+        )
+
+        assertEquals(emptyMap(), errors(ListingSection.PROPERTY, form, building))
+        assertEquals(
+            mapOf(
+                "levels" to "Indiquez ce nombre, compté sur place.",
+                "units" to "Indiquez ce nombre, compté sur place.",
+            ),
+            errors(ListingSection.PROPERTY, form.copy(levels = null, units = null), building),
+        )
+        assertEquals(
+            "Indiquez un nombre d'étages, de 1 à 30.",
+            errors(ListingSection.PROPERTY, form.copy(levels = "31"), building)["levels"],
+        )
+        assertEquals(
+            "Indiquez un nombre d'unités, de 1 à 500.",
+            errors(ListingSection.PROPERTY, form.copy(units = "501"), building)["units"],
+        )
+    }
+
+    @Test
+    fun `a building sale's property request sends its two counts and no bathroom nor parking`() {
+        val request = ListingRules.request(
+            ListingSection.PROPERTY,
+            ListingSectionForm(
+                propertyCategory = "RESIDENTIAL",
+                propertyType = "BUILDING",
+                bathrooms = "2",
+                parkings = "3",
+                levels = "3",
+                units = "12",
+                area = "850",
+            ),
+            building,
+        )
+
+        assertEquals(3, request.levels)
+        assertEquals(12, request.units)
+        assertNull(request.bathrooms)
+        assertNull(request.parkings)
+        assertNull(request.rooms)
+    }
+
+    @Test
+    fun `a type's categories follow the sale`() {
+        assertEquals(
+            listOf(PropertyCategory.RESIDENTIAL, PropertyCategory.COMMERCIAL),
+            ListingRules.typeCategories(PropertyType.BUILDING, sale = true),
+        )
+        assertEquals(
+            listOf(PropertyCategory.RESIDENTIAL),
+            ListingRules.typeCategories(PropertyType.BUILDING, sale = false),
+        )
+        assertEquals(
+            listOf(PropertyCategory.RESIDENTIAL),
+            ListingRules.typeCategories(PropertyType.APARTMENT, sale = true),
+        )
+        assertEquals(
+            listOf(PropertyCategory.COMMERCIAL),
+            ListingRules.typeCategories(PropertyType.OFFICE, sale = true),
+        )
+    }
+
+    @Test
+    fun `a sale building fits both categories, a rental only residential`() {
+        assertTrue(ListingRules.typeFits(PropertyCategory.COMMERCIAL, PropertyType.BUILDING, sale = true))
+        assertTrue(ListingRules.typeFits(PropertyCategory.RESIDENTIAL, PropertyType.BUILDING, sale = true))
+        assertFalse(ListingRules.typeFits(PropertyCategory.COMMERCIAL, PropertyType.BUILDING, sale = false))
+        assertTrue(ListingRules.typeFits(PropertyCategory.RESIDENTIAL, PropertyType.BUILDING, sale = false))
+    }
+
+    @Test
+    fun `a commercial sale lists the building before the offices`() {
+        assertEquals(
+            listOf(PropertyType.BUILDING, PropertyType.OFFICE, PropertyType.RETAIL, PropertyType.INDUSTRIAL),
+            ListingRules.types(PropertyCategory.COMMERCIAL, sale = true),
+        )
+        assertEquals(
+            listOf(PropertyType.OFFICE, PropertyType.RETAIL, PropertyType.INDUSTRIAL),
+            ListingRules.types(PropertyCategory.COMMERCIAL, sale = false),
+        )
+        assertEquals(
+            ListingRules.TYPES.getValue(PropertyCategory.RESIDENTIAL),
+            ListingRules.types(PropertyCategory.RESIDENTIAL, sale = true),
+        )
+        assertEquals(
+            ListingRules.TYPES.getValue(PropertyCategory.RESIDENTIAL) - PropertyType.LAND,
+            ListingRules.types(PropertyCategory.RESIDENTIAL, sale = false),
+        )
+    }
+
+    @Test
+    fun `a commercial building sale keeps its category`() {
+        val commercial = building.copy(propertyCategory = PropertyCategory.COMMERCIAL)
+        val form = ListingSectionForm(
+            propertyCategory = "COMMERCIAL",
+            propertyType = "BUILDING",
+            levels = "3",
+            units = "12",
+            area = "850",
+        )
+
+        assertEquals(emptyMap(), errors(ListingSection.PROPERTY, form, commercial))
+        val request = ListingRules.request(ListingSection.PROPERTY, form, commercial)
+        assertEquals(PropertyCategory.COMMERCIAL, request.propertyCategory)
+        assertEquals(PropertyType.BUILDING, request.propertyType)
+        assertEquals(3, request.levels)
+        assertEquals(12, request.units)
     }
 }

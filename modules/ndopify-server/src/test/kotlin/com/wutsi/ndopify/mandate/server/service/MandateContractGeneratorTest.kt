@@ -324,6 +324,88 @@ class MandateContractGeneratorTest {
     }
 
     @Test
+    fun `a building sale contract words its étages and its unités, never its stored rooms, parkings nor utilities`() {
+        val building = mandate.copy(
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.BUILDING,
+            // An interest-seeded search, or a legacy row, may still store the rooms, the parkings and the utilities
+            // the wizards no longer ask
+            rooms = "2",
+            parkings = "1",
+            area = 850,
+            levels = 3,
+            units = 12,
+            waterMeter = true,
+            dedicatedWaterMeter = true,
+            waterTank = true,
+            waterWell = true,
+            electricityMeter = true,
+            dedicatedElectricityMeter = true,
+            generatorSet = true,
+            solarPanel = true,
+            roadPaved = true,
+            trackAccessibleByCar = true,
+            trackInaccessibleByCar = true,
+            securedFenced = true,
+            securityGuard = true,
+            videoSurveillance = true,
+            pricePeriodicityType = PeriodicityType.UNKNOWN,
+        )
+
+        val html = generator.generate(building, contract.copy(commissionRate = 5))
+
+        assertTrue(html.contains("<b>Étages</b> : 3"))
+        assertTrue(html.contains("<b>Unités</b> : 12"))
+        listOf(
+            "Chambres",
+            "Parking",
+            "Les équipements souhaités",
+            "Accès à l'eau",
+            "Compteur électrique",
+            "Groupe électrogène",
+            "Route bitumée",
+            "Gardien",
+        ).forEach { text -> assertFalse(html.contains(text), "unexpected: $text") }
+    }
+
+    @Test
+    fun `a building sale listing contract never words its stored rooms, parkings nor utilities`() {
+        val building = mandate.copy(
+            mandateType = MandateType.LISTING,
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.BUILDING,
+            rooms = "2",
+            parkings = "1",
+            area = 850,
+            levels = 3,
+            units = 12,
+            // An interest-seeded search, or a legacy row, may still store the utilities the wizards no longer ask
+            waterMeter = true,
+            generatorSet = true,
+            roadPaved = true,
+            securityGuard = true,
+            pricePeriodicityType = PeriodicityType.UNKNOWN,
+        )
+
+        val html = generator.generate(building, contract.copy(commissionRate = 5))
+
+        assertTrue(html.contains("<b>Étages</b> : 3"))
+        assertTrue(html.contains("<b>Unités</b> : 12"))
+        listOf(
+            "Chambres",
+            "Parking",
+            "Les équipements du bien",
+            "Accès à l'eau",
+            "Compteur électrique",
+            "Groupe électrogène",
+            "Route bitumée",
+            "Gardien",
+        ).forEach { text -> assertFalse(html.contains(text), "unexpected: $text") }
+    }
+
+    @Test
     fun `an unknown listing type keeps the rental template`() {
         val html = generator.generate(mandate.copy(listingType = ListingType.UNKNOWN), contract.copy(commissionRate = 7))
 

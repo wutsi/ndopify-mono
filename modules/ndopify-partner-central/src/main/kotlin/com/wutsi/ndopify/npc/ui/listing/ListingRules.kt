@@ -45,7 +45,10 @@ object ListingRules {
     val LEASE_TERMS = listOf(6, 12, 24, 36)
     val NOTICE_PERIODS = 1..3
 
-    /** The types of each category (the prototype's `data-categories`: LAND and BUILDING are residential). */
+    /**
+     * The types of each category (the prototype's `data-categories`: LAND and BUILDING are residential); a sale
+     * building is also commercial, see [typeCategories].
+     */
     val TYPES: Map<PropertyCategory, List<PropertyType>> = linkedMapOf(
         PropertyCategory.RESIDENTIAL to listOf(
             PropertyType.APARTMENT,
@@ -72,11 +75,13 @@ object ListingRules {
         "kitchens" to "kitchens",
         "parkings" to "parkings",
         "levels" to "levels",
+        "units" to "units",
         "floorLevel" to "floorLevel",
     )
 
-    // Counted on site: needed when asked
+    // Counted on site: needed when asked; a building sale's two counts too
     private val REQUIRED_COUNTS = setOf("rooms", "bathrooms", "area")
+    private val BUILDING_COUNTS = setOf("levels", "units")
 
     private const val COUNT_REQUIRED = "Indiquez ce nombre, compté sur place."
     private const val COUNT_INVALID = "Indiquez un nombre entier."
@@ -124,6 +129,14 @@ object ListingRules {
 
     /** A seller's property. */
     private fun sale(listing: Listing): Boolean = listing.listingType == ListingType.SALE
+
+    /** A building sold as a whole: captured by its étages and its unités, with no amenities section. */
+    fun soldBuilding(listing: Listing): Boolean =
+        sale(listing) && listing.propertyType == PropertyType.BUILDING
+
+    /** The checklist's sections: a sold building has no *Eau, électricité, accès* one. */
+    fun sections(listing: Listing): List<ListingSection> =
+        if (soldBuilding(listing)) SECTIONS - ListingSection.AMENITIES else SECTIONS
 
     /** A section's label, as its checklist row and its page's title read it: a sale's TERMS are its price. */
     fun label(listing: Listing, section: ListingSection): String =
@@ -231,26 +244,34 @@ object ListingRules {
 
     /** Every required section done: the listing can be sent. Without its checklist, it can't be told: no. */
     fun complete(listing: Listing): Boolean =
-        listing.sections.isNotEmpty() && SECTIONS.filter { required(listing, it) }.all { done(listing, it) }
+        listing.sections.isNotEmpty() && sections(listing).filter { required(listing, it) }.all { done(listing, it) }
 
     /** Only a DRAFT changes (one sent back by the verification too): nothing does while it's checked, nor once published. */
     fun editable(listing: Listing): Boolean = listing.status == ListingStatus.DRAFT
 
     /**
-     * Whether a question of *Le bien* (`furniture`, `rooms`, `bathrooms`, `kitchens`, `parkings`, `levels`,
-     * `floorLevel`) is asked for a type: the prototype's `LISTING_APPLIES`. None is, before a type is chosen.
+     * Whether a question of *Le bien* (`furniture`, `rooms`, `bathrooms`, `kitchens`, `parkings`, `levels`, `units`,
+     * `floorLevel`) is asked for a type: the prototype's `LISTING_APPLIES`. None is, before a type is chosen. A
+     * building sold as a whole is asked its levels and units, and neither bathroom nor parking.
      */
-    fun applies(question: String, category: PropertyCategory?, type: PropertyType?): Boolean {
+    fun applies(
+        question: String,
+        category: PropertyCategory?,
+        type: PropertyType?,
+        listingType: ListingType? = null,
+    ): Boolean {
         if (type == null) return false
         val residential = category == PropertyCategory.RESIDENTIAL
+        val building = sale(listingType) && type == PropertyType.BUILDING
         return when (question) {
             "furniture" -> residential && type !in setOf(PropertyType.BUILDING, PropertyType.LAND)
             "rooms" -> residential &&
                 type !in setOf(PropertyType.ROOM, PropertyType.STUDIO, PropertyType.BUILDING, PropertyType.LAND)
-            "bathrooms" -> type != PropertyType.LAND
+            "bathrooms" -> type != PropertyType.LAND && !building
             "kitchens" -> residential && type !in setOf(PropertyType.ROOM, PropertyType.BUILDING, PropertyType.LAND)
-            "parkings" -> type !in setOf(PropertyType.ROOM, PropertyType.LAND)
+            "parkings" -> type !in setOf(PropertyType.ROOM, PropertyType.LAND) && !building
             "levels" -> type in setOf(PropertyType.HOUSE, PropertyType.DUPLEX, PropertyType.BUILDING)
+            "units" -> building
             "floorLevel" -> type in setOf(
                 PropertyType.ROOM,
                 PropertyType.STUDIO,
@@ -262,9 +283,30 @@ object ListingRules {
         }
     }
 
-    /** The types of [category] a project may choose: a plot of land is sold, never let (#275). */
+    /**
+     * The categories a type is offered under: its [TYPES] entries, plus COMMERCIAL for a BUILDING when [sale] — a sale
+     * building is offered under both (its listing stores COMMERCIAL; a legacy row RESIDENTIAL), a rental only
+     * RESIDENTIAL.
+     */
+    fun typeCategories(type: PropertyType, sale: Boolean): List<PropertyCategory> {
+        val categories = TYPES.filterValues { type in it }.keys.toMutableList()
+        if (sale && type == PropertyType.BUILDING && PropertyCategory.COMMERCIAL !in categories) {
+            categories += PropertyCategory.COMMERCIAL
+        }
+        return categories
+    }
+
+    /** The types of [category] a project may choose, in the prototype's order: a plot of land is sold, never let (#275). */
     fun types(category: PropertyCategory?, sale: Boolean): List<PropertyType> =
-        TYPES[category].orEmpty().filter { sale || it != PropertyType.LAND }
+        if (category == null) {
+            emptyList()
+        } else {
+            TYPES.values.flatten().filter { type ->
+                category in typeCategories(type, sale) && (sale || type != PropertyType.LAND)
+            }
+        }
+
+    private fun sale(listingType: ListingType?): Boolean = listingType == ListingType.SALE
 
     fun typeFits(category: PropertyCategory?, type: PropertyType?, sale: Boolean): Boolean =
         category != null && type != null && type in types(category, sale)
@@ -312,15 +354,16 @@ object ListingRules {
                     errors["propertyType"] = "Choisissez le type de bien."
                 }
                 if (type != null) {
-                    if (!sale && applies("furniture", category, type) && furniture(form.furnitureType) == null) {
+                    val building = soldBuilding(listing)
+                    if (!sale && applies("furniture", category, type, listing.listingType) && furniture(form.furnitureType) == null) {
                         errors["furnitureType"] = "Indiquez si le bien est meublé."
                     }
                     counts(form).forEach { (field, value) ->
-                        val asked = field == "area" || applies(COUNT_QUESTIONS.getValue(field), category, type)
-                        countError(field, value, asked)?.let { errors[field] = it }
+                        val asked = field == "area" || applies(COUNT_QUESTIONS.getValue(field), category, type, listing.listingType)
+                        countError(field, value, asked, building)?.let { errors[field] = it }
                     }
                 } else {
-                    countError("area", form.area, true)?.let { errors["area"] = it }
+                    countError("area", form.area, true, false)?.let { errors["area"] = it }
                 }
             }
 
@@ -391,17 +434,22 @@ object ListingRules {
                 val category = category(form.propertyCategory)
                 val type = type(form.propertyType)
                 fun count(field: String, value: String?): Int? =
-                    if (applies(COUNT_QUESTIONS.getValue(field), category, type)) count(value) else null
+                    if (applies(COUNT_QUESTIONS.getValue(field), category, type, listing.listingType)) count(value) else null
                 request.copy(
                     propertyCategory = category,
                     propertyType = type,
-                    furnitureType = if (!sale && applies("furniture", category, type)) furniture(form.furnitureType) else null,
+                    furnitureType = if (!sale && applies("furniture", category, type, listing.listingType)) {
+                        furniture(form.furnitureType)
+                    } else {
+                        null
+                    },
                     rooms = count("rooms", form.rooms),
                     livingRooms = count("livingRooms", form.livingRooms),
                     bathrooms = count("bathrooms", form.bathrooms),
                     kitchens = count("kitchens", form.kitchens),
                     parkings = count("parkings", form.parkings),
                     levels = count("levels", form.levels),
+                    units = count("units", form.units),
                     floorLevel = count("floorLevel", form.floorLevel),
                     area = count(form.area),
                 )
@@ -446,16 +494,24 @@ object ListingRules {
         "kitchens" to form.kitchens,
         "parkings" to form.parkings,
         "levels" to form.levels,
+        "units" to form.units,
         "floorLevel" to form.floorLevel,
         "area" to form.area,
     )
 
-    // Only for a question asked: required (rooms, bathrooms, area) or not, a whole number, the area more than 0
-    private fun countError(field: String, value: String?, asked: Boolean): String? {
+    // Only for a question asked: required (rooms, bathrooms, area; a building sale's levels and units) or not, a
+    // whole number, the area more than 0, the building's counts within their bounds
+    private fun countError(field: String, value: String?, asked: Boolean, building: Boolean = false): String? {
         if (!asked) return null
-        val text = text(value) ?: return if (field in REQUIRED_COUNTS) COUNT_REQUIRED else null
+        val required = field in REQUIRED_COUNTS || (building && field in BUILDING_COUNTS)
+        val text = text(value) ?: return if (required) COUNT_REQUIRED else null
         val count = count(text) ?: return COUNT_INVALID
-        return if (field == "area" && count <= 0) "Indiquez la surface en m²." else null
+        return when {
+            building && field == "levels" && count !in 1..30 -> "Indiquez un nombre d'étages, de 1 à 30."
+            building && field == "units" && count !in 1..500 -> "Indiquez un nombre d'unités, de 1 à 500."
+            field == "area" && count <= 0 -> "Indiquez la surface en m²."
+            else -> null
+        }
     }
 
     private fun optionalChoiceError(value: String?, choices: List<Int>): String? =

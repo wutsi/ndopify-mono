@@ -168,7 +168,8 @@ class MandateService(
     /**
      * Creates the mandate. The purchase answers are the buyer's brief: a rental keeps no financing, and only a land
      * purchase keeps documents (empty is a valid answer). The seller's ownership documents are the seller's brief in
-     * the same way: a rental and any non-land sale have none, and they filter nothing. The implied price per m² is
+     * the same way: a rental and any non-land sale have none, and they filter nothing. A building sold as a whole
+     * keeps its storeys and its units; any other mandate stores neither. The implied price per m² is
      * computed on the page and never stored.
      */
     @Transactional
@@ -182,6 +183,8 @@ class MandateService(
         }
         val criteria = origin?.criteria ?: request
         val sale = criteria.listingType == ListingType.SALE
+        // A building sold as a whole is captured by its storeys and its units; a rental building keeps today's model
+        val buildingSale = sale && criteria.propertyType == PropertyType.BUILDING
         val titleDocuments = criteria.titleDocuments
             .filter { sale && criteria.propertyType == PropertyType.LAND && it != TitleDocumentType.UNKNOWN }
             .distinct()
@@ -252,6 +255,8 @@ class MandateService(
                 rooms = criteria.rooms,
                 parkings = criteria.parkings,
                 area = criteria.area,
+                levels = criteria.levels?.takeIf { buildingSale },
+                units = criteria.units?.takeIf { buildingSale },
                 waterMeter = criteria.waterMeter,
                 dedicatedWaterMeter = criteria.dedicatedWaterMeter,
                 waterTank = criteria.waterTank,
@@ -304,7 +309,8 @@ class MandateService(
      * mustn't sign the terms of before the change, and request-approval creates a new one. Like a signature, the
      * contract is locked before the mandate. The purchase answers are kept the same way as on create: no financing for
      * a rental, documents only for a land purchase; the seller's ownership documents are kept for a land sale only and
-     * filter nothing. The implied price per m² is never stored.
+     * filter nothing. A building sale keeps its storeys and its units, and any other type clears them. The implied price
+     * per m² is never stored.
      */
     @Transactional
     fun update(id: Long, request: UpdateMandateRequest): MandateEntity {
@@ -333,6 +339,8 @@ class MandateService(
             mandate.status
         }
         val sale = request.listingType == ListingType.SALE
+        // Leaving BUILDING (a sale land, or any rental) drops the counts: only a building sale stores them
+        val buildingSale = sale && request.propertyType == PropertyType.BUILDING
         val titleDocuments = request.titleDocuments
             .filter { sale && request.propertyType == PropertyType.LAND && it != TitleDocumentType.UNKNOWN }
             .distinct()
@@ -354,6 +362,8 @@ class MandateService(
                 rooms = request.rooms,
                 parkings = request.parkings,
                 area = request.area,
+                levels = request.levels?.takeIf { buildingSale },
+                units = request.units?.takeIf { buildingSale },
                 waterMeter = request.waterMeter,
                 dedicatedWaterMeter = request.dedicatedWaterMeter,
                 waterTank = request.waterTank,

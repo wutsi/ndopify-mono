@@ -48,6 +48,34 @@ class MandateEditRulesTest {
 
         /** A seller's villa: a one-off price, no furniture. */
         val SALE_LISTING = SALE_SEARCH.copy(mandateType = MandateType.LISTING)
+
+        /** A buyer's search for a building sold as a whole. */
+        val BUILDING_SEARCH = SALE_SEARCH.copy(
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.BUILDING,
+            rooms = null,
+            levels = 3,
+            units = 12,
+            area = 850,
+            price = Money(250_000_000, "XAF", PeriodicityType.NONE),
+        )
+
+        /** The same building, offered by its seller. */
+        val BUILDING_LISTING = BUILDING_SEARCH.copy(mandateType = MandateType.LISTING)
+
+        /** The building's answers; the rooms and parking it could carry are left over from an earlier type. */
+        val BUILDING_FORM = FORM.copy(
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = "BUILDING",
+            rooms = "3",
+            furnitureType = null,
+            parkings = "2",
+            levels = "3",
+            units = "12",
+            area = "850",
+            priceAmount = "250 000 000",
+            amenities = listOf("waterWell", "securityGuard"),
+        )
     }
 
     private fun text(value: String?): String = value!!.replace('\u00a0', ' ').replace('\u202f', ' ')
@@ -133,6 +161,82 @@ class MandateEditRulesTest {
             "150 000 FCFA / mois · Dans moins d'1 mois",
             text(MandateEditRules.summaries(FORM, MANDATE, listOf("Bonapriso"), FORMATTER)["budget"]),
         )
+    }
+
+    @Test
+    fun `a building sale's edit page asks its two counts`() {
+        assertEquals(emptyMap(), MandateEditRules.errors(BUILDING_FORM, BUILDING_SEARCH, FORMATTER))
+        assertEquals(emptyMap(), MandateEditRules.errors(BUILDING_FORM.copy(rooms = null, parkings = null), BUILDING_LISTING, FORMATTER))
+
+        assertEquals(
+            "Indiquez le nombre d'étages.",
+            MandateEditRules.errors(BUILDING_FORM.copy(levels = null), BUILDING_SEARCH, FORMATTER)["levels"],
+        )
+        assertEquals(
+            "Indiquez le nombre d'unités.",
+            MandateEditRules.errors(BUILDING_FORM.copy(units = ""), BUILDING_SEARCH, FORMATTER)["units"],
+        )
+        assertEquals(
+            "Indiquez un nombre entier, de 1 à 30.",
+            MandateEditRules.errors(BUILDING_FORM.copy(levels = "31"), BUILDING_SEARCH, FORMATTER)["levels"],
+        )
+        assertEquals(
+            "Indiquez un nombre entier, de 1 à 30.",
+            MandateEditRules.errors(BUILDING_FORM.copy(levels = "3,5"), BUILDING_SEARCH, FORMATTER)["levels"],
+        )
+        assertEquals(
+            "Indiquez un nombre entier, de 1 à 500.",
+            MandateEditRules.errors(BUILDING_FORM.copy(units = "501"), BUILDING_SEARCH, FORMATTER)["units"],
+        )
+    }
+
+    @Test
+    fun `a building sale's request sends its counts and drops the rest`() {
+        val request = MandateEditRules.request(BUILDING_FORM, BUILDING_SEARCH)
+
+        assertEquals(PropertyType.BUILDING, request.propertyType)
+        assertEquals(3, request.levels)
+        assertEquals(12, request.units)
+        assertNull(request.rooms)
+        assertNull(request.parkings)
+        assertFalse(request.waterWell)
+        assertFalse(request.securityGuard)
+    }
+
+    @Test
+    fun `another type sends no count`() {
+        val request = MandateEditRules.request(FORM.copy(levels = "3", units = "12"), MANDATE)
+
+        assertNull(request.levels)
+        assertNull(request.units)
+    }
+
+    @Test
+    fun `a building sale's group summary words its counts`() {
+        assertEquals(
+            "Immeuble · 3 étages · 12 unités · 850 m²",
+            text(MandateEditRules.summaries(BUILDING_FORM, BUILDING_SEARCH, listOf("Bonapriso"), FORMATTER)["property"]),
+        )
+        assertEquals(
+            "Immeuble · 1 étage · 1 unité · 850 m²",
+            text(
+                MandateEditRules.summaries(
+                    BUILDING_FORM.copy(levels = "1", units = "1"),
+                    BUILDING_SEARCH,
+                    listOf("Bonapriso"),
+                    FORMATTER,
+                )["property"],
+            ),
+        )
+    }
+
+    @Test
+    fun `of - a building sale`() {
+        val form = MandateEditForm.of(BUILDING_SEARCH)
+
+        assertEquals("BUILDING", form.propertyType)
+        assertEquals("3", form.levels)
+        assertEquals("12", form.units)
     }
 
     @Test

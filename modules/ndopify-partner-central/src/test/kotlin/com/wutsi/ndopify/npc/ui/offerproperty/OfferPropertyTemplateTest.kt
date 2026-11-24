@@ -78,6 +78,22 @@ class OfferPropertyTemplateTest {
         parkings = null,
     )
 
+    private val buildingSale = complete.copy(
+        listingType = ListingType.SALE,
+        propertyCategory = PropertyCategory.COMMERCIAL,
+        propertyType = "BUILDING",
+        area = 850,
+        priceAmount = 250_000_000L,
+        advanceRent = null,
+        securityDeposit = null,
+        rooms = null,
+        furnitureType = null,
+        parkings = null,
+        levels = 3,
+        units = 12,
+        roadAccess = null,
+    )
+
     private val tenant = TENANT.copy(
         name = "Ndopify Cameroun",
         logoUrl = "https://cdn.ndopify.com/tenant/1/logo.png",
@@ -390,7 +406,7 @@ class OfferPropertyTemplateTest {
         val page = render(get("/offer-property?step=features"))
 
         assertEquals(
-            listOf("APARTMENT", "HOUSE", "STUDIO", "DUPLEX", "BUILDING", "LAND"),
+            listOf("APARTMENT", "HOUSE", "STUDIO", "DUPLEX", "LAND"),
             page.select("input[name=propertyType]").map { it.attr("value") },
         )
         assertNull(page.selectFirst("input[name=furnitureType]"))
@@ -410,7 +426,7 @@ class OfferPropertyTemplateTest {
         val page = render(get("/offer-property?step=features"))
 
         assertEquals(
-            listOf("OFFICE", "RETAIL", "INDUSTRIAL"),
+            listOf("BUILDING", "OFFICE", "RETAIL", "INDUSTRIAL"),
             page.select("input[name=propertyType]").map { it.attr("value") },
         )
     }
@@ -513,6 +529,126 @@ class OfferPropertyTemplateTest {
 
         val hook = assertNotNull(page.selectFirst("[data-price-per-sqm]"))
         assertTrue(hook.text().isBlank())
+    }
+
+    @Test
+    fun `a building sale is offered under commercial only, with Immeuble entier`() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            buildingSale.copy(propertyType = null, area = null),
+        )
+
+        val commercial = render(get("/offer-property?step=features"))
+
+        assertEquals(
+            listOf("BUILDING", "OFFICE", "RETAIL", "INDUSTRIAL"),
+            commercial.select("input[name=propertyType]").map { it.attr("value") },
+        )
+        assertEquals(
+            "Immeuble entier",
+            commercial.selectFirst("input[name=propertyType][value=BUILDING]")?.parent()?.text()?.replace('\u00a0', ' '),
+        )
+
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            buildingSale.copy(
+                propertyCategory = PropertyCategory.RESIDENTIAL,
+                propertyType = null,
+                area = null,
+            ),
+        )
+
+        val residential = render(get("/offer-property?step=features"))
+
+        assertEquals(
+            listOf("APARTMENT", "HOUSE", "STUDIO", "DUPLEX", "LAND"),
+            residential.select("input[name=propertyType]").map { it.attr("value") },
+        )
+    }
+
+    @Test
+    fun `a building sale's features step requires its counts and asks no parking`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, buildingSale)
+
+        val page = render(get("/offer-property?step=features"))
+
+        val counts = assertNotNull(page.selectFirst("[data-building-counts]"))
+        assertFalse(counts.hasAttr("hidden"))
+        assertEquals(
+            "Étages (1 à 30)",
+            page.selectFirst("label[for=levels]")?.text()?.replace('\u00a0', ' '),
+        )
+        assertEquals(
+            "Unités (1 à 500)",
+            page.selectFirst("label[for=units]")?.text()?.replace('\u00a0', ' '),
+        )
+        assertEquals("3", page.selectFirst("#levels")?.attr("value"))
+        assertEquals("12", page.selectFirst("#units")?.attr("value"))
+        assertTrue(page.select("input[name=levels]").all { it.hasAttr("required") })
+        assertTrue(page.select("input[name=units]").all { it.hasAttr("required") })
+        assertNull(page.selectFirst("input[name=levelsAny], input[name=unitsAny]"))
+        assertNull(page.selectFirst("[data-group=hasParking]"))
+        assertNull(page.selectFirst("[data-group=parkings]"))
+        assertNull(page.selectFirst("input[name=rooms]"))
+    }
+
+    @Test
+    fun `a rental building is asked no counts`() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            complete.copy(
+                propertyCategory = PropertyCategory.RESIDENTIAL,
+                propertyType = "BUILDING",
+                rooms = null,
+                furnitureType = null,
+                parkings = null,
+            ),
+        )
+
+        val page = render(get("/offer-property?step=features"))
+
+        assertTrue(page.selectFirst("[data-building-counts]")!!.hasAttr("hidden"))
+        assertNotNull(page.selectFirst("input[name=hasParking]"))
+    }
+
+    @Test
+    fun `a building sale's review shows its counts and no equipment row`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, buildingSale)
+
+        val page = render(get("/offer-property?step=review"))
+
+        val terms = page.select(".review__term").map { it.text() }
+        assertTrue(terms.contains("Étages"))
+        assertTrue(terms.contains("Unités"))
+        assertFalse(terms.contains("Équipements"))
+        assertEquals("3", value(page, "levels"))
+        assertEquals("12", value(page, "units"))
+    }
+
+    @Test
+    fun `the progress follows the building sale's six steps`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, buildingSale)
+
+        val features = render(get("/offer-property?step=features"))
+        assertEquals("Étape 4 sur 6", features.selectFirst("[data-progress-label]")?.text())
+
+        val review = render(get("/offer-property?step=review"))
+        assertEquals("Étape 6 sur 6", review.selectFirst("[data-progress-label]")?.text())
+    }
+
+    @Test
+    fun `a building sale's previous links skip the amenities step`() {
+        session.setAttribute(PendingListing.SESSION_ATTRIBUTE, buildingSale)
+
+        // Contact goes back to the features step, not to the amenities step the branch doesn't have.
+        assertEquals(
+            "/offer-property?step=features",
+            render(get("/offer-property?step=contact")).selectFirst("a[data-prev]")?.attr("href"),
+        )
+        assertEquals(
+            "/offer-property?step=terms",
+            render(get("/offer-property?step=features")).selectFirst("a[data-prev]")?.attr("href"),
+        )
     }
 
     @Test

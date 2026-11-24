@@ -26,6 +26,7 @@ import com.wutsi.ndopify.match.dto.MatchRejectionReason
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.dao.MatchRepository
 import com.wutsi.ndopify.match.server.domain.MatchEntity
+import com.wutsi.ndopify.match.server.mapper.MatchMapper
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchNearestLocationRequest
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
@@ -720,5 +721,27 @@ class MatchServiceTest {
         assertNull(service.acceptInterest(MANDATE_ID, LISTING_ID))
 
         verify(matchDao, never()).save(any<MatchEntity>())
+    }
+
+    @Test
+    fun `a stored building match carries its counts' partials`() {
+        doReturn(listOf(listing1)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(MatchResult.Scored(score(0.9).copy(units = 0.8, levels = 0.6667)))
+            .whenever(matcher).evaluate(eq(search), eq(listing1), any(), eq(today))
+
+        service.matchMandate(MANDATE_ID)
+
+        val captor = argumentCaptor<MatchEntity>()
+        verify(matchDao).save(captor.capture())
+        assertEquals(0.8, captor.firstValue.unitsScore, 0.000001)
+        assertEquals(0.6667, captor.firstValue.levelsScore, 0.000001)
+    }
+
+    @Test
+    fun `a match stored before this story reads neutral building scores`() {
+        val match = MatchMapper().toMatch(MatchEntity(status = MatchStatus.ACTIVE))
+
+        assertEquals(1.0, match.unitsScore)
+        assertEquals(1.0, match.levelsScore)
     }
 }

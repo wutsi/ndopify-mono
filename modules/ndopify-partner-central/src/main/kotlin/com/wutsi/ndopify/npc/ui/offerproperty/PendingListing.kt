@@ -21,6 +21,9 @@ import java.time.LocalDate
  * that no longer apply (the rooms of a studio, …) may linger here after the visitor changed their mind;
  * [toCreateMandateRequest] never sends them. The availability date is only valid for a while, so completeness
  * depends on the day.
+ *
+ * A building sold as a whole keeps its two counts — `levels` (étages) and `units` — and its amenities step leaves the
+ * wizard ([steps]); neither another type's answers nor a building's amenity answers are sent.
  */
 data class PendingListing(
     val listingType: ListingType? = null,
@@ -35,6 +38,8 @@ data class PendingListing(
     val furnitureType: String? = null,
     val rooms: String? = null,
     val parkings: String? = null,
+    val levels: Int? = null,
+    val units: Int? = null,
     val area: Int? = null,
     val ownershipDocuments: List<TitleDocumentType> = emptyList(),
     val roadAccess: String? = null,
@@ -53,6 +58,12 @@ data class PendingListing(
 
     /** The wizard's project: a rental unless the owner chose to sell. */
     fun isSale(): Boolean = FindPropertyRules.isSale(listingType)
+
+    /** A building sold as a whole: six steps, the amenities one left out. */
+    fun buildingSale(): Boolean = OfferPropertyRules.buildingSale(listingType, type())
+
+    /** The branch's steps, in order: a building sale has no amenities step. */
+    fun steps(): List<String> = OfferPropertyController.steps(this)
 
     fun isComplete(step: String, today: LocalDate): Boolean = when (step) {
         OfferPropertyRules.STEP_PROPERTY ->
@@ -73,11 +84,15 @@ data class PendingListing(
             OfferPropertyRules.furnitureType(furnitureType).takeIf { needsFurniture() },
             OfferPropertyRules.rooms(rooms).takeIf { needsRooms() },
             OfferPropertyRules.parkings(parkings).takeIf { needsParking() },
+            // A building sale's two counts are required: no "Indifférent" answer here.
+            OfferPropertyRules.levels(levels?.toString()).takeIf { buildingSale() },
+            OfferPropertyRules.units(units?.toString()).takeIf { buildingSale() },
             OfferPropertyRules.area(area, OfferPropertyRules.needsArea(propertyCategory, type(), listingType))
                 .takeIf { OfferPropertyRules.needsArea(propertyCategory, type(), listingType) },
         ).all { it == null }
 
-        OfferPropertyRules.STEP_AMENITIES -> OfferPropertyRules.roadAccess(roadAccess) == null
+        // A building sale skips the amenities step.
+        OfferPropertyRules.STEP_AMENITIES -> buildingSale() || OfferPropertyRules.roadAccess(roadAccess) == null
 
         OfferPropertyRules.STEP_CONTACT -> listOf(
             JoinRules.firstName(firstName),
@@ -92,7 +107,7 @@ data class PendingListing(
 
     /** The first step that still needs answers, or the review step when they're all done. */
     fun firstIncompleteStep(today: LocalDate): String =
-        OfferPropertyRules.STEPS.dropLast(1).firstOrNull { !isComplete(it, today) }
+        steps().dropLast(1).firstOrNull { !isComplete(it, today) }
             ?: OfferPropertyRules.STEP_REVIEW
 
     private fun type() = FindPropertyRules.parsePropertyType(propertyType)
@@ -103,13 +118,17 @@ data class PendingListing(
 
     private fun needsParking() = OfferPropertyRules.needsParking(propertyCategory, type(), listingType)
 
+    private fun needsAmenities() = OfferPropertyRules.needsAmenities(propertyCategory, type(), listingType)
+
     /**
      * The answers as a LISTING mandate, for the chosen project. Questions that don't apply to the chosen type are sent
      * as null. A sale is a one-off price with no advance, deposit nor furnishing; only a land sale sends the documents
-     * of ownership the seller declares. The price per m² is not an answer: it is never sent.
+     * of ownership the seller declares. A building sale sends its counts, and no amenity at all. The price per m² is
+     * not an answer: it is never sent.
      */
-    fun toCreateMandateRequest(currency: String): CreateMandateRequest =
-        CreateMandateRequest(
+    fun toCreateMandateRequest(currency: String): CreateMandateRequest {
+        val amenitiesNeeded = needsAmenities()
+        return CreateMandateRequest(
             mandateType = MandateType.LISTING,
             listingType = listingType ?: ListingType.RENTAL,
             propertyCategory = propertyCategory ?: PropertyCategory.UNKNOWN,
@@ -119,22 +138,25 @@ data class PendingListing(
             furnitureType = FurnitureType.entries.firstOrNull { it.name == furnitureType }?.takeIf { needsFurniture() },
             rooms = rooms?.takeIf { needsRooms() },
             parkings = parkings?.takeIf { needsParking() },
+            // A building sale's two counts; another type sends none.
+            levels = levels.takeIf { buildingSale() },
+            units = units.takeIf { buildingSale() },
             area = area?.takeIf { OfferPropertyRules.needsArea(propertyCategory, type(), listingType) },
             ownershipDocuments = ownershipDocuments.filter { isSale() && type() == PropertyType.LAND }.distinct(),
-            waterMeter = has("waterMeter"),
-            dedicatedWaterMeter = has("dedicatedWaterMeter"),
-            waterTank = has("waterTank"),
-            waterWell = has("waterWell"),
-            electricityMeter = has("electricityMeter"),
-            dedicatedElectricityMeter = has("dedicatedElectricityMeter"),
-            generatorSet = has("generatorSet"),
-            solarPanel = has("solarPanel"),
-            roadPaved = roadAccess == "roadPaved",
-            trackAccessibleByCar = roadAccess == "trackAccessibleByCar",
-            trackInaccessibleByCar = roadAccess == "trackInaccessibleByCar",
-            securedFenced = has("securedFenced"),
-            securityGuard = has("securityGuard"),
-            videoSurveillance = has("videoSurveillance"),
+            waterMeter = has("waterMeter") && amenitiesNeeded,
+            dedicatedWaterMeter = has("dedicatedWaterMeter") && amenitiesNeeded,
+            waterTank = has("waterTank") && amenitiesNeeded,
+            waterWell = has("waterWell") && amenitiesNeeded,
+            electricityMeter = has("electricityMeter") && amenitiesNeeded,
+            dedicatedElectricityMeter = has("dedicatedElectricityMeter") && amenitiesNeeded,
+            generatorSet = has("generatorSet") && amenitiesNeeded,
+            solarPanel = has("solarPanel") && amenitiesNeeded,
+            roadPaved = amenitiesNeeded && roadAccess == "roadPaved",
+            trackAccessibleByCar = amenitiesNeeded && roadAccess == "trackAccessibleByCar",
+            trackInaccessibleByCar = amenitiesNeeded && roadAccess == "trackInaccessibleByCar",
+            securedFenced = has("securedFenced") && amenitiesNeeded,
+            securityGuard = has("securityGuard") && amenitiesNeeded,
+            videoSurveillance = has("videoSurveillance") && amenitiesNeeded,
             price = Money(
                 amount = priceAmount ?: 0,
                 currency = currency,
@@ -149,4 +171,5 @@ data class PendingListing(
             whatsappNumber = whatsappNumber.orEmpty(),
             preferredContactPeriod = preferredContactPeriod,
         )
+    }
 }

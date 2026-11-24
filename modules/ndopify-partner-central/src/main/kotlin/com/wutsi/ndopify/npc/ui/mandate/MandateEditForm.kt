@@ -20,6 +20,9 @@ data class MandateEditForm(
     val furnitureType: String? = null,
     val parkings: String? = null,
     val area: String? = null,
+    // A building sale's two counts (whole numbers); null for any other type
+    val levels: String? = null,
+    val units: String? = null,
     val amenities: List<String> = emptyList(),
     val priceAmount: String? = null,
     val movingPeriod: MovingPeriod? = null,
@@ -39,6 +42,8 @@ data class MandateEditForm(
                 furnitureType = mandate.furnitureType?.name ?: any,
                 parkings = mandate.parkings ?: any,
                 area = mandate.area?.toString(),
+                levels = mandate.levels?.toString(),
+                units = mandate.units?.toString(),
                 amenities = Amenity.of(mandate).map { it.key },
                 priceAmount = MandateLabels.formatNumber(mandate.price.amount),
                 movingPeriod = mandate.movingPeriod,

@@ -367,6 +367,47 @@ class UpdateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         )
     }
 
+    @Test
+    fun `store the levels and units of a building sale`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/6",
+            request.copy(propertyType = PropertyType.BUILDING, levels = 3, units = 12),
+            Any::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val mandate = rest.getForEntity("/v1/mandates/6", GetMandateResponse::class.java).body!!.mandate
+        assertEquals(3, mandate.levels)
+        assertEquals(12, mandate.units)
+    }
+
+    @Test
+    fun `a rental building keeps no count`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/6",
+            request.copy(listingType = ListingType.RENTAL, propertyType = PropertyType.BUILDING, levels = 3, units = 12),
+            Any::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val mandate = rest.getForEntity("/v1/mandates/6", GetMandateResponse::class.java).body!!.mandate
+        assertNull(mandate.levels)
+        assertNull(mandate.units)
+    }
+
+    @Test
+    fun `a sale land update clears the stored counts`() {
+        val building = request.copy(propertyType = PropertyType.BUILDING, levels = 3, units = 12)
+        assertEquals(HttpStatus.OK, rest.postForEntity("/v1/mandates/6", building, Any::class.java).statusCode)
+
+        val land = request.copy(propertyType = PropertyType.LAND, levels = 3, units = 12)
+        assertEquals(HttpStatus.OK, rest.postForEntity("/v1/mandates/6", land, Any::class.java).statusCode)
+
+        val mandate = rest.getForEntity("/v1/mandates/6", GetMandateResponse::class.java).body!!.mandate
+        assertNull(mandate.levels)
+        assertNull(mandate.units)
+    }
+
     private fun neighborhoodIds(mandateId: Long): List<Long> {
         return ds.connection.use { conn ->
             conn.prepareStatement("SELECT neighborhood_id FROM T_MANDATE_NEIGHBORHOOD WHERE mandate_id = ?")

@@ -83,14 +83,20 @@ class ListingSectionController(
 
         val listingId = id.toLongOrNull() ?: return unavailable(ListingAccess.Locked, model)
         return when (val result = access.load(listingId, agent)) {
-            is ListingAccess.Found -> render(
-                result.listing,
-                section,
-                ListingSectionForm.of(result.listing, formatter()),
-                emptyMap(),
-                null,
-                model,
-            )
+            is ListingAccess.Found -> {
+                // A building sold as a whole has no amenities section: its URL goes back to the checklist.
+                if (section !in ListingRules.sections(result.listing)) {
+                    return "redirect:/listings/${result.listing.id}"
+                }
+                render(
+                    result.listing,
+                    section,
+                    ListingSectionForm.of(result.listing, formatter()),
+                    emptyMap(),
+                    null,
+                    model,
+                )
+            }
             else -> unavailable(result, model)
         }
     }
@@ -117,6 +123,8 @@ class ListingSectionController(
         }
 
         ProfileRules.header(agent, model)
+        // A building sold as a whole has no amenities section: hand-typed, it goes back to the checklist.
+        if (section !in ListingRules.sections(listing)) return back(id, ListingController.CHANGED, redirect)
         val errors = ListingRules.errors(section, form, listing, formatter().today(clock), formatter())
             .ifEmpty { neighborhoodErrors(listing, section, form) }
         if (errors.isNotEmpty()) return render(listing, section, form, errors, null, model)
@@ -190,6 +198,7 @@ class ListingSectionController(
         model.addAttribute("currency", formatter.currency())
         val sale = listing.listingType == ListingType.SALE
         model.addAttribute("sale", sale)
+        model.addAttribute("building", ListingRules.soldBuilding(listing))
         when (section) {
             ListingSection.LOCATION -> {
                 model.addAttribute("city", locations[listing.cityId]?.name)

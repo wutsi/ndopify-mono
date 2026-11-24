@@ -154,7 +154,10 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   ndopify-server doesn't validate mandates yet, these rules and the city/neighbourhood checks are the only
   validation a mandate gets. "Indifférent" (`ANY`) is a UI-only answer, sent as `null`. Without JS the property step
   shows every follow-up question of the category and the server ignores those that don't apply to the type;
-  `src/main/assets/js/find-property.js` hides them and computes the price per m². Prototype:
+  `src/main/assets/js/find-property.js` hides them and computes the price per m². A building bought as a whole keeps
+  six steps: its property step asks *Nombre d'étages* and *Nombre d'unités* (both required, each with *Indifférent*
+  stored as `null`) and no rooms nor parkings, the amenities step leaves, and *Précédent* follows that branch (the
+  budget step goes back to the property step, not to the skipped amenities one). Prototype:
   `src/main/html/v2/find-property.html` (approved 2026-11-22).
 - *Proposer un bien* is `OfferPropertyController` (`ui/offerproperty/`), a **public** wizard for owners offering a
   property to rent or sell, built like *Trouver un bien*: one page (`templates/offer-property.html`), seven steps
@@ -173,7 +176,10 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   rental, `{publicPortalUrl}/owner/sell` for a sale (none without a `publicPortalUrl`). Without JS every step posts;
   `src/main/assets/js/offer-property.js` only enhances (city / neighbourhood slim-select over `/locations`,
   "150 000", the project's texts, questions of the type and of the project, the documents, the price per m², E.164
-  WhatsApp), mirroring `OfferPropertyRules`. Prototype: `src/main/html/v2/offer-property.html` (approved 2026-11-22).
+  WhatsApp), mirroring `OfferPropertyRules`. A building sold as a whole keeps six steps too: *Immeuble* is offered
+  under *Commercial* only, its features step requires its *Étages* and *Unités* and asks no parking, the amenities
+  step leaves, and *Précédent* follows that branch. Prototype:
+  `src/main/html/v2/offer-property.html` (approved 2026-11-22).
 - KYC is `KycController` (`ui/kyc/`), one page (`templates/kyc.html`), reached from the Espace agent's banner. Wizard steps `front` →
   `back` → `selfie` → `review`: `GET /kyc?step=…` shows a step (never past the first photo the case lacks) and
   `POST /kyc/{step}` uploads that photo straight to the agent's PENDING_VERIFICATION case (`NdKycClient`), so the case is the
@@ -273,7 +279,8 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   loaded with (hidden field), and a 409 `MANDATE_VERSION_CONFLICT` shows the form again with the agent's answers, now
   based on the new version (the profile page does the same with `AGENT_VERSION_CONFLICT`); the city can't change, the
   neighbourhoods are checked by `SectorValidator`, and the rest by `FindPropertyRules` (the only validation a mandate
-  gets). The customer's contact block (`.contact-card`) is unboxed: role ("Client" / "Bailleur"), full name, "à appeler"
+  gets). A building sale's edit page asks its *Étages* and *Unités* (both rendered so a type change to *Immeuble*
+  reveals them, hidden otherwise) and drops its rooms, parkings and amenities group. The customer's contact block (`.contact-card`) is unboxed: role ("Client" / "Bailleur"), full name, "à appeler"
   when the mandate has a call window, the number as a `tel:` link with a compact WhatsApp button beside it, and the
   e-mail as a `mailto:` link. Its "Modifier" (only while `MandateRules.CUSTOMER_EDITABLE`, so not on a closed or
   cancelled mandate) opens the customer edit page (`GET|POST /mandates/{id}/customer/edit`,
@@ -360,8 +367,11 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   fields are sent, a question of *Le bien* that doesn't apply to the type, `ListingRules.applies`, shown anyway
   without JS, as null), and the neighbourhood is checked against the listing's city (`SectorValidator`). A 409
   `LISTING_VERSION_CONFLICT` shows the form again with the agent's answers, now on the new version;
-  `LISTING_NOT_DRAFT`, another agent's listing or one sent meanwhile go back to the checklist (`changed`). Under each
-  field the agent changed, the landlord's answer from the mandate (`ListingViews.ownerHints`, server-side only). Once
+  `LISTING_NOT_DRAFT`, another agent's listing or one sent meanwhile go back to the checklist (`changed`). A sold
+  building's checklist has six sections (no *Eau, électricité, accès*) and its *Le bien* section asks its *Étages*
+  and *Unités* (both required, no bathrooms nor parking). Under each
+  field the agent changed, the landlord's answer from the mandate (`ListingViews.ownerHints`, server-side only;
+  the two counts included). Once
   sent, a section is read-only: its answers only, disabled. GPS without JS is typed (latitude / longitude, "4,0335"
   accepted); `listing.js` takes the phone's position instead. Photos are `ListingPhotoController`
   (`GET|POST /listings/{id}/photos`, `POST /listings/{id}/photos/presign`, `POST /listings/{id}/photos/attach`,
@@ -406,7 +416,8 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   proposal ndopify-server expired unanswered, counted "1 sans réponse"). `MatchViews` → `MatchView` (cards in `MatchRules.ORDER`,
   best score first within each status) and `MatchRules`: tags, the client's answer ("Envoyé le …" or, interested,
   "Intéressé le …": the latest step only), and "Pourquoi ce bien ?", the partial scores of ndopify-server's `Matcher` in words (neighbourhood, price,
-  rooms, amenities when some were asked, availability, furniture when asked). An ACTIVE or EXPIRED card (`MatchRules.ACTIONABLE`) is sent to the client
+  rooms, amenities when some were asked, availability, furniture when asked; a building sale's card words its
+  *unités* and *étages* instead, and its title is *Immeuble · 12 unités · 3 étages*). An ACTIVE or EXPIRED card (`MatchRules.ACTIONABLE`) is sent to the client
   (again, for an expired one) or set aside by `MatchController`, `POST /mandates/{mandateId}/matches/{matchId}/propose|dismiss`, which reads the match
   first: one of another mandate than the URL's or no longer ACTIVE / EXPIRED is `changed` without any call (no second e-mail on
   a double post), so is a 403 / 404 / 409; then back to `/mandates/{id}#matches-title` with the `match` flash attribute

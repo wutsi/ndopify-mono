@@ -107,6 +107,22 @@ class ListingViewsTest {
             availableFrom = LocalDate.of(2026, 12, 1),
         )
 
+        /** A building sold as a whole: six sections (no amenities), its counts instead of rooms. */
+        val BUILDING = LISTING.copy(
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            propertyType = PropertyType.BUILDING,
+            rooms = null,
+            bathrooms = null,
+            parkings = null,
+            levels = 3,
+            units = 12,
+            area = 850,
+            price = 250_000_000,
+            pricePeriodicityType = PeriodicityType.NONE,
+            sections = LISTING.sections.filter { it.section != ListingSection.AMENITIES },
+        )
+
         private fun day(day: Int): Date = Date.from(Instant.parse("2026-10-%02dT10:00:00Z".format(day)))
 
         /** The published listing's matches sent to a client: 204 and 207 are the agent's searches, 305 another agent's. */
@@ -530,6 +546,28 @@ class ListingViewsTest {
                 "advanceRent" to "Indiqué par le propriétaire : 3 mois",
             ),
             ListingViews.ownerHints(form, mandate, locations, formatter),
+        )
+    }
+
+    @Test
+    fun `owner hints - a building's counts`() {
+        val mandate = MANDATE.copy(
+            listingType = ListingType.SALE,
+            propertyType = PropertyType.BUILDING,
+            rooms = null,
+            area = 850,
+            levels = 3,
+            units = 12,
+        )
+        val form = ListingSectionForm.of(BUILDING, formatter)
+
+        val changed = ListingViews.ownerHints(form.copy(levels = "4"), mandate, locations, formatter)
+        assertEquals("Indiqué par le propriétaire : 3", changed["levels"])
+        assertNull(changed["units"])
+
+        assertEquals(
+            "Indiqué par le propriétaire : 12",
+            ListingViews.ownerHints(form.copy(units = "10"), mandate, locations, formatter)["units"],
         )
     }
 
@@ -1132,6 +1170,64 @@ class ListingViewsTest {
                     neighborhoodId = 1001,
                     propertyType = PropertyType.APARTMENT,
                     rooms = 2,
+                ),
+                mapOf(1001L to Location(id = 1001, name = "Bonapriso")),
+            ),
+        )
+    }
+
+    @Test
+    fun `a building sale's checklist is six sections and words its two counts`() {
+        val listing = BUILDING.copy(
+            sections = BUILDING.sections.map { it.copy(status = ListingSectionStatus.TO_VERIFY) },
+        )
+
+        val view = of(listing)
+
+        assertEquals(6, view.rows.size)
+        assertEquals(ListingRules.SECTIONS - ListingSection.AMENITIES, view.rows.map { it.section })
+        assertEquals("0 sections sur 5 vérifiées", view.progress)
+        assertEquals("Immeuble · 3 étages · 12 unités · 850 m²", row(view, ListingSection.PROPERTY).summary)
+    }
+
+    @Test
+    fun `a building sale's label reads its units and its étages`() {
+        assertEquals(
+            "Immeuble · 12 unités · 3 étages",
+            ListingViews.label(PropertyType.BUILDING, null, 12, 3, ListingType.SALE),
+        )
+        assertEquals(
+            "Immeuble · 1 unité · 1 étage",
+            ListingViews.label(PropertyType.BUILDING, null, 1, 1, ListingType.SALE),
+        )
+        assertEquals(
+            "Immeuble · Nombre d'unités non précisé · 3 étages",
+            ListingViews.label(PropertyType.BUILDING, null, null, 3, ListingType.SALE),
+        )
+        assertEquals(
+            "Appartement · 2 chambres",
+            ListingViews.label(PropertyType.APARTMENT, 2, null, null, ListingType.RENTAL),
+        )
+        // A rented building keeps today's rooms
+        assertEquals(
+            "Immeuble · 3 chambres",
+            ListingViews.label(PropertyType.BUILDING, 3, null, null, ListingType.RENTAL),
+        )
+    }
+
+    @Test
+    fun `listing labels read a building's counts and place`() {
+        assertEquals(
+            "Immeuble · 12 unités · 3 étages · Bonapriso",
+            ListingViews.listingLabel(
+                ListingSummary(
+                    id = 501,
+                    listingType = ListingType.SALE,
+                    cityId = 1000,
+                    neighborhoodId = 1001,
+                    propertyType = PropertyType.BUILDING,
+                    units = 12,
+                    levels = 3,
                 ),
                 mapOf(1001L to Location(id = 1001, name = "Bonapriso")),
             ),

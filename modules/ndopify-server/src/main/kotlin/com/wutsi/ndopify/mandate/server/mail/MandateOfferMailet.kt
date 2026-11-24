@@ -37,6 +37,8 @@ class MandateOfferMailet(
         val fullName = party.fullName()
         val formatter = TenantFormatter(tenant)
         val listing = mandate.mandateType == MandateType.LISTING
+        // A building sold as a whole is worded by its counts: its rooms are not worded even when the mandate stores them
+        val building = MandateMailLabels.building(mandate)
         mailService.send(
             Email(
                 recipient = Receipient(email = party.email, displayName = fullName),
@@ -51,7 +53,9 @@ class MandateOfferMailet(
                         "listing_type" to MandateMailLabels.listingType(mandate),
                         "sale" to MandateMailLabels.sale(mandate),
                         "property_type" to MandateMailLabels.propertyType(mandate),
-                        "rooms" to mandate.rooms?.ifBlank { null },
+                        "rooms" to mandate.rooms?.ifBlank { null }.takeUnless { building != null },
+                        "levels" to mandate.levels,
+                        "units" to mandate.units,
                         "city" to city,
                         "neighbourhoods" to MandateMailLabels.neighbourhoods(mandate, locationService),
                         // The agent reads it in its local time
