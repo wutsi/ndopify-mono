@@ -52,6 +52,8 @@ class MandateOfferMailet(
                         "sale" to MandateMailLabels.sale(mandate),
                         "property_type" to MandateMailLabels.propertyType(mandate),
                         "rooms" to mandate.rooms?.ifBlank { null },
+                        "levels" to mandate.levels,
+                        "units" to mandate.units,
                         "city" to city,
                         "neighbourhoods" to MandateMailLabels.neighbourhoods(mandate, locationService),
                         // The agent reads it in its local time

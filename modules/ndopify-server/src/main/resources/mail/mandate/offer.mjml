@@ -36,6 +36,16 @@
                             <b>Pièces</b>: {{rooms}}
                         </li>
                         {{/rooms}}
+                        {{#levels}}
+                        <li>
+                            <b>Étages</b>: {{levels}}
+                        </li>
+                        {{/levels}}
+                        {{#units}}
+                        <li>
+                            <b>Unités</b>: {{units}}
+                        </li>
+                        {{/units}}
                         <li>
                             <b>Ville</b>: {{city}}
                         </li>

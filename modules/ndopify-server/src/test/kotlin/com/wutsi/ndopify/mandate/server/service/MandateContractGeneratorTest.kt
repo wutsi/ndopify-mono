@@ -324,6 +324,34 @@ class MandateContractGeneratorTest {
     }
 
     @Test
+    fun `a building sale contract words its étages and its unités`() {
+        val building = mandate.copy(
+            listingType = ListingType.SALE,
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.BUILDING,
+            rooms = null,
+            parkings = null,
+            area = 850,
+            levels = 3,
+            units = 12,
+            dedicatedWaterMeter = false,
+            waterWell = false,
+            generatorSet = false,
+            roadPaved = false,
+            securityGuard = false,
+            videoSurveillance = false,
+            pricePeriodicityType = PeriodicityType.UNKNOWN,
+        )
+
+        val html = generator.generate(building, contract.copy(commissionRate = 5))
+
+        assertTrue(html.contains("<b>Étages</b> : 3"))
+        assertTrue(html.contains("<b>Unités</b> : 12"))
+        assertFalse(html.contains("Chambres"))
+        assertFalse(html.contains("Accès à l'eau"))
+    }
+
+    @Test
     fun `an unknown listing type keeps the rental template`() {
         val html = generator.generate(mandate.copy(listingType = ListingType.UNKNOWN), contract.copy(commissionRate = 7))
 

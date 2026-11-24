@@ -169,6 +169,8 @@ class MandateContractGenerator(
             "furniture" to mandate.furnitureType?.let { FURNITURES[it] },
             "rooms" to mandate.rooms?.let { ROOMS[it] ?: it.ifBlank { null } },
             "parkings" to mandate.parkings?.let { PARKINGS[it] ?: it.ifBlank { null } },
+            "levels" to mandate.levels,
+            "units" to mandate.units,
             "area" to mandate.area,
 
             // Location

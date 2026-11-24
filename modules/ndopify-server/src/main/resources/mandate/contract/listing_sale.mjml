@@ -88,6 +88,16 @@
                             <b>Parking</b> : {{parkings}}
                         </li>
                         {{/parkings}}
+                        {{#levels}}
+                        <li>
+                            <b>Étages</b> : {{levels}}
+                        </li>
+                        {{/levels}}
+                        {{#units}}
+                        <li>
+                            <b>Unités</b> : {{units}}
+                        </li>
+                        {{/units}}
                         {{#area}}
                         <li>
                             <b>Surface</b> : {{area}} m²

@@ -1,6 +1,8 @@
 package com.wutsi.ndopify.listing.server.service.publisher
 
 import com.wutsi.ndopify.listing.dto.ImageStatus
+import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.server.dao.ListingImageRepository
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.platform.ai.ChatClients
@@ -40,6 +42,7 @@ class ListingContentGenerator(
                     - Listing type,
                     - Highlight if the property is fully furnished (if applicable)
                     - Number of bedrooms (to include if the property is not a land)
+                    - For a building sold as a whole, its number of units and its number of levels instead of the bedrooms
                     - For land properties, include the Lot area
                     - City
                     - Neighbourhood in round brackets
@@ -62,6 +65,7 @@ class ListingContentGenerator(
                 - Use Action-Oriented Language: Encourage clicks and create a sense of desire.
 
             - Images quality is rated from 1 to 5, where 1 is very poor and 5 is excellent. The hero image should be the one with the highest quality score, that represent the property the best.
+            - For a building sold as a whole, title and describe it by its units and its levels instead of its bedrooms.
 
             # Goal
 
@@ -73,6 +77,8 @@ class ListingContentGenerator(
             - Type of property: {{propertyType}}
             - Bedrooms: {{bedrooms}}
             - Bathrooms: {{bathrooms}}
+            - Units: {{units}}
+            - Levels: {{levels}}
             - Living Rooms: {{livingRooms}}
             - Kitchens: {{kitchens}}
             - Lot area (m2): {{lotArea}}
@@ -120,28 +126,32 @@ class ListingContentGenerator(
                     "- Description: ${image.description ?: "No description available"}\n"
             }
 
+        // A building sold as a whole has no bedrooms, bathrooms, parkings nor utilities: its counts word it instead
+        val building = listing.listingType == ListingType.SALE && listing.propertyType == PropertyType.BUILDING
         val instructions = PROMPT
             .replace("{{listingType}}", listing.listingType.name)
             .replace("{{propertyType}}", listing.propertyType?.name ?: "-")
-            .replace("{{bedrooms}}", listing.rooms?.toString() ?: "-")
-            .replace("{{bathrooms}}", listing.bathrooms?.toString() ?: "-")
+            .replace("{{bedrooms}}", if (building) "-" else listing.rooms?.toString() ?: "-")
+            .replace("{{bathrooms}}", if (building) "-" else listing.bathrooms?.toString() ?: "-")
+            .replace("{{units}}", listing.units?.toString() ?: "-")
+            .replace("{{levels}}", listing.levels?.toString() ?: "-")
             .replace("{{livingRooms}}", listing.livingRooms?.toString() ?: "-")
             .replace("{{kitchens}}", listing.kitchens?.toString() ?: "-")
             .replace("{{lotArea}}", listing.area?.toString() ?: "-")
-            .replace("{{parkings}}", listing.parkings?.toString() ?: "-")
+            .replace("{{parkings}}", if (building) "-" else listing.parkings?.toString() ?: "-")
             .replace("{{furnished}}", listing.furnitureType?.name ?: "-")
-            .replace("{{waterMeter}}", yesNo(listing.waterMeter))
-            .replace("{{waterTank}}", yesNo(listing.waterTank))
-            .replace("{{waterWell}}", yesNo(listing.waterWell))
-            .replace("{{dedicatedWaterMeter}}", yesNo(listing.dedicatedWaterMeter))
-            .replace("{{electricityMeter}}", yesNo(listing.electricityMeter))
-            .replace("{{dedicatedElectricityMeter}}", yesNo(listing.dedicatedElectricityMeter))
-            .replace("{{generatorSet}}", yesNo(listing.generatorSet))
-            .replace("{{solarPanel}}", yesNo(listing.solarPanel))
-            .replace("{{roadPaved}}", yesNo(listing.roadPaved))
-            .replace("{{securedFenced}}", yesNo(listing.securedFenced))
-            .replace("{{securityGuard}}", yesNo(listing.securityGuard))
-            .replace("{{videoSurveillance}}", yesNo(listing.videoSurveillance))
+            .replace("{{waterMeter}}", amenity(building, listing.waterMeter))
+            .replace("{{waterTank}}", amenity(building, listing.waterTank))
+            .replace("{{waterWell}}", amenity(building, listing.waterWell))
+            .replace("{{dedicatedWaterMeter}}", amenity(building, listing.dedicatedWaterMeter))
+            .replace("{{electricityMeter}}", amenity(building, listing.electricityMeter))
+            .replace("{{dedicatedElectricityMeter}}", amenity(building, listing.dedicatedElectricityMeter))
+            .replace("{{generatorSet}}", amenity(building, listing.generatorSet))
+            .replace("{{solarPanel}}", amenity(building, listing.solarPanel))
+            .replace("{{roadPaved}}", amenity(building, listing.roadPaved))
+            .replace("{{securedFenced}}", amenity(building, listing.securedFenced))
+            .replace("{{securityGuard}}", amenity(building, listing.securityGuard))
+            .replace("{{videoSurveillance}}", amenity(building, listing.videoSurveillance))
             .replace("{{city}}", city?.name ?: "-")
             .replace("{{neighborhood}}", neighborhood?.name ?: "-")
             .replace("{{agentRemarks}}", listing.agentRemarks ?: "-")
@@ -152,6 +162,10 @@ class ListingContentGenerator(
             .call()
             .entity(ListingContentInfo::class.java)
     }
+
+    // "-" for a building sold as a whole, which has none of the utilities
+    private fun amenity(building: Boolean, value: Boolean): String =
+        if (building) "-" else yesNo(value)
 
     private fun yesNo(value: Boolean): String {
         return if (value) "Yes" else "No"

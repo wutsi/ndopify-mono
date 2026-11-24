@@ -84,6 +84,17 @@ internal object MandateMailLabels {
     fun propertyType(mandate: MandateEntity): String? =
         mandate.propertyType?.let { PROPERTY_TYPES[it] }
 
+    // "3 étages · 12 unités", for a building sold as a whole; null for any other mandate
+    fun building(mandate: MandateEntity): String? =
+        if (mandate.listingType != ListingType.SALE || mandate.propertyType != PropertyType.BUILDING) {
+            null
+        } else {
+            listOfNotNull(
+                mandate.levels?.let { "$it étages" },
+                mandate.units?.let { "$it unités" },
+            ).joinToString(" · ").ifEmpty { null }
+        }
+
     // Ex: "Comptant"; null for a rental, and for no usable answer.
     fun financingType(mandate: MandateEntity): String? =
         if (mandate.listingType == ListingType.SALE) mandate.financingType?.let { FINANCING_TYPES[it] } else null

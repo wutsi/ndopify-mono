@@ -175,6 +175,53 @@ class ListingContentGeneratorTest {
     }
 
     @Test
+    fun `a building sale is prompted by its units and its levels`() {
+        val building = ListingEntity(
+            id = 1L,
+            listingType = ListingType.SALE,
+            propertyType = PropertyType.BUILDING,
+            cityId = 100L,
+            neighborhoodId = 200L,
+            area = 850,
+            levels = 3,
+            units = 12,
+            rooms = 4,
+            bathrooms = 2,
+            parkings = 2,
+            waterMeter = true,
+            waterTank = true,
+        )
+
+        generator.generate(building)
+
+        val prompt = prompt()
+        assertTrue(prompt.contains("- Units: 12"))
+        assertTrue(prompt.contains("- Levels: 3"))
+        assertTrue(prompt.contains("- Bedrooms: -"))
+        assertTrue(prompt.contains("- Bathrooms: -"))
+        assertTrue(prompt.contains("- Parkings: -"))
+        assertTrue(prompt.contains("- Water Meter: -"))
+        assertTrue(prompt.contains("- Water Tank: -"))
+    }
+
+    @Test
+    fun `a villa keeps its own numbers`() {
+        generator.generate(
+            listing.copy(
+                listingType = ListingType.SALE,
+                propertyType = PropertyType.VILLA,
+            ),
+        )
+
+        val prompt = prompt()
+        assertTrue(prompt.contains("- Bedrooms: 3"))
+        assertTrue(prompt.contains("- Bathrooms: 2"))
+        assertTrue(prompt.contains("- Water Tank: Yes"))
+        assertTrue(prompt.contains("- Units: -"))
+        assertTrue(prompt.contains("- Levels: -"))
+    }
+
+    @Test
     fun `no hero image`() {
         mockResponse("""{"title": "Terrain à vendre, 1200m2, Douala (Bonapriso)"}""")
 

@@ -89,6 +89,24 @@ class MandateOfferTemplateTest {
     }
 
     @Test
+    fun `a building sale lists its étages and its unités`() {
+        val html = resolver.resolve(
+            MandateOfferMailet.TEMPLATE_LISTING,
+            listingContext + mapOf(
+                "property_type" to "Immeuble",
+                "levels" to 3,
+                "units" to 12,
+            ),
+        )
+
+        assertTrue(html.contains("Étages"))
+        assertTrue(html.contains("Unités"))
+        assertTrue(html.contains("12"))
+        assertFalse(html.contains("Équipements"))
+        assertFalse(html.contains("Accès à l'eau"))
+    }
+
+    @Test
     fun `a sale search asks the agent to help a buyer`() {
         val html = resolver.resolve(MandateOfferMailet.TEMPLATE, context + mapOf("sale" to true))
 

@@ -68,14 +68,18 @@ class MandateOfferBotlet(
             MandateMailLabels.titleDocuments(mandate)?.let { " · Documents : $it" },
         ).joinToString("")
 
-    // The listing's facts on one line: "4 pièces · 250 m² · disponible le 01/12/2026"
-    private fun details(mandate: MandateEntity, formatter: TenantFormatter): String? =
-        listOfNotNull(
-            mandate.rooms?.trim()?.ifBlank { null }?.let { rooms -> "$rooms pièce" + if (rooms == "1") "" else "s" },
+    // The listing's facts on one line: "3 étages · 12 unités · 250 m² · disponible le 01/12/2026". A building sold as a
+    // whole is worded by its counts instead of its rooms.
+    private fun details(mandate: MandateEntity, formatter: TenantFormatter): String? {
+        val building = MandateMailLabels.building(mandate)
+        return listOfNotNull(
+            building ?: mandate.rooms?.trim()?.ifBlank { null }
+                ?.let { rooms -> "$rooms pièce" + if (rooms == "1") "" else "s" },
             mandate.area?.let { "$it m²" },
             mandate.availableFrom?.let { "disponible le ${formatter.date(it)}" },
             MandateMailLabels.ownershipDocuments(mandate)?.let { "document de propriété : $it" },
         ).ifEmpty { null }?.joinToString(" · ")
+    }
 
     // Ex: "Location - Appartement", or "Location" without a property type
     private fun criteria(mandate: MandateEntity): String {
