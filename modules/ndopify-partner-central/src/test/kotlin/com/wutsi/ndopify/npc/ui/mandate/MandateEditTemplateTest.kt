@@ -388,6 +388,17 @@ class MandateEditTemplateTest {
     }
 
     @Test
+    fun `a non-building edit page renders the counts hidden`() {
+        val form = render(MANDATE).selectFirst("form[data-edit-form]")!!
+
+        // In the DOM (hidden), so that a type change to BUILDING reveals them without a round trip.
+        assertNotNull(form.selectFirst("input[name=levels]"))
+        assertNotNull(form.selectFirst("input[name=units]"))
+        assertTrue(form.selectFirst("[data-group=levels]")!!.hasAttr("hidden"))
+        assertTrue(form.selectFirst("[data-group=units]")!!.hasAttr("hidden"))
+    }
+
+    @Test
     fun `locked - approved`() {
         val page = render(APPROVED)
 

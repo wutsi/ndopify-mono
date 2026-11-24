@@ -186,14 +186,14 @@
                                 <p class="field__error" id="parkings-error" th:hidden="${errors['parkings'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['parkings']}"></span></p>
                             </fieldset>
                             <!-- A building sold as a whole is captured by its étages and its unités; no other type asks them. -->
-                            <div class="field" data-group="levels" th:if="${building}">
+                            <div class="field" data-group="levels" th:hidden="${!building}">
                                 <label class="field__label" for="levels">Étages <span class="field__optional">(1 à 30)</span></label>
                                 <input class="input" id="levels" name="levels" type="text" inputmode="numeric" autocomplete="off"
                                        aria-describedby="levels-error" th:value="${answers.levels}"
                                        th:attr="aria-invalid=${errors['levels'] != null ? 'true' : null}">
                                 <p class="field__error" id="levels-error" th:hidden="${errors['levels'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['levels']}"></span></p>
                             </div>
-                            <div class="field" data-group="units" th:if="${building}">
+                            <div class="field" data-group="units" th:hidden="${!building}">
                                 <label class="field__label" for="units">Unités <span class="field__optional">(1 à 500)</span></label>
                                 <input class="input" id="units" name="units" type="text" inputmode="numeric" autocomplete="off"
                                        aria-describedby="units-error" th:value="${answers.units}"
