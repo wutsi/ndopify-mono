@@ -28,6 +28,7 @@ import com.wutsi.ndopify.visit.dto.VisitParty
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
+import java.net.URLDecoder
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Date
@@ -105,7 +106,7 @@ class VisitConfirmedMailetTest {
 
         val customerEmail = email("ray.sponsible@gmail.com")
         assertEquals("Ray Sponsible", customerEmail.recipient.displayName)
-        assertEquals("Ndopify: votre visite est confirmée", customerEmail.subject)
+        assertEquals("Votre visite de mercredi est confirmée", customerEmail.subject)
         assertEquals("<html>confirmed</html>", customerEmail.body)
 
         assertEquals("Kim Possible", customerEmail.sender?.displayName)
@@ -113,6 +114,14 @@ class VisitConfirmedMailetTest {
         assertEquals("Kim Possible", agentEmail.recipient.displayName)
         assertEquals("Ndopify: visite confirmée avec Ray Sponsible", agentEmail.subject)
         assertNull(agentEmail.sender)
+
+        val customerContext = customerContext()
+        val replyUrl = customerContext["agent_whatsapp_reply_url"] as String
+        assertEquals(
+            "Bonjour, je vous réponds au sujet de la visite du bien Nice apartment le 02/12/2026 à 10:00.",
+            URLDecoder.decode(replyUrl.substringAfter("?text="), "UTF-8"),
+        )
+        assertNull(agentContext()["agent_whatsapp_reply_url"], "the agent copy has no reply button")
 
         assertEquals(
             mapOf(
@@ -134,7 +143,7 @@ class VisitConfirmedMailetTest {
                 "by_agent" to false,
                 "visit_url" to "https://www.ndopify.com/visits/1?token=xxx.yyy.zzz",
             ),
-            customerContext(),
+            customerContext - "agent_whatsapp_reply_url",
         )
         assertEquals(
             mapOf(
@@ -172,6 +181,13 @@ class VisitConfirmedMailetTest {
     }
 
     @Test
+    fun `an agent without a WhatsApp number - no reply URL`() {
+        mailet.send(visit, customer, agent.copy(whatsappNumber = null), listing)
+
+        assertNull(customerContext()["agent_whatsapp_reply_url"])
+    }
+
+    @Test
     fun `no public portal - no customer link`() {
         doReturn(tenant.copy(publicPortalUrl = null)).whenever(tenantService).findById(1L)
 
@@ -187,13 +203,13 @@ class VisitConfirmedMailetTest {
         return captor.allValues.single { it.recipient.email == address }
     }
 
-    private fun customerContext(): Map<*, *> {
+    private fun customerContext(): Map<String, Any?> {
         val captor = argumentCaptor<Map<String, Any?>>()
         verify(mailBodyResolver).resolve(eq(VisitConfirmedMailet.TEMPLATE_CUSTOMER), captor.capture())
         return captor.firstValue
     }
 
-    private fun agentContext(): Map<*, *> {
+    private fun agentContext(): Map<String, Any?> {
         val captor = argumentCaptor<Map<String, Any?>>()
         verify(mailBodyResolver).resolve(eq(VisitConfirmedMailet.TEMPLATE_AGENT), captor.capture())
         return captor.firstValue

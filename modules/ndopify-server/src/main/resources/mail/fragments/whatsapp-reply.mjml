@@ -1,0 +1,13 @@
+{{#agent_whatsapp_reply_url}}
+<!-- The reply is the quieter action: a secondary button, never a second primary one. -->
+<mj-section padding="0 24px">
+    <mj-column>
+        <mj-button href="{{agent_whatsapp_reply_url}}" css-class="btn-secondary nd-btn" align="center">
+            Me répondre sur WhatsApp
+        </mj-button>
+        <mj-text css-class="reply-note" align="center">
+            Les réponses à cet e-mail ne me parviennent pas&#160;: écrivez-moi sur WhatsApp.
+        </mj-text>
+    </mj-column>
+</mj-section>
+{{/agent_whatsapp_reply_url}}

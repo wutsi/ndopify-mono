@@ -1,0 +1,16 @@
+<mj-style inline="inline">
+    {{__css__}}
+</mj-style>
+<mj-style>
+    @media only screen and (max-width: 480px) {
+        .nd-btn a {
+            display: block !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            text-align: center !important;
+        }
+        .nd-btn td {
+            width: 100% !important;
+        }
+    }
+</mj-style>
