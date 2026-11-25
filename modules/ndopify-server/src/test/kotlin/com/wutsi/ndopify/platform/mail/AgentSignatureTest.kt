@@ -33,6 +33,7 @@ class AgentSignatureTest {
     private val templates = listOf(
         "/mail/contract/signature_request.mjml",
         "/mail/match/proposed.mjml",
+        "/mail/match/visit_reminder.mjml",
         "/mail/visit/cancelled.mjml",
         "/mail/visit/no_show.mjml",
         "/mail/visit/expired.mjml",

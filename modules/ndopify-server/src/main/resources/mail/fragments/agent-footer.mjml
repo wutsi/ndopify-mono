@@ -1,25 +1,28 @@
 {{#agent_full_name}}
-<!-- The agent's signature: the photo on one side, its details on the other. -->
+<!-- The agent's signature: the photo and the details stay side by side on a phone (mj-group). -->
 <mj-section padding="0">
     <mj-column>
         <mj-divider css-class="divider"/>
     </mj-column>
 </mj-section>
 <mj-section padding="0 24px 16px 24px">
-    {{#agent_photo_url}}
-    <mj-column width="25%" vertical-align="middle">
-        <mj-image align="left" width="56px" height="56px" border-radius="28px" padding="0"
-                  src="{{agent_photo_url}}" alt="Photo de {{agent_full_name}}"/>
-    </mj-column>
-    {{/agent_photo_url}}
-    <mj-column width="{{#agent_photo_url}}75%{{/agent_photo_url}}{{^agent_photo_url}}100%{{/agent_photo_url}}"
-               vertical-align="middle">
-        <mj-text font-weight="bold" font-size="16px" padding="0">{{agent_full_name}}</mj-text>
-        {{#agent_whatsapp_url}}
-        <mj-text padding="4px 0 0 0">
-            <a href="{{agent_whatsapp_url}}">WhatsApp {{agent_whatsapp}}</a>
-        </mj-text>
-        {{/agent_whatsapp_url}}
-    </mj-column>
+    <mj-group>
+        {{#agent_photo_url}}
+        <mj-column width="20%" vertical-align="middle">
+            <mj-image align="left" width="56px" height="56px" border-radius="28px" padding="0"
+                      src="{{agent_photo_url}}" alt="Photo de {{agent_full_name}}"/>
+        </mj-column>
+        {{/agent_photo_url}}
+        <mj-column width="{{#agent_photo_url}}80%{{/agent_photo_url}}{{^agent_photo_url}}100%{{/agent_photo_url}}"
+                   vertical-align="middle">
+            <mj-text font-weight="bold" font-size="16px" padding="0">{{agent_full_name}}</mj-text>
+            {{#agent_whatsapp_url}}
+            <mj-text padding="4px 0 0 0">
+                <a href="{{agent_whatsapp_url}}">WhatsApp {{agent_whatsapp}}</a>
+            </mj-text>
+            {{/agent_whatsapp_url}}
+            <mj-text padding="4px 0 0 0" font-size="13px" color="#64748b">Envoyé via {{tenant_name}}</mj-text>
+        </mj-column>
+    </mj-group>
 </mj-section>
 {{/agent_full_name}}
