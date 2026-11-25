@@ -38,7 +38,7 @@ class ListingVerifierImage(
 
     private fun verifyImages(listing: ListingEntity): ListingVerification {
         val images = dao.findByListingIdAndStatus(listing.id!!, ImageStatus.PENDING_VERIFICATION)
-        images.forEach { image -> verify(image) }
+        images.forEach { image -> verify(listing, image) }
 
         val verified = dao.findByListingIdAndStatus(listing.id, ImageStatus.VERIFIED)
         return if (verified.size < minImages) {
@@ -48,11 +48,11 @@ class ListingVerifierImage(
         }
     }
 
-    private fun verify(image: ListingImageEntity) {
+    private fun verify(listing: ListingEntity, image: ListingImageEntity) {
         LOGGER.info(">>> Listing#${image.listingId} - Verifying image ${image.url}")
 
         val file = UrlUtils.download(URL(image.url))
-        val info = extractor.extract(file)
+        val info = extractor.extract(file, listing)
         val dimension = getDimensions(file)
         val verified = if (info?.valid == true) {
             image.copy(

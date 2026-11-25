@@ -97,7 +97,7 @@ class ListingVerifierImageTest {
             verified = listOf(image(11, status = ImageStatus.VERIFIED), image(12, status = ImageStatus.VERIFIED)),
         )
         doReturn(ListingImageInfo(title = "Salon", description = "Grand salon", valid = true, quality = 4))
-            .whenever(extractor).extract(any())
+            .whenever(extractor).extract(any(), any())
 
         val result = verifier.verify(listing)
 
@@ -121,7 +121,7 @@ class ListingVerifierImageTest {
     fun `invalid image`() {
         mockImages(pending = listOf(image(11)), verified = emptyList())
         doReturn(ListingImageInfo(title = "Carte", valid = false, quality = 2, reason = "Generic map"))
-            .whenever(extractor).extract(any())
+            .whenever(extractor).extract(any(), any())
 
         val result = verifier.verify(listing)
 
@@ -141,7 +141,7 @@ class ListingVerifierImageTest {
     @Test
     fun `no image info`() {
         mockImages(pending = listOf(image(11)), verified = emptyList())
-        doReturn(null).whenever(extractor).extract(any())
+        doReturn(null).whenever(extractor).extract(any(), any())
 
         val result = verifier.verify(listing)
 
@@ -160,7 +160,7 @@ class ListingVerifierImageTest {
     @Test
     fun `image format without dimensions`() {
         mockImages(pending = listOf(image(11, path = "/image.webp")), verified = emptyList())
-        doReturn(ListingImageInfo(valid = true, quality = 3)).whenever(extractor).extract(any())
+        doReturn(ListingImageInfo(valid = true, quality = 3)).whenever(extractor).extract(any(), any())
 
         verifier.verify(listing)
 
@@ -174,11 +174,11 @@ class ListingVerifierImageTest {
     @Test
     fun `verify every pending image`() {
         mockImages(pending = listOf(image(11), image(12), image(13)), verified = emptyList())
-        doReturn(ListingImageInfo(valid = true)).whenever(extractor).extract(any())
+        doReturn(ListingImageInfo(valid = true)).whenever(extractor).extract(any(), any())
 
         verifier.verify(listing)
 
-        verify(extractor, times(3)).extract(any())
+        verify(extractor, times(3)).extract(any(), any())
         verify(dao, times(3)).save(any<ListingImageEntity>())
     }
 
@@ -192,7 +192,7 @@ class ListingVerifierImageTest {
         val result = verifier.verify(listing)
 
         assertTrue(result.success)
-        verify(extractor, never()).extract(any())
+        verify(extractor, never()).extract(any(), any())
         verify(dao, never()).save(any<ListingImageEntity>())
     }
 
@@ -212,7 +212,7 @@ class ListingVerifierImageTest {
 
         assertFailsWith<IOException> { verifier.verify(listing) }
 
-        verify(extractor, never()).extract(any())
+        verify(extractor, never()).extract(any(), any())
         verify(dao, never()).save(any<ListingImageEntity>())
     }
 
