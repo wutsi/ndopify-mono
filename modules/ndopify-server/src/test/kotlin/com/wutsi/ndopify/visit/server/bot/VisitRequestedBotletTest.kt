@@ -36,7 +36,8 @@ class VisitRequestedBotletTest {
     private val locationService = mock<LocationService>()
     private val sender = mock<ListingTelegramSender>()
     private val labels = ListingTelegramLabels(locationService)
-    private val botlet = VisitRequestedBotlet(tenantService, labels, sender)
+    private val visitLabels = VisitTelegramLabels(labels)
+    private val botlet = VisitRequestedBotlet(tenantService, visitLabels, sender)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -55,10 +56,19 @@ class VisitRequestedBotletTest {
     private val agent = AgentEntity(
         id = 20L,
         party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible"),
+        whatsappNumber = "+237699000001",
+    )
+
+    // B, the listing agent: the co-agent of a co-brokerage visit
+    private val listingAgent = AgentEntity(
+        id = 30L,
+        party = PartyEntity(id = 300L, firstName = "Clarisse", lastName = "Mbarga"),
+        whatsappNumber = "+237699123456",
     )
     private val listing = ListingEntity(
         id = 101L,
         title = "Nice apartment",
+        agent = agent,
         neighborhoodId = 1001L,
         price = 150000,
         currencyCode = "XAF",
@@ -84,7 +94,7 @@ class VisitRequestedBotletTest {
     }
 
     @Test
-    fun `an on-site request carries the customer, the slot, the type and the note`() {
+    fun `an on-site request carries the slot, the property and the note`() {
         botlet.send(visit, customer, agent, listing, 1000L)
 
         val text = argumentCaptor<String>()
@@ -92,9 +102,9 @@ class VisitRequestedBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
             """
-            📅 Ray Sponsible demande une visite : Nice apartment - 150K/mois
-            01/12/2026 à 10:00 · Sur place
-            Note : Je viens avec ma femme
+            📅 Demande de visite : 01/12/2026 à 10:00
+            Nice apartment - 150K/mois - Sur place
+            Note : « Je viens avec ma femme »
             """.trimIndent(),
             text.firstValue,
         )
@@ -113,8 +123,49 @@ class VisitRequestedBotletTest {
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
-        assertTrue(text.firstValue.contains(" · Visite vidéo"))
+        assertTrue(text.firstValue.contains(" - Vidéo"))
         assertFalse(text.firstValue.contains("Sur place"))
+    }
+
+    @Test
+    fun `a co-brokerage request names the listing agent and contacts it`() {
+        val coBrokerage = listing.copy(agent = listingAgent)
+
+        botlet.send(visit, customer, agent, coBrokerage, 1000L)
+
+        val text = argumentCaptor<String>()
+        val buttons = argumentCaptor<List<TelegramButton>>()
+        verify(sender).send(eq(1000L), eq(coBrokerage), text.capture(), buttons.capture())
+        assertEquals(
+            """
+            📅 Demande de visite : 01/12/2026 à 10:00
+            Nice apartment - 150K/mois - Sur place
+            Agent : Clarisse Mbarga
+            Note : « Je viens avec ma femme »
+            """.trimIndent(),
+            text.firstValue,
+        )
+        assertEquals(
+            listOf(
+                TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1"),
+                TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237699123456"),
+            ),
+            buttons.firstValue,
+        )
+    }
+
+    @Test
+    fun `a co-brokerage request without the listing agent's number has no WhatsApp button`() {
+        val coBrokerage = listing.copy(agent = listingAgent.copy(whatsappNumber = null))
+
+        botlet.send(visit, customer, agent, coBrokerage, 1000L)
+
+        val buttons = argumentCaptor<List<TelegramButton>>()
+        verify(sender).send(eq(1000L), eq(coBrokerage), any(), buttons.capture())
+        assertEquals(
+            listOf(TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1")),
+            buttons.firstValue,
+        )
     }
 
     @Test
@@ -139,8 +190,8 @@ class VisitRequestedBotletTest {
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(listing.copy(title = null)), text.capture(), any())
         assertEquals(
-            "📅 Ray Sponsible demande une visite : Bien à louer (Bastos) - 150K/mois",
-            text.firstValue.lines().first(),
+            "Bien à louer (Bastos) - 150K/mois - Sur place",
+            text.firstValue.lines()[1],
         )
     }
 

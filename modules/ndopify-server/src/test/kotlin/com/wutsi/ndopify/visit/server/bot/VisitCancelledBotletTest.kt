@@ -30,14 +30,14 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 class VisitCancelledBotletTest {
     private val tenantService = mock<TenantService>()
     private val locationService = mock<LocationService>()
     private val sender = mock<ListingTelegramSender>()
     private val labels = ListingTelegramLabels(locationService)
-    private val botlet = VisitCancelledBotlet(tenantService, labels, sender)
+    private val visitLabels = VisitTelegramLabels(labels)
+    private val botlet = VisitCancelledBotlet(tenantService, visitLabels, sender)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -51,16 +51,25 @@ class VisitCancelledBotletTest {
     private val customer = CustomerEntity(
         id = 10L,
         party = PartyEntity(id = 100L, firstName = "Ray", lastName = "Sponsible"),
+        whatsappNumber = "+237600000001",
     )
     private val agent = AgentEntity(
         id = 20L,
         party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible"),
     )
+
+    // B, the listing agent: the co-agent of a co-brokerage visit
+    private val listingAgent = AgentEntity(
+        id = 30L,
+        party = PartyEntity(id = 300L, firstName = "Clarisse", lastName = "Mbarga"),
+        whatsappNumber = "+237699123456",
+    )
     private val listing = ListingEntity(
         id = 101L,
         title = "Nice apartment",
-        cityId = 2370201,
-        neighborhoodId = 1001,
+        agent = agent,
+        cityId = 2370201L,
+        neighborhoodId = 1001L,
         price = 150000,
         currencyCode = "XAF",
         pricePeriodicityType = PeriodicityType.MONTHLY,
@@ -74,6 +83,7 @@ class VisitCancelledBotletTest {
         customerId = 10L,
         status = VisitStatus.CANCELLED,
         type = VisitType.ON_SITE,
+        requestedAt = date(2026, 11, 28, 9, 0),
         scheduledAt = date(2026, 12, 2, 10, 0),
         cancelledBy = VisitParty.CUSTOMER,
         cancellationReason = "Empêchement",
@@ -82,12 +92,12 @@ class VisitCancelledBotletTest {
     @BeforeTest
     fun setUp() {
         doReturn(tenant).whenever(tenantService).findById(1L)
-        doReturn(LocationEntity(id = 2370201, name = "Yaounde")).whenever(locationService).findByIdOrNull(2370201)
-        doReturn(LocationEntity(id = 1001, name = "Bastos")).whenever(locationService).findByIdOrNull(1001)
+        doReturn(LocationEntity(id = 2370201L, name = "Yaounde")).whenever(locationService).findByIdOrNull(2370201L)
+        doReturn(LocationEntity(id = 1001L, name = "Bastos")).whenever(locationService).findByIdOrNull(1001L)
     }
 
     @Test
-    fun `a customer cancellation carries the slot, the listing, the customer and the reason`() {
+    fun `a customer cancellation carries the slot, the property and the reason`() {
         botlet.send(visit, customer, agent, listing, 1000L)
 
         val text = argumentCaptor<String>()
@@ -95,31 +105,57 @@ class VisitCancelledBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
             """
-            ❌ Ray Sponsible a annulé la visite : Nice apartment - 150K/mois
-            02/12/2026 à 10:00 · Motif : Empêchement
+            ❌ Visite annulée : 02/12/2026 à 10:00
+            Nice apartment - 150K/mois - Sur place
+            Annulée par le client · Motif : Empêchement
             """.trimIndent(),
             text.firstValue,
         )
         assertEquals(
-            listOf(TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1")),
+            listOf(
+                TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1"),
+                TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001"),
+            ),
             buttons.firstValue,
         )
     }
 
     @Test
-    fun `no reason - the slot alone`() {
-        botlet.send(
-            visit.copy(cancellationReason = " "),
-            customer,
-            agent,
-            listing,
-            1000L,
+    fun `a co-brokerage cancellation names the listing agent and contacts it`() {
+        val coBrokerage = listing.copy(agent = listingAgent)
+
+        botlet.send(visit.copy(cancelledBy = VisitParty.AGENT), customer, agent, coBrokerage, 1000L)
+
+        val text = argumentCaptor<String>()
+        val buttons = argumentCaptor<List<TelegramButton>>()
+        verify(sender).send(eq(1000L), eq(coBrokerage), text.capture(), buttons.capture())
+        assertEquals(
+            """
+            ❌ Visite annulée : 02/12/2026 à 10:00
+            Nice apartment - 150K/mois - Sur place
+            Agent : Clarisse Mbarga
+            Annulée par l'agent · Motif : Empêchement
+            """.trimIndent(),
+            text.firstValue,
         )
+        assertEquals(
+            listOf(
+                TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1"),
+                TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237699123456"),
+            ),
+            buttons.firstValue,
+        )
+    }
+
+    @Test
+    fun `no reason - the actor alone`() {
+        botlet.send(visit.copy(cancellationReason = " "), customer, agent, listing, 1000L)
 
         assertEquals(
             """
-            ❌ Ray Sponsible a annulé la visite : Nice apartment - 150K/mois
-            02/12/2026 à 10:00
+            ❌ Visite annulée : 02/12/2026 à 10:00
+            Nice apartment - 150K/mois - Sur place
+            Annulée par le client
             """.trimIndent(),
             text(listing),
         )
@@ -139,31 +175,37 @@ class VisitCancelledBotletTest {
         botlet.send(visit, customer, agent, withoutTitle, 1000L)
 
         assertEquals(
-            "❌ Ray Sponsible a annulé la visite : Bien à louer, Yaounde (Bastos) - 150K/mois",
-            text(withoutTitle).lines().first(),
+            "Bien à louer, Yaounde (Bastos) - 150K/mois - Sur place",
+            text(withoutTitle).lines()[1],
         )
     }
 
     @Test
-    fun `a never-scheduled visit keeps only its reason`() {
+    fun `a never-scheduled visit shows its requested slot`() {
         botlet.send(visit.copy(scheduledAt = null), customer, agent, listing, 1000L)
 
         assertEquals(
             """
-            ❌ Ray Sponsible a annulé la visite : Nice apartment - 150K/mois
-            Motif : Empêchement
+            ❌ Visite annulée : 28/11/2026 à 09:00
+            Nice apartment - 150K/mois - Sur place
+            Annulée par le client · Motif : Empêchement
             """.trimIndent(),
             text(listing),
         )
     }
 
     @Test
-    fun `a tenant without Partner Central gets no button`() {
+    fun `a tenant without Partner Central keeps only the WhatsApp button`() {
         doReturn(tenant.copy(partnerCentralUrl = null)).whenever(tenantService).findById(1L)
 
         botlet.send(visit, customer, agent, listing, 1000L)
 
-        verify(sender).send(eq(1000L), eq(listing), any(), eq(emptyList<TelegramButton>()))
+        val buttons = argumentCaptor<List<TelegramButton>>()
+        verify(sender).send(eq(1000L), eq(listing), any(), buttons.capture())
+        assertEquals(
+            listOf(TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001")),
+            buttons.firstValue,
+        )
     }
 
     private fun text(listing: ListingEntity): String {

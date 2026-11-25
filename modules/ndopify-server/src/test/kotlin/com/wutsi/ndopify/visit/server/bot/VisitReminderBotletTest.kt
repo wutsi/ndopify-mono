@@ -41,7 +41,8 @@ class VisitReminderBotletTest {
     // 2026-12-01 10:00 in Douala
     private val clock = Clock.fixed(Instant.parse("2026-12-01T09:00:00Z"), ZoneId.of("UTC"))
     private val labels = ListingTelegramLabels(locationService)
-    private val botlet = VisitReminderBotlet(tenantService, labels, sender, clock)
+    private val visitLabels = VisitTelegramLabels(labels)
+    private val botlet = VisitReminderBotlet(tenantService, visitLabels, sender, clock)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -62,9 +63,17 @@ class VisitReminderBotletTest {
         id = 20L,
         party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible"),
     )
+
+    // B, the listing agent: the co-agent of a co-brokerage visit
+    private val listingAgent = AgentEntity(
+        id = 30L,
+        party = PartyEntity(id = 300L, firstName = "Clarisse", lastName = "Mbarga"),
+        whatsappNumber = "+237699123456",
+    )
     private val listing = ListingEntity(
         id = 101L,
         title = "Nice apartment",
+        agent = agent,
         cityId = 2370201L,
         neighborhoodId = 1001L,
         price = 150000,
@@ -92,7 +101,7 @@ class VisitReminderBotletTest {
     }
 
     @Test
-    fun `an on-site reminder carries the slot, the place and a WhatsApp button`() {
+    fun `an on-site reminder carries the day, the property and a WhatsApp button`() {
         botlet.send(visit, customer, agent, listing, 1000L)
 
         val text = argumentCaptor<String>()
@@ -100,8 +109,8 @@ class VisitReminderBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
             """
-            ⏰ Rappel : Nice apartment - 150K/mois, demain à 10:00 avec Ray Sponsible
-            Sur place
+            ⏰ Rappel de visite : demain à 10:00
+            Nice apartment - 150K/mois - Sur place
             """.trimIndent(),
             text.firstValue,
         )
@@ -115,20 +124,45 @@ class VisitReminderBotletTest {
     }
 
     @Test
-    fun `a video reminder carries the WhatsApp call note`() {
+    fun `a video reminder says so and carries no call note`() {
         botlet.send(visit.copy(type = VisitType.VIDEO), customer, agent, listing, 1000L)
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         assertEquals(
             """
-            ⏰ Rappel : Nice apartment - 150K/mois, demain à 10:00 avec Ray Sponsible
-            Visite vidéo
-            Depuis le bien, appelez Ray Sponsible en vidéo sur WhatsApp. Le client vous lira son code de visite pendant l'appel.
+            ⏰ Rappel de visite : demain à 10:00
+            Nice apartment - 150K/mois - Vidéo
             """.trimIndent(),
             text.firstValue,
         )
-        assertFalse(text.firstValue.contains("Sur place"))
+        assertFalse(text.firstValue.contains("code de visite"))
+    }
+
+    @Test
+    fun `a co-brokerage reminder names the listing agent and contacts it`() {
+        val coBrokerage = listing.copy(agent = listingAgent)
+
+        botlet.send(visit, customer, agent, coBrokerage, 1000L)
+
+        val text = argumentCaptor<String>()
+        val buttons = argumentCaptor<List<TelegramButton>>()
+        verify(sender).send(eq(1000L), eq(coBrokerage), text.capture(), buttons.capture())
+        assertEquals(
+            """
+            ⏰ Rappel de visite : demain à 10:00
+            Nice apartment - 150K/mois - Sur place
+            Agent : Clarisse Mbarga
+            """.trimIndent(),
+            text.firstValue,
+        )
+        assertEquals(
+            listOf(
+                TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1"),
+                TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237699123456"),
+            ),
+            buttons.firstValue,
+        )
     }
 
     @Test
@@ -137,7 +171,7 @@ class VisitReminderBotletTest {
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
-        assertTrue(text.firstValue.contains(", aujourd'hui à 20:00 avec Ray Sponsible"))
+        assertTrue(text.firstValue.startsWith("⏰ Rappel de visite : aujourd'hui à 20:00"))
     }
 
     @Test
@@ -145,7 +179,7 @@ class VisitReminderBotletTest {
         // 2026-12-02 00:30 in Douala: the visit is later that tenant day, though still 2026-12-01 in UTC
         val midnight = VisitReminderBotlet(
             tenantService,
-            labels,
+            visitLabels,
             sender,
             Clock.fixed(Instant.parse("2026-12-01T23:30:00Z"), ZoneId.of("UTC")),
         )
@@ -154,11 +188,11 @@ class VisitReminderBotletTest {
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
-        assertTrue(text.firstValue.contains(", aujourd'hui à 08:00 avec Ray Sponsible"))
+        assertTrue(text.firstValue.startsWith("⏰ Rappel de visite : aujourd'hui à 08:00"))
     }
 
     @Test
-    fun `no whatsapp number - no line and no whatsapp button`() {
+    fun `no whatsapp number - the visit button only`() {
         botlet.send(visit, customer.copy(whatsappNumber = null), agent, listing, 1000L)
 
         val buttons = argumentCaptor<List<TelegramButton>>()
@@ -175,7 +209,7 @@ class VisitReminderBotletTest {
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(listing.copy(title = " ")), text.capture(), any())
-        assertTrue(text.firstValue.startsWith("⏰ Rappel : Bien à louer, Yaounde (Bastos) - 150K/mois, "))
+        assertEquals("Bien à louer, Yaounde (Bastos) - 150K/mois - Sur place", text.firstValue.lines()[1])
     }
 
     @Test
@@ -196,13 +230,7 @@ class VisitReminderBotletTest {
     fun `no visit code and no exact address in the text`() {
         val withAddress = listing.copy(landmark = "Rue 1.234", accessDirections = "Derrière la pharmacie")
 
-        botlet.send(
-            visit,
-            customer,
-            agent,
-            withAddress,
-            1000L,
-        )
+        botlet.send(visit, customer, agent, withAddress, 1000L)
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(withAddress), text.capture(), any())

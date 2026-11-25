@@ -31,14 +31,14 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 class VisitFeedbackBotletTest {
     private val tenantService = mock<TenantService>()
     private val locationService = mock<LocationService>()
     private val sender = mock<ListingTelegramSender>()
     private val labels = ListingTelegramLabels(locationService)
-    private val botlet = VisitFeedbackBotlet(tenantService, labels, sender)
+    private val visitLabels = VisitTelegramLabels(labels)
+    private val botlet = VisitFeedbackBotlet(tenantService, visitLabels, sender)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -49,11 +49,23 @@ class VisitFeedbackBotletTest {
         currencyCode = "XAF",
         monetaryFormat = "#,###,##0 FCFA",
     )
-    private val customer = CustomerEntity(id = 10L, party = PartyEntity(firstName = "Ray", lastName = "Sponsible"))
+    private val customer = CustomerEntity(
+        id = 10L,
+        party = PartyEntity(firstName = "Ray", lastName = "Sponsible"),
+        whatsappNumber = "+237600000001",
+    )
     private val agent = AgentEntity(id = 20L, party = PartyEntity(firstName = "Kim", lastName = "Possible"))
+
+    // B, the listing agent: the co-agent of a co-brokerage visit
+    private val listingAgent = AgentEntity(
+        id = 30L,
+        party = PartyEntity(id = 300L, firstName = "Clarisse", lastName = "Mbarga"),
+        whatsappNumber = "+237699123456",
+    )
     private val listing = ListingEntity(
         id = 101L,
         title = "Nice apartment",
+        agent = agent,
         neighborhoodId = 1001L,
         price = 150000,
         currencyCode = "XAF",
@@ -88,15 +100,46 @@ class VisitFeedbackBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
             """
-            ⭐ Avis de Ray Sponsible : Nice apartment - 150K/mois
-            Pas intéressé
-            Raison : trop cher
+            ⭐ Avis de visite : 01/12/2026 à 10:00
+            Nice apartment - 150K/mois - Sur place
+            Pas intéressé · Raison : Trop cher
             Commentaire : « Trop cher pour moi »
             """.trimIndent(),
             text.firstValue,
         )
         assertEquals(
-            listOf(TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1")),
+            listOf(
+                TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1"),
+                TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001"),
+            ),
+            buttons.firstValue,
+        )
+    }
+
+    @Test
+    fun `a co-brokerage feedback names the listing agent and contacts it`() {
+        val coBrokerage = listing.copy(agent = listingAgent)
+
+        botlet.send(visit, customer, agent, coBrokerage, 1000L)
+
+        val text = argumentCaptor<String>()
+        val buttons = argumentCaptor<List<TelegramButton>>()
+        verify(sender).send(eq(1000L), eq(coBrokerage), text.capture(), buttons.capture())
+        assertEquals(
+            """
+            ⭐ Avis de visite : 01/12/2026 à 10:00
+            Nice apartment - 150K/mois - Sur place
+            Agent : Clarisse Mbarga
+            Pas intéressé · Raison : Trop cher
+            Commentaire : « Trop cher pour moi »
+            """.trimIndent(),
+            text.firstValue,
+        )
+        assertEquals(
+            listOf(
+                TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1"),
+                TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237699123456"),
+            ),
             buttons.firstValue,
         )
     }
@@ -112,7 +155,7 @@ class VisitFeedbackBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         assertEquals(
             "Intéressé",
-            text.firstValue.lines()[1],
+            text.firstValue.lines()[2],
         )
         assertFalse(text.firstValue.contains("Raison"))
         assertFalse(text.firstValue.contains("Commentaire"))
@@ -125,27 +168,33 @@ class VisitFeedbackBotletTest {
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(listing.copy(title = null)), text.capture(), any())
         assertEquals(
-            "⭐ Avis de Ray Sponsible : Bien à louer (Bastos) - 150K/mois",
-            text.firstValue.lines().first(),
+            "Bien à louer (Bastos) - 150K/mois - Sur place",
+            text.firstValue.lines()[1],
         )
     }
 
     @Test
-    fun `an unknown reason leaves no Raison line`() {
+    fun `an unknown reason leaves no Raison`() {
         botlet.send(visit.copy(feedbackReasonCode = MatchRejectionReason.UNKNOWN), customer, agent, listing, 1000L)
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
+        assertEquals("Pas intéressé", text.firstValue.lines()[2])
         assertFalse(text.firstValue.contains("Raison"))
     }
 
     @Test
-    fun `a tenant without Partner Central gets no button`() {
+    fun `a tenant without Partner Central keeps only the WhatsApp button`() {
         doReturn(tenant.copy(partnerCentralUrl = null)).whenever(tenantService).findById(1L)
 
         botlet.send(visit, customer, agent, listing, 1000L)
 
-        verify(sender).send(eq(1000L), eq(listing), any(), eq(emptyList<TelegramButton>()))
+        val buttons = argumentCaptor<List<TelegramButton>>()
+        verify(sender).send(eq(1000L), eq(listing), any(), buttons.capture())
+        assertEquals(
+            listOf(TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001")),
+            buttons.firstValue,
+        )
     }
 
     private fun date(year: Int, month: Int, day: Int, hour: Int, minute: Int): Date =

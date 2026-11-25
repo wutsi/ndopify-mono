@@ -40,11 +40,8 @@ class TelegramVisitReminderJobTest : BaseEndpointIntegrationTest() {
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
-        assertTrue(
-            text.firstValue.startsWith("⏰ Rappel : Nice apartment - 150K/mois, "),
-        )
-        assertTrue(text.firstValue.contains(" avec Ray Sponsible"))
-        assertTrue(text.firstValue.endsWith("\nSur place"))
+        assertTrue(text.firstValue.startsWith("⏰ Rappel de visite : "), text.firstValue)
+        assertTrue(text.firstValue.lines()[1] == "Nice apartment - 150K/mois - Sur place", text.firstValue)
         assertFalse(text.firstValue.contains("Lieu:"))
         assertFalse(text.firstValue.contains("1111"))
         assertFalse(text.firstValue.contains("Rue 1.234"))
