@@ -410,7 +410,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   **Publish**: `POST /{id}/publish` moves a `VERIFIED` listing
   to `PUBLISHING` (404 `LISTING_NOT_FOUND`, then 409 `LISTING_NOT_VERIFIED`), `retries` reset; `ListingJobs.publish`
   then has `ListingPublisherService` generate its title, summary and description (`ListingContentGenerator`, text
-  LLM, `ChatClients.TEXT`, from the listing's details, verified photos and agent remarks; a sold building is described
+  LLM, `ChatClients.TEXT`, from the listing's details, verified images and agent remarks; a sold building is described
   by its units and étages instead of its bedrooms), and its hero image (the model's when that image is a verified
   `PHOTO`, else the verified `PHOTO` of highest quality, then largest: a plan or a map is never the hero, and only a
   listing with no verified photo at all falls back to all its verified images), and its public `url`, the path `/<city>/<neighborhood>/listing/<id>/<slug of the title>` (no host: the

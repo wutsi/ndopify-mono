@@ -294,7 +294,7 @@ class ListingService(
     /**
      * Sends a DRAFT listing for verification, once its checklist is done: UNDER_VERIFICATION, the verification itself
      * being done asynchronously (`ListingJobs.verify`). 404 LISTING_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for an admin or its agent, 409 LISTING_NOT_DRAFT once sent, then 409 LISTING_INCOMPLETE
-     * while a required section isn't VERIFIED (PHOTOS: fewer than MIN_PHOTOS, or one REJECTED).
+     * while a required section isn't VERIFIED (PHOTOS: fewer than MIN_PHOTOS, one REJECTED, or no PHOTO among them).
      */
     @Transactional
     fun verify(id: Long): ListingEntity {
