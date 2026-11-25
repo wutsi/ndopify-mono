@@ -94,9 +94,6 @@ spring:
                     writetimeout: 10000
                     starttls:
                         enable: false
-    mvc:
-        pathmatch:
-            matching-strategy: ANT_PATH_MATCHER
 
     servlet:
         multipart:
