@@ -35,7 +35,7 @@ class MandateApprovedNotifier(
         }
 
         try {
-            botlet.send(mandate, agent, chatId)
+            botlet.send(mandate, customer, agent, chatId)
         } catch (ex: Exception) {
             // Any transport failure falls back, not only TelegramException: an approval is never lost
             LOGGER.warn("Telegram approval failed for Mandate#${mandate.id}, falling back to e-mail", ex)

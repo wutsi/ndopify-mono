@@ -1,39 +1,39 @@
 package com.wutsi.ndopify.mandate.server.bot
 
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
-import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.domain.AssignmentEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.mail.MandateMailLabels
 import com.wutsi.ndopify.platform.telegram.TelegramClient
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
-import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.springframework.stereotype.Service
 
 /**
- * Offers a mandate to an agent over Telegram: a `📋` line with the mandate's property — its criteria, its
- * neighbourhoods and its budget or price — the listing's details, and the offer's expiry, with an `Accepter` /
- * `Refuser` keyboard so that the tap answers the offer.
+ * Offers a mandate to an agent over Telegram: a `📋` line with the mandate's one property line (criteria,
+ * neighbourhoods, compact price) and, for a purchase, the buyer's financing and documents, then the offer's expiry. The
+ * offer stays short on purpose — the agent decides from the buttons.
  *
- * [send]'s recipient is the agent's chat, from #135's link (`AgentTelegramService.chatId`), never the agent's e-mail.
- * Telegram refusing the message throws ([com.wutsi.ndopify.platform.telegram.TelegramException]): the notifier then
- * falls back to the e-mail.
+ * The keyboard has the two callback rows `Accepter` / `Refuser`, which answer the offer, then a `Voir détails` button to
+ * the offer's card on Partner Central's home page when the tenant has a `partnerCentralUrl`. [send]'s recipient is the
+ * agent's chat, from #135's link (`AgentTelegramService.chatId`), never the agent's e-mail. Telegram refusing the
+ * message throws ([com.wutsi.ndopify.platform.telegram.TelegramException]): the notifier then falls back to the e-mail.
  */
 @Service
 class MandateOfferBotlet(
     private val tenantService: TenantService,
-    private val locationService: LocationService,
+    private val labels: MandateTelegramLabels,
     private val client: TelegramClient,
 ) {
     fun send(assignment: AssignmentEntity, agent: AgentEntity, chatId: Long) {
         val mandate = assignment.mandate
         val tenant = tenantService.findById(mandate.tenantId!!)
         val formatter = TenantFormatter(tenant)
-        client.sendMessage(
-            chatId,
-            text(assignment, formatter),
+        val details = tenant.partnerCentralUrl?.removeSuffix("/")?.takeIf { it.isNotBlank() }?.let { url ->
+            listOf(TelegramButton("Voir détails", url = "$url/#assignment-${assignment.id}"))
+        }
+        val rows = listOfNotNull(
             listOf(
                 TelegramButton(
                     "Accepter",
@@ -44,21 +44,18 @@ class MandateOfferBotlet(
                     TelegramOfferCallback.data(TelegramOfferCallback.Action.DECLINE, assignment.id!!),
                 ),
             ),
+            details,
         )
+        client.sendMessageRows(chatId, text(assignment, formatter), rows)
     }
 
     private fun text(assignment: AssignmentEntity, formatter: TenantFormatter): String {
         val mandate = assignment.mandate
-        val lines = mutableListOf(
-            "📋 Nouveau mandat : " + criteria(mandate) +
-                (MandateMailLabels.neighbourhoods(mandate, locationService)?.let { " ($it)" } ?: "") +
-                MandateMailLabels.amount(mandate, formatter) + purchase(mandate),
-        )
-        if (mandate.mandateType == MandateType.LISTING) {
-            details(mandate, formatter)?.let { lines.add(it) }
-        }
-        lines.add("Expire le ${formatter.date(assignment.expiresAt)} à ${formatter.time(assignment.expiresAt)}.")
-        return lines.joinToString("\n")
+        val expiresAt = assignment.expiresAt
+        return listOf(
+            "📋 Nouveau mandat : " + labels.line(mandate, formatter) + purchase(mandate),
+            "Expire le ${formatter.date(expiresAt)} à ${formatter.time(expiresAt)}.",
+        ).joinToString("\n")
     }
 
     // The purchase answers on the criteria line: financing first, then the documents the buyer requires.
@@ -67,27 +64,4 @@ class MandateOfferBotlet(
             MandateMailLabels.financingType(mandate)?.let { " · Financement : $it" },
             MandateMailLabels.titleDocuments(mandate)?.let { " · Documents : $it" },
         ).joinToString("")
-
-    // The listing's facts on one line: "3 étages · 12 unités · 250 m² · disponible le 01/12/2026". A building sold as a
-    // whole is worded by its counts instead of its rooms.
-    private fun details(mandate: MandateEntity, formatter: TenantFormatter): String? {
-        val building = MandateMailLabels.building(mandate)
-        return listOfNotNull(
-            building ?: mandate.rooms?.trim()?.ifBlank { null }
-                ?.let { rooms -> "$rooms pièce" + if (rooms == "1") "" else "s" },
-            mandate.area?.let { "$it m²" },
-            mandate.availableFrom?.let { "disponible le ${formatter.date(it)}" },
-            MandateMailLabels.ownershipDocuments(mandate)?.let { "document de propriété : $it" },
-        ).ifEmpty { null }?.joinToString(" · ")
-    }
-
-    // Ex: "Location - Appartement", or "Location" without a property type
-    private fun criteria(mandate: MandateEntity): String {
-        val propertyType = MandateMailLabels.propertyType(mandate)
-        return if (propertyType == null) {
-            MandateMailLabels.listingType(mandate)
-        } else {
-            "${MandateMailLabels.listingType(mandate)} - $propertyType"
-        }
-    }
 }
