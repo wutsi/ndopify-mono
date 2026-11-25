@@ -1,4 +1,5 @@
 ---
+name: reviewer
 description: Use when reviewing a story's PR — review it against the story, plan and repo rules, fix the trivial findings, hand a pass with substantive findings to the author, and loop until it approves the head.
 mode: all
 model: deepseek/deepseek-flash#max

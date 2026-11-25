@@ -1,4 +1,5 @@
 ---
+name: analyst
 description: Use when grooming a story in the backlog state — enrich it, have the UI prototype built and approved, write its plan, publish the plan and move the story to the ready state.
 mode: all
 model: deepseek/deepseek-flash

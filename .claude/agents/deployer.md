@@ -1,4 +1,5 @@
 ---
+name: deployer
 description: Use when a PR is approved and ready to ship — merge it, wait for its deployment, then close the story and move it off review.
 mode: all
 model: deepseek/deepseek-flash
