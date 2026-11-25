@@ -1,23 +1,23 @@
-# Link the WhatsApp Numbers in the Visit E-mails Implementation Plan
+# Link the Customer's WhatsApp Number in the Agent Visit E-mails Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make the WhatsApp number printed in the five visit e-mails open the other party's `wa.me` chat in one click, and render as plain text when there is no number.
+**Goal:** Make the customer's WhatsApp number printed in the three agent-facing visit e-mails open the customer's `wa.me` chat in one click, and render as plain text when there is no number.
 
-**Architecture:** `ndopify-server` only. A nullable-aware `PhoneNumberUtils.whatsappUrlOrNull` builds the bare `https://wa.me/<digits>` URL; the three visit mailets put `customer_whatsapp_url` next to `customer_whatsapp` (the customer copies already get `agent_whatsapp_url` from `AgentMailContext`); the five MJML templates wrap the number in `{{#x_whatsapp_url}}<a href=…>{{x_whatsapp}}</a>{{/x_whatsapp_url}}{{^x_whatsapp_url}}{{x_whatsapp}}{{/x_whatsapp_url}}`. `AgentMailContext` and `MatchVisitAgentNudgeMailet` move onto the same helper, so the mail code has one definition of the URL.
+**Architecture:** `ndopify-server` only. A nullable-aware `PhoneNumberUtils.whatsappUrlOrNull` builds the bare `https://wa.me/<digits>` URL; the three visit mailets put `customer_whatsapp_url` next to `customer_whatsapp`; the three MJML templates wrap the number in `{{#customer_whatsapp_url}}<a href=…>{{customer_whatsapp}}</a>{{/customer_whatsapp_url}}{{^customer_whatsapp_url}}{{customer_whatsapp}}{{/customer_whatsapp_url}}`. `AgentMailContext.of` and `MatchVisitAgentNudgeMailet` move onto the same helper, so the mail code has one definition of the URL.
 
 **Tech Stack:** Kotlin, Spring Boot, MJML (`jcputney` renderer) + Mustache, `kotlin.test`, `mockito-kotlin`, Jsoup (test scope), Maven. Run from `modules/ndopify-server`.
 
-**Spec:** GitHub issue #321 — the enriched story body is the design artifact (context, decisions settled with the requester, acceptance criteria 1–10, assumptions A1–A5). It replaces a design doc.
+**Spec:** GitHub issue #321 — the enriched story body is the design artifact (context, decisions settled with the requester, acceptance criteria 1–10, assumptions A1–A6). It replaces a design doc.
 
 ## Global Constraints
 
 - `modules/ndopify-server` only: no `ndopify-dto`, no `ndopify-web-core`, no `pom.xml` version change, no prototype (`src/main/html`), no page of Partner Central, the e-signature portal or the public site.
-- No new e-mail, no changed recipient, subject, sender or template path. No change to any template other than the five named in Task 3.
-- Every `wa.me` URL the server's mail code builds comes from `PhoneNumberUtils`. No `?text=` parameter anywhere (decision: the click opens the chat, the recipient starts the call).
+- No new e-mail, no changed recipient, subject, sender or template path. No change to any template other than the three named in Task 3.
+- **The customer copies are out of scope.** #322 (merged in PR #325) rewrote `mail/visit/confirmed.mjml` and `mail/visit/reminder.mjml` in the agent's voice and removed the agent's number from their body; they now expose it only through the footer and the `Me répondre sur WhatsApp` button. This plan does not touch those two templates, their mailet contexts or their template tests — do not "restore" a body link there.
+- Every `wa.me` URL the server's mail code builds comes from `PhoneNumberUtils`. No `?text=` parameter anywhere (decision: the click opens the chat, the recipient starts the call). #322's reply button keeps its own pre-filled text; it is a different link and is not touched.
 - The number stays visible: the anchor's text is the number alone, and the fallback renders the number as text — never an empty `<a href>`, never a bare `https://wa.me/`.
 - The URL is computed from the raw stored `whatsappNumber` (E.164), never from the formatted `x_whatsapp` that carries `+` and spaces (assumption A2).
-- **Coordination with #322** (`server: customer e-mails written by the agent, replies on WhatsApp`): it rewrites the customer copies of `visit/confirmed.mjml` and `visit/reminder.mjml`. If it has already landed, locate the agent's number in the new copy and wrap it — do not touch its *"Me répondre sur WhatsApp"* link, and do not "restore" the old paragraph. The line numbers below are from `main` before #322.
 - Assertions use `kotlin.test` (`assertEquals`, `assertNull`, `assertTrue`), never `org.junit.jupiter.api.Assertions.*`.
 - Commit messages: subject + body `Refs #321`. Branch: `feat/321-server-link-whatsapp-numbers-in-visit-emails`.
 - Verification: `cd modules/ndopify-server && mvn verify` (ktlint at `validate`, tests, coverage gate). It needs the local MySQL the module's tests already require; the classes this plan touches are plain unit tests.
@@ -27,28 +27,29 @@
 | File | Responsibility |
 |---|---|
 | `src/main/kotlin/com/wutsi/ndopify/platform/util/PhoneNumberUtils.kt` | the one place that builds `wa.me` URLs, nullable-aware |
-| `src/main/kotlin/com/wutsi/ndopify/agent/server/mail/AgentMailContext.kt` | the customer e-mails' footer context — now uses the helper |
+| `src/main/kotlin/com/wutsi/ndopify/agent/server/mail/AgentMailContext.kt` | the customer e-mails' footer context — `of` now uses the helper |
 | `src/main/kotlin/com/wutsi/ndopify/match/server/mail/MatchVisitAgentNudgeMailet.kt` | the agent's visit nudge — now uses the helper |
 | `src/main/kotlin/com/wutsi/ndopify/visit/server/mail/VisitConfirmedMailet.kt` | the agent's copy gains `customer_whatsapp_url` |
 | `src/main/kotlin/com/wutsi/ndopify/visit/server/mail/VisitReminderMailet.kt` | `sendAgent` gains `customer_whatsapp_url` |
 | `src/main/kotlin/com/wutsi/ndopify/visit/server/mail/VisitRequestedMailet.kt` | gains `customer_whatsapp_url` |
-| `src/main/resources/mail/visit/{confirmed,reminder,confirmed_agent,reminder_agent,requested}.mjml` | the five templates that print a number |
+| `src/main/resources/mail/visit/{confirmed_agent,reminder_agent,requested}.mjml` | the three templates that print a number |
 | the matching `*MailetTest.kt` / `*TemplateTest.kt` | mailet context and rendered HTML, per template |
 
 ## Review Focus
 
 1. **A party with no number gets no link.** The rendered e-mail must contain neither an empty `<a>` nor a `https://wa.me/` with nothing after it; the number's sentence reads as it does today (Task 3, fallback tests).
-2. **The number alone is the anchor text.** "je joindre sur WhatsApp au **+237 6 00 00 00 01**." keeps its wording, `<strong>` and final period; only the number is wrapped — not the sentence, and not the footer's "WhatsApp <number>" text (Task 3).
+2. **The number alone is the anchor text.** "je joindre sur WhatsApp au **+237 6 00 00 00 01**." keeps its wording, `<strong>` and final period; only the number is wrapped, not the sentence (Task 3).
 3. **The href is exact.** `https://wa.me/237600000001`: no `+`, no spaces, no `?text=`, no trailing slash (Tasks 1 and 3).
 4. **The footer does not move.** For the same agent, `agent_whatsapp_url` is byte-identical before and after the helper adoption — the 16 footer-carrying templates depend on it (Task 4).
-5. **A missing key is not a crash.** Rendering a template with the `*_url` key absent from the context entirely (not merely null) prints the number as text, so a mailet that forgets the key degrades instead of breaking (Task 3).
+5. **The customer copies are untouched.** `git diff` names no `visit/confirmed.mjml`, no `visit/reminder.mjml`, no `VisitConfirmedTemplateTest` customer case, no `VisitReminderTemplateTest` customer case.
+6. **A missing key is not a crash.** Rendering a template with the `customer_whatsapp_url` key absent from the context entirely (not merely null) prints the number as text, so a mailet that forgets the key degrades instead of breaking (Task 3).
 
 ---
 
 ### Task 1: `PhoneNumberUtils.whatsappUrlOrNull`
 
 **Files:**
-- Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/platform/util/PhoneNumberUtils.kt:21-28`
+- Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/platform/util/PhoneNumberUtils.kt` (below `toWhatsappUrl`, line 32)
 - Test: `modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/platform/util/PhoneNumberUtilsTest.kt`
 
 **Interfaces:**
@@ -57,7 +58,7 @@
 
 - [ ] **Step 1: Write the failing test**
 
-The file imports `org.junit.jupiter.api.Assertions.assertEquals` and `org.junit.jupiter.api.Test`; switch both to `kotlin.test` (the repository convention), then add the new test:
+The file imports `org.junit.jupiter.api.Assertions.assertEquals` and `org.junit.jupiter.api.Test`; switch both to `kotlin.test` (the repository convention; the two other files this plan changes already do), then add the new test:
 
 ```kotlin
 import kotlin.test.Test
@@ -112,14 +113,14 @@ git commit -m "feat(server): build a WhatsApp URL from a nullable number" -m "Re
 ### Task 2: The three mailets provide `customer_whatsapp_url`
 
 **Files:**
-- Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/visit/server/mail/VisitConfirmedMailet.kt:102` (agent copy)
-- Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/visit/server/mail/VisitReminderMailet.kt:107` (`sendAgent`)
+- Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/visit/server/mail/VisitConfirmedMailet.kt:105` (agent copy)
+- Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/visit/server/mail/VisitReminderMailet.kt:112` (`sendAgent`)
 - Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/visit/server/mail/VisitRequestedMailet.kt:55`
 - Test: `VisitConfirmedMailetTest.kt`, `VisitReminderMailetTest.kt`, `VisitRequestedMailetTest.kt` (same package, `src/test/kotlin/com/wutsi/ndopify/visit/server/mail/`)
 
 **Interfaces:**
 - Consumes: `PhoneNumberUtils.whatsappUrlOrNull(phone: String?): String?` (Task 1).
-- Produces: each of the three context maps carries `"customer_whatsapp_url" to String?`; the templates of Task 3 read it as `customer_whatsapp_url`.
+- Produces: each of the three agent contexts carries `"customer_whatsapp_url" to String?`; the templates of Task 3 read it as `customer_whatsapp_url`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -135,7 +136,7 @@ git commit -m "feat(server): build a WhatsApp URL from a nullable number" -m "Re
     }
 ```
 
-`VisitConfirmedMailetTest` asserts the whole agent map too: add `"customer_whatsapp_url" to "https://wa.me/237600000001",` after `"customer_whatsapp" to "+237 6 00 00 00 01",` in the agent `mapOf`, and add:
+`VisitConfirmedMailetTest` asserts the whole agent map too: add `"customer_whatsapp_url" to "https://wa.me/237600000001",` after `"customer_whatsapp" to "+237 6 00 00 00 01",` in the agent `mapOf` (line 149), and add:
 
 ```kotlin
     @Test
@@ -148,7 +149,7 @@ git commit -m "feat(server): build a WhatsApp URL from a nullable number" -m "Re
     }
 ```
 
-`VisitReminderMailetTest` asserts single keys; in `sendAgent sends only the agent copy`, after the existing `customer_whatsapp` assertion:
+`VisitReminderMailetTest` asserts single keys; in `sendAgent sends only the agent copy`, after the existing `customer_whatsapp` assertion (line 135):
 
 ```kotlin
         assertEquals("https://wa.me/237600000001", agentContext["customer_whatsapp_url"])
@@ -174,13 +175,13 @@ Expected: FAIL — `expected:<... customer_whatsapp_url=https://wa.me/2376000000
 
 - [ ] **Step 3: Add the key in the three mailets**
 
-In each context map, immediately after the existing `"customer_whatsapp" to formatter.phone(customer.whatsappNumber),` line:
+In each agent context map, immediately after the existing `"customer_whatsapp" to formatter.phone(customer.whatsappNumber),` line:
 
 ```kotlin
                         "customer_whatsapp_url" to PhoneNumberUtils.whatsappUrlOrNull(customer.whatsappNumber),
 ```
 
-Add `import com.wutsi.ndopify.platform.util.PhoneNumberUtils` to each file (ktlint sorts it after `platform.mail.Receipient`, before the `refdata` imports). Touch only these three lines: the customer copies already get `agent_whatsapp_url` through `AgentMailContext.of`, and the co-brokerage copies carry no customer.
+Add `import com.wutsi.ndopify.platform.util.PhoneNumberUtils` to each file (ktlint sorts it after `platform.mail.Receipient`, before the `refdata` imports). Touch only these three lines: the customer copies already get `agent_whatsapp_url` through `AgentMailContext.customer` / `AgentMailContext.of` (#322), and the co-brokerage copies carry no customer.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
@@ -196,49 +197,31 @@ git commit -m "feat(visit): the agent copies carry the customer's WhatsApp link"
 
 ---
 
-### Task 3: The five visit templates link the number
+### Task 3: The three agent-facing visit templates link the number
 
 **Files:**
-- Modify: `modules/ndopify-server/src/main/resources/mail/visit/confirmed.mjml:45-46,57`
-- Modify: `modules/ndopify-server/src/main/resources/mail/visit/reminder.mjml:39-40,51`
-- Modify: `modules/ndopify-server/src/main/resources/mail/visit/confirmed_agent.mjml:34-35,44-45` (two occurrences of the same line)
-- Modify: `modules/ndopify-server/src/main/resources/mail/visit/reminder_agent.mjml:33-34,43-44` (two occurrences of the same line)
+- Modify: `modules/ndopify-server/src/main/resources/mail/visit/confirmed_agent.mjml:35,45` (two occurrences of the same line)
+- Modify: `modules/ndopify-server/src/main/resources/mail/visit/reminder_agent.mjml:34,44` (two occurrences of the same line)
 - Modify: `modules/ndopify-server/src/main/resources/mail/visit/requested.mjml:41`
 - Test: `VisitConfirmedTemplateTest.kt`, `VisitReminderTemplateTest.kt`, `VisitRequestedTemplateTest.kt`
 
 **Interfaces:**
-- Consumes: `agent_whatsapp_url` (already in the customer copies' context via `AgentMailContext.of`), `customer_whatsapp_url` (Task 2).
+- Consumes: `customer_whatsapp_url` (Task 2).
 - Produces: nothing later tasks consume.
 
 - [ ] **Step 1: Write the failing tests**
 
-The anchor's text must be distinguishable from the footer's `WhatsApp <number>` link, so select the exact href with Jsoup (already a test dependency, see `AgentSignatureTest`) and assert its text. Add `import org.jsoup.Jsoup` and `import kotlin.test.assertEquals` to each of the three test classes as needed.
+The anchor's text must be distinguishable from any other anchor, so select the exact href with Jsoup (already a test dependency, see `AgentSignatureTest`) and assert its text.
 
-`VisitConfirmedTemplateTest` — in `customer - ON_SITE`, after the existing `https://wa.me/237699000001` assertion, pin that the *number itself* is a link (the footer has a second anchor with the same href but the text `WhatsApp <number>`, so match on the text, not on the first anchor):
-
-```kotlin
-        assertTrue(
-            Jsoup.parse(html).select("""a[href="https://wa.me/237699000001"]""").any { it.text() == "+237699000001" },
-        )
-```
-
-add `"customer_whatsapp_url" to "https://wa.me/237600000001",` to `agentContext`, and assert in `agent - ON_SITE` and `agent - VIDEO`:
+`VisitConfirmedTemplateTest` — add `"customer_whatsapp_url" to "https://wa.me/237600000001",` to `agentContext` (line 46), and assert in `agent - ON_SITE` and `agent - VIDEO`:
 
 ```kotlin
         assertEquals("+237600000001", Jsoup.parse(html).selectFirst("""a[href="https://wa.me/237600000001"]""")?.text())
 ```
 
-Add the fallbacks:
+Add the fallback:
 
 ```kotlin
-    @Test
-    fun `customer - without the agent WhatsApp URL`() {
-        val html = resolver.resolve(VisitConfirmedMailet.TEMPLATE_CUSTOMER, onSite - "agent_whatsapp_url")
-
-        assertTrue(html.contains("+237699000001"))
-        assertTrue(Jsoup.parse(html).select("""a[href="https://wa.me/237699000001"]""").isEmpty())
-    }
-
     @Test
     fun `agent - without the customer WhatsApp URL`() {
         val html = resolver.resolve(VisitConfirmedMailet.TEMPLATE_AGENT, agentContext - "customer_whatsapp_url")
@@ -248,9 +231,9 @@ Add the fallbacks:
     }
 ```
 
-The existing `agent - ON_SITE` assertion `assertFalse(html.contains("https://wa.me/237699000001"))` stays: the agent is not in its own copy.
+The existing `agent - ON_SITE` assertion `assertFalse(html.contains("https://wa.me/237699000001"))` stays: the agent is not in its own copy. The customer test cases of this class stay untouched (#322 owns them).
 
-`VisitReminderTemplateTest` — add `"agent_whatsapp_url" to "https://wa.me/237699000001",` to `onSite`, pin the number-as-link in `customer - ON_SITE` and `customer - VIDEO` with the same `assertTrue(…any { it.text() == "+237699000001" })` form, add the `customer - without the agent WhatsApp URL` fallback (as above, for `TEMPLATE_CUSTOMER`), and cover the agent side that has no template test yet:
+`VisitReminderTemplateTest` has no agent case yet — add one, and do not touch its customer cases:
 
 ```kotlin
     private val agent = onSite + mapOf(
@@ -278,14 +261,14 @@ The existing `agent - ON_SITE` assertion `assertFalse(html.contains("https://wa.
     }
 ```
 
-`VisitRequestedTemplateTest` — add `"customer_whatsapp_url" to "https://wa.me/237600000001",` to `context` and assert in `render`:
+`VisitRequestedTemplateTest` — add `import org.jsoup.Jsoup` and `import kotlin.test.assertEquals` to the class (it has neither yet), add `"customer_whatsapp_url" to "https://wa.me/237600000001",` to `context` and assert in `render`:
 
 ```kotlin
         assertEquals("+237600000001", Jsoup.parse(html).selectFirst("""a[href="https://wa.me/237600000001"]""")?.text())
         assertFalse(html.contains("?text="))
 ```
 
-(`assertFalse` for the no-prefilled-message rule, acceptance criterion 7; the visit request is the only one of the five whose number is not inside a sentence, so it is also the cheapest place to pin it.)
+(`assertFalse` for the no-prefilled-message rule, acceptance criterion 7; the visit request is the only one of the three whose number is not inside a sentence, so it is also the cheapest place to pin it.)
 
 plus the fallback:
 
@@ -302,18 +285,18 @@ plus the fallback:
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `cd modules/ndopify-server && mvn test -Dtest='VisitConfirmedTemplateTest,VisitReminderTemplateTest,VisitRequestedTemplateTest'`
-Expected: FAIL — `expected:<+237699000001> but was:<null>` (no anchor yet), and the fallback tests fail on the second assertion once the anchor exists without a fallback.
+Expected: FAIL — `expected:<+237600000001> but was:<null>` (no anchor yet), and the fallback tests fail on the second assertion once the anchor exists without a fallback.
 
-- [ ] **Step 3: Wrap the number in the five templates**
+- [ ] **Step 3: Wrap the number in the three templates**
 
-The pattern, for the party `x` (`agent` in the customer copies, `customer` in the agent copies), keeping the `<strong>` the number already sits in:
+The pattern, keeping the `<strong>` the number already sits in:
 
 ```text
-{{#x_whatsapp_url}}<a href="{{x_whatsapp_url}}">{{x_whatsapp}}</a>{{/x_whatsapp_url}}{{^x_whatsapp_url}}{{x_whatsapp}}{{/x_whatsapp_url}}
+{{#customer_whatsapp_url}}<a href="{{customer_whatsapp_url}}">{{customer_whatsapp}}</a>{{/customer_whatsapp_url}}{{^customer_whatsapp_url}}{{customer_whatsapp}}{{/customer_whatsapp_url}}
 ```
 
-- `confirmed.mjml` (on-site line 46, video line 57) and `reminder.mjml` (on-site line 40, video line 51): replace `<strong>{{agent_whatsapp}}</strong>` with the pattern inside `<strong>` — `<strong>{{#agent_whatsapp_url}}<a href="{{agent_whatsapp_url}}">{{agent_whatsapp}}</a>{{/agent_whatsapp_url}}{{^agent_whatsapp_url}}{{agent_whatsapp}}{{/agent_whatsapp_url}}</strong>`.
-- `confirmed_agent.mjml` (lines 35 and 45) and `reminder_agent.mjml` (lines 34 and 44): the same with `customer`, on both occurrences of `<strong>{{customer_whatsapp}}</strong>`.
+- `confirmed_agent.mjml` (lines 35 and 45): replace `<strong>{{customer_whatsapp}}</strong>` with the pattern inside `<strong>` — `<strong>{{#customer_whatsapp_url}}<a href="{{customer_whatsapp_url}}">{{customer_whatsapp}}</a>{{/customer_whatsapp_url}}{{^customer_whatsapp_url}}{{customer_whatsapp}}{{/customer_whatsapp_url}}</strong>`.
+- `reminder_agent.mjml` (lines 34 and 44): the same replacement on both occurrences.
 - `requested.mjml` line 41: `<b>WhatsApp</b>&#160;: {{#customer_whatsapp_url}}<a href="{{customer_whatsapp_url}}">{{customer_whatsapp}}</a>{{/customer_whatsapp_url}}{{^customer_whatsapp_url}}{{customer_whatsapp}}{{/customer_whatsapp_url}}` — the `<li>`'s `{{#customer_whatsapp}}` guard stays.
 
 Every one of these is inside an `<mj-text>`, where raw HTML is kept (as `<strong>` already is); do not add a `style` attribute — `mail.css` has no `a` rule and the footer's link carries none.
@@ -321,13 +304,13 @@ Every one of these is inside an `<mj-text>`, where raw HTML is kept (as `<strong
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `cd modules/ndopify-server && mvn test -Dtest='VisitConfirmedTemplateTest,VisitReminderTemplateTest,VisitRequestedTemplateTest,AgentSignatureTest'`
-Expected: PASS. `AgentSignatureTest` renders 16 templates that include the footer: it must stay green.
+Expected: PASS. `AgentSignatureTest` renders the templates that include the footer: it must stay green.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add modules/ndopify-server/src/main/resources/mail/visit/ modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/visit/server/mail/
-git commit -m "feat(visit): link the WhatsApp numbers of the visit e-mails" -m "Refs #321"
+git commit -m "feat(visit): link the customer's WhatsApp number in the agent visit e-mails" -m "Refs #321"
 ```
 
 ---
@@ -335,47 +318,42 @@ git commit -m "feat(visit): link the WhatsApp numbers of the visit e-mails" -m "
 ### Task 4: One builder for the mail code's WhatsApp URLs
 
 **Files:**
-- Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/agent/server/mail/AgentMailContext.kt:19-24`
-- Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/match/server/mail/MatchVisitAgentNudgeMailet.kt:43,67`
-- Test: create `src/test/kotlin/com/wutsi/ndopify/agent/server/mail/AgentMailContextTest.kt`; `MatchVisitAgentNudgeMailetTest` already pins the value.
+- Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/agent/server/mail/AgentMailContext.kt:18-26`
+- Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/match/server/mail/MatchVisitAgentNudgeMailet.kt:44,67`
+- Test: extend `src/test/kotlin/com/wutsi/ndopify/agent/server/mail/AgentMailContextTest.kt` (it exists since #322); `MatchVisitAgentNudgeMailetTest` already pins the value.
 
 **Interfaces:**
 - Consumes: `PhoneNumberUtils.whatsappUrlOrNull(phone: String?): String?` (Task 1).
 - Produces: nothing new; `agent_whatsapp_url` and `whatsapp_url` keep the exact strings they have today (assumption A3).
 
-- [ ] **Step 1: Write the pinning test**
+- [ ] **Step 1: Extend the pinning test**
+
+`AgentMailContextTest` pins `replyUrl` today; add the `of` side, with a formatter:
 
 ```kotlin
-package com.wutsi.ndopify.agent.server.mail
-
-import com.wutsi.ndopify.agent.server.domain.AgentEntity
-import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
-/** The footer's link, built by the same helper as the visit e-mails' numbers. */
-class AgentMailContextTest {
     private val formatter = TenantFormatter(TenantEntity(id = 1L, name = "Ndopify"))
-    private val agent = AgentEntity(
-        id = 20L,
-        party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible", email = "kim.possible@gmail.com"),
-        whatsappNumber = "+237 6 99 00 00 01",
-    )
 
     @Test
-    fun `whatsapp url`() {
-        assertEquals("https://wa.me/237699000001", AgentMailContext.of(agent, formatter)["agent_whatsapp_url"])
+    fun `the footer links the agent's WhatsApp number`() {
+        assertEquals(
+            "https://wa.me/237699000001",
+            AgentMailContext.of(agent("+237 6 99 00 00 01"), formatter)["agent_whatsapp_url"],
+        )
+        assertEquals(
+            "https://wa.me/237699000001",
+            AgentMailContext.of(agent("237699000001"), formatter)["agent_whatsapp_url"],
+        )
     }
 
     @Test
-    fun `no whatsapp number`() {
-        assertNull(AgentMailContext.of(agent.copy(whatsappNumber = null), formatter)["agent_whatsapp_url"])
-        assertNull(AgentMailContext.of(agent.copy(whatsappNumber = "N/A"), formatter)["agent_whatsapp_url"])
+    fun `no footer WhatsApp URL without a usable number`() {
+        assertNull(AgentMailContext.of(agent(null), formatter)["agent_whatsapp_url"])
+        assertNull(AgentMailContext.of(agent(" "), formatter)["agent_whatsapp_url"])
+        assertNull(AgentMailContext.of(agent("n/a"), formatter)["agent_whatsapp_url"])
     }
-}
 ```
 
 - [ ] **Step 2: Run the test to verify it passes before the change**
@@ -385,19 +363,21 @@ Expected: PASS — it pins today's output. It is the regression net for Step 3; 
 
 - [ ] **Step 3: Replace the two hand-built URLs**
 
-`AgentMailContext.of`, last entry of the map:
+`AgentMailContext.of`, last entry of the map (lines 22-25 today):
 
 ```kotlin
         "agent_whatsapp_url" to PhoneNumberUtils.whatsappUrlOrNull(agent.whatsappNumber),
 ```
 
-with `import com.wutsi.ndopify.platform.util.PhoneNumberUtils`. `MatchVisitAgentNudgeMailet.send`: delete `val digits = customer.whatsappNumber.orEmpty().filter(Char::isDigit)` (line 43) and replace line 67 with
+with `import com.wutsi.ndopify.platform.util.PhoneNumberUtils` (already imported for `replyUrl`, line 5). Leave `agent_whatsapp`, `customer()` and `replyUrl` alone: `replyUrl` keeps `toWhatsappUrl` because it passes the pre-filled text.
+
+`MatchVisitAgentNudgeMailet.send`: delete `val digits = customer.whatsappNumber.orEmpty().filter(Char::isDigit)` (line 44) and replace line 67 with
 
 ```kotlin
                         "whatsapp_url" to PhoneNumberUtils.whatsappUrlOrNull(customer.whatsappNumber),
 ```
 
-plus the same import. Do not touch the three `*Botlet`s: #320 owns them.
+plus `import com.wutsi.ndopify.platform.util.PhoneNumberUtils` (after `platform.mail.Receipient`). Do not touch the `*Botlet`s: #320 owns them and they already call `toWhatsappUrl`.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
@@ -424,13 +404,13 @@ git commit -m "refactor(server): one builder for the mail code's WhatsApp URLs" 
 - [ ] **Step 1: Run the module's full verification**
 
 Run: `cd modules/ndopify-server && mvn verify`
-Expected: `BUILD SUCCESS` — ktlint clean, every test green, JaCoCo line coverage at least the `0.95` the module's `pom.xml` sets. A coverage failure naming `PhoneNumberUtils` means Step 1 of Task 1 is missing its null and digit-less cases.
+Expected: `BUILD SUCCESS` — ktlint clean, every test green, JaCoCo line coverage at least the threshold the module's `pom.xml` sets. A coverage failure naming `PhoneNumberUtils` means Step 1 of Task 1 is missing its null and digit-less cases.
 
 - [ ] **Step 2: Check the change stayed inside the plan's perimeter**
 
 Run: `git diff --stat main`
-Expected: exactly the six production files (helper, `AgentMailContext`, `MatchVisitAgentNudgeMailet`, the three visit mailets), the five `mail/visit/*.mjml` templates and the six test files — no `*Botlet`, no template outside `mail/visit/`, no `pom.xml`, no other module.
+Expected: exactly the six production files (helper, `AgentMailContext`, `MatchVisitAgentNudgeMailet`, the three visit mailets), the three `mail/visit/*_agent.mjml` / `requested.mjml` templates and the test files — no `visit/confirmed.mjml` or `visit/reminder.mjml`, no `*Botlet`, no other template, no `pom.xml`, no other module.
 
 - [ ] **Step 3: Report**
 
-Report to the reviewer: the five templates, the three mailets, the helper and the two adoption sites touched; the `mvn verify` output; and that #320's botlets were left untouched.
+Report to the reviewer: the three templates, the three mailets, the helper and the two adoption sites touched; the `mvn verify` output; and that #322's customer copies and #320's botlets were left untouched.
