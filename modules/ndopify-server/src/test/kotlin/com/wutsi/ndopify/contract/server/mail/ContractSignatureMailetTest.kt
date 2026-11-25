@@ -17,6 +17,7 @@ import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
+import java.net.URLDecoder
 import java.time.Instant
 import java.util.Date
 import kotlin.test.BeforeTest
@@ -71,10 +72,18 @@ class ContractSignatureMailetTest {
         verify(mailBodyResolver).resolve(eq("/mail/contract/signature_request.mjml"), context.capture())
         assertEquals("Kim Possible", context.firstValue["agent_full_name"])
         assertEquals("https://wa.me/237699000001", context.firstValue["agent_whatsapp_url"])
+        assertEquals(
+            "Bonjour, je vous réponds au sujet de votre contrat BAIL-2026-000042.",
+            URLDecoder.decode(
+                (context.firstValue["agent_whatsapp_reply_url"] as String).substringAfter("?text="),
+                "UTF-8",
+            ),
+        )
 
         val email = argumentCaptor<Email>()
         verify(mailService).send(email.capture())
         assertEquals("Kim Possible", email.firstValue.sender?.displayName)
+        assertEquals("Votre contrat BAIL-2026-000042 est prêt à être signé", email.firstValue.subject)
     }
 
     @Test

@@ -1,27 +1,31 @@
 <mjml>
     <mj-head>
-        <mj-style inline="inline">
-            {{__css__}}
-        </mj-style>
+        {{> mail/fragments/styles.mjml}}
+        <mj-preview>À signer avant le {{deadline}}</mj-preview>
     </mj-head>
     <mj-body css-class="body">
         <mj-wrapper background-color="#ffffff" border-radius="30px" padding="20px">
             <mj-section padding="0">
                 <mj-column>
-                    <!-- Logo -->
-                    <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
-
-                    <!-- Divider with class for CSS injection -->
+                    <!-- Divider with class for CSS injection: the card's only brand mark -->
                     <mj-divider css-class="divider"/>
 
                     <!-- Body Text -->
                     <mj-text>
                         Bonjour <strong>{{recipient_name}}</strong>,
                     </mj-text>
+                    {{#agent_full_name}}
                     <mj-text>
-                        Votre <strong>{{contract_type}}</strong> n° <strong>{{contract_number}}</strong> est prêt. Merci
-                        de le lire attentivement, puis de le signer électroniquement.
+                        Je vous ai préparé votre <strong>{{contract_type}}</strong> n° <strong>{{contract_number}}</strong>&#160;:
+                        lisez-le attentivement, puis signez-le électroniquement.
                     </mj-text>
+                    {{/agent_full_name}}
+                    {{^agent_full_name}}
+                    <mj-text>
+                        Votre <strong>{{contract_type}}</strong> n° <strong>{{contract_number}}</strong> est prêt. Merci de le lire
+                        attentivement, puis de le signer électroniquement.
+                    </mj-text>
+                    {{/agent_full_name}}
 
                     <mj-text font-weight="bold">
                         Vous avez jusqu'au <span class="text-primary">{{deadline}}</span> pour le signer.
@@ -29,19 +33,16 @@
 
                     {{#sign_url}}
                     <!-- Button with class for CSS injection -->
-                    <mj-spacer/>
-                    <mj-button href="{{sign_url}}" css-class="btn-primary" align="center">
+                    <mj-button href="{{sign_url}}" css-class="btn-primary nd-btn" align="center">
                         Lire et signer le contrat
                     </mj-button>
-                    <mj-spacer/>
                     {{/sign_url}}
 
+                    {{> mail/fragments/whatsapp-reply.mjml}}
+
                     <!-- Sign-off -->
-                    <mj-spacer/>
                     <mj-text>
-                        Cordialement,{{^agent_full_name}}
-                        <br/>
-                        L'équipe {{tenant_name}}{{/agent_full_name}}
+                        Cordialement,{{^agent_full_name}}<br/>L'équipe {{tenant_name}}{{/agent_full_name}}
                     </mj-text>
                 </mj-column>
             </mj-section>
