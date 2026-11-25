@@ -10,6 +10,7 @@ import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailImages
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
+import com.wutsi.ndopify.platform.util.PhoneNumberUtils
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
@@ -53,6 +54,7 @@ class VisitRequestedMailet(
                         "recipient_name" to agentName,
                         "customer_name" to customerName,
                         "customer_whatsapp" to formatter.phone(customer.whatsappNumber),
+                        "customer_whatsapp_url" to PhoneNumberUtils.whatsappUrlOrNull(customer.whatsappNumber),
                         "listing_title" to (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"),
                         "image_url" to imageUrl,
                         "requested_date" to formatter.date(visit.requestedAt),
