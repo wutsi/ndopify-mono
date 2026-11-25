@@ -1,0 +1,313 @@
+/*
+ * Ndopify Partner Central — a mandate's documents (#329): the *Documents* section of mandate.html,
+ * mandate/document-new.html and mandate/document.html.
+ * Loaded after partner-central.css, home.css and listing.css; uses their tier-2 semantic tokens only, no new colours.
+ * Reuses listing.css's .photo__delete / .photo-actions / .upload-progress for the pages chosen. No page image is
+ * shown anywhere: a page opens through its "Voir" link.
+ */
+
+/* ---------- mandate.html › Documents ---------- */
+
+/* "Documents" and "Ajouter un document" on one line; the button wraps under the title on the narrowest phones. */
+.documents__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.documents__intro,
+.documents__readonly {
+    font-size: var(--step-hint);
+}
+
+.doc-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.doc-list > li + li {
+    margin-top: var(--space-2);
+}
+
+/*
+ * One row per document, the whole row a link to its page: the type (and the agent's title under it when different)
+ * on the left, the status pill on the right of the first line, then "Ajouté le … · 3 pages". On a phone a long type
+ * wraps inside its column; the pill never leaves the first line.
+ */
+.doc-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+    column-gap: var(--space-3);
+    row-gap: var(--space-1);
+    min-height: var(--target);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color var(--duration) var(--ease-out);
+}
+
+a.doc-row:hover {
+    border-color: var(--color-fg);
+}
+
+a.doc-row:hover .doc-row__type {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+a.doc-row:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+.doc-row__icon {
+    grid-row: 1 / span 3;
+    display: inline-flex;
+    color: var(--color-info-fg);
+}
+
+.doc-row__type {
+    grid-column: 2;
+    min-width: 0;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.doc-row .status-tag {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+}
+
+.doc-row__title,
+.doc-row__meta {
+    grid-column: 2 / -1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.doc-row__meta {
+    font-size: var(--step-hint);
+}
+
+@media (max-width: 359px) {
+    .doc-row {
+        padding: var(--space-3);
+        column-gap: var(--space-2);
+    }
+}
+
+/* À corriger / Expiré need the error hue, which the status pills of home.css don't have yet. */
+.status-tag--error {
+    border-color: var(--color-error-border);
+    background: var(--color-error-bg);
+    color: var(--color-error-fg);
+}
+
+[data-documents-flash]:focus,
+[data-document-flash]:focus {
+    outline: none;
+}
+
+/* ---------- mandate/document-new.html ---------- */
+
+/* Without JS: the native file input, visible, so the chosen files' names show. */
+.input--file {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--space-2);
+    font-size: var(--step-hint);
+    cursor: pointer;
+}
+
+.input--file::file-selector-button {
+    margin-right: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    background: var(--color-bg-subtle);
+    color: var(--color-fg);
+    font: 600 var(--step-hint) / 1.25 var(--font-body);
+    cursor: pointer;
+}
+
+.doc-pages-field {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.doc-pages-field > * + * {
+    margin-top: var(--space-3);
+}
+
+.doc-pages-field legend {
+    padding: 0;
+    font-weight: 600;
+}
+
+/* The chosen files, in order: "Page 1", then the name and size (no thumbnail), then the remove button. A long name
+   wraps inside its column on a phone; the button keeps its 44px target. */
+.doc-files {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.doc-file {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+.doc-file + .doc-file {
+    margin-top: var(--space-2);
+}
+
+.doc-file__index {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.doc-file__info {
+    min-width: 0;
+    font-size: var(--step-hint);
+    overflow-wrap: anywhere;
+}
+
+.doc-file__size {
+    white-space: nowrap;
+}
+
+/* The remove button of listing.css's photo tile, in the row instead of on a corner. */
+.doc-file__remove {
+    position: static;
+}
+
+/* A file waiting or being sent. */
+.doc-file--pending {
+    color: var(--color-fg-disabled);
+}
+
+/* ---------- mandate/document.html ---------- */
+
+.doc-intro__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+}
+
+.doc-intro > * + * {
+    margin-top: var(--space-2);
+}
+
+.doc-intro h1 {
+    font-size: var(--step-h2);
+    overflow-wrap: anywhere;
+}
+
+/* The pages in their order, one plain row each: "Page 1" and "Voir", "Remplacer" folded under it. No image. */
+.doc-pages-section > * + * {
+    margin-top: var(--space-3);
+}
+
+.doc-pages {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.doc-pages > li + li {
+    margin-top: var(--space-2);
+}
+
+.doc-page {
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+.doc-page__bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-1) var(--space-3);
+    padding: 0 var(--space-3);
+}
+
+.doc-page__caption {
+    font-weight: 600;
+}
+
+/* "Voir": a 44px text link, opening the page in a new tab. */
+.doc-page__view {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    font-weight: 600;
+}
+
+/* "Remplacer": folded under its page, a small form of its own. */
+.doc-page__replace {
+    padding: 0 var(--space-3) var(--space-3);
+    background: var(--color-surface);
+}
+
+.doc-page__replace > summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    cursor: pointer;
+}
+
+.doc-page__replace .form > * + * {
+    margin-top: var(--space-3);
+}
+
+/* Renommer and Supprimer, under the pages: rare actions, kept apart. */
+.doc-manage > * + * {
+    margin-top: var(--space-3);
+}
+
+.doc-manage__box {
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+.doc-manage__box > * + * {
+    margin-top: var(--space-3);
+}
+
+/* "Pages": a sub-heading, not a page title. */
+.doc-manage__title {
+    font: 600 var(--step-h4) / 1.3 var(--font-body);
+}
+
+/* The delete confirmation: its buttons under the text, as the decline confirmation of an offer. */
+.doc-manage .alert form {
+    margin-top: var(--space-3);
+}
+
+.doc-manage .alert > div {
+    flex: 1;
+    min-width: 0;
+}
+
+.doc-manage .alert__title:focus {
+    outline: none;
+}

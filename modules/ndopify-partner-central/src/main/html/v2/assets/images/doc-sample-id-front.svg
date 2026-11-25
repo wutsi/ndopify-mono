@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 856 540" width="856" height="540">
+    <!-- PROTOTYPE placeholder (#329): the front of an identity card, photographed. Not a real document. -->
+    <rect width="856" height="540" fill="#c9cdd3"/>
+    <rect x="28" y="24" width="800" height="492" rx="28" fill="#f4f1e8" stroke="#8a8f98" stroke-width="3"/>
+    <rect x="28" y="24" width="800" height="64" rx="28" fill="#2f6f4f"/>
+    <rect x="28" y="60" width="800" height="28" fill="#2f6f4f"/>
+    <rect x="300" y="44" width="256" height="18" rx="9" fill="#f4f1e8" opacity="0.8"/>
+    <rect x="64" y="128" width="200" height="250" rx="8" fill="#d7d9dd" stroke="#8a8f98" stroke-width="2"/>
+    <circle cx="164" cy="214" r="52" fill="#a9adb4"/>
+    <path d="M84 378c8-62 44-96 80-96s72 34 80 96z" fill="#a9adb4"/>
+    <g fill="#8a8f98">
+        <rect x="300" y="136" width="140" height="14" rx="7"/>
+        <rect x="300" y="160" width="340" height="22" rx="11" fill="#3a3f47"/>
+        <rect x="300" y="204" width="120" height="14" rx="7"/>
+        <rect x="300" y="228" width="280" height="22" rx="11" fill="#3a3f47"/>
+        <rect x="300" y="272" width="160" height="14" rx="7"/>
+        <rect x="300" y="296" width="220" height="22" rx="11" fill="#3a3f47"/>
+        <rect x="560" y="272" width="120" height="14" rx="7"/>
+        <rect x="560" y="296" width="200" height="22" rx="11" fill="#3a3f47"/>
+        <rect x="300" y="340" width="180" height="14" rx="7"/>
+        <rect x="300" y="364" width="300" height="22" rx="11" fill="#3a3f47"/>
+    </g>
+    <rect x="64" y="420" width="728" height="64" rx="8" fill="#e6e2d6"/>
+</svg>

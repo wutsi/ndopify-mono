@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 860" width="620" height="860">
+    <!-- PROTOTYPE placeholder (#329): a survey plan (plan de bornage), photographed. Not a real document. -->
+    <rect width="620" height="860" fill="#c9cdd3"/>
+    <rect x="30" y="24" width="560" height="812" fill="#fbfbf8" stroke="#8a8f98" stroke-width="2"/>
+    <rect x="200" y="60" width="220" height="16" rx="8" fill="#3a3f47"/>
+    <path d="M120 200 470 170 520 520 160 580z" fill="#e4edf7" stroke="#3a3f47" stroke-width="4"/>
+    <g fill="#3a3f47">
+        <circle cx="120" cy="200" r="9"/><circle cx="470" cy="170" r="9"/>
+        <circle cx="520" cy="520" r="9"/><circle cx="160" cy="580" r="9"/>
+    </g>
+    <path d="M90 640h440" stroke="#8a8f98" stroke-width="2" stroke-dasharray="10 8"/>
+    <g fill="#a9adb4">
+        <rect x="70" y="680" width="200" height="10" rx="5"/>
+        <rect x="70" y="704" width="240" height="10" rx="5"/>
+        <rect x="70" y="728" width="180" height="10" rx="5"/>
+    </g>
+    <rect x="380" y="670" width="170" height="120" fill="none" stroke="#a9adb4" stroke-width="2"/>
+    <path d="M520 110l20-40 20 40M540 70v70" fill="none" stroke="#3a3f47" stroke-width="3"/>
+</svg>

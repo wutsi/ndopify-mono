@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 860" width="620" height="860">
+    <!-- PROTOTYPE placeholder (#329): a typed A4 page (a land title, a pay slip...), photographed. Not a real document. -->
+    <rect width="620" height="860" fill="#c9cdd3"/>
+    <rect x="30" y="24" width="560" height="812" fill="#fbfbf8" stroke="#8a8f98" stroke-width="2"/>
+    <circle cx="310" cy="96" r="34" fill="none" stroke="#8a8f98" stroke-width="3"/>
+    <rect x="200" y="150" width="220" height="18" rx="9" fill="#3a3f47"/>
+    <rect x="160" y="180" width="300" height="12" rx="6" fill="#8a8f98"/>
+    <g fill="#a9adb4">
+        <rect x="70" y="240" width="480" height="10" rx="5"/>
+        <rect x="70" y="264" width="460" height="10" rx="5"/>
+        <rect x="70" y="288" width="480" height="10" rx="5"/>
+        <rect x="70" y="312" width="300" height="10" rx="5"/>
+        <rect x="70" y="360" width="480" height="10" rx="5"/>
+        <rect x="70" y="384" width="440" height="10" rx="5"/>
+        <rect x="70" y="408" width="480" height="10" rx="5"/>
+        <rect x="70" y="432" width="380" height="10" rx="5"/>
+        <rect x="70" y="480" width="480" height="10" rx="5"/>
+        <rect x="70" y="504" width="470" height="10" rx="5"/>
+        <rect x="70" y="528" width="260" height="10" rx="5"/>
+    </g>
+    <rect x="70" y="580" width="480" height="120" fill="none" stroke="#a9adb4" stroke-width="2"/>
+    <path d="M70 620h480M70 660h480M250 580v120" stroke="#a9adb4" stroke-width="2"/>
+    <circle cx="460" cy="770" r="40" fill="none" stroke="#6b7fa8" stroke-width="3" opacity="0.7"/>
+    <path d="M90 780c30-30 60 10 90-12s40-20 70 4" fill="none" stroke="#3a3f47" stroke-width="3"/>
+</svg>

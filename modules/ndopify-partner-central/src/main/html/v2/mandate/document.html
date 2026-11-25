@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Document — Ndopify Partner Central</title>
+    <meta name="description" content="Un document du mandat : ses pages, son titre, sa suppression.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="apple-touch-icon" href="../assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="../assets/css/partner-central.css">
+    <link rel="stylesheet" href="../assets/css/rejoindre.css">
+    <link rel="stylesheet" href="../assets/css/home.css">
+    <link rel="stylesheet" href="../assets/css/listing.css">
+    <link rel="stylesheet" href="../assets/css/documents.css?v=20261125b">
+    <script src="../assets/js/partner-central.js?v=20261125a" defer></script>
+    <script src="../assets/js/mandate-documents.js?v=20261125b" defer></script>
+</head>
+<!--
+    PROTOTYPE (#329): one document of a mandate (GET /mandates/{id}/documents/{documentId}), opened from a row of the
+    mandate page's Documents section. Its header: the title (the type's name when it has none of its own), the status
+    pill, the type (when the title differs from it) and ONE upload date for the whole document ("Ajouté le 25/11/2026",
+    the tenant's dateFormat with the year). No image, no preview, no thumbnail, no size anywhere on the page.
+    Then the pages in order, one plain row each: "Page 1", "Voir" and the folded "Remplacer".
+    PRIVACY: nothing is shown inline. Production's "Voir" href is the page's presigned `url`
+    (MandateDocumentPage.url, about an hour), opened in a new tab (target="_blank" rel="noopener"); no page path nor
+    public URL is ever in the HTML. Here "Voir" opens a sample asset (assets/images/doc-sample-*.svg). A page left open
+    longer than the URL lives gets an expired link: a reload mints new ones.
+    Actions, each its own form so that the page works without JavaScript; all post-redirect-get back here with a flash:
+      - Remplacer (per page row, folded): a file input (camera or gallery on a phone) and "Remplacer la page"
+        (POST /mandates/{id}/documents/{documentId}/pages/{pageId}, multipart). The page keeps its rank and the document
+        is back to "Reçu" (the server resets its analysis). With JS: shrunk, sent straight to the storage
+        (attachTimeout: it replaces), the button reading "Envoi de la page 2…" meanwhile. ?replaceError=type|size|empty
+        &page=2 is the form again with its error, the row's box open; ?outcome=replaced&page=2 the flash.
+      - Renommer (folded): the title (blank or over 100 characters is a field error, unlike the add form where blank
+        means the type's name) and the document's version (hidden). ?errors=blank|long; ?conflict=1 is the 409
+        MANDATE_DOCUMENT_VERSION_CONFLICT: the form again with the current title and a message; ?outcome=renamed.
+      - Supprimer le document: without JS a link to ?delete=1, this same page with the confirmation panel open
+        (Supprimer posts POST /mandates/{id}/documents/{documentId}/delete, Annuler is a link back here); with JS the
+        same panel in place. Confirmed, back to the mandate page with "Document supprimé : …".
+    A closed or cancelled mandate shows the document read-only: its pages keep "Voir", no Remplacer, Renommer nor
+    Supprimer (?id=311). An unknown or deleted document (or another agent's) is the "not available" view here;
+    production redirects to the mandate page with the "changed" outcome. Out of scope: the extracted data and problems
+    (#331), adding or deleting a single page, changing the type (delete it and add it again).
+    PROTOTYPE: ?id=301&document=3103 (Titre foncier, 2 pages), 3102 (CNI, title = type), 3101 (Plan de bornage, 1 page,
+    À corriger); ?id=303&document=3302 / 3301; ?id=311&document=3112 (read-only). The static markup is 301/3103.
+-->
+<body data-page="mandate-document" data-assets="../assets/images/">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="../index.html">
+                <img src="../assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li>
+                        <a class="user-menu__account" href="../agent.html">
+                            <span class="user-menu__account-photo" aria-hidden="true" data-user-initials>SN</span>
+                            <span class="user-menu__account-text">
+                                <span class="user-menu__account-name">Serge Ngono</span>
+                                <span class="user-menu__account-email" data-user-email>serge@gmail.com</span>
+                            </span>
+                        </a>
+                    </li>
+                    <li><a class="user-menu__item" href="../profile/edit.html">Modifier mon profil</a></li>
+                    <li><a class="user-menu__item" href="../login.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link"><a href="../mandate.html?id=301#documents-title" data-back-link>← Retour au mandat</a></p>
+
+            <!-- PROTOTYPE only: production sends a missing document back to the mandate page ("changed"). -->
+            <div class="alert alert--warning" hidden data-document-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title">Ce document n'est plus disponible</h1>
+                    <p>Il a été supprimé, ou le mandat a changé entre-temps.</p>
+                    <p><a class="alert__link" href="../mandate.html?id=301#documents-title" data-back-link>Revenir au mandat</a></p>
+                </div>
+            </div>
+
+            <div class="stack" data-document>
+                <div class="doc-intro">
+                    <div class="doc-intro__head">
+                        <h1 data-document-heading>Titre foncier n° 4521 — Bonapriso</h1>
+                        <span class="status-tag status-tag--info" data-document-status><span class="visually-hidden">Statut : </span>En cours d'analyse</span>
+                    </div>
+                    <p class="mandate__meta" data-document-meta>Titre foncier · Ajouté le 25/11/2026</p>
+                    <p class="mandate__meta" data-document-mandate>Mandat n° 301 · Vendeur : Rodrigue Essomba</p>
+                </div>
+
+                <!-- Outcome of the last action: renamed, page replaced. -->
+                <div class="alert alert--success" role="status" tabindex="-1" hidden data-document-flash>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <p data-document-flash-text></p>
+                </div>
+
+                <div class="hint" hidden data-document-readonly>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <p data-document-readonly-text>Mandat annulé : ce document reste consultable, sans modification.</p>
+                </div>
+
+                <section class="doc-pages-section" aria-labelledby="pages-title">
+                    <h2 id="pages-title" class="doc-manage__title">Pages</h2>
+                    <ol class="doc-pages" data-document-pages>
+                        <li class="doc-page">
+                            <div class="doc-page__bar">
+                                <span class="doc-page__caption">Page 1</span>
+                                <!-- Production: href is the page's presigned url, nothing else; nothing is shown inline. -->
+                                <a class="doc-page__view" href="../assets/images/doc-sample-page.svg" target="_blank"
+                                   rel="noopener">Voir<span class="visually-hidden"> la page 1 (nouvel onglet)</span></a>
+                            </div>
+                            <details class="doc-page__replace">
+                                <summary>Remplacer<span class="visually-hidden"> la page 1</span></summary>
+                                <form class="form" method="post" enctype="multipart/form-data"
+                                      action="/mandates/301/documents/3103/pages/1" novalidate>
+                                    <div class="field">
+                                        <label class="field__label" for="page-1-file">Nouvelle image de la page 1</label>
+                                        <input class="input input--file" id="page-1-file" name="file" type="file"
+                                               accept="image/jpeg,image/png,image/webp"
+                                               aria-describedby="page-1-file-hint page-1-file-error">
+                                        <p class="field__hint" id="page-1-file-hint">JPEG, PNG ou WEBP, 5&nbsp;Mo au plus. Elle prend la place de cette page.</p>
+                                        <p class="field__error" id="page-1-file-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                                    </div>
+                                    <button type="submit" class="btn btn--primary btn--compact">Remplacer la page</button>
+                                </form>
+                            </details>
+                        </li>
+                        <li class="doc-page">
+                            <div class="doc-page__bar">
+                                <span class="doc-page__caption">Page 2</span>
+                                <a class="doc-page__view" href="../assets/images/doc-sample-page.svg" target="_blank"
+                                   rel="noopener">Voir<span class="visually-hidden"> la page 2 (nouvel onglet)</span></a>
+                            </div>
+                            <details class="doc-page__replace">
+                                <summary>Remplacer<span class="visually-hidden"> la page 2</span></summary>
+                                <form class="form" method="post" enctype="multipart/form-data"
+                                      action="/mandates/301/documents/3103/pages/2" novalidate>
+                                    <div class="field">
+                                        <label class="field__label" for="page-2-file">Nouvelle image de la page 2</label>
+                                        <input class="input input--file" id="page-2-file" name="file" type="file"
+                                               accept="image/jpeg,image/png,image/webp"
+                                               aria-describedby="page-2-file-hint page-2-file-error">
+                                        <p class="field__hint" id="page-2-file-hint">JPEG, PNG ou WEBP, 5&nbsp;Mo au plus. Elle prend la place de cette page.</p>
+                                        <p class="field__error" id="page-2-file-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                                    </div>
+                                    <button type="submit" class="btn btn--primary btn--compact">Remplacer la page</button>
+                                </form>
+                            </details>
+                        </li>
+                    </ol>
+                    <template data-document-page-template>
+                        <li class="doc-page">
+                            <div class="doc-page__bar">
+                                <span class="doc-page__caption" data-page-caption></span>
+                                <a class="doc-page__view" target="_blank" rel="noopener" data-page-link>Voir</a>
+                            </div>
+                            <details class="doc-page__replace" data-page-replace>
+                                <summary data-page-replace-summary>Remplacer</summary>
+                                <form class="form" method="post" enctype="multipart/form-data" novalidate>
+                                    <div class="field">
+                                        <label class="field__label">Nouvelle image</label>
+                                        <input class="input input--file" name="file" type="file"
+                                               accept="image/jpeg,image/png,image/webp">
+                                        <p class="field__hint" data-page-hint>JPEG, PNG ou WEBP, 5&nbsp;Mo au plus. Elle prend la place de cette page.</p>
+                                        <p class="field__error" hidden data-page-error><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                                    </div>
+                                    <button type="submit" class="btn btn--primary btn--compact" data-page-submit>Remplacer la page</button>
+                                </form>
+                            </details>
+                        </li>
+                    </template>
+                </section>
+
+                <!-- Renommer and Supprimer: rare, under the pages. Absent on a closed or cancelled mandate. -->
+                <div class="doc-manage" data-document-manage>
+                    <details class="edit-group" data-rename>
+                        <summary>
+                            <span class="edit-group__title">Renommer</span>
+                            <span class="edit-group__value">Changer le titre du document</span>
+                        </summary>
+                        <div class="edit-group__body">
+                            <!-- 409 MANDATE_DOCUMENT_VERSION_CONFLICT: the current title is back in the field. -->
+                            <div class="alert alert--warning" tabindex="-1" hidden data-rename-conflict>
+                                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                                <div>
+                                    <p class="alert__title">Le document a changé entre-temps</p>
+                                    <p>Il a été modifié depuis que vous l'avez ouvert (dans un autre onglet, par
+                                        exemple). Voici son titre actuel&nbsp;: vérifiez-le, puis enregistrez de nouveau.</p>
+                                </div>
+                            </div>
+                            <!-- Production: POST /mandates/301/documents/3103 (UpdateMandateDocumentRequest: title, version). -->
+                            <form class="form" method="post" action="/mandates/301/documents/3103" novalidate data-rename-form>
+                                <input type="hidden" name="version" value="1">
+                                <div class="field">
+                                    <label class="field__label" for="documentTitle">Titre</label>
+                                    <input class="input" id="documentTitle" name="title" type="text" maxlength="100"
+                                           autocomplete="off" value="Titre foncier n° 4521 — Bonapriso"
+                                           placeholder="Titre foncier"
+                                           aria-describedby="documentTitle-counter documentTitle-error">
+                                    <p class="field__counter" id="documentTitle-counter" data-title-counter>33 / 100</p>
+                                    <p class="field__error" id="documentTitle-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                                </div>
+                                <div class="form__actions form__actions--end">
+                                    <button type="submit" class="btn btn--primary">Enregistrer le titre</button>
+                                </div>
+                            </form>
+                        </div>
+                    </details>
+
+                    <div class="doc-manage__box">
+                        <a class="btn btn--danger" href="document.html?id=301&amp;document=3103&amp;delete=1"
+                           aria-expanded="false" aria-controls="delete-confirm" data-delete-open>Supprimer le document</a>
+                        <!-- Without JS: ?delete=1 renders this page with the panel open. -->
+                        <div id="delete-confirm" class="alert alert--warning" hidden data-delete-confirm>
+                            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                            <div>
+                                <p class="alert__title" tabindex="-1">Supprimer ce document&nbsp;?</p>
+                                <p><span data-delete-pages>Ses 2 pages sont supprimées</span> définitivement. Pour le
+                                    remplacer, ajoutez-le de nouveau depuis le mandat.</p>
+                                <!-- Production: POST /mandates/301/documents/3103/delete. -->
+                                <form method="post" action="/mandates/301/documents/3103/delete" data-delete-form>
+                                    <div class="assignment__actions">
+                                        <button type="submit" class="btn btn--danger">Supprimer</button>
+                                        <a class="btn btn--outline" href="document.html?id=301&amp;document=3103"
+                                           data-delete-cancel>Annuler</a>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

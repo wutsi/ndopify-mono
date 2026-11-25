@@ -1923,6 +1923,35 @@
                 ownershipDocuments: ["LAND_TITLE", "SURVEY_PLAN", "CERTIFICATE_OF_OWNERSHIP"],
                 comments: "Terrain borné, vendu avec titre foncier et plan de bornage."
             }
+        },
+        // #329: a buyer's search (SEARCH · SALE) cancelled after its approval, so that its *Documents* section shows
+        // read-only (no add, rename, replace nor delete). No card on index.html: opened by URL.
+        311: {
+            party: "client",
+            listingType: "SALE",
+            createdAt: -40,
+            initial: { status: "CANCELLED", acceptedAt: -38, requestedAt: -36, approvedAt: -34, closedAt: -3,
+                cancellationCode: "FOUND_VIA_OTHER_AGENT" },
+            contact: {
+                firstName: "Blaise",
+                lastName: "Nkoulou",
+                whatsapp: "+237677334455",
+                email: "b.nkoulou@example.com",
+                period: "Matin"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Makepe", "Kotto"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "VILLA",
+                rooms: "3",
+                parkings: "1",
+                area: 300,
+                amenities: ["dedicatedWaterMeter", "dedicatedElectricityMeter", "roadPaved"],
+                price: 60000000,
+                movingPeriod: "WITHIN_3_MONTHS",
+                comments: "Achat avec un prêt bancaire."
+            }
         }
     };
 

@@ -17,8 +17,10 @@
     <link rel="stylesheet" href="assets/css/home.css?v=20261123a">
     <link rel="stylesheet" href="assets/css/listing.css">
     <link rel="stylesheet" href="assets/css/visit.css">
-    <script src="assets/js/partner-central.js?v=20261123a" defer></script>
+    <link rel="stylesheet" href="assets/css/documents.css?v=20261125b">
+    <script src="assets/js/partner-central.js?v=20261125a" defer></script>
     <script src="assets/js/visit.js?v=20261118a" defer></script>
+    <script src="assets/js/mandate-documents.js?v=20261125b" defer></script>
 </head>
 <!--
     v2: a SALE mandate (?id=301, a seller's villa, signed; ?id=302, a seller's plot of land whose criteria show its
@@ -570,6 +572,102 @@
                                     </a>
                                 </div>
                             </article>
+                        </li>
+                    </template>
+                </section>
+
+                <!--
+                    #329: the mandate's documents (GET /v1/mandates/{id}/documents, newest first), on a LISTING and a
+                    SEARCH mandate at every shown status. After the day's work (contact, progress, visits, matches)
+                    and before the criteria: a reference the agent fills once, then opens when needed. One row per
+                    document, the whole row a link to its page (mandate/document.html, /mandates/{id}/documents/{id}):
+                    its type, the agent's title under it only when it differs from the type's name, its status pill
+                    (UPLOADED Reçu, EXTRACTING En cours d'analyse, EXTRACTED Analysé, FAILED À corriger, EXPIRED
+                    Expiré; until #330 every document is Reçu) and "Ajouté le 25/11/2026 · 2 pages" (the tenant's
+                    dateFormat with the year, never shortened on a phone). No extracted data nor problem here (#331).
+                    "Ajouter un document" opens mandate/document-new.html (/mandates/{id}/documents/new): beside the
+                    title, the contact's WhatsApp button style (btn--secondary btn--compact), the same whether the list
+                    is empty or not; absent on a CLOSED / CANCELLED mandate, which keeps the
+                    list read-only. The documents failing to load only affect this section ("unavailable"). The outcome
+                    of an add or a delete (flash documentOutcome) shows here, the page coming back to #documents-title.
+                    PROTOTYPE: ?id=301 (a seller: CNI, titre foncier, plan de bornage), ?id=303 (a buyer: CNI, bulletin
+                    de paie), ?id=302 / 201 / 104 once accepted (none: the empty state and its hint for that mandate),
+                    ?id=311 (a cancelled search: read-only); &docs=none, &docs=error, &documentOutcome=added|deleted|
+                    changed&documentTitle=…; &docs=reset forgets the session's changes. mandate-documents.js renders it.
+                -->
+                <section class="home-section documents" aria-labelledby="documents-title" data-documents>
+                    <div class="documents__head">
+                        <h2 id="documents-title">Documents</h2>
+                        <a class="btn btn--secondary btn--compact" href="mandate/document-new.html?id=301"
+                           data-documents-add>Ajouter un document</a>
+                    </div>
+                    <p class="documents__intro" data-documents-intro>Les pièces d'identité et de propriété du vendeur.
+                        Privées : jamais publiées ni montrées à un autre agent.</p>
+
+                    <div class="alert alert--success" role="status" tabindex="-1" hidden data-documents-flash>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <p data-documents-flash-text></p>
+                    </div>
+
+                    <div class="alert alert--warning" hidden data-documents-unavailable>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p class="alert__title">Documents indisponibles</p>
+                            <p>Les documents de ce mandat ne peuvent pas être affichés pour le moment. Rechargez la
+                                page dans quelques instants.</p>
+                        </div>
+                    </div>
+
+                    <div class="hint" hidden data-documents-readonly>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <p data-documents-readonly-text>Mandat fermé : les documents restent consultables, sans
+                            modification.</p>
+                    </div>
+
+                    <!-- As the server renders it for 301 (the script re-renders it from the sample of ?id=). -->
+                    <ul class="doc-list" data-documents-list>
+                        <li>
+                            <a class="doc-row" href="mandate/document.html?id=301&amp;document=3103">
+                                <span class="doc-row__icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg></span>
+                                <span class="doc-row__type">Titre foncier</span>
+                                <span class="status-tag status-tag--info"><span class="visually-hidden">Statut : </span>En cours d'analyse</span>
+                                <span class="doc-row__title">Titre foncier n° 4521 — Bonapriso</span>
+                                <span class="doc-row__meta">Ajouté le 25/11/2026 · 2 pages</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="doc-row" href="mandate/document.html?id=301&amp;document=3102">
+                                <span class="doc-row__icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg></span>
+                                <span class="doc-row__type">Carte nationale d'identité</span>
+                                <span class="status-tag"><span class="visually-hidden">Statut : </span>Reçu</span>
+                                <span class="doc-row__meta">Ajouté le 24/11/2026 · 2 pages</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="doc-row" href="mandate/document.html?id=301&amp;document=3101">
+                                <span class="doc-row__icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg></span>
+                                <span class="doc-row__type">Plan de bornage</span>
+                                <span class="status-tag status-tag--warning"><span class="visually-hidden">Statut : </span>À corriger</span>
+                                <span class="doc-row__meta">Ajouté le 20/11/2026 · 1 page</span>
+                            </a>
+                        </li>
+                    </ul>
+
+                    <div class="assignments__empty" hidden data-documents-empty>
+                        <p>Aucun document pour ce mandat.</p>
+                        <p data-documents-empty-hint>Ajoutez la pièce d'identité du vendeur et ses documents de
+                            propriété : titre foncier, certificat de propriété ou plan de bornage.</p>
+                    </div>
+
+                    <template data-documents-template>
+                        <li>
+                            <a class="doc-row">
+                                <span class="doc-row__icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg></span>
+                                <span class="doc-row__type" data-doc-type></span>
+                                <span class="status-tag" data-doc-status></span>
+                                <span class="doc-row__title" data-doc-title></span>
+                                <span class="doc-row__meta" data-doc-meta></span>
+                            </a>
                         </li>
                     </template>
                 </section>

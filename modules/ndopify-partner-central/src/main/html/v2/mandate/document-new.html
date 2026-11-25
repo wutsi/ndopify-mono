@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ajouter un document — Ndopify Partner Central</title>
+    <meta name="description" content="Ajouter un document au mandat : son type, son titre et ses pages.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="apple-touch-icon" href="../assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="../assets/css/partner-central.css">
+    <link rel="stylesheet" href="../assets/css/rejoindre.css">
+    <link rel="stylesheet" href="../assets/css/home.css">
+    <link rel="stylesheet" href="../assets/css/listing.css">
+    <link rel="stylesheet" href="../assets/css/documents.css?v=20261125b">
+    <script src="../assets/js/partner-central.js?v=20261125a" defer></script>
+    <script src="../assets/js/mandate-documents.js?v=20261125b" defer></script>
+</head>
+<!--
+    PROTOTYPE (#329): "Ajouter un document", reached from the mandate page's Documents section
+    (GET|POST /mandates/{id}/documents/new, its own page so that it works without JavaScript).
+    One multipart form (POST /v1/mandates/{id}/documents/upload without JS): the type (required), an optional title
+    (blank: the type's French name, a server rule; 100 characters at most) and the pages, one image each (JPEG, PNG or
+    WEBP, 5 Mo each, 10 at most, in the order chosen). Back on the mandate page (#documents-title) with "Document
+    ajouté : …", the new document first.
+    The type picker lists first the types that fit the mandate — LISTING: Carte nationale d'identité, Passeport, Titre
+    foncier, Certificat de propriété, Plan de bornage, Procuration; SEARCH: Carte nationale d'identité, Passeport,
+    Bulletin de paie, Accord de principe bancaire, Justificatif de fonds — then every other type under "Autres types"
+    ("Document" last). A native select with two optgroups: the phone's own picker, nothing to load.
+    Without JS: one native file input (multiple, no capture, so a phone offers both its camera and its gallery).
+    With JS (mandate-documents.js): "Prendre une photo" (capture, one page per shot) and "Choisir des images" (several),
+    the chosen files listed in order ("Page 1 · IMG_2041.jpg · 1,8 Mo", name and size read in the browser from the
+    File objects, no thumbnail), each removable before sending; on submit each page is
+    shrunk (2000 px, as KYC) and sent straight to the storage (direct-upload.js: presign → PUT → create), with
+    "Envoi de la page 2 sur 3…" over a bar and the buttons inactive (aria-disabled); any direct-upload failure falls
+    back to the form post. Reordering a page is not offered: remove it and add it again.
+    The form again after an error keeps the type and the title (never the pages: a browser can't re-fill a file
+    input), the error under its field: ?errors=missing (or 1: no type, no page), ?errors=file (a non-image),
+    ?errors=size (over 5 Mo), ?errors=server (a 5xx: the form again with a generic error).
+    PROTOTYPE: ?id=301 (a seller: identity and ownership first), ?id=303 (a buyer: identity and financing first);
+    ?id=311 (cancelled) and an unknown mandate show the locked view (production: back to the mandate page with the
+    "changed" outcome). The static markup is the server's render for 301.
+-->
+<body data-page="mandate-document-new">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="../index.html">
+                <img src="../assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li>
+                        <a class="user-menu__account" href="../agent.html">
+                            <span class="user-menu__account-photo" aria-hidden="true" data-user-initials>SN</span>
+                            <span class="user-menu__account-text">
+                                <span class="user-menu__account-name">Serge Ngono</span>
+                                <span class="user-menu__account-email" data-user-email>serge@gmail.com</span>
+                            </span>
+                        </a>
+                    </li>
+                    <li><a class="user-menu__item" href="../profile/edit.html">Modifier mon profil</a></li>
+                    <li><a class="user-menu__item" href="../login.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link"><a href="../mandate.html?id=301#documents-title" data-back-link>← Retour au mandat</a></p>
+
+            <!-- Locked: not the agent's mandate, or closed / cancelled since (no new document then). -->
+            <div class="alert alert--warning" hidden data-new-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title" data-new-locked-title>Ce mandat n'est pas disponible</h1>
+                    <p data-new-locked-text>Vous ne pouvez ajouter des documents qu'à vos mandats en cours.</p>
+                </div>
+            </div>
+
+            <div data-new>
+                <div class="page-intro">
+                    <h1>Ajouter un document</h1>
+                    <p class="mandate__meta" data-new-meta>Mandat n° 301 · Vendeur : Rodrigue Essomba</p>
+                </div>
+
+                <!-- A 5xx from ndopify-server: the form again, the type and title kept. -->
+                <div class="alert alert--error" tabindex="-1" hidden data-new-server-error>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <div>
+                        <p class="alert__title">Le document n'a pas pu être ajouté</p>
+                        <p>Réessayez dans quelques instants&nbsp;: choisissez de nouveau ses pages.</p>
+                    </div>
+                </div>
+
+                <!-- Production: action="/mandates/301/documents" (the BFF posts it to /v1/mandates/301/documents/upload). -->
+                <form class="form" method="post" enctype="multipart/form-data" action="/mandates/301/documents"
+                      novalidate data-new-form>
+                    <div class="field">
+                        <label class="field__label" for="documentType">Type de document</label>
+                        <select class="input select" id="documentType" name="type" required
+                                aria-describedby="documentType-error">
+                            <option value="">Choisissez un type</option>
+                            <optgroup label="Conseillés pour ce mandat" data-type-group="suggested">
+                                <option value="NATIONAL_ID">Carte nationale d'identité</option>
+                                <option value="PASSPORT">Passeport</option>
+                                <option value="LAND_TITLE">Titre foncier</option>
+                                <option value="CERTIFICATE_OF_OWNERSHIP">Certificat de propriété</option>
+                                <option value="SURVEY_PLAN">Plan de bornage</option>
+                                <option value="POWER_OF_ATTORNEY">Procuration</option>
+                            </optgroup>
+                            <optgroup label="Autres types" data-type-group="others">
+                                <option value="LEASE_CONTRACT">Contrat de bail</option>
+                                <option value="UTILITY_BILL">Facture d'eau ou d'électricité</option>
+                                <option value="TAX_RECEIPT">Quittance d'impôt</option>
+                                <option value="PAY_SLIP">Bulletin de paie</option>
+                                <option value="BANK_PRE_APPROVAL">Accord de principe bancaire</option>
+                                <option value="PROOF_OF_FUNDS">Justificatif de fonds</option>
+                                <option value="OTHER">Document</option>
+                            </optgroup>
+                        </select>
+                        <p class="field__error" id="documentType-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </div>
+
+                    <div class="field">
+                        <label class="field__label" for="documentTitle">Titre <span class="field__optional">(facultatif)</span></label>
+                        <input class="input" id="documentTitle" name="title" type="text" maxlength="100"
+                               autocomplete="off" placeholder="Le nom du type"
+                               aria-describedby="documentTitle-hint documentTitle-counter documentTitle-error">
+                        <p class="field__hint" id="documentTitle-hint">Pour reconnaître le document, par exemple
+                            «&nbsp;Titre foncier lot 12&nbsp;». Sans titre, il porte le nom de son type.</p>
+                        <p class="field__counter" id="documentTitle-counter" data-title-counter>0 / 100</p>
+                        <p class="field__error" id="documentTitle-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </div>
+
+                    <fieldset class="doc-pages-field" aria-describedby="pages-hint pages-error">
+                        <legend id="pages-legend">Pages</legend>
+                        <p class="field__hint" id="pages-hint">Une photo par page, dans l'ordre (recto, puis
+                            verso). JPEG, PNG ou WEBP, 5&nbsp;Mo par page, 10&nbsp;pages au plus.</p>
+
+                        <!-- Without JS: the native input (the phone offers its camera or its gallery). -->
+                        <div data-pages-native>
+                            <input class="input input--file" id="pages" name="pages" type="file" multiple
+                                   accept="image/jpeg,image/png,image/webp" aria-labelledby="pages-legend"
+                                   aria-describedby="pages-hint pages-error">
+                        </div>
+
+                        <!-- With JS: a photo per page or several images, then the pages in order. -->
+                        <div class="doc-pages-field" hidden data-pages-enhanced>
+                            <div class="photo-actions">
+                                <label class="btn btn--primary">Prendre une photo
+                                    <input class="upload__input" type="file" accept="image/jpeg,image/png,image/webp"
+                                           capture="environment" aria-describedby="pages-hint pages-error"
+                                           data-page-input></label>
+                                <label class="btn btn--outline">Choisir des images
+                                    <input class="upload__input" type="file" accept="image/jpeg,image/png,image/webp"
+                                           multiple aria-describedby="pages-hint pages-error" data-page-input></label>
+                            </div>
+                            <p class="checklist__progress" data-pages-count>Aucune page choisie.</p>
+                            <p class="visually-hidden" aria-live="polite" data-pages-live></p>
+                            <!-- The chosen files, in order: "Page 1", the name and the size (read in the browser),
+                                 removable. No thumbnail. -->
+                            <ol class="doc-files" hidden data-pages-list></ol>
+                            <template data-page-template>
+                                <li class="doc-file">
+                                    <span class="doc-file__index" data-page-index></span>
+                                    <span class="doc-file__info"><span class="doc-file__name" data-page-name></span>
+                                        <span aria-hidden="true">·</span> <span class="doc-file__size" data-page-size></span></span>
+                                    <button type="button" class="photo__delete doc-file__remove" data-page-remove><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="m6 6 8 8M14 6l-8 8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+                                </li>
+                            </template>
+                        </div>
+
+                        <p class="field__error" id="pages-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+
+                        <!-- While the pages are sent, one after another: which one, out of how many, and a bar. -->
+                        <div class="upload-progress" hidden data-pages-progress>
+                            <p class="upload-progress__text" aria-live="polite" data-pages-progress-text>Envoi de la page 1 sur 2…</p>
+                            <progress class="upload-progress__bar" max="2" value="0" data-pages-progress-bar>0 sur 2</progress>
+                        </div>
+                    </fieldset>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" href="../mandate.html?id=301#documents-title" data-back-link>Annuler</a>
+                        <button type="submit" class="btn btn--primary" data-new-submit>Ajouter le document</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
