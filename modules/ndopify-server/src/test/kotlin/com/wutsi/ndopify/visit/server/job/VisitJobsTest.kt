@@ -36,7 +36,7 @@ class VisitJobsTest : BaseEndpointIntegrationTest() {
             statuses(),
         )
         assertTrue(smtp.waitForIncomingEmail(5000, 4), "two e-mails per expired request")
-        assertTrue(smtp.receivedMessages.any { it.subject == "Je n'ai pas pu confirmer votre visite" })
+        assertTrue(smtp.receivedMessages.any { it.subject == "Votre recherche : appartement à Yaounde · mandat 1" })
     }
 
     @Test
@@ -68,7 +68,7 @@ class VisitJobsTest : BaseEndpointIntegrationTest() {
             statuses(),
         )
         assertTrue(smtp.waitForIncomingEmail(5000, 4), "both sides are told for each agent no-show")
-        assertTrue(smtp.receivedMessages.any { it.subject == "Notre visite n'a pas eu lieu" })
+        assertTrue(smtp.receivedMessages.any { it.subject == "Votre recherche : appartement à Yaounde · mandat 1" })
     }
 
     private fun statuses(): Map<Long, VisitStatus> =

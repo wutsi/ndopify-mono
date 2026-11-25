@@ -26,7 +26,7 @@ class RemindVisitsJobTest : BaseEndpointIntegrationTest() {
 
         assertTrue(smtp.waitForIncomingEmail(5000, 4), "two e-mails per reminded visit")
         assertEquals(
-            "Votre visite, c'est demain",
+            "Votre recherche : appartement à Yaounde · mandat 1",
             smtp.receivedMessages.first { it.allRecipients.single().toString().contains("ray.sponsible") }.subject,
         )
         assertNotNull(reminderSentAt(1L))

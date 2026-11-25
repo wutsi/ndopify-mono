@@ -21,7 +21,12 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-@Sql(value = ["/db/test/clean.sql", "/db/test/match/ProposeMatchEndpoint.sql"])
+@Sql(
+    value = ["/db/test/clean.sql", "/db/test/match/ProposeMatchEndpoint.sql"],
+    statements = [
+        "UPDATE T_MANDATE SET conversation_subject = 'Votre recherche : appartement à Bastos (Yaounde) · mandat 1' WHERE id = 1",
+    ],
+)
 class ProposeMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Autowired
     private lateinit var dao: MatchRepository
@@ -51,7 +56,10 @@ class ProposeMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
         val message = smtp.receivedMessages.single()
         assertEquals("Ray Sponsible <ray.sponsible@gmail.com>", message.allRecipients.single().toString())
-        assertEquals("Je vous propose un bien à Bastos (Yaounde)", message.subject)
+        assertEquals("Votre recherche : appartement à Bastos (Yaounde) · mandat 1", message.subject)
+        assertEquals("<mandate-1-1@wutsi.com>", message.getHeader("In-Reply-To")?.first())
+        assertEquals("<mandate-1-1@wutsi.com>", message.getHeader("References")?.first())
+        assertTrue(message.getHeader("Message-ID")?.first().orEmpty().startsWith("<mandate-1-1-"))
         val body = message.content.toString()
         assertTrue(body.contains("https://www.ndopify.com/match/1?token="))
         assertTrue(body.contains("Nice apartment"))
