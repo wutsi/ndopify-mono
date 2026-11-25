@@ -3,6 +3,7 @@ package com.wutsi.ndopify.listing.server.service.verifier
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.times
@@ -12,6 +13,7 @@ import com.sun.net.httpserver.HttpServer
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.server.dao.ListingImageRepository
+import com.wutsi.ndopify.listing.server.domain.ImageKind
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
 import org.junit.jupiter.api.AfterEach
@@ -219,5 +221,82 @@ class ListingVerifierImageTest {
     @Test
     fun `listing without id`() {
         assertFailsWith<IllegalStateException> { verifier.verify(ListingEntity()) }
+    }
+
+    @Test
+    fun `the kind of an accepted image is stored`() {
+        mockImages(
+            pending = listOf(image(11)),
+            verified = listOf(image(11, status = ImageStatus.VERIFIED), image(12, status = ImageStatus.VERIFIED)),
+        )
+        doReturn(ListingImageInfo(title = "Plan du rez-de-chaussée", valid = true, quality = 4, kind = "FLOORPLAN"))
+            .whenever(extractor).extract(any(), eq(listing))
+
+        assertTrue(verifier.verify(listing).success)
+
+        val image = argumentCaptor<ListingImageEntity>()
+        verify(dao).save(image.capture())
+        assertEquals(ImageKind.FLOORPLAN, image.firstValue.kind)
+        assertEquals(ImageStatus.VERIFIED, image.firstValue.status)
+    }
+
+    @Test
+    fun `the kind of a rejected image is stored too`() {
+        mockImages(pending = listOf(image(11)), verified = emptyList())
+        doReturn(ListingImageInfo(valid = false, quality = 2, kind = "MAP", reason = "Generic map"))
+            .whenever(extractor).extract(any(), any())
+
+        verifier.verify(listing)
+
+        val image = argumentCaptor<ListingImageEntity>()
+        verify(dao).save(image.capture())
+        assertEquals(ImageKind.MAP, image.firstValue.kind)
+        assertEquals(ImageStatus.REJECTED, image.firstValue.status)
+    }
+
+    @Test
+    fun `floor plans and maps only - missing photo`() {
+        mockImages(
+            pending = emptyList(),
+            verified = listOf(
+                image(11, status = ImageStatus.VERIFIED).copy(kind = ImageKind.MAP),
+                image(12, status = ImageStatus.VERIFIED).copy(kind = ImageKind.FLOORPLAN),
+            ),
+        )
+
+        val result = verifier.verify(listing)
+
+        assertEquals(false, result.success)
+        assertEquals(ErrorCode.LISTING_MISSING_PHOTO, result.errorCode)
+        verify(extractor, never()).extract(any(), any())
+    }
+
+    @Test
+    fun `too few images wins over the missing photo`() {
+        mockImages(
+            pending = emptyList(),
+            verified = listOf(image(11, status = ImageStatus.VERIFIED).copy(kind = ImageKind.MAP)),
+        )
+
+        val result = verifier.verify(listing)
+
+        assertEquals(false, result.success)
+        assertEquals(ErrorCode.LISTING_NOT_ENOUGH_IMAGES, result.errorCode)
+    }
+
+    @Test
+    fun `one photo among the maps is enough`() {
+        mockImages(
+            pending = emptyList(),
+            verified = listOf(
+                image(11, status = ImageStatus.VERIFIED).copy(kind = ImageKind.MAP),
+                image(12, status = ImageStatus.VERIFIED),
+            ),
+        )
+
+        val result = verifier.verify(listing)
+
+        assertTrue(result.success)
+        assertNull(result.errorCode)
     }
 }
