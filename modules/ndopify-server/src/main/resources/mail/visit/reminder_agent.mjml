@@ -31,7 +31,7 @@
                 {{#on_site}}
                 <mj-text>
                     <strong>{{customer_name}}</strong> vous attend sur place. Vous pouvez le joindre sur WhatsApp au
-                    <strong>{{customer_whatsapp}}</strong>.
+                    <strong>{{#customer_whatsapp_url}}<a href="{{customer_whatsapp_url}}">{{customer_whatsapp}}</a>{{/customer_whatsapp_url}}{{^customer_whatsapp_url}}{{customer_whatsapp}}{{/customer_whatsapp_url}}</strong>.
                 </mj-text>
                 <mj-text>
                     Demandez le code de visite au client et saisissez-le sur la page de la visite pour pointer son
@@ -41,7 +41,7 @@
                 {{^on_site}}
                 <mj-text>
                     Depuis le bien, appelez le client en vidéo sur WhatsApp au
-                    <strong>{{customer_whatsapp}}</strong>. Il vous lira son code de visite pendant l'appel.
+                    <strong>{{#customer_whatsapp_url}}<a href="{{customer_whatsapp_url}}">{{customer_whatsapp}}</a>{{/customer_whatsapp_url}}{{^customer_whatsapp_url}}{{customer_whatsapp}}{{/customer_whatsapp_url}}</strong>. Il vous lira son code de visite pendant l'appel.
                 </mj-text>
                 {{/on_site}}
 

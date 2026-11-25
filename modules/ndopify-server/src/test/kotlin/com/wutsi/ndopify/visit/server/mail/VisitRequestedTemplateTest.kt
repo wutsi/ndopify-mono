@@ -5,7 +5,9 @@ import com.github.mustachejava.resolver.ClasspathResolver
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.filter.MailFilterNull
 import dev.jcputney.mjml.MjmlRenderer
+import org.jsoup.Jsoup
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -22,6 +24,7 @@ class VisitRequestedTemplateTest {
         "recipient_name" to "Kim Possible",
         "customer_name" to "Ray Sponsible",
         "customer_whatsapp" to "+237600000001",
+        "customer_whatsapp_url" to "https://wa.me/237600000001",
         "listing_title" to "Nice apartment",
         "requested_date" to "01/12/2026",
         "requested_time" to "10:00",
@@ -41,6 +44,16 @@ class VisitRequestedTemplateTest {
         assertTrue(html.contains("Je viens avec ma femme"))
         assertTrue(html.contains("https://partner.ndopify.com/visits/1"))
         assertTrue(html.contains("Confirmer la visite"))
+        assertEquals("+237600000001", Jsoup.parse(html).selectFirst("""a[href="https://wa.me/237600000001"]""")?.text())
+        assertFalse(html.contains("?text="))
+    }
+
+    @Test
+    fun `without the customer WhatsApp URL`() {
+        val html = resolver.resolve(VisitRequestedMailet.TEMPLATE, context - "customer_whatsapp_url")
+
+        assertTrue(html.contains("+237600000001"))
+        assertTrue(Jsoup.parse(html).select("""a[href^="https://wa.me/"]""").isEmpty())
     }
 
     @Test

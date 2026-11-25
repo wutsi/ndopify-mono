@@ -100,4 +100,28 @@ class VisitReminderTemplateTest {
 
         assertEquals("Demain 02/12/2026 à 10:00 · Nice apartment", preview.text())
     }
+
+    private val agent = onSite + mapOf(
+        "recipient_name" to "Kim Possible",
+        "customer_name" to "Ray Sponsible",
+        "customer_whatsapp" to "+237600000001",
+        "customer_whatsapp_url" to "https://wa.me/237600000001",
+        "visit_url" to "https://partner.ndopify.com/visits/1",
+    )
+
+    @Test
+    fun `agent`() {
+        val html = resolver.resolve(VisitReminderMailet.TEMPLATE_AGENT, agent)
+
+        assertEquals("+237600000001", Jsoup.parse(html).selectFirst("""a[href="https://wa.me/237600000001"]""")?.text())
+        assertTrue(html.contains("Demandez le code de visite"))
+    }
+
+    @Test
+    fun `agent - without the customer WhatsApp URL`() {
+        val html = resolver.resolve(VisitReminderMailet.TEMPLATE_AGENT, agent - "customer_whatsapp_url")
+
+        assertTrue(html.contains("+237600000001"))
+        assertTrue(Jsoup.parse(html).select("""a[href^="https://wa.me/"]""").isEmpty())
+    }
 }
