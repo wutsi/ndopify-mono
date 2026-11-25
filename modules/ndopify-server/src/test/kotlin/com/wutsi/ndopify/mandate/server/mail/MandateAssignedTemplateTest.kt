@@ -31,6 +31,7 @@ class MandateAssignedTemplateTest {
         "agent_whatsapp_url" to "https://wa.me/237670000020",
         "agent_whatsapp_reply_url" to "https://wa.me/237670000020?text=Bonjour",
         "sale" to false,
+        "agent_customer_email" to true,
     )
 
     @Test
@@ -65,12 +66,13 @@ class MandateAssignedTemplateTest {
     }
 
     @Test
-    fun `a sale mandate is presented as a sale`() {
+    fun `a purchase search is still a search`() {
         val html = resolver.resolve(MandateAssignedMailet.TEMPLATE, context + mapOf("sale" to true))
         val text = Jsoup.parse(html).text()
 
-        assertTrue(text.contains("Je prends en charge la vente de votre bien."))
-        assertTrue(text.contains("d'organiser une visite de votre bien"))
-        assertFalse(text.contains("recherche de votre bien"))
+        assertTrue(text.contains("Je prends en charge la recherche de votre bien."))
+        assertTrue(text.contains("d'affiner vos critères de recherche"))
+        assertFalse(text.contains("vente de votre bien"))
+        assertFalse(text.contains("organiser une visite de votre bien"))
     }
 }

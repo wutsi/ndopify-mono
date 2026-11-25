@@ -15,8 +15,7 @@
                         Bonjour <strong>{{recipient_name}}</strong>,
                     </mj-text>
                     <mj-text>
-                        {{^sale}}Je prends en charge la recherche de votre bien.{{/sale}}{{#sale}}Je prends en charge la
-                        vente de votre bien.{{/sale}} Je serai votre interlocuteur pour ce mandat.
+                        Je prends en charge la recherche de votre bien. Je serai votre interlocuteur pour ce mandat.
                     </mj-text>
                     <mj-text>
                         Je me présente&#160;:
@@ -34,8 +33,7 @@
                     </mj-text>
                     <mj-text font-weight="bold">
                         Je vous contacterai très prochainement par téléphone afin de faire le point,
-                        {{^sale}}d'affiner vos critères de recherche{{/sale}}{{#sale}}d'organiser une visite de votre
-                        bien{{/sale}} et de répondre à vos premières questions.
+                        d'affiner vos critères de recherche et de répondre à vos premières questions.
                     </mj-text>
 
                     {{> mail/fragments/whatsapp-reply.mjml}}
