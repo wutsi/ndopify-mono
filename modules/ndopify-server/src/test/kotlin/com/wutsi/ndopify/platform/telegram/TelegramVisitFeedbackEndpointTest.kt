@@ -43,20 +43,19 @@ class TelegramVisitFeedbackEndpointTest : AuthorizationAwareEndpointIntegrationT
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
-        assertTrue(
-            text.firstValue.startsWith(
-                "⭐ Avis de Ray Sponsible : Nice apartment (Bastos) — 150 000 FCFA / mois",
-            ),
-        )
-        assertTrue(text.firstValue.contains("Pas intéressé"))
-        assertTrue(text.firstValue.contains("Raison : autre raison"))
+        assertTrue(text.firstValue.startsWith("⭐ Avis de visite : "), text.firstValue)
+        assertTrue(text.firstValue.lines()[1] == "Nice apartment - 150K/mois - Sur place", text.firstValue)
+        assertTrue(text.firstValue.contains("Pas intéressé · Raison : Autre raison"), text.firstValue)
         assertTrue(text.firstValue.contains("Commentaire : « Trop cher »"))
         assertFalse(text.firstValue.contains("Date:"))
         assertFalse(text.firstValue.contains("Client:"))
         assertFalse(text.firstValue.contains("1234"), "never the visit code")
         assertFalse(text.firstValue.contains("Rue 1.234"), "never the exact address")
         assertEquals(
-            listOf(TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1")),
+            listOf(
+                TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1"),
+                TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001"),
+            ),
             buttons.firstValue,
         )
         assertFalse(smtp.waitForIncomingEmail(1000, 1), "no e-mail for a linked agent")

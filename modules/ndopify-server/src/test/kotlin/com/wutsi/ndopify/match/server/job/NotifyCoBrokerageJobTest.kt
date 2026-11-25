@@ -10,7 +10,6 @@ import com.wutsi.ndopify.BaseEndpointIntegrationTest
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.match.server.mail.CoBrokerageMatchMailet
 import com.wutsi.ndopify.match.server.mail.MatchNotificationMailet
-import com.wutsi.ndopify.match.server.service.CoBrokerageInterestNotifier
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.bean.override.mockito.MockitoBean
@@ -18,6 +17,7 @@ import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/match/NotifyCoBrokerageJob.sql"])
@@ -33,9 +33,6 @@ class NotifyCoBrokerageJobTest : BaseEndpointIntegrationTest() {
 
     @MockitoBean
     private lateinit var coBrokerageMailet: CoBrokerageMatchMailet
-
-    @MockitoBean
-    private lateinit var interestNotifier: CoBrokerageInterestNotifier
 
     @Test
     fun `notifies the search agent of a co-brokerage match`() {
@@ -55,41 +52,30 @@ class NotifyCoBrokerageJobTest : BaseEndpointIntegrationTest() {
     }
 
     @Test
-    fun `notifies the listing agent when a search agent is interested`() {
+    fun `a co-brokerage interest sends no e-mail nor Telegram message`() {
         jobs.notifyAgents()
 
-        verify(interestNotifier).send(argThat { id == 30L }, any())
-
-        assertTrue(listingAgentNotifiedAt(4L))
-        assertTrue(listingAgentNotifiedAt(5L))
-        assertFalse(listingAgentNotifiedAt(6L)) // REJECTED
-        assertFalse(listingAgentNotifiedAt(7L)) // DISMISSED
-    }
-
-    @Test
-    fun `a closed search or a rented listing is not notified`() {
-        jobs.notifyAgents()
-
-        assertFalse(listingAgentNotifiedAt(8L)) // search CLOSED
-        assertFalse(listingAgentNotifiedAt(9L)) // listing RENTED
+        // rows 4 and 5 are the listing agent's interest fixtures: nothing marks them, nothing is sent for them
+        assertNull(listingAgentNotifiedAtOrNull(4L))
+        assertNull(listingAgentNotifiedAtOrNull(5L))
     }
 
     @Test
     fun `nothing is sent on the next run`() {
         jobs.notifyAgents()
-        reset(ownMailet, coBrokerageMailet, interestNotifier)
+        reset(ownMailet, coBrokerageMailet)
 
         jobs.notifyAgents()
 
         verify(ownMailet, never()).send(any(), any())
         verify(coBrokerageMailet, never()).send(any(), any())
-        verify(interestNotifier, never()).send(any(), any())
     }
 
     private fun notifiedAt(id: Long): Boolean =
         jdbc.queryForList("SELECT notified_at FROM T_MATCH WHERE id=?", id).single()["notified_at"] != null
 
-    private fun listingAgentNotifiedAt(id: Long): Boolean =
+    // The column stays in T_MATCH; only its mapping left with the digest
+    private fun listingAgentNotifiedAtOrNull(id: Long): Any? =
         jdbc.queryForList("SELECT listing_agent_notified_at FROM T_MATCH WHERE id=?", id)
-            .single()["listing_agent_notified_at"] != null
+            .single()["listing_agent_notified_at"]
 }

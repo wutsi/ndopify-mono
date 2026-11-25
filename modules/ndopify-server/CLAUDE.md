@@ -61,6 +61,18 @@ A `*Botlet` is the Telegram counterpart of a `*Mailet`: a `@Service` that builds
 `platform/telegram`'s `TelegramClient`, with no shared interface and no template; its `send` takes the recipient's chat
 id and throws when Telegram refuses. A `*CallbackHandler` in the same package answers the taps on a bot message's
 buttons. Ex: `MandateOfferBotlet` / `TelegramAssignmentCallbackHandler`.
+The agent's Telegram messages share one shape, distinct from the e-mails': an amount is compact and without currency
+(`500K/mois`, `25M`, `1,5M`, `TenantFormatter.compactNumber` through `MandateMailLabels.compactPrice`), a property is
+one line `{title} - {price}` (`ListingTelegramLabels`; a blank title falls back to
+`Appartement à louer, Yaoundé (Mballa II)`), with no neighbourhood nor `Prix :` / `Budget :` label after the title. A
+message tied to a customer or a co-agent carries `Contacter sur WhatsApp` (`PhoneNumberUtils.toWhatsappUrl`, never a
+number in the text, no button without one), a mandate message `Voir le mandat`
+(`{partnerCentralUrl}/mandates/{id}`, none without a `partnerCentralUrl`), a visit message `Voir la visite`
+(`{partnerCentralUrl}/visits/{id}`, first button). A visit message reads `<object> : <date/time>`, then
+`{title} - {price} - Sur place|Vidéo`, then `Agent : <organizer>` on a co-brokerage visit only (`VisitTelegramLabels`):
+the visit's agent is the organizer A, the listing's agent the co-agent B; A's messages contact B on WhatsApp and B's
+contact A. The e-mails keep their own wording and full amounts (`MandateMailLabels.price`, `MatchAnsweredLabels`,
+`VisitFeedbackLabels`, `CoBrokerageVisitLabels`), so a Telegram-only capitalisation or wording happens in the botlet.
 
 Scheduled jobs live in `<domain>/server/job/`: `KycJobs` (party), `MandateJobs` (mandate), `ContractJobs`
 (contract), `ListingJobs` (listing, every 15 minutes: `verify`, the UNDER_VERIFICATION listings through
@@ -226,10 +238,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   messages its agent over Telegram when its chat is linked (`MandateApprovedBotlet`, via
   `AgentTelegramService.chatId`) and e-mails the others (`MandateApprovedMailet`, `mail/mandate/approved.mjml`),
   falling back to the e-mail when Telegram fails (the failure is logged, without the token nor the URL; nothing for
-  a mandate without agent, or no longer APPROVED). The message opens with the signature's `✅` line, then the
-  mandate's property line — its type, its neighbourhoods and its budget or price — with a `Voir le mandat` button to `{partnerCentralUrl}/mandates/{id}`
-  (none without a `partnerCentralUrl`); the customer's name, the contract number and the validity dates stay on the
-  mandate page (summary only).
+  a mandate without agent, or no longer APPROVED). The message is the `✅ Le client a signé le mandat.` line, then
+  `Recherche : …` (a SEARCH) or `Bien : …` (a LISTING) with the mandate's one property line
+  (`MandateTelegramLabels`: criteria, neighbourhoods, compact ` - {price}`), and a `Contacter sur WhatsApp` button to the
+  customer (none without a number) before a `Voir le mandat` one to `{partnerCentralUrl}/mandates/{id}` (none without a
+  `partnerCentralUrl`); the customer's name, the contract number and the validity dates stay on the mandate page
+  (summary only).
   `POST /{id}/close` (APPROVED only, else 409 `MANDATE_NOT_APPROVED`) → `CLOSED` with `finalPrice`, `closedAt` and
   `age`: whole days from `approvedAt` to closing, the time a mandate takes to close. `POST /{id}/cancel` (any status but
   CLOSED / CANCELLED: 409 `MANDATE_ALREADY_CLOSED`) → `CANCELLED` with `cancellationCode` (default `OTHER`),
@@ -262,7 +276,11 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   night, had no candidate, or their re-dispatch failed). Each offer publishes `AssignmentCreatedEvent`:
   `AssignmentOfferNotifier` messages a linked agent (`AgentTelegramService.chatId(agentId)`) through
   `MandateOfferBotlet`, e-mails the others (`MandateOfferMailet`, `mail/mandate/offer.mjml`), and falls back to the
-  e-mail when Telegram fails (the failure is logged, without the token nor the URL). Tapping `Accepter` / `Refuser`
+  e-mail when Telegram fails (the failure is logged, without the token nor the URL). The offer's message stays short:
+  the mandate's one property line (plus a purchase's financing and documents), its expiry, then two rows of buttons —
+  `Accepter` / `Refuser`, and `Voir détails` to the offer's card on the Partner Central home page
+  (`{partnerCentralUrl}/#assignment-{id}`, none without a `partnerCentralUrl`) — so the agent decides from the chat.
+  Tapping `Accepter` / `Refuser`
   answers through `AssignmentService.acceptForAgent` / `declineForAgent` (agent-scoped, no JWT): the offer's message is
   edited, with a `Voir le mandat` URL button to the tenant's `{partnerCentralUrl}/mandates/{id}` page on accept (none
   without a `partnerCentralUrl`), and an offer already closed is only reported as `Ce mandat n'est plus disponible.`;
@@ -419,7 +437,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   publishes `ListingPublishedEvent`: `ListingPublishedNotifier` messages a linked agent (its link's chat) through
   `ListingPublishedBotlet` — the cover photo (`ListingImageService.cover`, none without one) is resized to 1280×1280 at
   quality 80 through the `ImageService` and handed to `sendPhoto` as a URL, or read from the storage and uploaded when
-  the URL can't be resized (local), with the text as caption and a `Voir l'annonce` keyboard link to
+  the URL can't be resized (local), with the text as caption — `🏠 Votre annonce est publiée :` and the listing's one
+  property line (`{title} - {price}`) — and a `Voir l'annonce` keyboard link to
   `{publicPortalUrl}{url}`; a failed resize, download or upload only drops the photo, never sending the original —
   and e-mails the others
   (`ListingPublishedMailet`, `mail/listing/published_agent.mjml`; no link without either), falling back to the e-mail
@@ -443,14 +462,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   has no viable own match (`existsViableOwnMatch`: PUBLISHED, not `DISMISSED` nor `REJECTED`), against the other
   agents' PUBLISHED listings of the same city and listing type (co-brokerage, `coBrokerage`, `V10_5`). Co-brokerage
   notifications (`V10_6`): the search agent is e-mailed the other agent's listing and contact when the match is
-  created; the listing agent is messaged over Telegram when its chat is linked (`CoBrokerageInterestBotlet`, one digest
-  built by `CoBrokerageInterestDigestBuilder`, split under Telegram's 4096 characters at listing boundaries, one
-  `Voir le mandat — <title>` button per listing on its own row, naming each interested agent without its contact (the
-  mandate page's proposal card carries the agent's WhatsApp link)), e-mailed otherwise (`CoBrokerageInterestMailet`), only
-  after a shortlist/proposal (`SHORTLISTED`, `PROPOSED`, `ACCEPTED`, `EXPIRED`); the e-mail is also the fallback of a
-  failed Telegram send, and `CoBrokerageInterestNotifier` throws when both fail, so `listingAgentNotifiedAt` stays null
-  for the next run. Both ride `MatchJobs.notifyAgents`;
-  `notifiedAt` is the forward one-shot and `listingAgentNotifiedAt` the reverse one. **A customer's interest** (a
+  created (`CoBrokerageNotificationService.notifySearchAgents`, through `CoBrokerageMatchMailet`). The listing agent
+  is told nothing there: it learns a co-agent's interest from the visits and the proposals themselves, never as a
+  digest of other agents' searches (the digest, its botlet, mailet and notifier are gone; the
+  `T_MATCH.listing_agent_notified_at` column stays unused). Both e-mails ride
+  `MatchJobs.notifyAgents` (`MatchNotificationService.notifyAgents` + `notifySearchAgents`), `notifiedAt` being the
+  one-shot mark. **A customer's interest** (a
   listing's public page): `ExistingSearchInterestEvent` → `MatchInterestService.registerInterest` records the pair
   `ACCEPTED` (`MatchService.acceptInterest`; `answeredAt` = now; any prior status reopened, the rejection reason cleared;
   an ACCEPTED row untouched; every Matcher rule but the customer's own property bypassed, `min-score` too), tells the
@@ -529,9 +546,11 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `MatchAnsweredNotifier` messages a linked agent (`AgentTelegramService.chatId(match.agentId)`) through
   `MatchAnsweredBotlet`, e-mails the others (`MatchAnsweredMailet`, `mail/match/answered.mjml`), and falls back to the
   e-mail when Telegram fails (logged, without the token nor the URL). The message names the customer and the
-  listing's property line (title, neighbourhood, price), then a rejection's reason and comment, with a
-  `Voir le mandat` button to `{partnerCentralUrl}/mandates/{mandateId}` (none without a `partnerCentralUrl`); one
-  without a title is `Bien n° <id>`. It's final, and the listing's agent is never told. An `EXPIRED` proposal notifies
+  listing's one property line (`{title} - {price}`, no `Achat —` / `Vente —` nor `Prix :`), then a rejection's reason
+  — capitalised for Telegram, the shared `MatchAnsweredLabels` keeping their lowercase wording — and comment. The
+  buttons contact the customer on WhatsApp (none without a number), then open
+  `{partnerCentralUrl}/mandates/{mandateId}` (none without a `partnerCentralUrl`); a blank title falls back to
+  `Bien à louer (…)`. It's final, and the listing's agent is never told. An `EXPIRED` proposal notifies
   nobody.
   **Expiry**: `MatchJobs.expire` (daily, `ndopify.match.expire.cron`) has `MatchProposalService.expireDue` move to
   `EXPIRED` the PROPOSED matches whose `proposedAt` is older than `ndopify.match.expire.days` (7), oldest first, 100
@@ -563,8 +582,10 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `batch-size` (100) per run. `MatchVisitAgentNudgeNotifier` messages a linked agent over Telegram
   (`MatchVisitAgentNudgeBotlet`) and e-mails the others (`MatchVisitAgentNudgeMailet`,
   `mail/match/agent_visit_nudge.mjml`), falling back to the e-mail on a failed send; both carry the customer, the
-  listing and its price, and two buttons — `Contacter sur WhatsApp` (`wa.me`) and `Planifier la visite`
-  (`{partnerCentralUrl}/mandates/{mandateId}#match-{matchId}`). The row is marked after the notifier returns (an agent
+  listing and its price, and two buttons — `Contacter sur WhatsApp` (`wa.me`) and `Voir le mandat`
+  (`{partnerCentralUrl}/mandates/{mandateId}#match-{matchId}`). The Telegram message is three lines —
+  `⏰ Appelez <customer> pour planifier la visite`, the listing's one property line, `Proposition acceptée il y a plus
+  de 48 h.` — with the WhatsApp button first, then `Voir le mandat`. The row is marked after the notifier returns (an agent
   with no channel at all is marked too: nothing to retry), and a failed send leaves it to the next run; a match
   answered, closed or visited meanwhile is skipped (`@Version` / re-check). The nudge goes to `match.agentId` only,
   never the listing agent, and never carries its customer.
@@ -601,32 +622,37 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `AgentTelegramService.chatId(listing.agent.id)`) and e-mails the others (`CoBrokerageVisitMailet`), falling back to
   the e-mail on a failed send. It keeps the mailet's four triggers and exclusions exactly: confirmation, the 24 h
   reminder, a cancellation after confirmation while the listing's mandate is still live, and a customer-caused
-  no-show; never `REQUESTED`/`EXPIRED`/`COMPLETED`/agent no-show or an own-inventory visit. The message keeps the
-  mailet's four events as short emoji lines naming the property, the slot and the type or reason, and closes with
-  `Visite organisée par <A>.`, because the bot is the sender (the e-mail's
-  agent footer has no equivalent); it carries one `Voir l'annonce` URL button to
-  `{partnerCentralUrl}/listings/{id}#visits-title`, or none without a `partnerCentralUrl`, and never A's customer nor
-  its data. The cancellation / no-show / type wording is shared by the e-mail and the message through
+  no-show; never `REQUESTED`/`EXPIRED`/`COMPLETED`/agent no-show or an own-inventory visit. The message uses the same
+  visit format as the search agent's (`VisitTelegramLabels`): `<object> : <date/time>`, the listing's property line and
+  its type, then `Agent : <A>` — the organizer is A, the recipient B — and only the event's own line (the
+  cancellation's actor, or `Le client ne s'est pas présenté`). It drops the e-mail's *Visite organisée par …* signature
+  and the *je vous y retrouve avec mon client* sentence, and carries `Voir la visite` to
+  `{partnerCentralUrl}/visits/{id}` then `Contacter sur WhatsApp` to A (each none without the URL / A's number). It
+  never A's customer nor its data. B's `Voir la visite` opens the visit page, still locked for B until the follow-up
+  story that gives the listing agent read-only access. The e-mail keeps its own wording through
   `CoBrokerageVisitLabels`. **Cancellation notification**:
   a cancellation is notified only when a party cancelled a **scheduled** visit — the agent over Telegram
   (`VisitCancelledBotlet` through `VisitCancelledNotifier`, via `AgentTelegramService.chatId`, with a `Voir la visite`
   button to `{partnerCentralUrl}/visits/{id}`) or e-mail (`VisitCancelledMailet.sendToAgent`), the customer by e-mail
   (`sendToCustomer`); a `SYSTEM` cancellation (mandate ended, sweep) and a cancelled `REQUESTED` visit notify nobody.
-  The message carries the date, the listing's property line (title, neighbourhood, price), the customer and the
-  reason, never the check-in code, the exact address nor the customer's token. **Request notification**:
+  The message reads `❌ Visite annulée : <slot>`, the listing's property line and type, `Agent : <B>` on a
+  co-brokerage visit, then `Annulée par le client · Motif : …` — the slot is the scheduled one, or the requested one
+  for a visit cancelled before confirmation — and never the check-in code, the exact address nor the customer's token.
+  A co-brokerage visit's cancellation goes to B through `CoBrokerageVisitBotlet` instead (see above). **Request
+  notification**:
   `VisitRequestedNotifier` messages the agent over Telegram when its chat is linked (`VisitRequestedBotlet`, via
   `AgentTelegramService.chatId`), e-mails it otherwise (`VisitRequestedMailet`, `mail/visit/requested.mjml`), and
-  falls back to the e-mail on a failed send (the failure is logged, without the token nor the URL). The message
-  carries the customer's name and, when it has a WhatsApp number, a `Contacter sur WhatsApp` button to its `wa.me` link
-  (never the number in the text), the listing (or `Bien n° <id>` without a title), the requested date and time
-  in the tenant's `timeZone`, the requested type (`Sur place` / `Visite vidéo`) and the note, and a `Voir la visite`
-  button to `{partnerCentralUrl}/visits/{id}` (none without a `partnerCentralUrl`). **Feedback notification**:
+  falls back to the e-mail on a failed send (the failure is logged, without the token nor the URL). The message reads
+  `📅 Demande de visite : <requested slot>`, the listing's property line and type, `Agent : <B>` on a co-brokerage visit,
+  then the note in guillemets (`Note : « … »`), with a `Voir la visite` button to `{partnerCentralUrl}/visits/{id}`
+  (none without a `partnerCentralUrl`) then a `Contacter sur WhatsApp` one to the customer's — or B's, on a co-brokerage
+  visit — `wa.me` link (never the number in the text). **Feedback notification**:
   `VisitFeedbackNotifier` messages the visit's agent when the customer answers the feedback form — over Telegram when
   its chat is linked (`VisitFeedbackBotlet`), e-mailed otherwise (`VisitFeedbackMailet`, `mail/visit/feedback.mjml`), with
   the e-mail as the fallback of a failed send (the failure is logged, without the token nor the URL). The message
-  carries the customer and the listing's property line (title, neighbourhood, price), the interest and, when not
-  interested, the reason and comment, and a `Voir la visite` button to `{partnerCentralUrl}/visits/{id}` (none
-  without one); never the visit's code, exact address or the customer's `public-portal` token. Only a new answer
+  reads `⭐ Avis de visite : <slot>`, the listing's property line and type, `Agent : <B>` on a co-brokerage visit, then
+  `Pas intéressé · Raison : …` (the reason capitalised for Telegram only) and the comment in guillemets, with the same
+  two buttons; never the visit's code, exact address or the customer's `public-portal` token. Only a new answer
   notifies: a 409 (`VISIT_FEEDBACK_ALREADY_SENT` / `VISIT_NOT_COMPLETED`) does not. `MandateClosedEvent` now also reaches
   `VisitMandateEventListener`, an async
   after-commit listener that cancels the mandate's `REQUESTED`/`CONFIRMED` visits (search side and listing side) as
@@ -635,7 +661,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   and e-mails). B never learns A's customer. `VisitJobs`: `expire` hourly moves a `REQUESTED` visit at least
   48 h old and past its requested slot to `EXPIRED`, `reminder` every 15 min notifies both sides 24 h ahead (once): the
   customer by e-mail (`VisitReminderMailet.sendCustomer`), the agent over Telegram when its chat is linked
-  (`VisitReminderNotifier` / `VisitReminderBotlet`) or by e-mail (`VisitReminderMailet.sendAgent`) otherwise and as the
+  (`VisitReminderNotifier` / `VisitReminderBotlet`, the shared visit format with `aujourd'hui` / `demain`, and no
+  video-call note: agents know how to hold a visit by video) or by e-mail (`VisitReminderMailet.sendAgent`) otherwise
+  and as the
   fallback of a failed send — the co-brokerage reminder keeps its own channel (`CoBrokerageVisitNotifier`) —, `noShow`
   hourly marks the `CONFIRMED` visits
   whose agent didn't check in 4 h after the time as `NO_SHOW` (both sides e-mailed). The delays and tolerances above are
@@ -714,8 +742,9 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
   others JSON-serialized, plus one `HttpFile`) beside its JSON `post`.
 - `platform/telegram` — the Telegram bot, wired by `config/platform/TelegramConfiguration`: `TelegramClient` (a thin
   Bot API client over `platform/util/http/Http`; `sendMessage`, `sendPhoto` and `editMessageText` give each button its
-  own keyboard row, while `sendMessageRows` sends the keyboard's rows given explicitly, ex: one row per listing of a
-  digest; `sendPhoto` uploads an image, or sends a URL Telegram fetches itself (the resized listing photo), with its
+  own keyboard row, while `sendMessageRows` sends the keyboard's rows given explicitly, ex: an offer's accept/refuse
+  row then its details row; `sendPhoto` uploads an image, or sends a URL Telegram fetches itself (the resized listing
+  photo), with its
   caption and keyboard), `TelegramUpdateHandler` (routes a `callback_query` to its
   `TelegramCallbackHandler` — the mandate domain's offer buttons — gives a `message` the reply of the first
   `TelegramCommand` bean that recognizes it — the agent domain's `/start` and `/connect` — else `OK`, and ignores

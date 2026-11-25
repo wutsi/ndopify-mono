@@ -19,30 +19,18 @@ import java.util.Date
  * agent ([CoBrokerageMatchMailet]), then its matches are marked notified, each agent on its own: a failed e-mail is
  * logged, its matches left to the next run, and the other agents still sent.
  *
- * The reverse: tells the listing agents that other agents' searches showed interest in their listings — over Telegram
- * when linked, by e-mail otherwise ([CoBrokerageInterestNotifier]), from one digest built per agent
- * ([CoBrokerageInterestDigestBuilder]) — the INTEREST statuses for an APPROVED mandate on a PUBLISHED listing, not told
- * yet, grouped by listing agent, each on its own for the same reason.
+ * The listing agents are not told here: a co-brokerage interest reaches them through the visits and the proposals
+ * themselves, never as a digest of other agents' searches.
  */
 @Service
 class CoBrokerageNotificationService(
     private val dao: MatchRepository,
     private val agentService: AgentService,
     private val mailet: CoBrokerageMatchMailet,
-    private val interestNotifier: CoBrokerageInterestNotifier,
-    private val digestBuilder: CoBrokerageInterestDigestBuilder,
     private val clock: Clock,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(CoBrokerageNotificationService::class.java)
-
-        // A search agent's interest worth telling the listing agent about
-        private val INTEREST_STATUSES = setOf(
-            MatchStatus.SHORTLISTED,
-            MatchStatus.PROPOSED,
-            MatchStatus.ACCEPTED,
-            MatchStatus.EXPIRED,
-        )
     }
 
     /** Returns the number of agents e-mailed. */
@@ -60,33 +48,6 @@ class CoBrokerageNotificationService(
             Unit
         },
     )
-
-    /** Returns the number of listing agents e-mailed. */
-    fun notifyListingAgents(): Int {
-        val pending = dao.findCoBrokerageInterestToNotify(
-            INTEREST_STATUSES,
-            MandateStatus.APPROVED,
-            ListingStatus.PUBLISHED,
-        )
-
-        // The interest mailet drops rows whose search agent no longer exists: never mark those as told
-        val knownSearchAgents = pending.mapNotNull { match -> match.mandate.agentId }
-            .distinct()
-            .filter { agentId -> agentService.findByIdOrNull(agentId) != null }
-            .toSet()
-        val notifiable = pending.filter { match -> match.mandate.agentId in knownSearchAgents }
-
-        return notify(
-            pending = notifiable,
-            label = "Listing agent",
-            recipientId = { match -> match.listing.agent.id },
-            send = { agent, matches -> interestNotifier.send(agent, digestBuilder.build(matches)) },
-            mark = { ids, now ->
-                dao.markListingAgentNotified(ids, now)
-                Unit
-            },
-        )
-    }
 
     private fun notify(
         pending: List<MatchEntity>,

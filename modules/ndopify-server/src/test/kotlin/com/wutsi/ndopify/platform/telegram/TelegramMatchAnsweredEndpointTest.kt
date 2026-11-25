@@ -48,7 +48,7 @@ class TelegramMatchAnsweredEndpointTest : AuthorizationAwareEndpointIntegrationT
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
         assertTrue(
             text.firstValue.startsWith(
-                "✅ Ray Sponsible a accepté la proposition : Small apartment (Bastos) — 140 000 FCFA / mois",
+                "✅ Ray Sponsible a accepté la proposition : Small apartment - 140K/mois",
             ),
         )
         assertEquals(
@@ -73,9 +73,9 @@ class TelegramMatchAnsweredEndpointTest : AuthorizationAwareEndpointIntegrationT
         verify(client).sendMessage(eq(1000L), text.capture(), any())
         assertTrue(
             text.firstValue.startsWith(
-                "❌ Ray Sponsible a refusé la proposition : Small apartment (Bastos) — 140 000 FCFA / mois",
+                "❌ Ray Sponsible a refusé la proposition : Small apartment - 140K/mois",
             ),
         )
-        assertTrue(text.firstValue.contains("Motif : trop cher · « Trop loin du travail. »"))
+        assertTrue(text.firstValue.contains("Motif : Trop cher · « Trop loin du travail. »"))
     }
 }

@@ -8,6 +8,7 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
+import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -30,7 +31,8 @@ class MandateApprovedBotletTest {
     private val tenantService = mock<TenantService>()
     private val locationService = mock<LocationService>()
     private val client = mock<TelegramClient>()
-    private val botlet = MandateApprovedBotlet(tenantService, locationService, client)
+    private val labels = MandateTelegramLabels(locationService)
+    private val botlet = MandateApprovedBotlet(tenantService, labels, client)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -42,6 +44,11 @@ class MandateApprovedBotletTest {
         id = 20L,
         party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible", email = "kim.possible@gmail.com"),
     )
+    private val customer = CustomerEntity(
+        id = 10L,
+        party = PartyEntity(id = 100L, firstName = "Ray", lastName = "Sponsible"),
+        whatsappNumber = "+237600000001",
+    )
 
     @BeforeTest
     fun setUp() {
@@ -52,7 +59,7 @@ class MandateApprovedBotletTest {
     }
 
     @Test
-    fun `a search approval carries its criteria and the mandate link`() {
+    fun `a search approval carries its criteria and the two buttons`() {
         val mandate = MandateEntity(
             id = 1L,
             tenantId = 1L,
@@ -70,20 +77,23 @@ class MandateApprovedBotletTest {
             pricePeriodicityType = PeriodicityType.MONTHLY,
         )
 
-        botlet.send(mandate, agent, 1000L)
+        botlet.send(mandate, customer, agent, 1000L)
 
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
         assertEquals(
             """
-            ✅ Le client a signé le mandat. Il va commencer à recevoir les offres.
-            Recherche : Location - Appartement (Bastos, Mvan) — 1 500 000 XAF / mois
+            ✅ Le client a signé le mandat.
+            Recherche : Location - Appartement (Bastos, Mvan) - 1,5M/mois
             """.trimIndent(),
             text.firstValue,
         )
         assertEquals(
-            listOf(TelegramButton("Voir le mandat", url = "https://partner.ndopify.com/mandates/1")),
+            listOf(
+                TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001"),
+                TelegramButton("Voir le mandat", url = "https://partner.ndopify.com/mandates/1"),
+            ),
             buttons.firstValue,
         )
 
@@ -111,14 +121,14 @@ class MandateApprovedBotletTest {
             pricePeriodicityType = PeriodicityType.UNKNOWN,
         )
 
-        botlet.send(mandate, agent, 1000L)
+        botlet.send(mandate, customer, agent, 1000L)
 
         val text = argumentCaptor<String>()
         verify(client).sendMessage(eq(1000L), text.capture(), any())
         assertEquals(
             """
-            ✅ Le client a signé le mandat. Il va commencer à recevoir les offres.
-            Bien : Vente - Villa (Bastos) — Prix : 25 000 000 XAF
+            ✅ Le client a signé le mandat.
+            Bien : Vente - Villa (Bastos) - 25M
             """.trimIndent(),
             text.firstValue,
         )
@@ -140,14 +150,14 @@ class MandateApprovedBotletTest {
             currencyCode = "XAF",
         )
 
-        botlet.send(mandate, agent, 1000L)
+        botlet.send(mandate, customer, agent, 1000L)
 
         val text = argumentCaptor<String>()
         verify(client).sendMessage(eq(1000L), text.capture(), any())
         assertEquals(
             """
-            ✅ Le client a signé le mandat. Il va commencer à recevoir les offres.
-            Recherche : Achat - Maison (Bastos, Mvan) — Budget : 250 000 000 XAF
+            ✅ Le client a signé le mandat.
+            Recherche : Achat - Maison (Bastos, Mvan) - 250M
             """.trimIndent(),
             text.firstValue,
         )
@@ -157,24 +167,40 @@ class MandateApprovedBotletTest {
     }
 
     @Test
-    fun `a tenant without a Partner Central URL gets no button`() {
-        doReturn(tenant.copy(partnerCentralUrl = null)).whenever(tenantService).findById(1L)
+    fun `a customer without a WhatsApp number gets the mandate button only`() {
         val mandate = MandateEntity(
-            id = 1L,
-            tenantId = 1L,
-            agentId = 20L,
-            status = MandateStatus.APPROVED,
-            mandateType = MandateType.SEARCH,
-            cityId = 2370201L,
-            listingType = ListingType.RENTAL,
-            price = 1500000,
-            currencyCode = "XAF",
-            pricePeriodicityType = PeriodicityType.MONTHLY,
+            id = 1L, tenantId = 1L, agentId = 20L, status = MandateStatus.APPROVED,
+            mandateType = MandateType.SEARCH, cityId = 2370201L, listingType = ListingType.RENTAL,
+            price = 1500000, currencyCode = "XAF", pricePeriodicityType = PeriodicityType.MONTHLY,
         )
 
-        botlet.send(mandate, agent, 1000L)
+        botlet.send(mandate, customer.copy(whatsappNumber = null), agent, 1000L)
 
-        verify(client).sendMessage(eq(1000L), any(), eq(emptyList<TelegramButton>()))
+        val buttons = argumentCaptor<List<TelegramButton>>()
+        verify(client).sendMessage(eq(1000L), any(), buttons.capture())
+        assertEquals(
+            listOf(TelegramButton("Voir le mandat", url = "https://partner.ndopify.com/mandates/1")),
+            buttons.firstValue,
+        )
+    }
+
+    @Test
+    fun `a tenant without a Partner Central URL keeps only the WhatsApp button`() {
+        doReturn(tenant.copy(partnerCentralUrl = null)).whenever(tenantService).findById(1L)
+        val mandate = MandateEntity(
+            id = 1L, tenantId = 1L, agentId = 20L, status = MandateStatus.APPROVED,
+            mandateType = MandateType.SEARCH, cityId = 2370201L, listingType = ListingType.RENTAL,
+            price = 1500000, currencyCode = "XAF", pricePeriodicityType = PeriodicityType.MONTHLY,
+        )
+
+        botlet.send(mandate, customer, agent, 1000L)
+
+        val buttons = argumentCaptor<List<TelegramButton>>()
+        verify(client).sendMessage(eq(1000L), any(), buttons.capture())
+        assertEquals(
+            listOf(TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001")),
+            buttons.firstValue,
+        )
     }
 
     @Test
@@ -192,14 +218,14 @@ class MandateApprovedBotletTest {
             pricePeriodicityType = PeriodicityType.MONTHLY,
         )
 
-        botlet.send(mandate, agent, 1000L)
+        botlet.send(mandate, customer, agent, 1000L)
 
         val text = argumentCaptor<String>()
         verify(client).sendMessage(eq(1000L), text.capture(), any())
         assertEquals(
             """
-            ✅ Le client a signé le mandat. Il va commencer à recevoir les offres.
-            Recherche : Location — 1 500 000 XAF / mois
+            ✅ Le client a signé le mandat.
+            Recherche : Location - 1,5M/mois
             """.trimIndent(),
             text.firstValue,
         )

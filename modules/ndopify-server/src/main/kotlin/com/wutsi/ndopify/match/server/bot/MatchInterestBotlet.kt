@@ -2,7 +2,6 @@ package com.wutsi.ndopify.match.server.bot
 
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
-import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.server.bot.ListingTelegramLabels
 import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
@@ -15,9 +14,9 @@ import org.springframework.stereotype.Service
 
 /**
  * Tells the agent over Telegram that its customer asked for a listing on its public page: the mirror of
- * `MatchInterestMailet`'s event line, with a `Contacter sur WhatsApp` button (when the customer has a number) and a
- * `Voir le mandat` one to the search's page on Partner Central, where it organises the visit. A sale listing's line
- * opens with `Vente — `, as its amount reads `Prix : `; a rental's line is unchanged.
+ * `MatchInterestMailet`'s event line — the customer's name, then the listing's one property line (`{title} - {price}`,
+ * no type word, no `Prix :`) — with a `Contacter sur WhatsApp` button (when the customer has a number) and a
+ * `Voir le mandat` one to the search's page on Partner Central, where it organises the visit.
  *
  * [send]'s recipient is the agent's chat, from #135's link (`AgentTelegramService.chatId`), never the agent's e-mail.
  * Telegram refusing the message throws ([com.wutsi.ndopify.platform.telegram.TelegramException]): the notifier then
@@ -31,10 +30,10 @@ class MatchInterestBotlet(
 ) {
     fun send(agent: AgentEntity, customer: CustomerEntity, mandate: MandateEntity, listing: ListingEntity, chatId: Long) {
         val tenant = tenantService.findById(mandate.tenantId!!)
-        val whatsapp = customer.whatsappNumber?.takeIf { it.isNotBlank() }?.let { number ->
+        val whatsapp = customer.whatsappNumber?.trim()?.ifBlank { null }?.let { number ->
             TelegramButton("Contacter sur WhatsApp", url = PhoneNumberUtils.toWhatsappUrl(number))
         }
-        val mandateButton = tenant.partnerCentralUrl?.removeSuffix("/")?.let { url ->
+        val mandateButton = tenant.partnerCentralUrl?.removeSuffix("/")?.takeIf { it.isNotBlank() }?.let { url ->
             TelegramButton("Voir le mandat", url = "$url/mandates/${mandate.id}")
         }
         sender.send(
@@ -46,12 +45,5 @@ class MatchInterestBotlet(
     }
 
     private fun text(customer: CustomerEntity, listing: ListingEntity, formatter: TenantFormatter): String =
-        "👀 ${customer.party.fullName()} s'intéresse à : " + typeWord(listing) + labels.titleAndPrice(listing, formatter)
-
-    /**
-     * "Vente — " before a sale listing's line, as its price already reads "Prix : " there; empty for a rental, whose
-     * message stays byte-identical.
-     */
-    private fun typeWord(listing: ListingEntity): String =
-        if (listing.listingType == ListingType.SALE) "Vente — " else ""
+        "👀 ${customer.party.fullName()} s'intéresse à : " + labels.titleAndPrice(listing, formatter)
 }

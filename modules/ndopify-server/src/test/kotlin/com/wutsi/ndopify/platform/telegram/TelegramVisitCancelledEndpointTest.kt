@@ -38,14 +38,15 @@ class TelegramVisitCancelledEndpointTest : AuthorizationAwareEndpointIntegration
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
-        assertTrue(
-            text.firstValue.startsWith(
-                "❌ Ray Sponsible a annulé la visite : Small apartment (Bastos) — 140 000 FCFA / mois",
-            ),
-        )
+        assertTrue(text.firstValue.startsWith("❌ Visite annulée : "), text.firstValue)
+        assertTrue(text.firstValue.contains("\nSmall apartment - 140K/mois - Sur place\n"), text.firstValue)
+        assertTrue(text.firstValue.endsWith("Annulée par le client"), text.firstValue)
         assertFalse(text.firstValue.contains("Motif"))
         assertEquals(
-            listOf(TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/2")),
+            listOf(
+                TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/2"),
+                TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001"),
+            ),
             buttons.firstValue,
         )
         assertFalse(smtp.waitForIncomingEmail(1000, 1), "no cancellation e-mail for a linked agent")

@@ -43,7 +43,7 @@ class MandateApprovedNotifierTest {
 
         notifier.send(mandate, contract, customer, agent)
 
-        verify(botlet).send(mandate, agent, 1000L)
+        verify(botlet).send(mandate, customer, agent, 1000L)
         verifyNoInteractions(mailet)
     }
 
@@ -51,7 +51,7 @@ class MandateApprovedNotifierTest {
     fun `a failed Telegram send falls back to the e-mail`() {
         doReturn(1000L).whenever(telegramService).chatId(20L)
         doThrow(TelegramException("Forbidden: bot was blocked by the user"))
-            .whenever(botlet).send(mandate, agent, 1000L)
+            .whenever(botlet).send(mandate, customer, agent, 1000L)
 
         notifier.send(mandate, contract, customer, agent)
 

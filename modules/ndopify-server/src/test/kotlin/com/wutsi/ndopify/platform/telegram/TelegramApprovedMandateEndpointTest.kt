@@ -67,10 +67,10 @@ class TelegramApprovedMandateEndpointTest : AuthorizationAwareEndpointIntegratio
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
         assertTrue(
             text.firstValue.startsWith(
-                "✅ Le client a signé le mandat. Il va commencer à recevoir les offres.",
+                "✅ Le client a signé le mandat.",
             ),
         )
-        assertTrue(text.firstValue.contains("Recherche : Location — 150 000 FCFA / mois"), text.firstValue)
+        assertTrue(text.firstValue.contains("Recherche : Location - 150K/mois"), text.firstValue)
         assertEquals(
             listOf(TelegramButton("Voir le mandat", url = "https://partner.ndopify.com/mandates/2")),
             buttons.firstValue,

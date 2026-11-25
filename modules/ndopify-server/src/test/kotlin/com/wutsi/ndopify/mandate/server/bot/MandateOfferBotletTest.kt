@@ -36,10 +36,12 @@ class MandateOfferBotletTest {
     private val tenantService = mock<TenantService>()
     private val locationService = mock<LocationService>()
     private val client = mock<TelegramClient>()
-    private val botlet = MandateOfferBotlet(tenantService, locationService, client)
+    private val labels = MandateTelegramLabels(locationService)
+    private val botlet = MandateOfferBotlet(tenantService, labels, client)
 
     private val tenant = TenantEntity(id = 1L, name = "Ndopify", timeZone = "Africa/Douala")
     private val agent = AgentEntity(id = 20L, party = PartyEntity(firstName = "Kim", lastName = "Possible"))
+    private val expiresAt = Date(1_800_000_000_000L)
 
     @BeforeTest
     fun setUp() {
@@ -49,100 +51,106 @@ class MandateOfferBotletTest {
     }
 
     @Test
-    fun `a search offer carries its criteria, its deadline and the two buttons`() {
-        val assignment = AssignmentEntity(
-            id = 99L,
-            mandate = MandateEntity(
+    fun `a search offer carries its criteria, its deadline and the two callbacks`() {
+        val assignment = assignment(
+            99L,
+            MandateEntity(
                 id = 1L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
                 listingType = ListingType.RENTAL, propertyType = PropertyType.APARTMENT, rooms = "2",
                 price = 150000, currencyCode = "XAF", pricePeriodicityType = PeriodicityType.MONTHLY,
             ),
-            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
         )
 
         botlet.send(assignment, agent, 1000L)
 
-        val text = argumentCaptor<String>()
-        val buttons = argumentCaptor<List<TelegramButton>>()
-        verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
         assertEquals(
             """
-            📋 Nouveau mandat : Location - Appartement (Bastos) — 150 000 XAF / mois
+            📋 Nouveau mandat : Location - Appartement (Bastos) - 150K/mois
             Expire le 15/01/2027 à 09:00.
             """.trimIndent(),
-            text.firstValue,
+            text(),
         )
-        assertEquals(listOf("Accepter", "Refuser"), buttons.firstValue.map { it.text })
-        assertEquals(listOf("accept:99", "decline:99"), buttons.firstValue.map { it.callbackData })
+        assertEquals(listOf(listOf("Accepter", "Refuser")), rows().map { row -> row.map { it.text } })
+        assertEquals(listOf(listOf("accept:99", "decline:99")), rows().map { row -> row.map { it.callbackData } })
+    }
+
+    @Test
+    fun `the offer's third button opens its card on Partner Central`() {
+        doReturn(tenant.copy(partnerCentralUrl = "https://partner.ndopify.com/")).whenever(tenantService).findById(1L)
+        val assignment = assignment(99L, MandateEntity(id = 1L, tenantId = 1L, listingType = ListingType.RENTAL))
+
+        botlet.send(assignment, agent, 1000L)
+
+        assertEquals(
+            listOf(
+                listOf("Accepter", "Refuser"),
+                listOf("Voir détails"),
+            ),
+            rows().map { row -> row.map { it.text } },
+        )
+        assertEquals("https://partner.ndopify.com/#assignment-99", rows()[1][0].url)
     }
 
     @Test
     fun `a land purchase offer carries its financing and its documents`() {
-        val assignment = AssignmentEntity(
-            id = 99L,
-            mandate = MandateEntity(
+        val assignment = assignment(
+            99L,
+            MandateEntity(
                 id = 5L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
                 listingType = ListingType.SALE, propertyType = PropertyType.LAND,
                 price = 10_000_000, currencyCode = "XAF",
                 financingType = FinancingType.CASH,
                 titleDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
             ),
-            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
         )
 
         botlet.send(assignment, agent, 1000L)
 
-        val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
         assertEquals(
             """
-            📋 Nouveau mandat : Achat - Terrain (Bastos) — Budget : 10 000 000 XAF · Financement : Comptant · Documents : Titre foncier · Plan de bornage
+            📋 Nouveau mandat : Achat - Terrain (Bastos) - 10M · Financement : Comptant · Documents : Titre foncier · Plan de bornage
             Expire le 15/01/2027 à 09:00.
             """.trimIndent(),
-            text.firstValue,
+            text(),
         )
     }
 
     @Test
     fun `a sale search's message names its budget and never a rental`() {
-        val assignment = AssignmentEntity(
-            id = 96L,
-            mandate = MandateEntity(
+        val assignment = assignment(
+            96L,
+            MandateEntity(
                 id = 6L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
                 listingType = ListingType.SALE, propertyType = PropertyType.APARTMENT,
                 price = 250_000_000, currencyCode = "XAF", mandateType = MandateType.SEARCH,
             ),
-            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
         )
 
         botlet.send(assignment, agent, 1000L)
 
-        val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
-        assertTrue(text.firstValue.startsWith("📋 Nouveau mandat : Achat - Appartement"))
-        assertTrue(text.firstValue.contains(" — Budget : 250 000 000 XAF"))
-        assertNoRentalWord(text.firstValue)
+        val text = text()
+        assertTrue(text.startsWith("📋 Nouveau mandat : Achat - Appartement"))
+        assertTrue(text.contains(" - 250M"))
+        assertNoRentalWord(text)
     }
 
     @Test
     fun `a sale listing's message names its price and never a rental`() {
-        val assignment = AssignmentEntity(
-            id = 97L,
-            mandate = MandateEntity(
+        val assignment = assignment(
+            97L,
+            MandateEntity(
                 id = 7L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
                 listingType = ListingType.SALE, propertyType = PropertyType.VILLA,
                 price = 250_000_000, currencyCode = "XAF", mandateType = MandateType.LISTING,
             ),
-            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
         )
 
         botlet.send(assignment, agent, 1000L)
 
-        val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
-        assertTrue(text.firstValue.startsWith("📋 Nouveau mandat : Vente - Villa"))
-        assertTrue(text.firstValue.contains(" — Prix : 250 000 000 XAF"))
-        assertNoRentalWord(text.firstValue)
+        val text = text()
+        assertTrue(text.startsWith("📋 Nouveau mandat : Vente - Villa"))
+        assertTrue(text.contains(" - 250M"))
+        assertNoRentalWord(text)
     }
 
     private fun assertNoRentalWord(text: String) {
@@ -152,222 +160,92 @@ class MandateOfferBotletTest {
     }
 
     @Test
-    fun `a listing offer carries the price, the area and the availability`() {
-        val assignment = AssignmentEntity(
-            id = 99L,
-            mandate = MandateEntity(
+    fun `a listing offer is short - no details line and no ownership documents`() {
+        val assignment = assignment(
+            99L,
+            MandateEntity(
                 id = 2L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
                 listingType = ListingType.SALE, propertyType = PropertyType.VILLA, rooms = "4",
-                price = 25_000_000, currencyCode = "XAF",
-                area = 250, availableFrom = LocalDate.of(2026, 12, 1), mandateType = MandateType.LISTING,
-            ),
-            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
-        )
-
-        botlet.send(assignment, agent, 1000L)
-
-        val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
-        assertEquals(
-            """
-            📋 Nouveau mandat : Vente - Villa (Bastos) — Prix : 25 000 000 XAF
-            4 pièces · 250 m² · disponible le 01/12/2026
-            Expire le 15/01/2027 à 09:00.
-            """.trimIndent(),
-            text.firstValue,
-        )
-    }
-
-    @Test
-    fun `a land sale listing offer carries its ownership documents`() {
-        val assignment = AssignmentEntity(
-            id = 99L,
-            mandate = MandateEntity(
-                id = 2L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
-                listingType = ListingType.SALE, propertyType = PropertyType.LAND,
-                price = 45_000_000, currencyCode = "XAF", area = 800,
+                price = 25_000_000, currencyCode = "XAF", area = 250,
                 availableFrom = LocalDate.of(2026, 12, 1), mandateType = MandateType.LISTING,
-                ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE, TitleDocumentType.SURVEY_PLAN),
-            ),
-            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
-        )
-
-        botlet.send(assignment, agent, 1000L)
-
-        val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
-        assertEquals(
-            """
-            📋 Nouveau mandat : Vente - Terrain (Bastos) — Prix : 45 000 000 XAF
-            800 m² · disponible le 01/12/2026 · document de propriété : Titre foncier · Plan de bornage
-            Expire le 15/01/2027 à 09:00.
-            """.trimIndent(),
-            text.firstValue,
-        )
-    }
-
-    @Test
-    fun `a sale of any type carries its ownership documents`() {
-        val assignment = AssignmentEntity(
-            id = 99L,
-            mandate = MandateEntity(
-                id = 2L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
-                listingType = ListingType.SALE, propertyType = PropertyType.VILLA,
-                price = 25_000_000, currencyCode = "XAF", mandateType = MandateType.LISTING,
                 ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE),
             ),
-            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
         )
 
         botlet.send(assignment, agent, 1000L)
 
-        val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
         assertEquals(
             """
-            📋 Nouveau mandat : Vente - Villa (Bastos) — Prix : 25 000 000 XAF
-            document de propriété : Titre foncier
+            📋 Nouveau mandat : Vente - Villa (Bastos) - 25M
             Expire le 15/01/2027 à 09:00.
             """.trimIndent(),
-            text.firstValue,
+            text(),
         )
+        val text = text()
+        listOf("pièces", "m²", "disponible le", "document de propriété").forEach { detail ->
+            assertFalse(text.contains(detail), "no '$detail' in the short offer: $text")
+        }
     }
 
     @Test
-    fun `a sale without ownership documents has no document line`() {
-        val assignment = AssignmentEntity(
-            id = 99L,
-            mandate = MandateEntity(
-                id = 2L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
-                listingType = ListingType.SALE, propertyType = PropertyType.VILLA,
-                price = 25_000_000, currencyCode = "XAF", mandateType = MandateType.LISTING,
-                ownershipDocuments = emptyList(),
-            ),
-            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
-        )
-
-        botlet.send(assignment, agent, 1000L)
-
-        val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
-        assertFalse(text.firstValue.contains("document de propriété"))
-    }
-
-    @Test
-    fun `a rental never carries ownership documents`() {
-        val assignment = AssignmentEntity(
-            id = 99L,
-            mandate = MandateEntity(
-                id = 2L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
-                listingType = ListingType.RENTAL, propertyType = PropertyType.VILLA,
-                price = 150_000, currencyCode = "XAF", pricePeriodicityType = PeriodicityType.MONTHLY,
-                mandateType = MandateType.LISTING,
-                ownershipDocuments = listOf(TitleDocumentType.LAND_TITLE),
-            ),
-            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
-        )
-
-        botlet.send(assignment, agent, 1000L)
-
-        val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
-        assertFalse(text.firstValue.contains("document de propriété"))
-    }
-
-    @Test
-    fun `a 5+ rooms listing keeps its rooms in the details line`() {
-        val assignment = AssignmentEntity(
-            id = 99L,
-            mandate = MandateEntity(
-                id = 4L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
-                listingType = ListingType.SALE, propertyType = PropertyType.VILLA, rooms = "5+",
-                price = 25_000_000, currencyCode = "XAF", mandateType = MandateType.LISTING,
-            ),
-            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
-        )
-
-        botlet.send(assignment, agent, 1000L)
-
-        val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
-        assertEquals(
-            """
-            📋 Nouveau mandat : Vente - Villa (Bastos) — Prix : 25 000 000 XAF
-            5+ pièces
-            Expire le 15/01/2027 à 09:00.
-            """.trimIndent(),
-            text.firstValue,
-        )
-    }
-
-    @Test
-    fun `a building sale offer words its units and its levels`() {
-        val assignment = AssignmentEntity(
-            id = 99L,
-            mandate = MandateEntity(
+    fun `a building sale offer is short too`() {
+        val assignment = assignment(
+            99L,
+            MandateEntity(
                 id = 8L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
                 listingType = ListingType.SALE, propertyType = PropertyType.BUILDING,
                 levels = 3, units = 12, area = 850,
                 price = 240_000_000, currencyCode = "XAF", mandateType = MandateType.LISTING,
                 availableFrom = LocalDate.of(2026, 12, 1),
             ),
-            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
         )
 
         botlet.send(assignment, agent, 1000L)
 
-        val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
         assertEquals(
             """
-            📋 Nouveau mandat : Vente - Immeuble (Bastos) — Prix : 240 000 000 XAF
-            3 étages · 12 unités · 850 m² · disponible le 01/12/2026
+            📋 Nouveau mandat : Vente - Immeuble (Bastos) - 240M
             Expire le 15/01/2027 à 09:00.
             """.trimIndent(),
-            text.firstValue,
+            text(),
         )
-        assertFalse(text.firstValue.contains("pièce"))
-    }
-
-    @Test
-    fun `a one level one unit building is singular`() {
-        val assignment = AssignmentEntity(
-            id = 99L,
-            mandate = MandateEntity(
-                id = 8L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
-                listingType = ListingType.SALE, propertyType = PropertyType.BUILDING,
-                levels = 1, units = 1, area = 85,
-                price = 240_000_000, currencyCode = "XAF", mandateType = MandateType.LISTING,
-                availableFrom = LocalDate.of(2026, 12, 1),
-            ),
-            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
-        )
-
-        botlet.send(assignment, agent, 1000L)
-
-        val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
-        assertTrue(text.firstValue.contains("1 étage · 1 unité · 85 m²"))
+        assertFalse(text().contains("étages"))
     }
 
     @Test
     fun `a mandate without neighbourhoods or a city has no dangling place`() {
-        val assignment = AssignmentEntity(
-            id = 98L,
-            mandate = MandateEntity(
+        val assignment = assignment(
+            98L,
+            MandateEntity(
                 id = 3L, tenantId = 1L, cityId = -1L, listingType = ListingType.RENTAL,
                 propertyType = PropertyType.APARTMENT, price = 150000, currencyCode = "XAF",
                 pricePeriodicityType = PeriodicityType.MONTHLY, mandateType = MandateType.SEARCH,
             ),
-            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
         )
 
         botlet.send(assignment, agent, 1000L)
 
-        val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
-        assertTrue(text.firstValue.startsWith("📋 Nouveau mandat : Location"))
-        assertFalse(text.firstValue.lines().first().contains(" à "), "no dangling city on the property line")
-        assertFalse(text.firstValue.contains("()"))
+        assertTrue(text().startsWith("📋 Nouveau mandat : Location - Appartement - 150K/mois"))
+        assertFalse(text().contains("()"))
     }
+
+    private fun text(): String {
+        val text = argumentCaptor<String>()
+        verify(client).sendMessageRows(eq(1000L), text.capture(), any())
+        return text.firstValue
+    }
+
+    private fun rows(): List<List<TelegramButton>> {
+        val rows = argumentCaptor<List<List<TelegramButton>>>()
+        verify(client).sendMessageRows(eq(1000L), any(), rows.capture())
+        return rows.firstValue
+    }
+
+    private fun assignment(id: Long, mandate: MandateEntity) = AssignmentEntity(
+        id = id,
+        mandate = mandate,
+        agentId = 20L,
+        status = AssignmentStatus.PENDING,
+        expiresAt = expiresAt,
+    )
 }

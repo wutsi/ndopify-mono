@@ -11,14 +11,11 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.agent.server.service.AgentService
 import com.wutsi.ndopify.listing.dto.ListingStatus
-import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.dto.MandateStatus
-import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.dao.MatchRepository
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.match.server.mail.CoBrokerageMatchMailet
-import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -30,17 +27,12 @@ class CoBrokerageNotificationServiceTest {
     private val dao = mock<MatchRepository>()
     private val agentService = mock<AgentService>()
     private val mailet = mock<CoBrokerageMatchMailet>()
-    private val interestNotifier = mock<CoBrokerageInterestNotifier>()
-    private val digestBuilder = mock<CoBrokerageInterestDigestBuilder>()
-    private val digest = CoBrokerageInterestDigest(TenantEntity(id = 1L), 1, emptyList())
     private val clock = Clock.fixed(Instant.parse("2026-11-11T10:00:00Z"), ZoneOffset.UTC)
     private val now = Date(clock.millis())
-    private val service =
-        CoBrokerageNotificationService(dao, agentService, mailet, interestNotifier, digestBuilder, clock)
+    private val service = CoBrokerageNotificationService(dao, agentService, mailet, clock)
 
     private val agent20 = AgentEntity(id = 20L)
     private val agent21 = AgentEntity(id = 21L)
-    private val listingAgent = AgentEntity(id = 30L)
 
     @Test
     fun `sends one email per search agent and marks the matches`() {
@@ -98,75 +90,5 @@ class CoBrokerageNotificationServiceTest {
 
         verify(mailet, never()).send(any(), any())
         verify(dao, never()).markNotified(any(), any())
-    }
-
-    @Test
-    fun `sends one email per listing agent and marks the interest`() {
-        val first = MatchEntity(id = 4L, agentId = 20L, status = MatchStatus.SHORTLISTED, coBrokerage = true,
-            mandate = MandateEntity(id = 1L, agentId = 20L),
-            listing = ListingEntity(id = 101L, agent = AgentEntity(id = 30L)))
-        val second = first.copy(id = 5L, status = MatchStatus.PROPOSED, mandate = first.mandate.copy(id = 2L))
-        doReturn(listOf(first, second)).whenever(dao)
-            .findCoBrokerageInterestToNotify(any(), eq(MandateStatus.APPROVED), eq(ListingStatus.PUBLISHED))
-        doReturn(agent20).whenever(agentService).findByIdOrNull(20L)
-        doReturn(listingAgent).whenever(agentService).findByIdOrNull(30L)
-        doReturn(digest).whenever(digestBuilder).build(listOf(first, second))
-
-        assertEquals(1, service.notifyListingAgents())
-
-        verify(interestNotifier).send(listingAgent, digest)
-        verify(dao).markListingAgentNotified(eq(listOf(4L, 5L)), eq(now))
-    }
-
-    @Test
-    fun `a failed reverse email leaves the interest for the next run`() {
-        val first = MatchEntity(id = 4L, agentId = 20L, status = MatchStatus.SHORTLISTED, coBrokerage = true,
-            mandate = MandateEntity(id = 1L, agentId = 20L),
-            listing = ListingEntity(id = 101L, agent = AgentEntity(id = 30L)))
-        doReturn(listOf(first)).whenever(dao)
-            .findCoBrokerageInterestToNotify(any(), eq(MandateStatus.APPROVED), eq(ListingStatus.PUBLISHED))
-        doReturn(agent20).whenever(agentService).findByIdOrNull(20L)
-        doReturn(listingAgent).whenever(agentService).findByIdOrNull(30L)
-        doReturn(digest).whenever(digestBuilder).build(listOf(first))
-        doThrow(RuntimeException("SMTP down")).whenever(interestNotifier).send(eq(listingAgent), any())
-
-        assertEquals(0, service.notifyListingAgents())
-
-        verify(dao, never()).markListingAgentNotified(any(), any())
-    }
-
-    @Test
-    fun `an unknown listing agent is skipped without marking`() {
-        val first = MatchEntity(id = 4L, agentId = 20L, status = MatchStatus.SHORTLISTED, coBrokerage = true,
-            mandate = MandateEntity(id = 1L, agentId = 20L),
-            listing = ListingEntity(id = 101L, agent = AgentEntity(id = 30L)))
-        doReturn(listOf(first)).whenever(dao)
-            .findCoBrokerageInterestToNotify(any(), eq(MandateStatus.APPROVED), eq(ListingStatus.PUBLISHED))
-        doReturn(agent20).whenever(agentService).findByIdOrNull(20L)
-        doReturn(null).whenever(agentService).findByIdOrNull(30L)
-
-        assertEquals(0, service.notifyListingAgents())
-
-        verify(interestNotifier, never()).send(any(), any())
-        verify(dao, never()).markListingAgentNotified(any(), any())
-    }
-
-    @Test
-    fun `an unknown interested search agent is not marked`() {
-        val first = MatchEntity(id = 4L, agentId = 20L, status = MatchStatus.SHORTLISTED, coBrokerage = true,
-            mandate = MandateEntity(id = 1L, agentId = 20L),
-            listing = ListingEntity(id = 101L, agent = AgentEntity(id = 30L)))
-        val second = first.copy(id = 5L, mandate = first.mandate.copy(id = 2L, agentId = 99L))
-        doReturn(listOf(first, second)).whenever(dao)
-            .findCoBrokerageInterestToNotify(any(), eq(MandateStatus.APPROVED), eq(ListingStatus.PUBLISHED))
-        doReturn(agent20).whenever(agentService).findByIdOrNull(20L)
-        doReturn(listingAgent).whenever(agentService).findByIdOrNull(30L)
-        doReturn(digest).whenever(digestBuilder).build(listOf(first))
-
-        assertEquals(1, service.notifyListingAgents())
-
-        verify(interestNotifier).send(listingAgent, digest)
-        verify(dao).markListingAgentNotified(eq(listOf(4L)), eq(now))
-        verify(dao, never()).markListingAgentNotified(eq(listOf(5L)), any())
     }
 }

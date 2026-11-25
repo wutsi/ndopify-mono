@@ -46,13 +46,9 @@ class TelegramVisitRequestedEndpointTest : AuthorizationAwareEndpointIntegration
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
-        assertTrue(
-            text.firstValue.startsWith(
-                "📅 Ray Sponsible demande une visite : Nice apartment (Bastos) — 150 000 FCFA / mois",
-            ),
-        )
-        assertTrue(text.firstValue.contains(" · Sur place"))
-        assertTrue(text.firstValue.contains("Note : Je viens avec ma femme"))
+        assertTrue(text.firstValue.startsWith("📅 Demande de visite : "), text.firstValue)
+        assertTrue(text.firstValue.contains("\nNice apartment - 150K/mois - Sur place\n"), text.firstValue)
+        assertTrue(text.firstValue.endsWith("Note : « Je viens avec ma femme »"), text.firstValue)
         assertEquals(
             listOf(
                 TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/$id"),
@@ -74,7 +70,8 @@ class TelegramVisitRequestedEndpointTest : AuthorizationAwareEndpointIntegration
 
         val text = argumentCaptor<String>()
         verify(client).sendMessage(eq(1000L), text.capture(), any())
-        assertTrue(text.firstValue.contains(" · Visite vidéo"))
+        assertTrue(text.firstValue.contains(" - Vidéo"), text.firstValue)
+        assertFalse(text.firstValue.contains("Sur place"))
     }
 
     private fun post(type: VisitType, note: String? = null) =

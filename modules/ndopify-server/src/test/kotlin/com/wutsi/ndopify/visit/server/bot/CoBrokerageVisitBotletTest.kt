@@ -24,6 +24,8 @@ import com.wutsi.ndopify.visit.dto.VisitParty
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
+import java.time.Clock
+import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Date
@@ -37,8 +39,12 @@ class CoBrokerageVisitBotletTest {
     private val tenantService = mock<TenantService>()
     private val locationService = mock<LocationService>()
     private val sender = mock<ListingTelegramSender>()
+
+    // 2026-11-25 10:00 in Douala: the visit is tomorrow
+    private val clock = Clock.fixed(Instant.parse("2026-11-25T09:00:00Z"), ZoneId.of("UTC"))
     private val labels = ListingTelegramLabels(locationService)
-    private val botlet = CoBrokerageVisitBotlet(tenantService, labels, sender)
+    private val visitLabels = VisitTelegramLabels(labels)
+    private val botlet = CoBrokerageVisitBotlet(tenantService, visitLabels, sender, clock)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -54,18 +60,20 @@ class CoBrokerageVisitBotletTest {
     // B, the listing agent: the recipient
     private val listingAgent = AgentEntity(
         id = 30L,
-        party = PartyEntity(id = 300L, firstName = "John", lastName = "Doe", email = "john.doe@gmail.com"),
+        party = PartyEntity(id = 300L, firstName = "Clarisse", lastName = "Mbarga"),
+        whatsappNumber = "+237699123456",
     )
 
     // A, the search agent: the organizer and the voice of the message
     private val searchAgent = AgentEntity(
         id = 20L,
-        party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible", email = "kim.possible@gmail.com"),
+        party = PartyEntity(id = 200L, firstName = "Ray", lastName = "Sponsible"),
+        whatsappNumber = "+237699000001",
     )
 
     private val listing = ListingEntity(
         id = 101L,
-        title = "Villa Bastos",
+        title = "Nice apartment",
         agent = listingAgent,
         cityId = 2370201L,
         neighborhoodId = 1001L,
@@ -81,7 +89,7 @@ class CoBrokerageVisitBotletTest {
         customerId = 10L,
         status = VisitStatus.CONFIRMED,
         type = VisitType.ON_SITE,
-        scheduledAt = date(2026, 12, 2, 10, 0),
+        scheduledAt = date(2026, 11, 26, 10, 30),
         code = "1234",
         note = "Client pressé",
     )
@@ -94,7 +102,7 @@ class CoBrokerageVisitBotletTest {
     }
 
     @Test
-    fun `confirmed - B is told why, A signs, one listing button`() {
+    fun `confirmed - B is told the slot, the property and who organizes it`() {
         botlet.sendConfirmed(visit, listing, searchAgent, 1000L)
 
         val text = argumentCaptor<String>()
@@ -102,49 +110,52 @@ class CoBrokerageVisitBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
             """
-            ✅ Visite confirmée : Villa Bastos (Bastos) — 150 000 FCFA / mois, 02/12/2026 à 10:00
-            Sur place — je vous y retrouve avec mon client.
-            Visite organisée par Kim Possible.
+            ✅ Visite confirmée : 26/11/2026 à 10:30
+            Nice apartment - 150K/mois - Sur place
+            Agent : Ray Sponsible
             """.trimIndent(),
             text.firstValue,
         )
         assertEquals(
-            listOf(TelegramButton("Voir l'annonce", url = "https://partner.ndopify.com/listings/101#visits-title")),
+            listOf(
+                TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1"),
+                TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237699000001"),
+            ),
             buttons.firstValue,
         )
     }
 
     @Test
-    fun `confirmed - a video visit says the customer is remote`() {
+    fun `confirmed - a video visit says video`() {
         botlet.sendConfirmed(visit.copy(type = VisitType.VIDEO), listing, searchAgent, 1000L)
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         assertEquals(
-            "Visite vidéo — je serai sur place pour vous ouvrir ; le client suivra en visio.",
+            "Nice apartment - 150K/mois - Vidéo",
             text.firstValue.lines()[1],
         )
-        assertFalse(text.firstValue.contains("je vous y retrouve avec mon client"))
+        assertFalse(text.firstValue.contains("Sur place"))
     }
 
     @Test
-    fun `reminder - the reminder wording`() {
+    fun `reminder - the day and the time`() {
         botlet.sendReminder(visit, listing, searchAgent, 1000L)
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         assertEquals(
             """
-            ⏰ Rappel : Villa Bastos (Bastos) — 150 000 FCFA / mois, 02/12/2026 à 10:00
-            Sur place — je vous y retrouve avec mon client.
-            Visite organisée par Kim Possible.
+            ⏰ Rappel de visite : demain à 10:30
+            Nice apartment - 150K/mois - Sur place
+            Agent : Ray Sponsible
             """.trimIndent(),
             text.firstValue,
         )
     }
 
     @Test
-    fun `cancelled - the actor's label, never the mandate reason`() {
+    fun `cancelled - the actor's label, never the cancellation reason`() {
         botlet.sendCancelled(
             visit.copy(cancelledBy = VisitParty.AGENT, cancellationReason = "Mandat clôturé"),
             listing,
@@ -156,9 +167,10 @@ class CoBrokerageVisitBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         assertEquals(
             """
-            ❌ Visite annulée : Villa Bastos (Bastos) — 150 000 FCFA / mois, 02/12/2026 à 10:00
-            J'ai annulé la visite.
-            Visite organisée par Kim Possible.
+            ❌ Visite annulée : 26/11/2026 à 10:30
+            Nice apartment - 150K/mois - Sur place
+            Agent : Ray Sponsible
+            Annulée par l'agent
             """.trimIndent(),
             text.firstValue,
         )
@@ -172,56 +184,86 @@ class CoBrokerageVisitBotletTest {
         botlet.sendCancelled(visit.copy(cancelledBy = VisitParty.SYSTEM), listing, searchAgent, 1000L)
 
         verify(sender, times(2)).send(eq(1000L), eq(listing), text.capture(), any())
-        assertTrue(text.allValues[0].lines()[1].contains("Le client a annulé la visite."))
-        assertTrue(text.allValues[1].lines()[1].contains("La visite est annulée."))
+        assertTrue(text.allValues[0].endsWith("Annulée par le client"))
+        assertTrue(text.allValues[1].endsWith("Annulée"))
     }
 
     @Test
-    fun `no-show - both customer-caused labels`() {
+    fun `no-show - the customer did not come`() {
         val text = argumentCaptor<String>()
         botlet.sendNoShow(visit.copy(noShowReason = VisitNoShowReason.CUSTOMER_ABSENT), listing, searchAgent, 1000L)
         botlet.sendNoShow(visit.copy(noShowReason = VisitNoShowReason.CODE_REFUSED), listing, searchAgent, 1000L)
 
         verify(sender, times(2)).send(eq(1000L), eq(listing), text.capture(), any())
-        assertTrue(
-            text.allValues[0].lines().first()
-                .startsWith("⚠️ Visite non honorée : Villa Bastos (Bastos) — 150 000 FCFA / mois, "),
-        )
-        assertTrue(text.allValues[0].lines()[1].contains("Le client ne s'est pas présenté à la visite."))
-        assertTrue(text.allValues[1].lines()[1].contains("Le client a refusé de donner le code de visite."))
+        assertTrue(text.allValues[0].startsWith("⚠️ Visite non honorée : 26/11/2026 à 10:30"))
+        assertTrue(text.allValues[0].endsWith("Le client ne s'est pas présenté"))
+        assertTrue(text.allValues[1].endsWith("Le client ne s'est pas présenté"))
     }
 
     @Test
-    fun `a listing without a title is named by its id`() {
+    fun `a blank title falls back to the usage and the place`() {
         val withoutTitle = listing.copy(title = null)
 
         botlet.sendConfirmed(visit, withoutTitle, searchAgent, 1000L)
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(withoutTitle), text.capture(), any())
-        assertTrue(text.firstValue.startsWith("✅ Visite confirmée : Bien n° 101 (Bastos) — 150 000 FCFA / mois, "))
+        assertEquals(
+            "Bien à louer, Yaounde (Bastos) - 150K/mois - Sur place",
+            text.firstValue.lines()[1],
+        )
     }
 
     @Test
-    fun `a tenant without Partner Central gets no button`() {
+    fun `a tenant without Partner Central keeps only the WhatsApp button`() {
         doReturn(tenant.copy(partnerCentralUrl = null)).whenever(tenantService).findById(1L)
 
         botlet.sendConfirmed(visit, listing, searchAgent, 1000L)
+
+        verify(sender).send(
+            eq(1000L),
+            eq(listing),
+            any(),
+            eq(listOf(TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237699000001"))),
+        )
+    }
+
+    @Test
+    fun `an organizer without a number keeps only the visit button`() {
+        botlet.sendConfirmed(visit, listing, searchAgent.copy(whatsappNumber = null), 1000L)
+
+        verify(sender).send(
+            eq(1000L),
+            eq(listing),
+            any(),
+            eq(listOf(TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1"))),
+        )
+    }
+
+    @Test
+    fun `no Partner Central and no number - no button`() {
+        doReturn(tenant.copy(partnerCentralUrl = null)).whenever(tenantService).findById(1L)
+
+        botlet.sendConfirmed(visit, listing, searchAgent.copy(whatsappNumber = " "), 1000L)
 
         verify(sender).send(eq(1000L), eq(listing), any(), eq(emptyList<TelegramButton>()))
     }
 
     @Test
     fun `the text never carries the customer nor its data`() {
-        botlet.sendConfirmed(visit, listing, searchAgent, 1000L)
+        val withAddress = listing.copy(landmark = "Rue 1.234", accessDirections = "Derrière la pharmacie")
+
+        botlet.sendConfirmed(visit.copy(feedbackComment = "Trop bruyant"), withAddress, searchAgent, 1000L)
 
         val text = argumentCaptor<String>()
-        verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
+        verify(sender).send(eq(1000L), eq(withAddress), text.capture(), any())
         assertFalse(text.firstValue.contains("Secret Client"))
         assertFalse(text.firstValue.contains("secret@example.com"))
         assertFalse(text.firstValue.contains("1234"))
         assertFalse(text.firstValue.contains("Client pressé"))
-        assertTrue(text.firstValue.contains("mon client"))
+        assertFalse(text.firstValue.contains("Trop bruyant"))
+        assertFalse(text.firstValue.contains("Rue 1.234"))
+        assertFalse(text.firstValue.contains("Derrière la pharmacie"))
     }
 
     private fun date(year: Int, month: Int, day: Int, hour: Int, minute: Int): Date =

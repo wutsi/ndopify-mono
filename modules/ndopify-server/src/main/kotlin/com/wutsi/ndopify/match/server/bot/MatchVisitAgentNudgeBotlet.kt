@@ -6,14 +6,15 @@ import com.wutsi.ndopify.listing.server.bot.ListingTelegramLabels
 import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
+import com.wutsi.ndopify.platform.util.PhoneNumberUtils
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.springframework.stereotype.Service
 
 /**
- * Nudges an agent over Telegram that its customer accepted a match more than 48 h ago and still has no visit: the
- * customer and the property in one `⏰` line, then the two things to do — call the customer on WhatsApp, then book the
- * visit on the mandate's page.
+ * Nudges an agent over Telegram that its customer accepted a match more than 48 h ago and still has no visit: a `⏰`
+ * line asking it to call the customer, the listing's one property line, then the 48 h fact. The buttons contact the
+ * customer on WhatsApp (when it has a number) and open the match on its mandate's page, where the agent books the visit.
  *
  * [send]'s recipient is the agent's chat, from #135's link (`AgentTelegramService.chatId`), never the agent's e-mail.
  * Telegram refusing the message throws ([com.wutsi.ndopify.platform.telegram.TelegramException]): the notifier then
@@ -27,20 +28,24 @@ class MatchVisitAgentNudgeBotlet(
 ) {
     fun send(match: MatchEntity, customer: CustomerEntity, agent: AgentEntity, chatId: Long) {
         val tenant = tenantService.findById(match.tenantId!!)
-        val digits = customer.whatsappNumber.orEmpty().filter(Char::isDigit)
-        val baseUrl = tenant.partnerCentralUrl?.removeSuffix("/")
-        val buttons = listOfNotNull(
-            digits.takeIf { it.isNotEmpty() }?.let { TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/$it") },
-            baseUrl?.let {
-                TelegramButton("Planifier la visite", url = "$it/mandates/${match.mandate.id}#match-${match.id}")
-            },
+        val whatsapp = customer.whatsappNumber?.trim()?.ifBlank { null }?.let { number ->
+            TelegramButton("Contacter sur WhatsApp", url = PhoneNumberUtils.toWhatsappUrl(number))
+        }
+        val mandateButton = tenant.partnerCentralUrl?.removeSuffix("/")?.takeIf { it.isNotBlank() }?.let { url ->
+            TelegramButton("Voir le mandat", url = "$url/mandates/${match.mandate.id}#match-${match.id}")
+        }
+        sender.send(
+            chatId,
+            match.listing,
+            text(match, customer, TenantFormatter(tenant)),
+            listOfNotNull(whatsapp, mandateButton),
         )
-        sender.send(chatId, match.listing, text(match, customer, TenantFormatter(tenant)), buttons)
     }
 
     private fun text(match: MatchEntity, customer: CustomerEntity, formatter: TenantFormatter): String =
         listOf(
-            "⏰ ${customer.party.fullName()} attend une visite : " + labels.titleAndPrice(match.listing, formatter),
-            "Acceptée il y a plus de 48 h. Appelez-le, puis planifiez la visite.",
+            "⏰ Appelez ${customer.party.fullName()} pour planifier la visite",
+            labels.titleAndPrice(match.listing, formatter),
+            "Proposition acceptée il y a plus de 48 h.",
         ).joinToString("\n")
 }
