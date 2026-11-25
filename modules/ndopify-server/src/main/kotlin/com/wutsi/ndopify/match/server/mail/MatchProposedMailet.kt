@@ -74,7 +74,7 @@ class MatchProposedMailet(
                         "online" to tenant.publicPortalUrl?.let { true },
                         "listings" to matches.map { match -> listing(match, tenant, formatter, token) },
                         "agent_whatsapp_reply_url" to AgentMailContext.replyUrl(agent, "des biens que je vous ai proposés"),
-                    ) + AgentMailContext.of(agent, formatter),
+                    ) + AgentMailContext.customer(agent, formatter),
                 ),
             ),
         )

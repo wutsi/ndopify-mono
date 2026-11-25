@@ -113,7 +113,7 @@ class MatchVisitReminderMailetTest {
                 "online" to true,
                 "listing_url" to "https://www.ndopify.com/match/1?token=xxx.yyy.zzz",
             ),
-            context() - "agent_whatsapp_reply_url",
+            context() - "agent_whatsapp_reply_url" - "agent_customer_email",
         )
         assertEquals(
             "Bonjour, je vous réponds au sujet de la visite du bien Nice apartment.",

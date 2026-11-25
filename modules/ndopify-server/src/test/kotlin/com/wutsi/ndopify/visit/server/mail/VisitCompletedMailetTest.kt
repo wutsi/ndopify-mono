@@ -99,7 +99,7 @@ class VisitCompletedMailetTest {
                 "agent_whatsapp" to "+237 6 99 00 00 01",
                 "agent_whatsapp_url" to "https://wa.me/237699000001",
             ),
-            context() - "agent_whatsapp_reply_url",
+            context() - "agent_whatsapp_reply_url" - "agent_customer_email",
         )
         val replyUrl = context()["agent_whatsapp_reply_url"] as String
         assertEquals(

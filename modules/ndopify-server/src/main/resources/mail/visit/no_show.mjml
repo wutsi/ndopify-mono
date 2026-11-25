@@ -1,13 +1,25 @@
 <mjml>
     <mj-head>
+        {{#agent_customer_email}}
         {{> mail/fragments/styles.mjml}}
         <mj-preview>{{visit_date}} · {{listing_title}}</mj-preview>
+        {{/agent_customer_email}}
+        {{^agent_customer_email}}
+        <mj-style inline="inline">
+            {{__css__}}
+        </mj-style>
+        {{/agent_customer_email}}
     </mj-head>
     <mj-body css-class="body">
         <mj-wrapper background-color="#ffffff" border-radius="30px" padding="20px">
             <mj-section padding="0">
                 <mj-column>
-                    <!-- Divider with class for CSS injection: the card's only brand mark -->
+                    {{^agent_customer_email}}
+                    <!-- Logo: the agent copy keeps the platform layout -->
+                    <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
+
+                    {{/agent_customer_email}}
+                    <!-- Divider with class for CSS injection: the customer copy's only brand mark -->
                     <mj-divider css-class="divider"/>
 
                     <!-- The listing's photo, if any, linked to the visit's page when there is one -->
@@ -39,17 +51,34 @@
                     {{/agent_recipient}}
 
                     {{#visit_url}}
+                    {{#agent_customer_email}}
                     <mj-button href="{{visit_url}}" css-class="btn-primary nd-btn" align="center">
                         Demander une autre visite
                     </mj-button>
+                    {{/agent_customer_email}}
+                    {{^agent_customer_email}}
+                    <mj-button href="{{visit_url}}" css-class="btn-primary" align="center">
+                        Demander une autre visite
+                    </mj-button>
+                    {{/agent_customer_email}}
                     {{/visit_url}}
 
                     {{> mail/fragments/whatsapp-reply.mjml}}
 
                     <!-- Sign-off -->
+                    {{#agent_customer_email}}
                     <mj-text>
-                        Cordialement,{{^agent_full_name}}<br/>L'équipe {{tenant_name}}{{/agent_full_name}}
+                        Cordialement,
                     </mj-text>
+                    {{/agent_customer_email}}
+                    {{^agent_customer_email}}
+                    <mj-spacer/>
+                    <mj-text>
+                        Cordialement,{{^agent_full_name}}
+                        <br/>
+                        L'équipe {{tenant_name}}{{/agent_full_name}}
+                    </mj-text>
+                    {{/agent_customer_email}}
                 </mj-column>
             </mj-section>
             {{> mail/fragments/agent-footer.mjml}}

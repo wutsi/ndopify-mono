@@ -30,6 +30,7 @@ class VisitCompletedTemplateTest {
         "agent_whatsapp" to "+237 6 99 00 00 01",
         "agent_whatsapp_url" to "https://wa.me/237699000001",
         "agent_whatsapp_reply_url" to "https://wa.me/237699000001?text=Bonjour",
+        "agent_customer_email" to true,
     )
 
     @Test

@@ -40,6 +40,7 @@ class VisitConfirmedTemplateTest {
         "code" to "1234",
         "visit_url" to "https://www.ndopify.com/visits/1?token=xxx.yyy.zzz",
         "by_agent" to false,
+        "agent_customer_email" to true,
     )
 
     private val agentContext = onSite + mapOf(

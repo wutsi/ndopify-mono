@@ -36,6 +36,7 @@ class VisitReminderTemplateTest {
         "address" to "Rue 1.234, Bonapriso, Derrière la pharmacie",
         "code" to "1234",
         "visit_url" to "https://www.ndopify.com/visits/1?token=xxx.yyy.zzz",
+        "agent_customer_email" to true,
     )
 
     @Test

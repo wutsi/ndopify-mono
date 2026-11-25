@@ -72,7 +72,7 @@ class MatchVisitReminderMailet(
                             agent,
                             "de la visite du bien ${listingTitle(listing)}",
                         ),
-                    ) + AgentMailContext.of(agent, formatter),
+                    ) + AgentMailContext.customer(agent, formatter),
                 ),
             ),
         )

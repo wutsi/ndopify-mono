@@ -143,7 +143,7 @@ class VisitConfirmedMailetTest {
                 "by_agent" to false,
                 "visit_url" to "https://www.ndopify.com/visits/1?token=xxx.yyy.zzz",
             ),
-            customerContext - "agent_whatsapp_reply_url",
+            customerContext - "agent_whatsapp_reply_url" - "agent_customer_email",
         )
         assertEquals(
             mapOf(

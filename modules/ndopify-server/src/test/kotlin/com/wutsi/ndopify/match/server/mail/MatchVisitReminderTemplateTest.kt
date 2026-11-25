@@ -34,6 +34,7 @@ class MatchVisitReminderTemplateTest {
         "price" to "150 000 FCFA / mois",
         "online" to true,
         "listing_url" to "https://www.ndopify.com/match/1",
+        "agent_customer_email" to true,
     )
 
     @Test

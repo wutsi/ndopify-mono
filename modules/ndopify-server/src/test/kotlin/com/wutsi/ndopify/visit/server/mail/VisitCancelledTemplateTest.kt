@@ -29,6 +29,7 @@ class VisitCancelledTemplateTest {
         "cancelled_by_label" to "Le client a annulé la visite.",
         "cancellation_reason" to "Empêchement",
         "visit_url" to "https://partner.ndopify.com/visits/1",
+        "tenant_logo_url" to "https://cdn.ndopify.com/logo.png",
     )
 
     private val customer = context + mapOf(
@@ -40,6 +41,7 @@ class VisitCancelledTemplateTest {
         "agent_whatsapp_reply_url" to "https://wa.me/237699000001?text=Bonjour",
         "cancelled_by_label" to "J'ai annulé la visite.",
         "visit_url" to "https://www.ndopify.com/visits/1?token=xxx.yyy.zzz",
+        "agent_customer_email" to true,
     )
 
     @Test
@@ -56,6 +58,7 @@ class VisitCancelledTemplateTest {
         assertTrue(html.contains("Me répondre sur WhatsApp"))
         assertTrue(html.contains("Envoyé via Ndopify"))
         assertTrue(text.contains("Cordialement, Kim Possible WhatsAp"))
+        assertFalse(html.contains("alt=\"Logo\""), "the customer copy keeps the divider, never the tenant logo")
     }
 
     @Test
@@ -69,6 +72,7 @@ class VisitCancelledTemplateTest {
         assertTrue(text.contains("Cordialement, L'équipe Ndopify"))
         assertFalse(html.contains("Me répondre sur WhatsApp"))
         assertFalse(html.contains("Je dois annuler"))
+        assertTrue(html.contains("alt=\"Logo\""), "the agent copy keeps today's tenant logo")
     }
 
     @Test

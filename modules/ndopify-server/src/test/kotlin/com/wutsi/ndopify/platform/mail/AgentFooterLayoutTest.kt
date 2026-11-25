@@ -32,6 +32,7 @@ class AgentFooterLayoutTest {
         "agent_whatsapp" to "+237 6 99 00 00 01",
         "agent_whatsapp_url" to "https://wa.me/237699000001",
         "tenant_logo_url" to "https://cdn.ndopify.com/logo.png",
+        "agent_customer_email" to true,
     )
 
     private val templates = listOf(
@@ -46,6 +47,16 @@ class AgentFooterLayoutTest {
         "/mail/visit/confirmed.mjml",
         "/mail/mandate/assigned.mjml",
         "/mail/mandate/assigned_listing.mjml",
+    )
+
+    // E-mails the story keeps out of scope. They set agent_full_name too, so only the customer-voice marker keeps
+    // them on today's footer.
+    private val outOfScopeTemplates = listOf(
+        "/mail/match/agent_visit_nudge.mjml",
+        "/mail/visit/co_brokerage_confirmed.mjml",
+        "/mail/visit/co_brokerage_reminder.mjml",
+        "/mail/visit/co_brokerage_cancelled.mjml",
+        "/mail/visit/co_brokerage_no_show.mjml",
     )
 
     @Test
@@ -119,6 +130,28 @@ class AgentFooterLayoutTest {
             assertEquals(1, details.parent()!!.children().count { isColumn(it) }, "$path: the empty photo column stays")
             assertTrue(details.attr("style").contains("width: 100%"), "$path: the details are not full width")
             assertTrue(details.text().contains("Envoyé via Ndopify"), "$path: the tenant line is missing")
+        }
+    }
+
+    @Test
+    fun `an e-mail outside the customer voice keeps today's footer`() {
+        outOfScopeTemplates.forEach { path ->
+            val doc = Jsoup.parse(resolver.resolve(path, context - "agent_customer_email"))
+            val details = assertNotNull(
+                doc.selectFirst("a[href='https://wa.me/237699000001']"),
+                "$path: the agent footer is missing",
+            ).parents().first { isColumn(it) }
+
+            assertNull(
+                details.parents().firstOrNull { isGroup(it) },
+                "$path: the footer uses the new mj-group layout",
+            )
+            val text = details.text()
+            assertTrue(
+                details.classNames().contains("mj-column-per-75"),
+                "$path: the details are not in today's 75% column",
+            )
+            assertFalse(text.contains("Envoyé via"), "$path: the footer carries the new tenant line")
         }
     }
 

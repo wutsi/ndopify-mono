@@ -37,6 +37,7 @@ class MatchProposedTemplateTest {
         "agent_whatsapp_reply_url" to "https://wa.me/237699000001?text=Bonjour",
         "online" to true,
         "listings" to listOf(listing),
+        "agent_customer_email" to true,
     )
 
     @Test

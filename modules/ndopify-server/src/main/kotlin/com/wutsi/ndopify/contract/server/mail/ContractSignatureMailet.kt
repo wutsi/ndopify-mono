@@ -36,7 +36,7 @@ class ContractSignatureMailet(
     fun send(contract: ContractEntity, contractParty: ContractPartyEntity, agent: AgentEntity? = null) {
         val tenant = tenantService.findById(contract.tenantId!!)
         val agentContext = agent?.let {
-            AgentMailContext.of(it, TenantFormatter(tenant)) +
+            AgentMailContext.customer(it, TenantFormatter(tenant)) +
                 mapOf("agent_whatsapp_reply_url" to AgentMailContext.replyUrl(it, "de votre contrat ${contract.number}"))
         } ?: emptyMap()
         mailService.send(

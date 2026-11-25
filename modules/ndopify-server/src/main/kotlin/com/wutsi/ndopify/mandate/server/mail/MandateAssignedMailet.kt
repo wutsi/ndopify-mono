@@ -52,7 +52,7 @@ class MandateAssignedMailet(
                         "sale" to MandateMailLabels.sale(mandate),
                         "place" to place,
                         "agent_whatsapp_reply_url" to AgentMailContext.replyUrl(agent, "de votre mandat à $place"),
-                    ) + AgentMailContext.of(agent, formatter)
+                    ) + AgentMailContext.customer(agent, formatter)
                 )
             )
         )

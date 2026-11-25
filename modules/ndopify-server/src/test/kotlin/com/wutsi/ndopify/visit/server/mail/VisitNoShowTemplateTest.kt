@@ -32,6 +32,8 @@ class VisitNoShowTemplateTest {
         "agent_whatsapp" to "+237 6 99 00 00 01",
         "agent_whatsapp_url" to "https://wa.me/237699000001",
         "agent_whatsapp_reply_url" to "https://wa.me/237699000001?text=Bonjour",
+        "agent_customer_email" to true,
+        "tenant_logo_url" to "https://cdn.ndopify.com/logo.png",
     )
 
     @Test
@@ -47,13 +49,15 @@ class VisitNoShowTemplateTest {
         assertTrue(html.contains("Me répondre sur WhatsApp"))
         assertTrue(html.contains("Envoyé via Ndopify"))
         assertFalse(html.contains("Votre agent"))
+        assertFalse(html.contains("alt=\"Logo\""), "the customer copy keeps the divider, never the tenant logo")
     }
 
     @Test
     fun `the agent is told to contact the customer`() {
         val html = resolver.resolve(
             VisitNoShowMailet.TEMPLATE,
-            context - "agent_full_name" - "agent_whatsapp_reply_url" - "agent_whatsapp" - "agent_whatsapp_url" +
+            context - "agent_full_name" - "agent_whatsapp_reply_url" - "agent_whatsapp" - "agent_whatsapp_url" -
+                "agent_customer_email" +
                 mapOf(
                     "other_party" to "Ray Sponsible",
                     "reason_label" to "Le client ne s'est pas présenté.",
@@ -64,6 +68,7 @@ class VisitNoShowTemplateTest {
         assertTrue(html.contains("Contactez votre client"))
         assertFalse(html.contains("demander une nouvelle visite"))
         assertFalse(html.contains("Me répondre sur WhatsApp"))
+        assertTrue(html.contains("alt=\"Logo\""), "the agent copy keeps today's tenant logo")
     }
 
     @Test

@@ -43,6 +43,7 @@ class MandateListingTemplateTest {
         "agent_whatsapp_url" to "https://wa.me/237670000020",
         "agent_whatsapp_reply_url" to "https://wa.me/237670000020?text=Bonjour",
         "sale" to false,
+        "agent_customer_email" to true,
     )
     private val assignedContext = context + assignedKeys
 

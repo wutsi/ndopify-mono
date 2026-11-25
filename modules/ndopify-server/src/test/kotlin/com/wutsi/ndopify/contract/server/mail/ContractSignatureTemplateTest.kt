@@ -31,6 +31,8 @@ class ContractSignatureTemplateTest {
         "agent_whatsapp" to "+237 6 99 00 00 01",
         "agent_whatsapp_url" to "https://wa.me/237699000001",
         "agent_whatsapp_reply_url" to "https://wa.me/237699000001?text=Bonjour",
+        "agent_customer_email" to true,
+        "tenant_logo_url" to "https://cdn.ndopify.com/logo.png",
     )
 
     @Test
@@ -44,13 +46,15 @@ class ContractSignatureTemplateTest {
         assertTrue(html.contains("Envoyé via Ndopify"))
         assertFalse(text.contains("L'équipe Ndopify"))
         assertFalse(text.contains("Nous vous invitons"))
+        assertFalse(html.contains("alt=\"Logo\""), "the agent copy keeps the divider, never the tenant logo")
     }
 
     @Test
     fun `a contract without an agent keeps the tenant voice`() {
         val html = resolver.resolve(
             "/mail/contract/signature_request.mjml",
-            context - "agent_full_name" - "agent_whatsapp" - "agent_whatsapp_url" - "agent_whatsapp_reply_url",
+            context - "agent_full_name" - "agent_whatsapp" - "agent_whatsapp_url" - "agent_whatsapp_reply_url" -
+                "agent_customer_email",
         )
 
         val text = Jsoup.parse(html).text()
@@ -59,6 +63,7 @@ class ContractSignatureTemplateTest {
         assertFalse(html.contains("Je vous ai préparé"))
         assertFalse(html.contains("Me répondre sur WhatsApp"))
         assertFalse(html.contains("wa.me/"))
+        assertTrue(html.contains("alt=\"Logo\""), "a contract without an agent keeps today's tenant logo")
     }
 
     @Test

@@ -71,7 +71,7 @@ class VisitCancelledMailet(
             label = LABEL_BY_AGENT,
             visitUrl = publicPortalUrl(tenant, visit, token),
             reason = visit.cancellationReason,
-            footer = AgentMailContext.of(agent, formatter) + mapOf(
+            footer = AgentMailContext.customer(agent, formatter) + mapOf(
                 "agent_whatsapp_reply_url" to AgentMailContext.replyUrl(
                     agent,
                     "de notre visite du bien ${listingTitle(listing)}$scheduled",

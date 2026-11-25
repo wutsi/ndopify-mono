@@ -74,7 +74,7 @@ class VisitNoShowMailet(
                         reason = reason,
                         visitUrl = customerUrl,
                         agentRecipient = false,
-                    ) + AgentMailContext.of(agent, TenantFormatter(tenant)) + mapOf(
+                    ) + AgentMailContext.customer(agent, TenantFormatter(tenant)) + mapOf(
                         "agent_whatsapp_reply_url" to AgentMailContext.replyUrl(
                             agent,
                             "de notre visite du bien ${listingTitle(listing)}",

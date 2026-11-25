@@ -128,7 +128,7 @@ class MatchProposedMailetTest {
                     ),
                 ),
             ),
-            context() - "agent_whatsapp_reply_url",
+            context() - "agent_whatsapp_reply_url" - "agent_customer_email",
         )
         assertEquals(
             "Bonjour, je vous réponds au sujet des biens que je vous ai proposés.",

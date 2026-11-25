@@ -63,7 +63,7 @@ class VisitCompletedMailet(
                             "de la visite du bien ${listingTitle(listing)} le ${formatter.date(visit.scheduledAt!!)} " +
                                 "à ${formatter.time(visit.scheduledAt)}",
                         ),
-                    ) + AgentMailContext.of(agent, formatter),
+                    ) + AgentMailContext.customer(agent, formatter),
                 ),
             ),
         )

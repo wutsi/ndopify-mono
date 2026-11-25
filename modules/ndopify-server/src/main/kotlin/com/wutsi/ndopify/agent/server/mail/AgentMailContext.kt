@@ -26,6 +26,14 @@ object AgentMailContext {
     )
 
     /**
+     * The context of a customer e-mail written in the agent's voice: [of] plus the marker the shared footer and the
+     * templates switching on (`agent_customer_email`), which only the in-scope customer mailets set. An e-mail to an
+     * agent, a co-brokerage e-mail and a platform e-mail keep [of], hence today's footer and layout.
+     */
+    fun customer(agent: AgentEntity, formatter: TenantFormatter): Map<String, Any?> =
+        of(agent, formatter) + mapOf("agent_customer_email" to true)
+
+    /**
      * The reply button's URL in a customer e-mail's body: the agent's WhatsApp chat, pre-filled with the e-mail's
      * own context (ex: "de votre mandat à Bonapriso, Douala"). Null without a number, so the template renders no button.
      */

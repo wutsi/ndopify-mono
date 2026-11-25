@@ -91,7 +91,7 @@ class MandateAssignedMailetTest {
                 "sale" to false,
                 "place" to "Bastos, Mvan (Yaounde)",
             ),
-            context.firstValue - "agent_whatsapp_reply_url",
+            context.firstValue - "agent_whatsapp_reply_url" - "agent_customer_email",
         )
 
         val email = argumentCaptor<Email>()

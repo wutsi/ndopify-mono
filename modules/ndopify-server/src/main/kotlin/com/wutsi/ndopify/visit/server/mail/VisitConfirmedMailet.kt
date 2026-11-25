@@ -86,7 +86,7 @@ class VisitConfirmedMailet(
                         "by_agent" to (visit.createdBy == VisitParty.AGENT),
                         "visit_url" to customerUrl,
                         "agent_whatsapp_reply_url" to AgentMailContext.replyUrl(agent, event),
-                    ) + AgentMailContext.of(agent, formatter),
+                    ) + AgentMailContext.customer(agent, formatter),
                 ),
             ),
         )

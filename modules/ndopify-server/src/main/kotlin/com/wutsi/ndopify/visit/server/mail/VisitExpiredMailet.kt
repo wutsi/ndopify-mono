@@ -63,7 +63,7 @@ class VisitExpiredMailet(
                         listing,
                         customerUrl,
                         agentRecipient = false,
-                    ) + AgentMailContext.of(agent, TenantFormatter(tenant)) + mapOf(
+                    ) + AgentMailContext.customer(agent, TenantFormatter(tenant)) + mapOf(
                         "agent_whatsapp_reply_url" to AgentMailContext.replyUrl(
                             agent,
                             "de votre demande de visite du bien ${listingTitle(listing)}",
