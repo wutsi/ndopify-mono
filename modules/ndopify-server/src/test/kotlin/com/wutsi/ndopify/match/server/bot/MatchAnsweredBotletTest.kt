@@ -108,7 +108,7 @@ class MatchAnsweredBotletTest {
     }
 
     @Test
-    fun `a sale acceptance names the purchase and its price`() {
+    fun `a sale acceptance names the property without a type word`() {
         val saleListing = listing.copy(listingType = ListingType.SALE, pricePeriodicityType = PeriodicityType.NONE)
         val sale = match.copy(listing = saleListing, mandate = mandate.copy(listingType = ListingType.SALE))
 
@@ -116,16 +116,16 @@ class MatchAnsweredBotletTest {
 
         val message = text(saleListing)
         assertEquals(
-            "✅ Ray Sponsible a accepté la proposition : Achat — Small apartment - 140K",
+            "✅ Ray Sponsible a accepté la proposition : Small apartment - 140K",
             message,
         )
-        listOf("location", "loyer", "logement").forEach { word ->
-            assertFalse(message.lowercase().contains(word), "no '$word' in a sale message")
+        listOf("achat", "vente", "location", "loyer", "logement").forEach { word ->
+            assertFalse(message.lowercase().contains(word), "no '$word' in the property line: $message")
         }
     }
 
     @Test
-    fun `a sale rejection names the purchase and its price`() {
+    fun `a sale rejection names the property without a type word`() {
         val saleListing = listing.copy(listingType = ListingType.SALE, pricePeriodicityType = PeriodicityType.NONE)
         val sale = match.copy(
             listing = saleListing,
@@ -138,8 +138,8 @@ class MatchAnsweredBotletTest {
 
         assertEquals(
             """
-            ❌ Ray Sponsible a refusé la proposition : Achat — Small apartment - 140K
-            Motif : trop cher
+            ❌ Ray Sponsible a refusé la proposition : Small apartment - 140K
+            Motif : Trop cher
             """.trimIndent(),
             text(saleListing),
         )
@@ -161,7 +161,7 @@ class MatchAnsweredBotletTest {
         assertEquals(
             """
             ❌ Ray Sponsible a refusé la proposition : Small apartment - 140K/mois
-            Motif : trop cher · « Trop loin du travail. »
+            Motif : Trop cher · « Trop loin du travail. »
             """.trimIndent(),
             text(),
         )
@@ -183,11 +183,34 @@ class MatchAnsweredBotletTest {
         assertEquals(
             """
             ❌ Ray Sponsible a refusé la proposition : Small apartment - 140K/mois
-            Motif : autre raison
+            Motif : Autre raison
             """.trimIndent(),
             text(),
         )
         assertFalse(text().contains("Commentaire"))
+    }
+
+    @Test
+    fun `a customer with a WhatsApp number is contacted before the mandate is opened`() {
+        botlet.send(match, customer.copy(whatsappNumber = "+237600000001"), agent, 1000L)
+
+        assertEquals(
+            listOf(
+                TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001"),
+                TelegramButton("Voir le mandat", url = "https://partner.ndopify.com/mandates/1"),
+            ),
+            buttons(),
+        )
+    }
+
+    @Test
+    fun `a blank WhatsApp number leaves no WhatsApp button`() {
+        botlet.send(match, customer.copy(whatsappNumber = " "), agent, 1000L)
+
+        assertEquals(
+            listOf(TelegramButton("Voir le mandat", url = "https://partner.ndopify.com/mandates/1")),
+            buttons(),
+        )
     }
 
     @Test
@@ -203,7 +226,7 @@ class MatchAnsweredBotletTest {
     }
 
     @Test
-    fun `a tenant without Partner Central gets no button`() {
+    fun `a tenant without Partner Central gets no mandate button`() {
         doReturn(tenant.copy(partnerCentralUrl = null)).whenever(tenantService).findById(1L)
 
         botlet.send(match, customer, agent, 1000L)

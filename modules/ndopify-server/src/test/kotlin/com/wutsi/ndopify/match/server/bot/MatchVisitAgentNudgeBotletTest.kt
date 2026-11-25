@@ -68,20 +68,21 @@ class MatchVisitAgentNudgeBotletTest {
     }
 
     @Test
-    fun send() {
+    fun `the nudge names the customer, the property and the two next steps`() {
         botlet.send(match, customer, agent, 1000L)
 
         assertEquals(
             """
-            ⏰ Ray Sponsible attend une visite : Nice apartment - 150K/mois
-            Acceptée il y a plus de 48 h. Appelez-le, puis planifiez la visite.
+            ⏰ Appelez Ray Sponsible pour planifier la visite
+            Nice apartment - 150K/mois
+            Proposition acceptée il y a plus de 48 h.
             """.trimIndent(),
             text(),
         )
         assertEquals(
             listOf(
                 TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237699000001"),
-                TelegramButton("Planifier la visite", url = "https://partner.ndopify.com/mandates/204#match-9001"),
+                TelegramButton("Voir le mandat", url = "https://partner.ndopify.com/mandates/204#match-9001"),
             ),
             buttons(),
         )
@@ -100,11 +101,11 @@ class MatchVisitAgentNudgeBotletTest {
     }
 
     @Test
-    fun `no whatsapp number - the visit button only`() {
+    fun `no whatsapp number - the mandate button only`() {
         botlet.send(match, customer.copy(whatsappNumber = null), agent, 1000L)
 
         assertEquals(
-            listOf(TelegramButton("Planifier la visite", url = "https://partner.ndopify.com/mandates/204#match-9001")),
+            listOf(TelegramButton("Voir le mandat", url = "https://partner.ndopify.com/mandates/204#match-9001")),
             buttons(),
         )
     }
@@ -125,8 +126,8 @@ class MatchVisitAgentNudgeBotletTest {
         botlet.send(withoutTitle, customer, agent, 1000L)
 
         assertEquals(
-            "⏰ Ray Sponsible attend une visite : Bien à louer (Bastos) - 150K/mois",
-            text(withoutTitle.listing).lines().first(),
+            "Bien à louer (Bastos) - 150K/mois",
+            text(withoutTitle.listing).lines()[1],
         )
     }
 

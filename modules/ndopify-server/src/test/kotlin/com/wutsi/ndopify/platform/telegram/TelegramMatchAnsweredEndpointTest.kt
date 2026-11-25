@@ -76,6 +76,6 @@ class TelegramMatchAnsweredEndpointTest : AuthorizationAwareEndpointIntegrationT
                 "❌ Ray Sponsible a refusé la proposition : Small apartment - 140K/mois",
             ),
         )
-        assertTrue(text.firstValue.contains("Motif : trop cher · « Trop loin du travail. »"))
+        assertTrue(text.firstValue.contains("Motif : Trop cher · « Trop loin du travail. »"))
     }
 }

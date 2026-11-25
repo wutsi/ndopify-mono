@@ -81,7 +81,7 @@ class MatchInterestBotletTest {
     }
 
     @Test
-    fun `a sale listing's line names its type and its price`() {
+    fun `a sale listing is named by its property line alone`() {
         val sale = listing.copy(listingType = ListingType.SALE, pricePeriodicityType = PeriodicityType.NONE)
 
         botlet.send(agent, customer, mandate.copy(listingType = ListingType.SALE), sale, 1000L)
@@ -89,7 +89,7 @@ class MatchInterestBotletTest {
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(sale), text.capture(), any())
         assertEquals(
-            "👀 Ray Sponsible s'intéresse à : Vente — Nice apartment - 150K",
+            "👀 Ray Sponsible s'intéresse à : Nice apartment - 150K",
             text.firstValue,
         )
         listOf("location", "loyer", "logement").forEach { word ->
