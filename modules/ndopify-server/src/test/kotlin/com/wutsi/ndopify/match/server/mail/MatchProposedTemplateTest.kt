@@ -5,8 +5,11 @@ import com.github.mustachejava.resolver.ClasspathResolver
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.filter.MailFilterNull
 import dev.jcputney.mjml.MjmlRenderer
+import org.jsoup.Jsoup
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /** Renders the template, which [MatchProposedMailetTest] doesn't (its resolver is a mock). */
@@ -31,6 +34,7 @@ class MatchProposedTemplateTest {
         "agent_photo_url" to "https://cdn.ndopify.com/agent.jpg",
         "agent_whatsapp" to "+237 6 99 00 00 01",
         "agent_whatsapp_url" to "https://wa.me/237699000001",
+        "agent_whatsapp_reply_url" to "https://wa.me/237699000001?text=Bonjour",
         "online" to true,
         "listings" to listOf(listing),
     )
@@ -54,6 +58,7 @@ class MatchProposedTemplateTest {
         assertTrue(html.contains("<a href=\"https://www.ndopify.com/match/1\""))
         // The shared signature footer: the agent's photo next to its name and WhatsApp
         assertFalse(html.contains("Votre agent"))
+        assertTrue(html.contains("Me répondre sur WhatsApp"))
         assertTrue(html.contains("https://wa.me/237699000001"))
         assertTrue(html.contains("src=\"https://cdn.ndopify.com/agent.jpg\""))
     }
@@ -93,17 +98,48 @@ class MatchProposedTemplateTest {
     }
 
     @Test
-    fun `without page - answered to the agent`() {
+    fun `without page - answered on WhatsApp`() {
         val html = resolver.resolve(
             MatchProposedMailet.TEMPLATE,
             context - "online" + mapOf("listings" to listOf(listing - "listing_url")),
         )
 
         assertFalse(html.contains("Voir le bien et répondre"))
-        assertTrue(html.contains("Répondez-moi"))
+        assertTrue(html.contains("Écrivez-moi sur WhatsApp"))
         assertTrue(html.contains("j'organiserai la visite"))
         assertTrue(html.contains("dites-le-moi"))
+        assertFalse(html.contains("Répondez-moi"))
         assertTrue(html.contains("src=\"https://cdn.ndopify.com/7.jpg\"")) // The photo, without a link
         assertFalse(html.contains("href=\"\""))
+    }
+
+    @Test
+    fun `the copy speaks as the agent, replies on WhatsApp`() {
+        val html = resolver.resolve(MatchProposedMailet.TEMPLATE, context)
+        val text = Jsoup.parse(html).text()
+
+        assertTrue(html.contains("Me répondre sur WhatsApp"))
+        assertTrue(html.contains("Envoyé via Ndopify"))
+        assertFalse(text.contains("Votre agent"))
+        assertFalse(text.contains("L'équipe Ndopify"))
+    }
+
+    @Test
+    fun `the preview carries the event`() {
+        val one = assertNotNull(
+            Jsoup.parse(resolver.resolve(MatchProposedMailet.TEMPLATE, context))
+                .selectFirst("div[style*='display: none']"),
+        )
+        assertEquals("Un bien qui correspond à votre recherche", one.text())
+
+        val many = assertNotNull(
+            Jsoup.parse(
+                resolver.resolve(
+                    MatchProposedMailet.TEMPLATE,
+                    context + mapOf("count" to 2, "listings" to listOf(listing, listing)),
+                ),
+            ).selectFirst("div[style*='display: none']"),
+        )
+        assertEquals("2 biens qui correspondent à votre recherche", many.text())
     }
 }

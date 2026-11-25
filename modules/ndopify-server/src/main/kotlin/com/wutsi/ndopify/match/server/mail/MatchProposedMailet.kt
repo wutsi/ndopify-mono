@@ -39,8 +39,8 @@ class MatchProposedMailet(
     private val imageService: ImageService,
 ) {
     companion object {
-        const val SUBJECT_ONE = "{{tenant_name}}: {{agent_name}} vous propose un bien à {{place}}"
-        const val SUBJECT_MANY = "{{tenant_name}}: {{agent_name}} vous propose {{count}} biens à {{place}}"
+        const val SUBJECT_ONE = "Je vous propose un bien à {{place}}"
+        const val SUBJECT_MANY = "Je vous propose {{count}} biens à {{place}}"
         const val TEMPLATE = "/mail/match/proposed.mjml"
     }
 
@@ -59,8 +59,7 @@ class MatchProposedMailet(
             Email(
                 sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = party.email, displayName = fullName),
-                subject = subject.replace("{{tenant_name}}", tenant.name)
-                    .replace("{{agent_name}}", agentName)
+                subject = subject
                     .replace("{{count}}", matches.size.toString())
                     .replace("{{place}}", MandateMailLabels.place(mandate, city, locationService)),
                 body = mailBodyResolver.resolve(
@@ -74,6 +73,7 @@ class MatchProposedMailet(
                         "accepted" to matches.any { it.status == MatchStatus.ACCEPTED },
                         "online" to tenant.publicPortalUrl?.let { true },
                         "listings" to matches.map { match -> listing(match, tenant, formatter, token) },
+                        "agent_whatsapp_reply_url" to AgentMailContext.replyUrl(agent, "des biens que je vous ai proposés"),
                     ) + AgentMailContext.of(agent, formatter),
                 ),
             ),

@@ -3,6 +3,7 @@ package com.wutsi.ndopify.match.server.mail
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.agent.server.mail.AgentMailContext
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.mandate.server.mail.MandateMailLabels
 import com.wutsi.ndopify.match.server.domain.MatchEntity
@@ -34,7 +35,7 @@ class MatchVisitReminderMailet(
     private val imageService: ImageService,
 ) {
     companion object {
-        const val SUBJECT = "{{tenant_name}}: n'oubliez pas de demander votre visite"
+        const val SUBJECT = "N'oubliez pas de demander votre visite"
         const val TEMPLATE = "/mail/match/visit_reminder.mjml"
     }
 
@@ -49,14 +50,14 @@ class MatchVisitReminderMailet(
             Email(
                 sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = party.email, displayName = fullName),
-                subject = SUBJECT.replace("{{tenant_name}}", tenant.name),
+                subject = SUBJECT,
                 body = mailBodyResolver.resolve(
                     path = TEMPLATE,
                     context = mapOf(
                         "tenant_logo_url" to tenant.logoUrl,
                         "tenant_name" to tenant.name,
                         "recipient_name" to fullName,
-                        "listing_title" to (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"),
+                        "listing_title" to listingTitle(listing),
                         "image_url" to MailImages.imageUrl(listingImageService.cover(listing)?.url, imageService, MailImages.COVER),
                         "price_label" to MandateMailLabels.priceLabel(match.mandate),
                         "price" to MandateMailLabels.price(
@@ -67,11 +68,18 @@ class MatchVisitReminderMailet(
                         ),
                         "online" to tenant.publicPortalUrl?.let { true },
                         "listing_url" to matchUrl(tenant, match, token),
+                        "agent_whatsapp_reply_url" to AgentMailContext.replyUrl(
+                            agent,
+                            "de la visite du bien ${listingTitle(listing)}",
+                        ),
                     ) + AgentMailContext.of(agent, formatter),
                 ),
             ),
         )
     }
+
+    private fun listingTitle(listing: ListingEntity): String =
+        listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"
 
     private fun matchUrl(tenant: TenantEntity, match: MatchEntity, token: String?): String? {
         val baseUrl = tenant.publicPortalUrl ?: return null

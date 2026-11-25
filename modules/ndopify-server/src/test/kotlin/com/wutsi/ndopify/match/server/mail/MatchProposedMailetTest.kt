@@ -29,6 +29,7 @@ import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
+import java.net.URLDecoder
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -84,7 +85,11 @@ class MatchProposedMailetTest {
         id = 10L,
         party = PartyEntity(id = 100L, firstName = "Ray", lastName = "Sponsible", email = "ray.sponsible@gmail.com"),
     )
-    private val agent = AgentEntity(id = 20L, party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible"))
+    private val agent = AgentEntity(
+        id = 20L,
+        party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible"),
+        whatsappNumber = "+237699000001",
+    )
 
     @BeforeTest
     fun setUp() {
@@ -108,8 +113,8 @@ class MatchProposedMailetTest {
                 "recipient_name" to "Ray Sponsible",
                 "agent_full_name" to "Kim Possible",
                 "agent_photo_url" to null,
-                "agent_whatsapp" to null,
-                "agent_whatsapp_url" to null,
+                "agent_whatsapp" to "+237 6 99 00 00 01",
+                "agent_whatsapp_url" to "https://wa.me/237699000001",
                 "count" to null,
                 "accepted" to false,
                 "online" to true,
@@ -123,14 +128,21 @@ class MatchProposedMailetTest {
                     ),
                 ),
             ),
-            context(),
+            context() - "agent_whatsapp_reply_url",
+        )
+        assertEquals(
+            "Bonjour, je vous réponds au sujet des biens que je vous ai proposés.",
+            URLDecoder.decode(
+                (context()["agent_whatsapp_reply_url"] as String).substringAfter("?text="),
+                "UTF-8",
+            ),
         )
 
         val email = argumentCaptor<Email>()
         verify(mailService).send(email.capture())
         assertEquals("ray.sponsible@gmail.com", email.firstValue.recipient.email)
         assertEquals("Ray Sponsible", email.firstValue.recipient.displayName)
-        assertEquals("Ndopify: Kim Possible vous propose un bien à Bastos (Yaounde)", email.firstValue.subject)
+        assertEquals("Je vous propose un bien à Bastos (Yaounde)", email.firstValue.subject)
         assertEquals("<html>proposed</html>", email.firstValue.body)
         assertEquals("Kim Possible", email.firstValue.sender?.displayName)
         assertEquals("", email.firstValue.sender?.email)
@@ -168,7 +180,7 @@ class MatchProposedMailetTest {
 
         val email = argumentCaptor<Email>()
         verify(mailService).send(email.capture())
-        assertEquals("Ndopify: Kim Possible vous propose 2 biens à Bastos (Yaounde)", email.firstValue.subject)
+        assertEquals("Je vous propose 2 biens à Bastos (Yaounde)", email.firstValue.subject)
     }
 
     @Test
