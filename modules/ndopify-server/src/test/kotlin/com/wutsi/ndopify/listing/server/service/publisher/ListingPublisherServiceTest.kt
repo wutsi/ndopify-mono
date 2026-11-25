@@ -15,6 +15,7 @@ import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.server.dao.ListingImageRepository
 import com.wutsi.ndopify.listing.server.dao.ListingRepository
+import com.wutsi.ndopify.listing.server.domain.ImageKind
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
 import com.wutsi.ndopify.listing.server.event.ListingPublishedEvent
@@ -81,6 +82,9 @@ class ListingPublisherServiceTest {
 
     @Test
     fun published() {
+        doReturn(listOf(ListingImageEntity(id = 11L, kind = ImageKind.PHOTO, quality = 4)))
+            .whenever(imageDao).findByListingIdAndStatus(1L, ImageStatus.VERIFIED)
+
         val result = service.publish(listing)
 
         val saved = saved().single()
@@ -95,8 +99,37 @@ class ListingPublisherServiceTest {
         assertEquals(saved, result)
 
         verify(generator).generate(listing)
-        verify(imageDao, never()).findByListingIdAndStatus(any(), any())
         verify(eventPublisher).publishEvent(ListingPublishedEvent(listingId = 1L, tenantId = 7L))
+    }
+
+    @Test
+    fun `the model's hero is a map - the best photo instead`() {
+        doReturn(content.copy(heroImageId = 12L)).whenever(generator).generate(any())
+        doReturn(
+            listOf(
+                ListingImageEntity(id = 11L, kind = ImageKind.PHOTO, quality = 3, width = 800, height = 600),
+                ListingImageEntity(id = 12L, kind = ImageKind.MAP, quality = 5, width = 2000, height = 2000),
+            ),
+        ).whenever(imageDao).findByListingIdAndStatus(1L, ImageStatus.VERIFIED)
+
+        service.publish(listing)
+
+        assertEquals(11L, saved().single().heroImageId)
+    }
+
+    @Test
+    fun `no photo at all - the best verified image, as before`() {
+        doReturn(content.copy(heroImageId = null)).whenever(generator).generate(any())
+        doReturn(
+            listOf(
+                ListingImageEntity(id = 21L, kind = ImageKind.MAP, quality = 3),
+                ListingImageEntity(id = 22L, kind = ImageKind.FLOORPLAN, quality = 5),
+            ),
+        ).whenever(imageDao).findByListingIdAndStatus(1L, ImageStatus.VERIFIED)
+
+        service.publish(listing)
+
+        assertEquals(22L, saved().single().heroImageId)
     }
 
     @Test

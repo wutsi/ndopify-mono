@@ -64,7 +64,8 @@ class ListingContentGenerator(
                 - Focus on the Benefits for the Sharer's Audience: Why should someone click on this link? What kind of experience awaits the customer?
                 - Use Action-Oriented Language: Encourage clicks and create a sense of desire.
 
-            - Images quality is rated from 1 to 5, where 1 is very poor and 5 is excellent. The hero image should be the one with the highest quality score, that represent the property the best.
+            - Images quality is rated from 1 to 5, where 1 is very poor and 5 is excellent.
+            - The hero image must be a PHOTO that represents the property the best: never a floor plan (FLOORPLAN) nor a map (MAP).
             - For a building sold as a whole, title and describe it by its units and its levels instead of its bedrooms.
 
             # Goal
@@ -123,6 +124,7 @@ class ListingContentGenerator(
                     "- ID: ${image.id}\n" +
                     "- Title: ${image.title ?: "No title available"}\n" +
                     "- Quality: ${image.quality}\n" +
+                    "- Kind: ${image.kind}\n" +
                     "- Description: ${image.description ?: "No description available"}\n"
             }
 

@@ -5,6 +5,7 @@ import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.server.dao.ListingImageRepository
 import com.wutsi.ndopify.listing.server.dao.ListingRepository
+import com.wutsi.ndopify.listing.server.domain.ImageKind
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.event.ListingPublishedEvent
 import com.wutsi.ndopify.platform.util.StringUtils
@@ -21,7 +22,9 @@ import java.util.Date
  * Publishes a listing by generating its content and updating its status to PUBLISHED.
  * If the content generation fails, the publishing will retry up to MAX_RETRIES times, then the listing is published
  * without content (no title, summary nor description: the UI handles it), keeping the last error.
- * Without a hero image in the generated content, the hero image is the verified image with the highest quality, then the largest.
+ * The hero image is the generated content's heroImageId when that image is a VERIFIED PHOTO, else the VERIFIED PHOTO
+ * with the highest quality, then the largest: a floor plan or a map is never the hero. Only a listing with no VERIFIED
+ * PHOTO at all (a legacy one) falls back to all its VERIFIED images.
  * The listing's public URL is the path `/<city>/<neighborhood>/listing/<id>/<slug>`, its slug from its title: without
  * neighborhood nor title, those segments are left out. The host isn't part of it: it's the tenant's public portal.
  * A published listing publishes a [ListingPublishedEvent], in the transaction that saves it.
@@ -100,7 +103,7 @@ class ListingPublisherService(
 
     private fun published(listing: ListingEntity, content: ListingContentInfo): ListingEntity {
         val now = Date(clock.millis())
-        val heroImageId = content.heroImageId ?: heroImageId(listing)
+        val heroImageId = heroImageId(listing, content.heroImageId)
         val title = content.title?.take(100)
         val url = url(listing, title)
         return tx.execute {
@@ -124,15 +127,17 @@ class ListingPublisherService(
         }
     }
 
-    private fun heroImageId(listing: ListingEntity): Long? =
-        imageDao.findByListingIdAndStatus(listing.id ?: -1, ImageStatus.VERIFIED)
-            .maxWithOrNull(
+    private fun heroImageId(listing: ListingEntity, preferredId: Long? = null): Long? {
+        val verified = imageDao.findByListingIdAndStatus(listing.id ?: -1, ImageStatus.VERIFIED)
+        val candidates = verified.filter { image -> image.kind == ImageKind.PHOTO }.ifEmpty { verified }
+        return candidates.firstOrNull { image -> image.id == preferredId }?.id
+            ?: candidates.maxWithOrNull(
                 compareBy(
                     { image -> image.quality ?: 0 },
                     { image -> (image.width ?: 0).toLong() * (image.height ?: 0) },
                 ),
-            )
-            ?.id
+            )?.id
+    }
 
     private fun url(listing: ListingEntity, title: String?): String {
         val locations = locationService.search(
