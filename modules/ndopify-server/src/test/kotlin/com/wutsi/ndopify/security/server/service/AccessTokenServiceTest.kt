@@ -16,6 +16,8 @@ import jakarta.servlet.http.HttpServletRequest
 import org.mockito.Mockito.mock
 import java.time.Clock
 import java.time.Duration
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -144,6 +146,86 @@ class AccessTokenServiceTest {
     @Test
     fun `secret too short`() {
         assertFailsWith<IllegalArgumentException> { AccessTokenService(clock, request, "short-secret", PROPERTIES) }
+    }
+
+    @Test
+    fun `create with an issue date and a session start`() {
+        val issuedAt = Instant.now().minus(Duration.ofDays(3)).truncatedTo(ChronoUnit.SECONDS)
+        val sessionStartedAt = issuedAt.minus(Duration.ofDays(6))
+
+        val token = service.create(
+            application = ApplicationCode.PARTNER_CENTRAL,
+            userId = 111L,
+            roles = emptyArray(),
+            tenantId = 1L,
+            ttlSeconds = Duration.ofDays(30).seconds.toInt(),
+            issuedAt = issuedAt,
+            sessionStartedAt = sessionStartedAt,
+        )
+
+        val jwt = JWT.decode(token)
+        assertEquals(issuedAt, jwt.issuedAtAsInstant)
+        assertEquals(issuedAt.plus(Duration.ofDays(30)), jwt.expiresAtAsInstant)
+        assertEquals(sessionStartedAt.toEpochMilli(), jwt.getClaim(AccessTokenService.CLAIM_SESSION_STARTED_AT).asLong())
+    }
+
+    @Test
+    fun `getAccessToken - valid token`() {
+        val issuedAt = Instant.now().minus(Duration.ofDays(3)).truncatedTo(ChronoUnit.SECONDS)
+        val sessionStartedAt = issuedAt.minus(Duration.ofDays(6))
+        val token = service.create(
+            application = ApplicationCode.PARTNER_CENTRAL,
+            userId = 111L,
+            roles = arrayOf("ROLE_USER"),
+            tenantId = 222L,
+            partyId = 333L,
+            ttlSeconds = Duration.ofDays(30).seconds.toInt(),
+            issuedAt = issuedAt,
+            sessionStartedAt = sessionStartedAt,
+        )
+        doReturn("Bearer $token").whenever(request).getHeader("Authorization")
+
+        val accessToken = service.getAccessToken()
+
+        assertEquals(111L, accessToken.principal.getUserId())
+        assertEquals(222L, accessToken.principal.getTenantId())
+        assertEquals(333L, accessToken.principal.getPartyId())
+        assertEquals(issuedAt, accessToken.issuedAt)
+        assertEquals(issuedAt.plus(Duration.ofDays(30)), accessToken.expiresAt)
+        assertEquals(sessionStartedAt, accessToken.sessionStartedAt)
+    }
+
+    @Test
+    fun `getAccessToken - a token without sessionStartedAt reads it from iat`() {
+        val issuedAt = Instant.now().minus(Duration.ofDays(3)).truncatedTo(ChronoUnit.SECONDS)
+        val token = JWT.create()
+            .withIssuer(AccessTokenService.ISSUER)
+            .withIssuedAt(issuedAt)
+            .withExpiresAt(issuedAt.plus(Duration.ofDays(30)))
+            .withClaim(JwtPrincipal.CLAIM_USER_ID, 111L)
+            .withClaim(JwtPrincipal.CLAIM_TENANT_ID, 222L)
+            .sign(Algorithm.HMAC256(SECRET))
+        doReturn("Bearer $token").whenever(request).getHeader("Authorization")
+
+        assertEquals(issuedAt, service.getAccessToken().sessionStartedAt)
+    }
+
+    @Test
+    fun `getAccessToken - no authorization header`() {
+        doReturn(null).whenever(request).getHeader("Authorization")
+
+        val ex = assertFailsWith<UnauthorizedException> { service.getAccessToken() }
+
+        assertEquals(ErrorCode.AUTH_UNAUTHORIZED, ex.error.code)
+    }
+
+    @Test
+    fun `getAccessToken - invalid token`() {
+        doReturn("Bearer invalid-token").whenever(request).getHeader("Authorization")
+
+        val ex = assertFailsWith<ForbiddenException> { service.getAccessToken() }
+
+        assertEquals(ErrorCode.AUTH_UNAUTHORIZED, ex.error.code)
     }
 
     @Test

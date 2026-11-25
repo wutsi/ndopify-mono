@@ -26,7 +26,9 @@ Package `com.wutsi.ndopify.npc`:
 - `service/security/` — the signed-in user (`CurrentParty`, `CurrentAgent`) and `SignInRequiredException`.
 - `config/` — security (which paths are public), REST clients, `Clock`, and `WebCoreConfiguration`: the web-core
   beans (`TenantContext` on `TenantPortal.PARTNER_CENTRAL`, `AccessTokenService` on `__npc_access_token` as a session
-  cookie, `JwtDecoder` accepting only `ApplicationCode.PARTNER_CENTRAL`) and `@Import(NdTenantClient)`.
+  cookie, `JwtDecoder` accepting only `ApplicationCode.PARTNER_CENTRAL`) and `@Import(NdTenantClient, NdTokenClient)`.
+  `SecurityConfiguration` builds `AccessTokenRenewalFilter` in the chain (not as a `@Bean`, or Spring Boot would run it
+  twice), after `JwtAuthenticationFilter`.
 
 Resources: one Thymeleaf template per page in `src/main/resources/templates/` (sub-pages in a folder named after
 the feature, ex: `profile/edit.html`; `error/403.html` / `404.html`; fragments shared by several pages in
@@ -58,7 +60,9 @@ wins). A page script is still an IIFE gated on `data-page`; it only ships in the
 ## Testing Patterns
 
 Plain unit tests, no Spring context, no server: `mvn test` needs neither MySQL nor ndopify-server. Tests mirror the
-main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `kotlin.test` assertions.
+main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `kotlin.test` assertions. The one
+`@SpringBootTest` is `config/SecurityConfigurationTest`: it checks that `AccessTokenRenewalFilter` runs before
+`JwtAuthenticationFilter` in the chain; everything else stays a plain unit test.
 
 - `<Feature>ControllerTest` — `MockMvcBuilders.standaloneSetup(controller)` with the mocked clients and an
   `InternalResourceViewResolver`: asserts the view name, the model (`result.modelAndView!!.model`), the redirect and
@@ -90,7 +94,10 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `AUTH_ACCOUNT_LOCKED`, so the e-mail step says it too. The JWT is kept in the
   HTTP-only `__npc_access_token` cookie (`AccessTokenService`) and decoded by `JwtAuthenticationFilter`, which clears
   the cookie of a token that doesn't decode (expired) and marks the request `ACCESS_TOKEN_REJECTED`, so that
-  `AuthorizationClientHttpRequestInterceptor` doesn't forward it (ndopify-server would answer 401); everything
+  `AuthorizationClientHttpRequestInterceptor` doesn't forward it (ndopify-server would answer 401). `AccessTokenRenewalFilter`
+  renews it on the first page view of each day (once it is a day old, or when it expires within a day): an agent who
+  opens the app at least once in 30 days never signs in again, 90 days after the first sign-in at most, and a failed
+  renewal only leaves them with the current token; everything
   except `/assets/**`, `/sw.js`, `/offline.html`, `/manifest.json`, `/favicon.ico`, `/login/**`, `/error`, `/locations/**`, `/join/**`, `/find-property/**`, `/offer-property/**` requires authentication
   (`/favicon.ico` is public, because the browser's automatic request must answer the icon, signed out or not, and it
   stays out of `SignInTarget` so it can never become the sign-in target). `POST /logout` (a form in the account menu, never a link: a GET could be forced by another site) clears the cookie

@@ -9,7 +9,9 @@ minus everything about sign-in, except one: a `public-portal` token (`?token=`, 
 `VisitController`) is kept in the `__nweb_access_token` cookie (`AccessTokenService`, `JwtAuthenticationFilter`) and sent
 to ndopify-server as the bearer token (to read the match, its mandate, its agent and its listing, the customer and the
 visit, and post the answer, the visit request or the cancellation); any other token is signed out. The token is sent on
-every ndopify-server call while the cookie is present (a 401 clears it: `HttpClientErrorHandler`).
+every ndopify-server call while the cookie is present (a 401 clears it: `HttpClientErrorHandler`). It also goes
+through `AccessTokenRenewalFilter` (registered by `SecurityConfiguration`): a match link's renewal keeps its original
+365-day `exp`, so nothing changes for the visitor.
 
 ## Code Organization
 
@@ -147,6 +149,8 @@ As Partner Central's (see `modules/ndopify-partner-central/CLAUDE.md`): plain un
 without a `partnerCentralUrl`; `ListingPagesTest` / `MatchPagesTest` / `VisitPagesTest` for the listing, match and
 visit views; `VisitSlotsTest`; `PartnerCentralUrlsTest`, `Nd*ClientTest` (`MockRestServiceServer`); `ManifestControllerTest`
 for the three icon branches; `BundledAssetsTest` / `PwaAssetsTest` for the built bundle, the worker and the offline page.
+The one `@SpringBootTest` is `config/SecurityFilterChainTest`: it checks that `AccessTokenRenewalFilter` runs before
+`JwtAuthenticationFilter` in the chain; everything else stays a plain unit test.
 
 ## Build
 

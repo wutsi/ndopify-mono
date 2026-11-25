@@ -201,6 +201,7 @@ springdoc:
             display-name: Security API
             paths-to-match:
                 - /v1/auth
+                - /v1/auth/**
                 - /v1/users
                 - /v1/users/**
 
@@ -268,10 +269,11 @@ ndopify:
             ttl: # Per ApplicationCode: also how long the web apps keep their cookie
                 public-portal: 5d
                 admin-console: 1h
-                partner-central: 7d
+                partner-central: 30d   # The idle window: an agent who opens Partner Central once a month stays signed in
                 e-signature: 1h
-                match-link: 365d           # The token of the customer links of the proposal and visit e-mails (MatchLinkTokenService)
-            default-ttl: 1h                # An application not listed above
+                match-link: 365d       # The token of the customer links of the proposal and visit e-mails (MatchLinkTokenService)
+            max-lifetime: 90d          # Absolute cap on a session, from its first sign-in
+            default-ttl: 1h            # An application not listed above
         otp:
             max-failed-attempts: 5         # Wrong codes after which the account is locked
             lock-duration: 1h              # How long the account stays locked

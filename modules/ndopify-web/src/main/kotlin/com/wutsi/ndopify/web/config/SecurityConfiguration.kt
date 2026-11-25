@@ -1,5 +1,7 @@
 package com.wutsi.ndopify.web.config
 
+import com.wutsi.ndopify.web.core.client.ndopify.NdTokenClient
+import com.wutsi.ndopify.web.core.service.security.AccessTokenRenewalFilter
 import com.wutsi.ndopify.web.core.service.security.AccessTokenService
 import com.wutsi.ndopify.web.core.service.security.JwtAuthenticationFilter
 import com.wutsi.ndopify.web.core.service.security.JwtDecoder
@@ -10,6 +12,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter
+import java.time.Clock
 
 /**
  * A public site: only the pages it serves are open. The only sign-in is the `public-portal` token of a match link,
@@ -25,6 +28,8 @@ import org.springframework.security.web.authentication.AnonymousAuthenticationFi
 class SecurityConfiguration(
     private val accessTokenService: AccessTokenService,
     private val jwtDecoder: JwtDecoder,
+    private val tokenClient: NdTokenClient,
+    private val clock: Clock,
 ) {
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
@@ -49,7 +54,9 @@ class SecurityConfiguration(
                     .requestMatchers("/error").permitAll()
                     .anyRequest().denyAll() // nothing else is served
             }
+            // The JWT filter first: Spring Security resolves the renewal one's anchor only once it is registered.
             .addFilterBefore(authorizationFilter(), AnonymousAuthenticationFilter::class.java)
+            .addFilterBefore(accessTokenRenewalFilter(), JwtAuthenticationFilter::class.java)
             .csrf { customizer -> customizer.disable() }
             .httpBasic { customizer -> customizer.disable() }
             .formLogin { customizer -> customizer.disable() }
@@ -59,4 +66,8 @@ class SecurityConfiguration(
 
     @Bean
     fun authorizationFilter(): JwtAuthenticationFilter = JwtAuthenticationFilter(accessTokenService, jwtDecoder)
+
+    // Not a @Bean: Spring Boot also registers every Filter bean as a plain servlet filter, which would renew twice.
+    private fun accessTokenRenewalFilter(): AccessTokenRenewalFilter =
+        AccessTokenRenewalFilter(accessTokenService, jwtDecoder, tokenClient, clock)
 }

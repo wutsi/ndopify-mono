@@ -2,6 +2,7 @@ package com.wutsi.ndopify.web.config
 
 import com.wutsi.ndopify.refdata.dto.ApplicationCode
 import com.wutsi.ndopify.web.core.client.ndopify.NdTenantClient
+import com.wutsi.ndopify.web.core.client.ndopify.NdTokenClient
 import com.wutsi.ndopify.web.core.service.TenantContext
 import com.wutsi.ndopify.web.core.service.TenantPortal
 import com.wutsi.ndopify.web.core.service.security.AccessTokenService
@@ -19,7 +20,7 @@ import java.time.Clock
  * else signs in here.
  */
 @Configuration
-@Import(NdTenantClient::class)
+@Import(NdTenantClient::class, NdTokenClient::class)
 class WebCoreConfiguration(private val clock: Clock) {
     companion object {
         const val ACCESS_TOKEN_COOKIE = "__nweb_access_token"

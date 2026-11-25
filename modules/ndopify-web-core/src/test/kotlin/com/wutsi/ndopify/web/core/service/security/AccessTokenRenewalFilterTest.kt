@@ -22,6 +22,7 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -32,9 +33,8 @@ class AccessTokenRenewalFilterTest {
     private val response = MockHttpServletResponse()
     private val chain = MockFilterChain()
 
-    // The tokens below are dated relative to this instant, so they stay valid (and inside the renewal interval)
-    // whenever the suite runs: JwtDecoder refuses a token whose expiry is already past.
-    private val now = Instant.now()
+    // Relative to the real now: JwtDecoder checks the token's exp against the system clock, not the fixed one.
+    private val now = Instant.now().truncatedTo(ChronoUnit.SECONDS)
     private val clock = Clock.fixed(now, ZoneOffset.UTC)
     private val tokenClient = mock<NdTokenClient>()
     private val service = AccessTokenService(request, response, "__npc_access_token", clock = clock)

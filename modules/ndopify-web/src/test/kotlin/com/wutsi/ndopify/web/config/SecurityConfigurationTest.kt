@@ -2,8 +2,10 @@ package com.wutsi.ndopify.web.config
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
+import com.nhaarman.mockitokotlin2.mock
 import com.wutsi.ndopify.refdata.dto.ApplicationCode
 import com.wutsi.ndopify.security.dto.JwtPrincipal
+import com.wutsi.ndopify.web.core.client.ndopify.NdTokenClient
 import com.wutsi.ndopify.web.core.service.security.JwtAuthentication
 import com.wutsi.ndopify.web.core.service.security.JwtDecoder
 import jakarta.servlet.http.Cookie
@@ -77,7 +79,12 @@ class SecurityConfigurationTest {
             request.setCookies(Cookie("__nweb_access_token", accessToken))
         }
         val core = WebCoreConfiguration(Clock.systemUTC())
-        val security = SecurityConfiguration(core.accessTokenService(request, response), core.jwtDecoder())
+        val security = SecurityConfiguration(
+            core.accessTokenService(request, response),
+            core.jwtDecoder(),
+            mock<NdTokenClient>(),
+            Clock.systemUTC(),
+        )
         security.authorizationFilter().doFilter(request, response, chain)
     }
 

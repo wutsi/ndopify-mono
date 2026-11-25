@@ -751,9 +751,10 @@ Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not ha
   `GET /v1/listings/{id}`, `GET /v1/listings/{id}/images`, `GET /v1/contracts/{id}/signatures/{hash}`: called before
   the caller has a token). Without a token, anything else,
   incl. an unknown path, is a 401 `AUTH_UNAUTHORIZED` (`ErrorResponse`, through `ControllerErrorHandler`). A new
-  endpoint called before sign-in must be added to `PublicEndpoints.TENANT`. Authentication only: who may do what is
-  still each domain's access service (`MandateAccessService`, `ContractAccessService`...), and many endpoints have none
-  yet.
+  endpoint called before sign-in must be added to `PublicEndpoints.TENANT`. `POST /v1/auth/refresh` is the opposite:
+  authenticated (it re-issues the caller's own token, no body) and never in `PublicEndpoints`. Authentication only: who
+  may do what is still each domain's access service (`MandateAccessService`, `ContractAccessService`...), and many
+  endpoints have none yet.
 - Any JPA entity annotated `org.hibernate.annotations.@TenantId` is automatically filtered by Hibernate for every
   query against it — no `CriteriaBuilder` predicate, repository override, or service-level check needed. Today
   that's `PartyEntity`, `PaymentMethodEntity`, `IdentificationEntity`, `IdentificationImageEntity`, `KycCaseEntity`,
@@ -785,6 +786,12 @@ Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not ha
   Changing `JWT_SECRET` signs everyone out. A token lives as long as its application's TTL
   (`ndopify.security.access-token.ttl.<ApplicationCode>`, `AccessTokenProperties`, else `default-ttl`; an environment
   overrides one in its `application-<profile>.yml`); the web apps keep their cookie until the token's `exp`.
+  It also carries the session's start (`sessionStartedAt`, read as `iat` for an older token), and
+  `AuthenticationService.refresh` re-issues it for at most `max-lifetime` (90d) from that start: a renewal gives the
+  token's own lifetime again, or what the cap leaves, and never shortens a longer-lived token (a match link keeps its
+  `exp`). Partner Central's TTL is 30d because `ndopify-web-core` renews an agent's token once a day; past the cap a
+  renewal is a 409 `AUTH_CREDENTIALS_EXPIRED`, and a membership or application access removed since sign-in is a 409
+  `AUTH_ACCESS_DENIED`.
 
 ## Testing Patterns
 
