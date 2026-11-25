@@ -72,6 +72,7 @@ object ErrorCode {
     val LISTING_INCOMPLETE = "$PREFIX:listing:incomplete"
     val LISTING_IMAGE_NOT_FOUND = "$PREFIX:listing-image:not-found"
     val LISTING_NOT_ENOUGH_IMAGES = "$PREFIX:listing:not-enough-images"
+    val LISTING_MISSING_PHOTO = "$PREFIX:listing:missing-photo"
     val LISTING_MISSING_LAT_LONG = "$PREFIX:listing:missing-lat-long"
     val LISTING_MISSING_NEIGHBORHOOD = "$PREFIX:listing:missing-neighborhood"
     val LISTING_OUTSIDE_NEIGHBORHOOD = "$PREFIX:listing:outside-neighborhood"
