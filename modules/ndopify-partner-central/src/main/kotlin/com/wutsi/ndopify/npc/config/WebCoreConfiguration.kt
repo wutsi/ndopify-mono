@@ -2,6 +2,7 @@ package com.wutsi.ndopify.npc.config
 
 import com.wutsi.ndopify.refdata.dto.ApplicationCode
 import com.wutsi.ndopify.web.core.client.ndopify.NdTenantClient
+import com.wutsi.ndopify.web.core.client.ndopify.NdTokenClient
 import com.wutsi.ndopify.web.core.service.TenantContext
 import com.wutsi.ndopify.web.core.service.TenantPortal
 import com.wutsi.ndopify.web.core.service.security.AccessTokenService
@@ -18,7 +19,7 @@ import java.time.Clock
  * `__npc_access_token` session cookie and only `partner-central` tokens.
  */
 @Configuration
-@Import(NdTenantClient::class)
+@Import(NdTenantClient::class, NdTokenClient::class)
 class WebCoreConfiguration(private val clock: Clock) {
     companion object {
         const val ACCESS_TOKEN_COOKIE = "__npc_access_token"

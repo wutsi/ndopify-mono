@@ -19,4 +19,8 @@ class AuthenticationEndpoints(private val service: AuthenticationService) {
         val accessToken = service.authenticate(request)
         return AuthenticateResponse(accessToken)
     }
+
+    /** Re-issues the caller's own token (authenticated: not in `PublicEndpoints`), without a request body. */
+    @PostMapping("/refresh")
+    fun refresh(): AuthenticateResponse = AuthenticateResponse(service.refresh())
 }

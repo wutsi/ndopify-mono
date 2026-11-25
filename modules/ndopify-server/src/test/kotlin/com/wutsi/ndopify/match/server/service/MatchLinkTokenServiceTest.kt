@@ -53,7 +53,7 @@ class MatchLinkTokenServiceTest {
     @BeforeTest
     fun setUp() {
         doReturn(publicPortal).whenever(applicationService).findByCode(ApplicationCode.PUBLIC_PORTAL)
-        doReturn("xxx.yyy.zzz").whenever(accessTokenService).create(any(), any(), any(), anyOrNull(), any(), anyOrNull())
+        doReturn("xxx.yyy.zzz").whenever(accessTokenService).create(any(), any(), any(), anyOrNull(), any(), anyOrNull(), anyOrNull(), anyOrNull())
     }
 
     @Test
@@ -66,12 +66,14 @@ class MatchLinkTokenServiceTest {
 
         verify(membershipService).grantAccess(membership, ApplicationCode.PUBLIC_PORTAL)
         verify(accessTokenService).create(
-            application = ApplicationCode.PUBLIC_PORTAL,
-            userId = 13L,
-            roles = arrayOf("customer"),
-            tenantId = 1L,
-            ttlSeconds = 2 * 24 * 3600,
-            partyId = 100L,
+            eq(ApplicationCode.PUBLIC_PORTAL),
+            eq(13L),
+            eq(arrayOf("customer")),
+            eq(1L),
+            eq(2 * 24 * 3600),
+            eq(100L),
+            anyOrNull(),
+            anyOrNull(),
         )
         verify(userService, never()).findByEmailOrCreate(any())
     }
@@ -91,6 +93,8 @@ class MatchLinkTokenServiceTest {
             eq(1L),
             eq(2 * 24 * 3600),
             eq(100L),
+            anyOrNull(),
+            anyOrNull(),
         )
     }
 
