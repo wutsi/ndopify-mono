@@ -12,6 +12,7 @@ import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailImages
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
+import com.wutsi.ndopify.platform.util.PhoneNumberUtils
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.springframework.stereotype.Service
@@ -41,7 +42,6 @@ class MatchVisitAgentNudgeMailet(
         val formatter = TenantFormatter(tenant)
         val listing = match.listing
         val customerName = customer.party.fullName()
-        val digits = customer.whatsappNumber.orEmpty().filter(Char::isDigit)
         val baseUrl = tenant.partnerCentralUrl?.removeSuffix("/")
         mailService.send(
             Email(
@@ -64,7 +64,7 @@ class MatchVisitAgentNudgeMailet(
                             listing.pricePeriodicityType,
                             formatter,
                         ),
-                        "whatsapp_url" to digits.takeIf { it.isNotEmpty() }?.let { "https://wa.me/$it" },
+                        "whatsapp_url" to PhoneNumberUtils.whatsappUrlOrNull(customer.whatsappNumber),
                         "visit_url" to baseUrl?.let { "$it/mandates/${match.mandate.id}#match-${match.id}" },
                     ) + AgentMailContext.of(agent, formatter),
                 ),
