@@ -5,6 +5,7 @@ import com.wutsi.ndopify.agent.server.mail.AgentMailContext
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
+import com.wutsi.ndopify.mandate.server.service.MandateConversationService
 import com.wutsi.ndopify.match.server.service.MatchLinkTokenService
 import com.wutsi.ndopify.platform.image.ImageService
 import com.wutsi.ndopify.platform.mail.Email
@@ -33,9 +34,9 @@ class VisitNoShowMailet(
     private val linkTokenService: MatchLinkTokenService,
     private val listingImageService: ListingImageService,
     private val imageService: ImageService,
+    private val conversationService: MandateConversationService,
 ) {
     companion object {
-        const val SUBJECT_CUSTOMER = "Notre visite n'a pas eu lieu"
         const val SUBJECT_AGENT = "{{tenant_name}}: visite manquée avec {{customer_name}}"
         const val TEMPLATE = "/mail/visit/no_show.mjml"
 
@@ -58,11 +59,15 @@ class VisitNoShowMailet(
             val url = "$base/visits/${visit.id}"
             token?.let { "$url?token=$it" } ?: url
         }
+        val conversation = conversationService.of(visit.mandateId)
         mailService.send(
             Email(
                 sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = customer.party.email, displayName = customerName),
-                subject = SUBJECT_CUSTOMER,
+                subject = conversation.subject,
+                messageId = conversation.messageId,
+                inReplyTo = conversation.inReplyTo,
+                references = conversation.references,
                 body = mailBodyResolver.resolve(
                     path = TEMPLATE,
                     context = context(

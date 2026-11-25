@@ -14,6 +14,8 @@ import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
+import com.wutsi.ndopify.mandate.server.service.MandateConversation
+import com.wutsi.ndopify.mandate.server.service.MandateConversationService
 import com.wutsi.ndopify.match.server.service.MatchLinkTokenService
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
@@ -47,8 +49,9 @@ class VisitConfirmedMailetTest {
     private val linkTokenService = mock<MatchLinkTokenService>()
     private val listingImageService = mock<ListingImageService>()
     private val imageService = mockMailImageService()
+    private val conversationService = mock<MandateConversationService>()
     private val mailet =
-        VisitConfirmedMailet(tenantService, locationService, mailService, mailBodyResolver, linkTokenService, listingImageService, imageService)
+        VisitConfirmedMailet(tenantService, locationService, mailService, mailBodyResolver, linkTokenService, listingImageService, imageService, conversationService)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -80,6 +83,7 @@ class VisitConfirmedMailetTest {
     private val visit = VisitEntity(
         id = 1L,
         tenantId = 1L,
+        mandateId = 1L,
         matchId = 1L,
         listingId = 101L,
         agentId = 20L,
@@ -98,6 +102,14 @@ class VisitConfirmedMailetTest {
         doReturn(LocationEntity(id = 1001L, name = "Bastos")).whenever(locationService).findByIdOrNull(1001L)
         doReturn("<html>confirmed</html>").whenever(mailBodyResolver).resolve(any(), any())
         doReturn("xxx.yyy.zzz").whenever(linkTokenService).create(customer)
+        doReturn(
+            MandateConversation(
+                subject = "Votre recherche : appartement à Bastos (Yaounde) · mandat 1",
+                messageId = "mandate-1-1-abc@wutsi.com",
+                inReplyTo = "mandate-1-1@wutsi.com",
+                references = listOf("mandate-1-1@wutsi.com"),
+            ),
+        ).whenever(conversationService).of(1L)
     }
 
     @Test
@@ -106,13 +118,18 @@ class VisitConfirmedMailetTest {
 
         val customerEmail = email("ray.sponsible@gmail.com")
         assertEquals("Ray Sponsible", customerEmail.recipient.displayName)
-        assertEquals("Votre visite de mercredi est confirmée", customerEmail.subject)
+        assertEquals("Votre recherche : appartement à Bastos (Yaounde) · mandat 1", customerEmail.subject)
+        assertEquals("mandate-1-1-abc@wutsi.com", customerEmail.messageId)
+        assertEquals("mandate-1-1@wutsi.com", customerEmail.inReplyTo)
+        assertEquals(listOf("mandate-1-1@wutsi.com"), customerEmail.references)
+        verify(conversationService).of(1L)
         assertEquals("<html>confirmed</html>", customerEmail.body)
 
         assertEquals("Kim Possible", customerEmail.sender?.displayName)
         val agentEmail = email("kim.possible@gmail.com")
         assertEquals("Kim Possible", agentEmail.recipient.displayName)
         assertEquals("Ndopify: visite confirmée avec Ray Sponsible", agentEmail.subject)
+        assertNull(agentEmail.messageId, "the agent's copy is not threaded")
         assertNull(agentEmail.sender)
 
         val customerContext = customerContext()

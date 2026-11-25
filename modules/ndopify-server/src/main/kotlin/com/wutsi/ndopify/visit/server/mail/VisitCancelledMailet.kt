@@ -5,6 +5,8 @@ import com.wutsi.ndopify.agent.server.mail.AgentMailContext
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
+import com.wutsi.ndopify.mandate.server.service.MandateConversation
+import com.wutsi.ndopify.mandate.server.service.MandateConversationService
 import com.wutsi.ndopify.match.server.service.MatchLinkTokenService
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.image.ImageService
@@ -36,9 +38,9 @@ class VisitCancelledMailet(
     private val linkTokenService: MatchLinkTokenService,
     private val listingImageService: ListingImageService,
     private val imageService: ImageService,
+    private val conversationService: MandateConversationService,
 ) {
     companion object {
-        const val SUBJECT_CUSTOMER = "Je dois annuler notre visite"
         const val SUBJECT_AGENT = "{{tenant_name}}: la visite a été annulée"
         const val TEMPLATE = "/mail/visit/cancelled.mjml"
 
@@ -67,7 +69,7 @@ class VisitCancelledMailet(
             recipient = customer.party,
             otherParty = agent.party.fullName(),
             sender = AgentMailContext.from(agent),
-            subject = SUBJECT_CUSTOMER,
+            conversation = conversationService.of(visit.mandateId),
             label = LABEL_BY_AGENT,
             visitUrl = publicPortalUrl(tenant, visit, token),
             reason = visit.cancellationReason,
@@ -99,7 +101,7 @@ class VisitCancelledMailet(
             recipient = agent.party,
             otherParty = customer.party.fullName(),
             sender = null,
-            subject = SUBJECT_AGENT.replace("{{tenant_name}}", tenant.name),
+            conversation = null,
             label = LABEL_BY_CUSTOMER,
             visitUrl = partnerCentralUrl(tenant, visit),
             reason = visit.cancellationReason,
@@ -115,7 +117,7 @@ class VisitCancelledMailet(
         recipient: PartyEntity,
         otherParty: String,
         sender: Receipient?,
-        subject: String,
+        conversation: MandateConversation?,
         label: String,
         visitUrl: String?,
         reason: String?,
@@ -125,7 +127,10 @@ class VisitCancelledMailet(
             Email(
                 sender = sender,
                 recipient = Receipient(email = recipient.email, displayName = recipient.fullName()),
-                subject = subject,
+                subject = conversation?.subject ?: SUBJECT_AGENT.replace("{{tenant_name}}", tenant.name),
+                messageId = conversation?.messageId,
+                inReplyTo = conversation?.inReplyTo,
+                references = conversation?.references ?: emptyList(),
                 body = mailBodyResolver.resolve(
                     path = TEMPLATE,
                     context = context(

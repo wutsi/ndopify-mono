@@ -13,6 +13,8 @@ import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
+import com.wutsi.ndopify.mandate.server.service.MandateConversation
+import com.wutsi.ndopify.mandate.server.service.MandateConversationService
 import com.wutsi.ndopify.match.server.service.MatchLinkTokenService
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
@@ -39,8 +41,9 @@ class VisitExpiredMailetTest {
     private val linkTokenService = mock<MatchLinkTokenService>()
     private val listingImageService = mock<ListingImageService>()
     private val imageService = mockMailImageService()
+    private val conversationService = mock<MandateConversationService>()
     private val mailet =
-        VisitExpiredMailet(tenantService, mailService, mailBodyResolver, linkTokenService, listingImageService, imageService)
+        VisitExpiredMailet(tenantService, mailService, mailBodyResolver, linkTokenService, listingImageService, imageService, conversationService)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -64,6 +67,7 @@ class VisitExpiredMailetTest {
     private val visit = VisitEntity(
         id = 1L,
         tenantId = 1L,
+        mandateId = 1L,
         listingId = 101L,
         agentId = 20L,
         customerId = 10L,
@@ -80,6 +84,14 @@ class VisitExpiredMailetTest {
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn("xxx.yyy.zzz").whenever(linkTokenService).create(customer)
         doReturn("<html>expired</html>").whenever(mailBodyResolver).resolve(any(), any())
+        doReturn(
+            MandateConversation(
+                subject = "Votre recherche : appartement à Bastos (Yaounde) · mandat 1",
+                messageId = "mandate-1-1-abc@wutsi.com",
+                inReplyTo = "mandate-1-1@wutsi.com",
+                references = listOf("mandate-1-1@wutsi.com"),
+            ),
+        ).whenever(conversationService).of(1L)
     }
 
     @Test
@@ -88,10 +100,15 @@ class VisitExpiredMailetTest {
 
         val captor = argumentCaptor<Email>()
         verify(mailService, times(2)).send(captor.capture())
-        assertEquals("Je n'ai pas pu confirmer votre visite", captor.allValues[0].subject)
+        assertEquals("Votre recherche : appartement à Bastos (Yaounde) · mandat 1", captor.allValues[0].subject)
+        assertEquals("mandate-1-1-abc@wutsi.com", captor.allValues[0].messageId)
+        assertEquals("mandate-1-1@wutsi.com", captor.allValues[0].inReplyTo)
+        assertEquals(listOf("mandate-1-1@wutsi.com"), captor.allValues[0].references)
+        verify(conversationService).of(1L)
         assertEquals("Ndopify: demande de visite expirée avec Ray Sponsible", captor.allValues[1].subject)
         assertEquals("Kim Possible", captor.allValues[0].sender?.displayName)
         assertEquals(null, captor.allValues[1].sender)
+        assertEquals(null, captor.allValues[1].messageId, "the agent's copy is not threaded")
 
         val customerContext = context("Ray Sponsible")
         assertEquals("02/12/2026", customerContext["requested_date"])
