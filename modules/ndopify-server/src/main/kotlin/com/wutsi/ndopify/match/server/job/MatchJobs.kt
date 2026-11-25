@@ -33,13 +33,11 @@ class MatchJobs(
         private val LOGGER = LoggerFactory.getLogger(MatchJobs::class.java)
     }
 
-    /** E-mails the agents about their new matches. */
+    /** E-mails the agents about their new matches: their own, and the co-brokerage ones of another agent's listing. */
     @Scheduled(cron = "\${ndopify.match.notify.cron}")
     fun notifyAgents() {
         forEachTenant("notifyAgents", "agent(s)") {
-            notificationService.notifyAgents() +
-                coBrokerageNotificationService.notifySearchAgents() +
-                coBrokerageNotificationService.notifyListingAgents()
+            notificationService.notifyAgents() + coBrokerageNotificationService.notifySearchAgents()
         }
     }
 

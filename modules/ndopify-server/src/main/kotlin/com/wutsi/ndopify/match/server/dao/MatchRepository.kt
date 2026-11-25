@@ -106,19 +106,6 @@ interface MatchRepository : CrudRepository<MatchEntity, Long>, JpaSpecificationE
         listingStatus: ListingStatus,
     ): List<MatchEntity>
 
-    // Co-brokerage rows where the search agent showed interest, the listing agent not told yet. The mandates'
-    // neighbourhoods come along: the digest reads them outside any transaction, after this call returned.
-    @EntityGraph(attributePaths = ["mandate.neighborhoodIds"])
-    @Query(
-        "SELECT m FROM MatchEntity m WHERE m.coBrokerage = TRUE AND m.listingAgentNotifiedAt IS NULL " +
-            "AND m.status IN :statuses AND m.mandate.status = :mandateStatus AND m.listing.status = :listingStatus"
-    )
-    fun findCoBrokerageInterestToNotify(
-        statuses: Collection<MatchStatus>,
-        mandateStatus: MandateStatus,
-        listingStatus: ListingStatus,
-    ): List<MatchEntity>
-
     // The matches to expire: proposed before, oldest first (MatchProposalService.expireDue)
     fun findByStatusAndProposedAtBeforeOrderByProposedAt(
         status: MatchStatus,
@@ -134,15 +121,6 @@ interface MatchRepository : CrudRepository<MatchEntity, Long>, JpaSpecificationE
     @Modifying
     @Query("UPDATE MatchEntity m SET m.notifiedAt = :now WHERE m.id IN :ids")
     fun markNotified(@Param("ids") ids: Collection<Long>, @Param("now") now: Date): Int
-
-    /**
-     * Sets [MatchEntity.listingAgentNotifiedAt]. A bulk update on purpose: it skips the `@Version` check, so a
-     * dismiss made meanwhile neither fails it nor is overwritten, since only `listing_agent_notified_at` is set.
-     */
-    @Transactional
-    @Modifying
-    @Query("UPDATE MatchEntity m SET m.listingAgentNotifiedAt = :now WHERE m.id IN :ids")
-    fun markListingAgentNotified(@Param("ids") ids: Collection<Long>, @Param("now") now: Date): Int
 
     // The accepted matches with no visit yet that are due for a reminder, oldest answer first (MatchVisitReminderService).
     // VisitEntity is named in the query rather than imported: the match domain doesn't depend on the visit one.
