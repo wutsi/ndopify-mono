@@ -64,7 +64,8 @@ in a transaction holding the mandate's lock, replaced/removed objects deleted af
 - `enum class DocumentType { UNKNOWN, NATIONAL_ID, PASSPORT, LAND_TITLE, CERTIFICATE_OF_OWNERSHIP, SURVEY_PLAN,
   POWER_OF_ATTORNEY, LEASE_CONTRACT, UTILITY_BILL, TAX_RECEIPT, PAY_SLIP, BANK_PRE_APPROVAL, PROOF_OF_FUNDS, OTHER }`
   — KDoc: `LAND_TITLE`, `SURVEY_PLAN`, `CERTIFICATE_OF_OWNERSHIP` reuse `TitleDocumentType`'s names on purpose (#294).
-- `enum class DocumentStatus { UNKNOWN, UPLOADED, EXTRACTING, EXTRACTED, FAILED, EXPIRED }`
+- `enum class DocumentStatus { UNKNOWN, UPLOADED, EXTRACTING, EXTRACTED, FAILED }` — no `EXPIRED`: validity is
+  `expiresAt` against the consumer's clock, not a status (#327)
 - `data class DocumentField(val key: String = "", val value: String? = null, val confidence: Double? = null)`
 - `data class MandateDocumentPage(val id: Long = -1, val index: Int = 0, val contentType: String? = null,
   val url: String = "", val createdAt: Date = Date(), val modifiedAt: Date = Date())` — `url` is presigned, short-lived.

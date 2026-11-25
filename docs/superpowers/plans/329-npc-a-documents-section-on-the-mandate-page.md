@@ -35,8 +35,8 @@ endpoints).
 - Writes only while the mandate is in `MandateRules.ACTIVE`; on `CLOSED` / `CANCELLED` the section and the document
   page are read-only (*Voir* only).
 - *Ajouter un document* is `btn btn--secondary btn--compact` (the WhatsApp button's style) in every state.
-- Status labels: `UPLOADED` *Reçu*, `EXTRACTING` *En cours d'analyse*, `EXTRACTED` *Analysé*, `FAILED` *À corriger*,
-  `EXPIRED` *Expiré* (pill styles as the prototype).
+- Status labels: `UPLOADED` *Reçu*, `EXTRACTING` *En cours d'analyse*, `EXTRACTED` *Analysé*, `FAILED` *À corriger*
+  (pill styles as the prototype). No expiry status (#327).
 - Type names (as #328's `MandateDocumentLabels`): `NATIONAL_ID` *Carte nationale d'identité*, `PASSPORT`
   *Passeport*, `LAND_TITLE` *Titre foncier*, `CERTIFICATE_OF_OWNERSHIP` *Certificat de propriété*, `SURVEY_PLAN`
   *Plan de bornage*, `POWER_OF_ATTORNEY` *Procuration*, `LEASE_CONTRACT` *Contrat de bail*, `UTILITY_BILL` *Facture
