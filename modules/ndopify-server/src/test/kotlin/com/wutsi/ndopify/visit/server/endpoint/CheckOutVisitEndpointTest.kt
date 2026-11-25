@@ -37,8 +37,8 @@ class CheckOutVisitEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertTrue(smtp.waitForIncomingEmail(5000, 1), "one email expected")
         val message = smtp.receivedMessages.single()
         assertEquals("Ray Sponsible <ray.sponsible@gmail.com>", message.allRecipients.single().toString())
-        assertEquals("Ndopify: votre visite est terminée", message.subject)
-        assertTrue(message.content.toString().contains("Le bien vous int"))
+        assertEquals("Alors, ce bien vous intéresse ?", message.subject)
+        assertTrue(message.content.toString().contains("Alors, ce bien vous int"))
     }
 
     @Test
