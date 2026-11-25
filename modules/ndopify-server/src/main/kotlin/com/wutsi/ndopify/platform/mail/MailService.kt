@@ -2,22 +2,43 @@ package com.wutsi.ndopify.platform.mail
 
 import jakarta.mail.Message
 import jakarta.mail.Part
+import jakarta.mail.Session
 import jakarta.mail.internet.MimeBodyPart
 import jakarta.mail.internet.MimeMessage
 import jakarta.mail.internet.MimeMultipart
 import org.springframework.mail.javamail.JavaMailSender
+import org.springframework.mail.javamail.JavaMailSenderImpl
 
 class MailService(
     private val mail: JavaMailSender,
     private val from: String = "no-reply@wutsi.com",
 ) {
+    /** The domain of the configured sender, for the message ids a caller builds (`<mandate-1-1@wutsi.com>`). */
+    val fromDomain: String get() = from.substringAfterLast('@', "").ifBlank { "ndopify.com" }
+
     fun send(email: Email) {
         val msg = createMessage(email)
         mail.send(msg)
     }
 
+    /**
+     * JavaMail regenerates the Message-ID in `saveChanges()`, which the SMTP send always runs: a conversation's fixed
+     * id would be replaced. Overriding `updateMessageID` is the only hook it offers.
+     */
+    private class PinnedMimeMessage(session: Session, private val id: String) : MimeMessage(session) {
+        override fun updateMessageID() {
+            setHeader("Message-ID", "<$id>")
+        }
+    }
+
+    // Spring Boot wires a JavaMailSenderImpl (MailConfiguration is the only place a MailService is built)
+    private fun newMessage(email: Email): MimeMessage =
+        email.messageId?.let { id ->
+            PinnedMimeMessage((mail as JavaMailSenderImpl).session, id).also { it.setHeader("Message-ID", "<$id>") }
+        } ?: mail.createMimeMessage()
+
     private fun createMessage(message: Email): MimeMessage {
-        val msg = mail.createMimeMessage()
+        val msg = newMessage(message)
 
         // Headers
         message.sender?.let { sender ->
@@ -30,6 +51,16 @@ class MailService(
             Message.RecipientType.TO,
             arrayOf(message.recipient.toInternetAddress())
         )
+
+        // Conversation headers: a mail client groups a message by its references and its subject
+        message.inReplyTo?.let { msg.setHeader("In-Reply-To", "<$it>") }
+        if (message.references.isNotEmpty()) {
+            msg.setHeader("References", message.references.joinToString(" ") { "<$it>" })
+        }
+        if (message.messageId != null) {
+            // Outlook threads by subject: it needs the fixed subject as the conversation topic
+            msg.setHeader("Thread-Topic", message.subject)
+        }
 
         if (message.language != null) {
             msg.contentLanguage = arrayOf(message.language)
