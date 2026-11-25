@@ -12,6 +12,8 @@ import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.mandate.server.service.MandateConversation
+import com.wutsi.ndopify.mandate.server.service.MandateConversationService
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
@@ -31,7 +33,14 @@ class MandateAssignedMailetTest {
     private val locationService = mock<LocationService>()
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
-    private val mailet = MandateAssignedMailet(tenantService, locationService, mailService, mailBodyResolver)
+    private val conversationService = mock<MandateConversationService>()
+    private val mailet = MandateAssignedMailet(
+        tenantService,
+        locationService,
+        mailService,
+        mailBodyResolver,
+        conversationService,
+    )
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -70,6 +79,14 @@ class MandateAssignedMailetTest {
         doReturn(LocationEntity(id = 111L, name = "Bastos")).whenever(locationService).findByIdOrNull(111L)
         doReturn(LocationEntity(id = 222L, name = "Mvan")).whenever(locationService).findByIdOrNull(222L)
         doReturn("<html>assigned</html>").whenever(mailBodyResolver).resolve(any(), any())
+        doReturn(
+            MandateConversation(
+                subject = "Votre recherche : appartement à Bastos, Mvan (Yaounde) · mandat 1",
+                messageId = "mandate-1-1@wutsi.com",
+                inReplyTo = null,
+                references = emptyList(),
+            ),
+        ).whenever(conversationService).of(1L)
     }
 
     @Test
@@ -98,7 +115,7 @@ class MandateAssignedMailetTest {
         verify(mailService).send(email.capture())
         assertEquals("ray.sponsible@gmail.com", email.firstValue.recipient.email)
         assertEquals("Ray Sponsible", email.firstValue.recipient.displayName)
-        assertEquals("Je prends en charge votre mandat à Bastos, Mvan (Yaounde)", email.firstValue.subject)
+        assertEquals("Votre recherche : appartement à Bastos, Mvan (Yaounde) · mandat 1", email.firstValue.subject)
         assertEquals("<html>assigned</html>", email.firstValue.body)
         assertEquals("Kim Possible", email.firstValue.sender?.displayName)
         assertEquals(
@@ -111,23 +128,36 @@ class MandateAssignedMailetTest {
     }
 
     @Test
-    fun `no neighbourhoods - the city in the subject`() {
-        mailet.send(mandate.copy(neighborhoodIds = emptyList()), customer, agent)
+    fun `the assigned e-mail opens the mandate's conversation`() {
+        mailet.send(mandate, customer, agent)
 
+        verify(conversationService).of(1L)
         val email = argumentCaptor<Email>()
         verify(mailService).send(email.capture())
-        assertEquals("Je prends en charge votre mandat à Yaounde", email.firstValue.subject)
+        assertEquals("Votre recherche : appartement à Bastos, Mvan (Yaounde) · mandat 1", email.firstValue.subject)
+        assertEquals("mandate-1-1@wutsi.com", email.firstValue.messageId)
+        assertNull(email.firstValue.inReplyTo)
+        assertEquals(emptyList<String>(), email.firstValue.references)
     }
 
     @Test
-    fun `unknown city - the neighbourhoods only`() {
-        doReturn(null).whenever(locationService).findByIdOrNull(2370201L)
+    fun `a reassigned mandate joins the conversation`() {
+        doReturn(
+            MandateConversation(
+                subject = "Votre recherche : appartement à Bastos, Mvan (Yaounde) · mandat 1",
+                messageId = "mandate-1-1-7f0f@wutsi.com",
+                inReplyTo = "mandate-1-1@wutsi.com",
+                references = listOf("mandate-1-1@wutsi.com"),
+            ),
+        ).whenever(conversationService).of(1L)
 
         mailet.send(mandate, customer, agent)
 
         val email = argumentCaptor<Email>()
         verify(mailService).send(email.capture())
-        assertEquals("Je prends en charge votre mandat à Bastos, Mvan", email.firstValue.subject)
+        assertEquals("mandate-1-1-7f0f@wutsi.com", email.firstValue.messageId)
+        assertEquals("mandate-1-1@wutsi.com", email.firstValue.inReplyTo)
+        assertEquals(listOf("mandate-1-1@wutsi.com"), email.firstValue.references)
     }
 
     @Test
