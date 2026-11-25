@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Prototype — e-mail « visite confirmée » — Ndopify</title>
+    <meta name="description" content="Prototype statique de l'e-mail de confirmation de visite réécrit à la première personne de l'agent : états bureau, vidéo, sans photo, sans WhatsApp et 375 px.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#f4f6f8">
+    <style>
+        /* Review page around the e-mail frames. The e-mail itself uses tables and inline styles only (see below):
+           this stylesheet never styles it, it only styles the document that shows it. */
+        *, *::before, *::after { box-sizing: border-box; }
+        html { -webkit-text-size-adjust: 100%; }
+        body {
+            margin: 0;
+            background: #f4f6f8;
+            color: #040404;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .page { max-width: 760px; margin: 0 auto; padding: 40px 20px 80px; }
+        .page__head { border-bottom: 1px solid #dfdfdf; padding-bottom: 24px; }
+        .eyebrow {
+            margin: 0 0 8px;
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #1d7edf;
+        }
+        h1 { margin: 0 0 12px; font-size: 26px; line-height: 1.25; }
+        .lede { margin: 0; max-width: 62ch; color: #555555; }
+        .lede + .lede { margin-top: 8px; }
+
+        .frame { margin-top: 56px; }
+        .frame__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; }
+        .frame__head h2 { margin: 0; font-size: 19px; line-height: 1.3; }
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border: 1px solid #bfdbfe;
+            border-radius: 30px;
+            background: #dbeafe;
+            color: #1e3a8a;
+            font-size: 12px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .tag--ink { background: #ffffff; border-color: #dfdfdf; color: #040404; }
+        .frame__caption { margin: 8px 0 0; max-width: 68ch; color: #555555; font-size: 15px; }
+
+        /* Envelope annotations: what the client shows above the message, not part of the e-mail body */
+        .envelope {
+            display: grid;
+            grid-template-columns: 7.5rem minmax(0, 1fr);
+            gap: 4px 12px;
+            margin: 16px 0 20px;
+            padding: 12px 16px;
+            border-left: 3px solid #1d7edf;
+            background: #ffffff;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+        .envelope dt { margin: 0; color: #555555; }
+        .envelope dd { margin: 0; }
+        .envelope dd strong { font-weight: bold; }
+        code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em; }
+
+        /* The frame is a window on the e-mail: the mail brings its own #dbeafe background.
+           662 px = the 600 px card + its 2 x 30 px page padding + the frame's 2 x 1 px border. */
+        .mail-frame {
+            width: 662px;
+            max-width: 100%;
+            border: 1px solid #dfdfdf;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #dbeafe;
+        }
+        .mail-frame--phone { width: 375px; }
+        /* The 375 px frame is a narrow div on a desktop viewport, so the e-mail's own media query cannot fire
+           inside it: this scope applies the same rule (see "Shipped with the e-mail" below) so the frame shows
+           what a phone renders. The footer stays side by side, the reply box stays full width. */
+        .mail-frame--phone .nd-btn {
+            display: block !important;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .notes { margin-top: 64px; padding-top: 24px; border-top: 1px solid #dfdfdf; }
+        .notes h2 { margin: 0 0 8px; font-size: 17px; }
+        .notes p { margin: 0 0 8px; color: #555555; font-size: 15px; }
+
+        a:focus-visible { outline: 2px solid #1d7edf; outline-offset: 2px; }
+
+        @media (max-width: 760px) {
+            .page { padding: 24px 12px 64px; }
+            .mail-frame, .mail-frame--phone { width: 100%; }
+            .envelope { grid-template-columns: 1fr; gap: 0; }
+            .envelope dt { margin-top: 8px; }
+            .envelope dt:first-child { margin-top: 0; }
+        }
+
+        /* ---- Shipped with the e-mail (its mj-head), not part of the review page ----
+           Under 480 px the card's two buttons take the full content width, centered; padding, radius, height and
+           colours stay the ones inlined on the anchors. !important lifts the inline display of the anchors, as
+           MJML's own mobile rules do. On desktop the buttons keep their auto width, centered. */
+        @media only screen and (max-width: 480px) {
+            .nd-btn {
+                display: block !important;
+                width: 100%;
+                box-sizing: border-box;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<!--
+    Prototype of the rewritten "visit confirmed" customer e-mail (story #322), the design record for
+    mail/visit/confirmed.mjml + mail/fragments/agent-footer.mjml. Never served by Spring Boot.
+
+    Each frame is a static rendering of the final e-mail: the same table-based, inline-styled markup an
+    e-mail client receives, with the mail.css tokens (#dbeafe page, white 600 px card, 30 px radius, 20 px
+    padding, #1d7edf primary, Arial/Helvetica 16 px, 56 px round photo, 15 px bold pill button). No script,
+    no external asset: the photos are inline data-URI SVG placeholders.
+
+    The envelope annotations above each frame (From, Reply-To, subject, preview) are not part of the body:
+    they say what the mailet sets. Copy is final French and is meant to be copied verbatim by the
+    implementation plan. A transactional e-mail has no empty, loading or error state: only the states the
+    acceptance criteria imply are framed (on site, video, no photo, no WhatsApp number, 375 px).
+-->
+<body>
+<main class="page">
+    <header class="page__head">
+        <p class="eyebrow">Ndopify · story #322</p>
+        <h1>L'e-mail « visite confirmée », écrit par l'agent</h1>
+        <p class="lede">
+            Le client reçoit un message de son agent, pas une notification de la plateforme : « De : » porte le nom de
+            l'agent, l'objet se lit comme une phrase, le corps parle à la première personne et la réponse se fait sur
+            WhatsApp — jamais par e-mail.
+        </p>
+        <p class="lede">
+            Cinq cadres : l'état par défaut sur place, la visite vidéo, l'agent sans photo, l'agent sans numéro
+            WhatsApp, puis le même e-mail à 375 px.
+        </p>
+    </header>
+
+    <!-- 1. Desktop, default: ON_SITE, booked by the agent, agent with a photo and a WhatsApp number -->
+    <section class="frame" aria-labelledby="frame-1">
+        <div class="frame__head">
+            <h2 id="frame-1">1. Bureau — visite sur place</h2>
+            <span class="tag tag--ink">600 px</span>
+            <span class="tag">État par défaut</span>
+        </div>
+        <p class="frame__caption">
+            Visite sur place demandée par l'agent, agent avec photo et numéro WhatsApp : un bouton primaire, un bouton
+            secondaire de réponse juste dessous, l'encadré qui dit que les réponses ne sont pas lues, puis la signature
+            qui reprend le lien WhatsApp.
+        </p>
+        <dl class="envelope">
+            <dt>De</dt>
+            <dd>Kim Possible &lt;no-reply@ndopify.cm&gt;</dd>
+            <dt>Répondre à</dt>
+            <dd>aucun — pas d'en-tête <code>Reply-To</code></dd>
+            <dt>Objet</dt>
+            <dd><strong>Votre visite de samedi est confirmée</strong></dd>
+            <dt>Aperçu</dt>
+            <dd>samedi 5 décembre 2026 à 10:00 · Appartement 3 pièces à Bonapriso</dd>
+        </dl>
+        <div class="mail-frame">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#dbeafe"
+                   style="background-color:#dbeafe;border-collapse:collapse;">
+                <tr>
+                    <td align="center" style="padding:30px;">
+                        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+                               bgcolor="#ffffff"
+                               style="width:100%;max-width:600px;background-color:#ffffff;border-radius:30px;border-collapse:separate;">
+                            <tr>
+                                <td style="padding:20px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#040404;">
+
+                                    <!-- The card's only brand mark: the 4 px rule of mail.css (the tenant logo is gone) -->
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td style="height:4px;background-color:#1d7edf;font-size:0;line-height:0;">&#160;</td>
+                                        </tr>
+                                    </table>
+
+                                    <!-- The listing's photo, linked to the visit's page -->
+                                    <a href="https://www.ndopify.cm/visits/9001" style="text-decoration:none;"><img
+                                            src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMTIwIiBoZWlnaHQ9IjY0MCIgdmlld0JveD0iMCAwIDExMjAgNjQwIj48cmVjdCB3aWR0aD0iMTEyMCIgaGVpZ2h0PSI2NDAiIGZpbGw9IiNlZWYyZjciLz48cmVjdCB5PSI0NDAiIHdpZHRoPSIxMTIwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2RkZTVlZSIvPjxyZWN0IHg9Ijk2IiB5PSI4MCIgd2lkdGg9IjM2MCIgaGVpZ2h0PSIyODAiIGZpbGw9IiNkM2U2ZjciIHN0cm9rZT0iI2I5YzlkOSIgc3Ryb2tlLXdpZHRoPSIxMCIvPjxwYXRoIGQ9Ik0yNzYgODB2MjgwTTk2IDIyMGgzNjAiIHN0cm9rZT0iI2I5YzlkOSIgc3Ryb2tlLXdpZHRoPSIxMCIvPjxyZWN0IHg9IjYyMCIgeT0iMzAwIiB3aWR0aD0iMzgwIiBoZWlnaHQ9IjE1MCIgcng9IjI2IiBmaWxsPSIjYzlkN2U0Ii8+PHJlY3QgeD0iNjQ4IiB5PSIzNDQiIHdpZHRoPSIzMjQiIGhlaWdodD0iMTA2IiByeD0iMTgiIGZpbGw9IiNkY2U2ZWYiLz48cmVjdCB4PSI2NDgiIHk9IjMwMCIgd2lkdGg9IjcyIiBoZWlnaHQ9IjEwNiIgcng9IjE4IiBmaWxsPSIjYjljOWQ5Ii8+PHJlY3QgeD0iOTAwIiB5PSIzMDAiIHdpZHRoPSI3MiIgaGVpZ2h0PSIxMDYiIHJ4PSIxOCIgZmlsbD0iI2I5YzlkOSIvPjxyZWN0IHg9IjEwMDAiIHk9IjMzMCIgd2lkdGg9IjI2IiBoZWlnaHQ9IjEyMCIgZmlsbD0iI2NiZDZlMSIvPjxwYXRoIGQ9Ik0xMDEzIDMzMGMtMjYtMTQtNDItNDItNDAtNzIgMzAgMiA1NCAyNiA1NiA1NnoiIGZpbGw9IiNiZmQxYzYiLz48cGF0aCBkPSJNMTAxMyAzMzBjMjItMTggMzItNTAgMjYtODAtMjggMTAtNDYgMzgtNDQgNjh6IiBmaWxsPSIjYTljMmIyIi8+PC9zdmc+"
+                                            width="560" height="320" alt="Appartement 3 pièces à Bonapriso"
+                                            style="display:block;width:100%;height:auto;border:0;border-radius:8px;margin:16px 0 0;"></a>
+
+                                    <p style="margin:16px 0 0;">Bonjour <strong>Ray Sponsible</strong>,</p>
+                                    <p style="margin:16px 0 0;">
+                                        Je vous confirme notre visite : <strong>Appartement 3 pièces à
+                                        Bonapriso</strong>, <strong>samedi 5 décembre 2026 à 10:00</strong>.
+                                    </p>
+                                    <p style="margin:16px 0 0;">
+                                        Localisation&#160;: <strong>Bonapriso, Douala</strong> — près de la boulangerie
+                                        Zepol
+                                    </p>
+                                    <p style="margin:16px 0 0;">
+                                        Je vous attends sur place. Votre code de visite est <strong>4821</strong>&#160;:
+                                        présentez-le-moi à votre arrivée.
+                                    </p>
+                                    <p style="margin:16px 0 0;">
+                                        Je vous communiquerai l'adresse exacte et l'itinéraire avant la visite.
+                                    </p>
+
+                                    <!-- One primary action, at most -->
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td align="center" style="padding:24px 0 0;">
+                                                <a class="nd-btn" href="https://www.ndopify.cm/visits/9001"
+                                                   style="display:inline-block;background-color:#1d7edf;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;line-height:20px;border-radius:30px;padding:12px 24px;text-decoration:none;">Voir
+                                                    ma visite</a>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <!-- The reply: a secondary button, clearly quieter than the primary -->
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td align="center" style="padding:12px 0 0;">
+                                                <a class="nd-btn" href="https://wa.me/237677123456?text=Bonjour%2C%20je%20vous%20r%C3%A9ponds%20au%20sujet%20de%20la%20visite%20du%20bien%20Appartement%203%20pi%C3%A8ces%20%C3%A0%20Bonapriso%20le%20samedi%205%20d%C3%A9cembre%202026%20%C3%A0%2010%3A00."
+                                                   style="display:inline-block;background-color:#ffffff;color:#1d7edf;border:1px solid #1d7edf;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;line-height:20px;border-radius:30px;padding:12px 24px;text-decoration:none;">Me
+                                                    répondre sur WhatsApp</a>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    <!-- The reply box: it disappears with the secondary button -->
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                                           style="margin-top:16px;">
+                                        <tr>
+                                            <td align="center" bgcolor="#f1f5f9"
+                                                style="background-color:#f1f5f9;border-radius:8px;padding:14px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#334155;">
+                                                Les réponses à cet e-mail ne me parviennent pas&#160;: écrivez-moi sur
+                                                WhatsApp.
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <p style="margin:16px 0 0;">Cordialement,</p>
+
+                                    <!-- Signature: the tenant appears once, small, at the bottom -->
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td style="height:4px;background-color:#1d7edf;font-size:0;line-height:0;">&#160;</td>
+                                        </tr>
+                                    </table>
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                                           style="margin-top:16px;">
+                                        <tr>
+                                            <td width="56" valign="middle" style="width:56px;padding:0 12px 0 0;">
+                                                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMTIiIGhlaWdodD0iMTEyIiB2aWV3Qm94PSIwIDAgMTEyIDExMiI+PHJlY3Qgd2lkdGg9IjExMiIgaGVpZ2h0PSIxMTIiIGZpbGw9IiNkYmVhZmUiLz48Y2lyY2xlIGN4PSI1NiIgY3k9IjQzIiByPSIxOCIgZmlsbD0iIzdmOWJiOCIvPjxwYXRoIGQ9Ik0yMiAxMTJjMC0yMCAxNS0zNiAzNC0zNnMzNCAxNiAzNCAzNnoiIGZpbGw9IiM3ZjliYjgiLz48L3N2Zz4="
+                                                     width="56" height="56" alt="Photo de Kim Possible"
+                                                     style="display:block;width:56px;height:56px;border:0;border-radius:28px;">
+                                            </td>
+                                            <td valign="middle">
+                                                <span style="font-weight:bold;">Kim Possible</span><br>
+                                                <a href="https://wa.me/237677123456"
+                                                   style="color:#1d7edf;font-size:15px;line-height:1.5;text-decoration:underline;">WhatsApp
+                                                    +237 6 77 12 34 56</a><br>
+                                                <span style="font-size:13px;line-height:1.5;">Envoyé via Ndopify</span>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </section>
+
+    <!-- 2. Desktop, video visit: the on_site=false wording -->
+    <section class="frame" aria-labelledby="frame-2">
+        <div class="frame__head">
+            <h2 id="frame-2">2. Bureau — visite vidéo</h2>
+            <span class="tag tag--ink">600 px</span>
+            <span class="tag">Visite vidéo</span>
+        </div>
+        <p class="frame__caption">
+            La branche <code>on_site=false</code> : l'agent appelle en vidéo sur WhatsApp depuis le bien, il n'attend
+            personne sur place et ne promet donc ni adresse ni itinéraire. L'objet reste la même constante du mailet —
+            le type de visite est dit dans l'aperçu et dans le corps.
+        </p>
+        <dl class="envelope">
+            <dt>De</dt>
+            <dd>Kim Possible &lt;no-reply@ndopify.cm&gt;</dd>
+            <dt>Répondre à</dt>
+            <dd>aucun — pas d'en-tête <code>Reply-To</code></dd>
+            <dt>Objet</dt>
+            <dd><strong>Votre visite de samedi est confirmée</strong></dd>
+            <dt>Aperçu</dt>
+            <dd>samedi 5 décembre 2026 à 10:00 · Visite vidéo · Appartement 3 pièces à Bonapriso</dd>
+        </dl>
+        <div class="mail-frame">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#dbeafe"
+                   style="background-color:#dbeafe;border-collapse:collapse;">
+                <tr>
+                    <td align="center" style="padding:30px;">
+                        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+                               bgcolor="#ffffff"
+                               style="width:100%;max-width:600px;background-color:#ffffff;border-radius:30px;border-collapse:separate;">
+                            <tr>
+                                <td style="padding:20px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#040404;">
+
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td style="height:4px;background-color:#1d7edf;font-size:0;line-height:0;">&#160;</td>
+                                        </tr>
+                                    </table>
+
+                                    <a href="https://www.ndopify.cm/visits/9001" style="text-decoration:none;"><img
+                                            src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMTIwIiBoZWlnaHQ9IjY0MCIgdmlld0JveD0iMCAwIDExMjAgNjQwIj48cmVjdCB3aWR0aD0iMTEyMCIgaGVpZ2h0PSI2NDAiIGZpbGw9IiNlZWYyZjciLz48cmVjdCB5PSI0NDAiIHdpZHRoPSIxMTIwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2RkZTVlZSIvPjxyZWN0IHg9Ijk2IiB5PSI4MCIgd2lkdGg9IjM2MCIgaGVpZ2h0PSIyODAiIGZpbGw9IiNkM2U2ZjciIHN0cm9rZT0iI2I5YzlkOSIgc3Ryb2tlLXdpZHRoPSIxMCIvPjxwYXRoIGQ9Ik0yNzYgODB2MjgwTTk2IDIyMGgzNjAiIHN0cm9rZT0iI2I5YzlkOSIgc3Ryb2tlLXdpZHRoPSIxMCIvPjxyZWN0IHg9IjYyMCIgeT0iMzAwIiB3aWR0aD0iMzgwIiBoZWlnaHQ9IjE1MCIgcng9IjI2IiBmaWxsPSIjYzlkN2U0Ii8+PHJlY3QgeD0iNjQ4IiB5PSIzNDQiIHdpZHRoPSIzMjQiIGhlaWdodD0iMTA2IiByeD0iMTgiIGZpbGw9IiNkY2U2ZWYiLz48cmVjdCB4PSI2NDgiIHk9IjMwMCIgd2lkdGg9IjcyIiBoZWlnaHQ9IjEwNiIgcng9IjE4IiBmaWxsPSIjYjljOWQ5Ii8+PHJlY3QgeD0iOTAwIiB5PSIzMDAiIHdpZHRoPSI3MiIgaGVpZ2h0PSIxMDYiIHJ4PSIxOCIgZmlsbD0iI2I5YzlkOSIvPjxyZWN0IHg9IjEwMDAiIHk9IjMzMCIgd2lkdGg9IjI2IiBoZWlnaHQ9IjEyMCIgZmlsbD0iI2NiZDZlMSIvPjxwYXRoIGQ9Ik0xMDEzIDMzMGMtMjYtMTQtNDItNDItNDAtNzIgMzAgMiA1NCAyNiA1NiA1NnoiIGZpbGw9IiNiZmQxYzYiLz48cGF0aCBkPSJNMTAxMyAzMzBjMjItMTggMzItNTAgMjYtODAtMjggMTAtNDYgMzgtNDQgNjh6IiBmaWxsPSIjYTljMmIyIi8+PC9zdmc+"
+                                            width="560" height="320" alt="Appartement 3 pièces à Bonapriso"
+                                            style="display:block;width:100%;height:auto;border:0;border-radius:8px;margin:16px 0 0;"></a>
+
+                                    <p style="margin:16px 0 0;">Bonjour <strong>Ray Sponsible</strong>,</p>
+                                    <p style="margin:16px 0 0;">
+                                        Je vous confirme notre visite : <strong>Appartement 3 pièces à
+                                        Bonapriso</strong>, <strong>samedi 5 décembre 2026 à 10:00</strong>.
+                                    </p>
+                                    <p style="margin:16px 0 0;">
+                                        Localisation&#160;: <strong>Bonapriso, Douala</strong> — près de la boulangerie
+                                        Zepol
+                                    </p>
+                                    <p style="margin:16px 0 0;">
+                                        Elle se fera en vidéo&#160;: je vous appelle sur WhatsApp depuis le bien, à
+                                        l'heure convenue.
+                                    </p>
+                                    <p style="margin:16px 0 0;">
+                                        Votre code de visite est <strong>4821</strong>&#160;: lisez-le-moi pendant
+                                        l'appel.
+                                    </p>
+
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td align="center" style="padding:24px 0 0;">
+                                                <a class="nd-btn" href="https://www.ndopify.cm/visits/9001"
+                                                   style="display:inline-block;background-color:#1d7edf;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;line-height:20px;border-radius:30px;padding:12px 24px;text-decoration:none;">Voir
+                                                    ma visite</a>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td align="center" style="padding:12px 0 0;">
+                                                <a class="nd-btn" href="https://wa.me/237677123456?text=Bonjour%2C%20je%20vous%20r%C3%A9ponds%20au%20sujet%20de%20la%20visite%20vid%C3%A9o%20du%20bien%20Appartement%203%20pi%C3%A8ces%20%C3%A0%20Bonapriso%20le%20samedi%205%20d%C3%A9cembre%202026%20%C3%A0%2010%3A00."
+                                                   style="display:inline-block;background-color:#ffffff;color:#1d7edf;border:1px solid #1d7edf;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;line-height:20px;border-radius:30px;padding:12px 24px;text-decoration:none;">Me
+                                                    répondre sur WhatsApp</a>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    <!-- The reply box: it disappears with the secondary button -->
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                                           style="margin-top:16px;">
+                                        <tr>
+                                            <td align="center" bgcolor="#f1f5f9"
+                                                style="background-color:#f1f5f9;border-radius:8px;padding:14px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#334155;">
+                                                Les réponses à cet e-mail ne me parviennent pas&#160;: écrivez-moi sur
+                                                WhatsApp.
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <p style="margin:16px 0 0;">Cordialement,</p>
+
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td style="height:4px;background-color:#1d7edf;font-size:0;line-height:0;">&#160;</td>
+                                        </tr>
+                                    </table>
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                                           style="margin-top:16px;">
+                                        <tr>
+                                            <td width="56" valign="middle" style="width:56px;padding:0 12px 0 0;">
+                                                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMTIiIGhlaWdodD0iMTEyIiB2aWV3Qm94PSIwIDAgMTEyIDExMiI+PHJlY3Qgd2lkdGg9IjExMiIgaGVpZ2h0PSIxMTIiIGZpbGw9IiNkYmVhZmUiLz48Y2lyY2xlIGN4PSI1NiIgY3k9IjQzIiByPSIxOCIgZmlsbD0iIzdmOWJiOCIvPjxwYXRoIGQ9Ik0yMiAxMTJjMC0yMCAxNS0zNiAzNC0zNnMzNCAxNiAzNCAzNnoiIGZpbGw9IiM3ZjliYjgiLz48L3N2Zz4="
+                                                     width="56" height="56" alt="Photo de Kim Possible"
+                                                     style="display:block;width:56px;height:56px;border:0;border-radius:28px;">
+                                            </td>
+                                            <td valign="middle">
+                                                <span style="font-weight:bold;">Kim Possible</span><br>
+                                                <a href="https://wa.me/237677123456"
+                                                   style="color:#1d7edf;font-size:15px;line-height:1.5;text-decoration:underline;">WhatsApp
+                                                    +237 6 77 12 34 56</a><br>
+                                                <span style="font-size:13px;line-height:1.5;">Envoyé via Ndopify</span>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </section>
+
+    <!-- 3. Desktop, no photo: the footer drops the image column entirely (no broken image, no empty column) -->
+    <section class="frame" aria-labelledby="frame-3">
+        <div class="frame__head">
+            <h2 id="frame-3">3. Bureau — agent sans photo</h2>
+            <span class="tag tag--ink">600 px</span>
+            <span class="tag">Sans photo</span>
+        </div>
+        <p class="frame__caption">
+            <code>agent_photo_url</code> absent : la signature garde le nom, le lien WhatsApp et « Envoyé via Ndopify »,
+            sans image cassée ni colonne vide. Le corps ne change pas.
+        </p>
+        <dl class="envelope">
+            <dt>De</dt>
+            <dd>Kim Possible &lt;no-reply@ndopify.cm&gt;</dd>
+            <dt>Répondre à</dt>
+            <dd>aucun — pas d'en-tête <code>Reply-To</code></dd>
+            <dt>Objet</dt>
+            <dd><strong>Votre visite de samedi est confirmée</strong></dd>
+            <dt>Aperçu</dt>
+            <dd>samedi 5 décembre 2026 à 10:00 · Appartement 3 pièces à Bonapriso</dd>
+        </dl>
+        <div class="mail-frame">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#dbeafe"
+                   style="background-color:#dbeafe;border-collapse:collapse;">
+                <tr>
+                    <td align="center" style="padding:30px;">
+                        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+                               bgcolor="#ffffff"
+                               style="width:100%;max-width:600px;background-color:#ffffff;border-radius:30px;border-collapse:separate;">
+                            <tr>
+                                <td style="padding:20px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#040404;">
+
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td style="height:4px;background-color:#1d7edf;font-size:0;line-height:0;">&#160;</td>
+                                        </tr>
+                                    </table>
+
+                                    <a href="https://www.ndopify.cm/visits/9001" style="text-decoration:none;"><img
+                                            src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMTIwIiBoZWlnaHQ9IjY0MCIgdmlld0JveD0iMCAwIDExMjAgNjQwIj48cmVjdCB3aWR0aD0iMTEyMCIgaGVpZ2h0PSI2NDAiIGZpbGw9IiNlZWYyZjciLz48cmVjdCB5PSI0NDAiIHdpZHRoPSIxMTIwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2RkZTVlZSIvPjxyZWN0IHg9Ijk2IiB5PSI4MCIgd2lkdGg9IjM2MCIgaGVpZ2h0PSIyODAiIGZpbGw9IiNkM2U2ZjciIHN0cm9rZT0iI2I5YzlkOSIgc3Ryb2tlLXdpZHRoPSIxMCIvPjxwYXRoIGQ9Ik0yNzYgODB2MjgwTTk2IDIyMGgzNjAiIHN0cm9rZT0iI2I5YzlkOSIgc3Ryb2tlLXdpZHRoPSIxMCIvPjxyZWN0IHg9IjYyMCIgeT0iMzAwIiB3aWR0aD0iMzgwIiBoZWlnaHQ9IjE1MCIgcng9IjI2IiBmaWxsPSIjYzlkN2U0Ii8+PHJlY3QgeD0iNjQ4IiB5PSIzNDQiIHdpZHRoPSIzMjQiIGhlaWdodD0iMTA2IiByeD0iMTgiIGZpbGw9IiNkY2U2ZWYiLz48cmVjdCB4PSI2NDgiIHk9IjMwMCIgd2lkdGg9IjcyIiBoZWlnaHQ9IjEwNiIgcng9IjE4IiBmaWxsPSIjYjljOWQ5Ii8+PHJlY3QgeD0iOTAwIiB5PSIzMDAiIHdpZHRoPSI3MiIgaGVpZ2h0PSIxMDYiIHJ4PSIxOCIgZmlsbD0iI2I5YzlkOSIvPjxyZWN0IHg9IjEwMDAiIHk9IjMzMCIgd2lkdGg9IjI2IiBoZWlnaHQ9IjEyMCIgZmlsbD0iI2NiZDZlMSIvPjxwYXRoIGQ9Ik0xMDEzIDMzMGMtMjYtMTQtNDItNDItNDAtNzIgMzAgMiA1NCAyNiA1NiA1NnoiIGZpbGw9IiNiZmQxYzYiLz48cGF0aCBkPSJNMTAxMyAzMzBjMjItMTggMzItNTAgMjYtODAtMjggMTAtNDYgMzgtNDQgNjh6IiBmaWxsPSIjYTljMmIyIi8+PC9zdmc+"
+                                            width="560" height="320" alt="Appartement 3 pièces à Bonapriso"
+                                            style="display:block;width:100%;height:auto;border:0;border-radius:8px;margin:16px 0 0;"></a>
+
+                                    <p style="margin:16px 0 0;">Bonjour <strong>Ray Sponsible</strong>,</p>
+                                    <p style="margin:16px 0 0;">
+                                        Je vous confirme notre visite : <strong>Appartement 3 pièces à
+                                        Bonapriso</strong>, <strong>samedi 5 décembre 2026 à 10:00</strong>.
+                                    </p>
+                                    <p style="margin:16px 0 0;">
+                                        Localisation&#160;: <strong>Bonapriso, Douala</strong> — près de la boulangerie
+                                        Zepol
+                                    </p>
+                                    <p style="margin:16px 0 0;">
+                                        Je vous attends sur place. Votre code de visite est <strong>4821</strong>&#160;:
+                                        présentez-le-moi à votre arrivée.
+                                    </p>
+                                    <p style="margin:16px 0 0;">
+                                        Je vous communiquerai l'adresse exacte et l'itinéraire avant la visite.
+                                    </p>
+
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td align="center" style="padding:24px 0 0;">
+                                                <a class="nd-btn" href="https://www.ndopify.cm/visits/9001"
+                                                   style="display:inline-block;background-color:#1d7edf;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;line-height:20px;border-radius:30px;padding:12px 24px;text-decoration:none;">Voir
+                                                    ma visite</a>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td align="center" style="padding:12px 0 0;">
+                                                <a class="nd-btn" href="https://wa.me/237677123456?text=Bonjour%2C%20je%20vous%20r%C3%A9ponds%20au%20sujet%20de%20la%20visite%20du%20bien%20Appartement%203%20pi%C3%A8ces%20%C3%A0%20Bonapriso%20le%20samedi%205%20d%C3%A9cembre%202026%20%C3%A0%2010%3A00."
+                                                   style="display:inline-block;background-color:#ffffff;color:#1d7edf;border:1px solid #1d7edf;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;line-height:20px;border-radius:30px;padding:12px 24px;text-decoration:none;">Me
+                                                    répondre sur WhatsApp</a>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    <!-- The reply box: it disappears with the secondary button -->
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                                           style="margin-top:16px;">
+                                        <tr>
+                                            <td align="center" bgcolor="#f1f5f9"
+                                                style="background-color:#f1f5f9;border-radius:8px;padding:14px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#334155;">
+                                                Les réponses à cet e-mail ne me parviennent pas&#160;: écrivez-moi sur
+                                                WhatsApp.
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <p style="margin:16px 0 0;">Cordialement,</p>
+
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td style="height:4px;background-color:#1d7edf;font-size:0;line-height:0;">&#160;</td>
+                                        </tr>
+                                    </table>
+                                    <!-- No photo: no image cell at all, the text takes the whole row -->
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                                           style="margin-top:16px;">
+                                        <tr>
+                                            <td valign="middle">
+                                                <span style="font-weight:bold;">Kim Possible</span><br>
+                                                <a href="https://wa.me/237677123456"
+                                                   style="color:#1d7edf;font-size:15px;line-height:1.5;text-decoration:underline;">WhatsApp
+                                                    +237 6 77 12 34 56</a><br>
+                                                <span style="font-size:13px;line-height:1.5;">Envoyé via Ndopify</span>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </section>
+
+    <!-- 4. Desktop, no WhatsApp number: no reply button, no gray reply box, no footer WhatsApp line -->
+    <section class="frame" aria-labelledby="frame-4">
+        <div class="frame__head">
+            <h2 id="frame-4">4. Bureau — agent sans numéro WhatsApp</h2>
+            <span class="tag tag--ink">600 px</span>
+            <span class="tag">Sans WhatsApp</span>
+        </div>
+        <p class="frame__caption">
+            <code>agent_whatsapp_url</code> absent : ni le bouton secondaire « Me répondre sur WhatsApp », ni
+            l'encadré gris qui dit que les réponses ne sont pas lues, ni aucun lien <code>wa.me</code> vide. Tout le
+            reste est identique, le bouton primaire compris.
+        </p>
+        <dl class="envelope">
+            <dt>De</dt>
+            <dd>Kim Possible &lt;no-reply@ndopify.cm&gt;</dd>
+            <dt>Répondre à</dt>
+            <dd>aucun — pas d'en-tête <code>Reply-To</code></dd>
+            <dt>Objet</dt>
+            <dd><strong>Votre visite de samedi est confirmée</strong></dd>
+            <dt>Aperçu</dt>
+            <dd>samedi 5 décembre 2026 à 10:00 · Appartement 3 pièces à Bonapriso</dd>
+        </dl>
+        <div class="mail-frame">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#dbeafe"
+                   style="background-color:#dbeafe;border-collapse:collapse;">
+                <tr>
+                    <td align="center" style="padding:30px;">
+                        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+                               bgcolor="#ffffff"
+                               style="width:100%;max-width:600px;background-color:#ffffff;border-radius:30px;border-collapse:separate;">
+                            <tr>
+                                <td style="padding:20px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#040404;">
+
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td style="height:4px;background-color:#1d7edf;font-size:0;line-height:0;">&#160;</td>
+                                        </tr>
+                                    </table>
+
+                                    <a href="https://www.ndopify.cm/visits/9001" style="text-decoration:none;"><img
+                                            src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMTIwIiBoZWlnaHQ9IjY0MCIgdmlld0JveD0iMCAwIDExMjAgNjQwIj48cmVjdCB3aWR0aD0iMTEyMCIgaGVpZ2h0PSI2NDAiIGZpbGw9IiNlZWYyZjciLz48cmVjdCB5PSI0NDAiIHdpZHRoPSIxMTIwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2RkZTVlZSIvPjxyZWN0IHg9Ijk2IiB5PSI4MCIgd2lkdGg9IjM2MCIgaGVpZ2h0PSIyODAiIGZpbGw9IiNkM2U2ZjciIHN0cm9rZT0iI2I5YzlkOSIgc3Ryb2tlLXdpZHRoPSIxMCIvPjxwYXRoIGQ9Ik0yNzYgODB2MjgwTTk2IDIyMGgzNjAiIHN0cm9rZT0iI2I5YzlkOSIgc3Ryb2tlLXdpZHRoPSIxMCIvPjxyZWN0IHg9IjYyMCIgeT0iMzAwIiB3aWR0aD0iMzgwIiBoZWlnaHQ9IjE1MCIgcng9IjI2IiBmaWxsPSIjYzlkN2U0Ii8+PHJlY3QgeD0iNjQ4IiB5PSIzNDQiIHdpZHRoPSIzMjQiIGhlaWdodD0iMTA2IiByeD0iMTgiIGZpbGw9IiNkY2U2ZWYiLz48cmVjdCB4PSI2NDgiIHk9IjMwMCIgd2lkdGg9IjcyIiBoZWlnaHQ9IjEwNiIgcng9IjE4IiBmaWxsPSIjYjljOWQ5Ii8+PHJlY3QgeD0iOTAwIiB5PSIzMDAiIHdpZHRoPSI3MiIgaGVpZ2h0PSIxMDYiIHJ4PSIxOCIgZmlsbD0iI2I5YzlkOSIvPjxyZWN0IHg9IjEwMDAiIHk9IjMzMCIgd2lkdGg9IjI2IiBoZWlnaHQ9IjEyMCIgZmlsbD0iI2NiZDZlMSIvPjxwYXRoIGQ9Ik0xMDEzIDMzMGMtMjYtMTQtNDItNDItNDAtNzIgMzAgMiA1NCAyNiA1NiA1NnoiIGZpbGw9IiNiZmQxYzYiLz48cGF0aCBkPSJNMTAxMyAzMzBjMjItMTggMzItNTAgMjYtODAtMjggMTAtNDYgMzgtNDQgNjh6IiBmaWxsPSIjYTljMmIyIi8+PC9zdmc+"
+                                            width="560" height="320" alt="Appartement 3 pièces à Bonapriso"
+                                            style="display:block;width:100%;height:auto;border:0;border-radius:8px;margin:16px 0 0;"></a>
+
+                                    <p style="margin:16px 0 0;">Bonjour <strong>Ray Sponsible</strong>,</p>
+                                    <p style="margin:16px 0 0;">
+                                        Je vous confirme notre visite : <strong>Appartement 3 pièces à
+                                        Bonapriso</strong>, <strong>samedi 5 décembre 2026 à 10:00</strong>.
+                                    </p>
+                                    <p style="margin:16px 0 0;">
+                                        Localisation&#160;: <strong>Bonapriso, Douala</strong> — près de la boulangerie
+                                        Zepol
+                                    </p>
+                                    <p style="margin:16px 0 0;">
+                                        Je vous attends sur place. Votre code de visite est <strong>4821</strong>&#160;:
+                                        présentez-le-moi à votre arrivée.
+                                    </p>
+                                    <p style="margin:16px 0 0;">
+                                        Je vous communiquerai l'adresse exacte et l'itinéraire avant la visite.
+                                    </p>
+
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td align="center" style="padding:24px 0 0;">
+                                                <a class="nd-btn" href="https://www.ndopify.cm/visits/9001"
+                                                   style="display:inline-block;background-color:#1d7edf;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;line-height:20px;border-radius:30px;padding:12px 24px;text-decoration:none;">Voir
+                                                    ma visite</a>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <p style="margin:24px 0 0;">Cordialement,</p>
+
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td style="height:4px;background-color:#1d7edf;font-size:0;line-height:0;">&#160;</td>
+                                        </tr>
+                                    </table>
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                                           style="margin-top:16px;">
+                                        <tr>
+                                            <td width="56" valign="middle" style="width:56px;padding:0 12px 0 0;">
+                                                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMTIiIGhlaWdodD0iMTEyIiB2aWV3Qm94PSIwIDAgMTEyIDExMiI+PHJlY3Qgd2lkdGg9IjExMiIgaGVpZ2h0PSIxMTIiIGZpbGw9IiNkYmVhZmUiLz48Y2lyY2xlIGN4PSI1NiIgY3k9IjQzIiByPSIxOCIgZmlsbD0iIzdmOWJiOCIvPjxwYXRoIGQ9Ik0yMiAxMTJjMC0yMCAxNS0zNiAzNC0zNnMzNCAxNiAzNCAzNnoiIGZpbGw9IiM3ZjliYjgiLz48L3N2Zz4="
+                                                     width="56" height="56" alt="Photo de Kim Possible"
+                                                     style="display:block;width:56px;height:56px;border:0;border-radius:28px;">
+                                            </td>
+                                            <td valign="middle">
+                                                <span style="font-weight:bold;">Kim Possible</span><br>
+                                                <span style="font-size:13px;line-height:1.5;">Envoyé via Ndopify</span>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </section>
+
+    <!-- 5. 375 px: same default e-mail in a phone-width frame; photo and name stay side by side -->
+    <section class="frame" aria-labelledby="frame-5">
+        <div class="frame__head">
+            <h2 id="frame-5">5. Mobile — 375 px</h2>
+            <span class="tag tag--ink">375 px</span>
+            <span class="tag">Visite sur place</span>
+        </div>
+        <p class="frame__caption">
+            Le même e-mail que le cadre 1 dans une fenêtre de 375 px : la photo et le nom restent côte à côte (groupe
+            de colonnes, jamais empilés), les marges intérieures tiennent, les deux boutons prennent toute la largeur
+            de la carte (la règle 480 px du gabarit, émulée dans ce cadre), et le lien WhatsApp du pied reste une zone
+            tactile de 44 px de haut.
+        </p>
+        <dl class="envelope">
+            <dt>De</dt>
+            <dd>Kim Possible &lt;no-reply@ndopify.cm&gt;</dd>
+            <dt>Répondre à</dt>
+            <dd>aucun — pas d'en-tête <code>Reply-To</code></dd>
+            <dt>Objet</dt>
+            <dd><strong>Votre visite de samedi est confirmée</strong></dd>
+            <dt>Aperçu</dt>
+            <dd>samedi 5 décembre 2026 à 10:00 · Appartement 3 pièces à Bonapriso</dd>
+        </dl>
+        <div class="mail-frame mail-frame--phone">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#dbeafe"
+                   style="background-color:#dbeafe;border-collapse:collapse;">
+                <tr>
+                    <td align="center" style="padding:30px;">
+                        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+                               bgcolor="#ffffff"
+                               style="width:100%;max-width:600px;background-color:#ffffff;border-radius:30px;border-collapse:separate;">
+                            <tr>
+                                <td style="padding:20px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#040404;">
+
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td style="height:4px;background-color:#1d7edf;font-size:0;line-height:0;">&#160;</td>
+                                        </tr>
+                                    </table>
+
+                                    <a href="https://www.ndopify.cm/visits/9001" style="text-decoration:none;"><img
+                                            src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMTIwIiBoZWlnaHQ9IjY0MCIgdmlld0JveD0iMCAwIDExMjAgNjQwIj48cmVjdCB3aWR0aD0iMTEyMCIgaGVpZ2h0PSI2NDAiIGZpbGw9IiNlZWYyZjciLz48cmVjdCB5PSI0NDAiIHdpZHRoPSIxMTIwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2RkZTVlZSIvPjxyZWN0IHg9Ijk2IiB5PSI4MCIgd2lkdGg9IjM2MCIgaGVpZ2h0PSIyODAiIGZpbGw9IiNkM2U2ZjciIHN0cm9rZT0iI2I5YzlkOSIgc3Ryb2tlLXdpZHRoPSIxMCIvPjxwYXRoIGQ9Ik0yNzYgODB2MjgwTTk2IDIyMGgzNjAiIHN0cm9rZT0iI2I5YzlkOSIgc3Ryb2tlLXdpZHRoPSIxMCIvPjxyZWN0IHg9IjYyMCIgeT0iMzAwIiB3aWR0aD0iMzgwIiBoZWlnaHQ9IjE1MCIgcng9IjI2IiBmaWxsPSIjYzlkN2U0Ii8+PHJlY3QgeD0iNjQ4IiB5PSIzNDQiIHdpZHRoPSIzMjQiIGhlaWdodD0iMTA2IiByeD0iMTgiIGZpbGw9IiNkY2U2ZWYiLz48cmVjdCB4PSI2NDgiIHk9IjMwMCIgd2lkdGg9IjcyIiBoZWlnaHQ9IjEwNiIgcng9IjE4IiBmaWxsPSIjYjljOWQ5Ii8+PHJlY3QgeD0iOTAwIiB5PSIzMDAiIHdpZHRoPSI3MiIgaGVpZ2h0PSIxMDYiIHJ4PSIxOCIgZmlsbD0iI2I5YzlkOSIvPjxyZWN0IHg9IjEwMDAiIHk9IjMzMCIgd2lkdGg9IjI2IiBoZWlnaHQ9IjEyMCIgZmlsbD0iI2NiZDZlMSIvPjxwYXRoIGQ9Ik0xMDEzIDMzMGMtMjYtMTQtNDItNDItNDAtNzIgMzAgMiA1NCAyNiA1NiA1NnoiIGZpbGw9IiNiZmQxYzYiLz48cGF0aCBkPSJNMTAxMyAzMzBjMjItMTggMzItNTAgMjYtODAtMjggMTAtNDYgMzgtNDQgNjh6IiBmaWxsPSIjYTljMmIyIi8+PC9zdmc+"
+                                            width="560" height="320" alt="Appartement 3 pièces à Bonapriso"
+                                            style="display:block;width:100%;height:auto;border:0;border-radius:8px;margin:16px 0 0;"></a>
+
+                                    <p style="margin:16px 0 0;">Bonjour <strong>Ray Sponsible</strong>,</p>
+                                    <p style="margin:16px 0 0;">
+                                        Je vous confirme notre visite : <strong>Appartement 3 pièces à
+                                        Bonapriso</strong>, <strong>samedi 5 décembre 2026 à 10:00</strong>.
+                                    </p>
+                                    <p style="margin:16px 0 0;">
+                                        Localisation&#160;: <strong>Bonapriso, Douala</strong> — près de la boulangerie
+                                        Zepol
+                                    </p>
+                                    <p style="margin:16px 0 0;">
+                                        Je vous attends sur place. Votre code de visite est <strong>4821</strong>&#160;:
+                                        présentez-le-moi à votre arrivée.
+                                    </p>
+                                    <p style="margin:16px 0 0;">
+                                        Je vous communiquerai l'adresse exacte et l'itinéraire avant la visite.
+                                    </p>
+
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td align="center" style="padding:24px 0 0;">
+                                                <a class="nd-btn" href="https://www.ndopify.cm/visits/9001"
+                                                   style="display:inline-block;background-color:#1d7edf;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;line-height:20px;border-radius:30px;padding:12px 24px;text-decoration:none;">Voir
+                                                    ma visite</a>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td align="center" style="padding:12px 0 0;">
+                                                <a class="nd-btn" href="https://wa.me/237677123456?text=Bonjour%2C%20je%20vous%20r%C3%A9ponds%20au%20sujet%20de%20la%20visite%20du%20bien%20Appartement%203%20pi%C3%A8ces%20%C3%A0%20Bonapriso%20le%20samedi%205%20d%C3%A9cembre%202026%20%C3%A0%2010%3A00."
+                                                   style="display:inline-block;background-color:#ffffff;color:#1d7edf;border:1px solid #1d7edf;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;line-height:20px;border-radius:30px;padding:12px 24px;text-decoration:none;">Me
+                                                    répondre sur WhatsApp</a>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    <!-- The reply box: it disappears with the secondary button -->
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                                           style="margin-top:16px;">
+                                        <tr>
+                                            <td align="center" bgcolor="#f1f5f9"
+                                                style="background-color:#f1f5f9;border-radius:8px;padding:14px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#334155;">
+                                                Les réponses à cet e-mail ne me parviennent pas&#160;: écrivez-moi sur
+                                                WhatsApp.
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <p style="margin:16px 0 0;">Cordialement,</p>
+
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td style="height:4px;background-color:#1d7edf;font-size:0;line-height:0;">&#160;</td>
+                                        </tr>
+                                    </table>
+                                    <!-- mj-group: the photo cell and the text cell are one row, never stacked -->
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                                           style="margin-top:16px;">
+                                        <tr>
+                                            <td width="56" valign="middle" style="width:56px;padding:0 12px 0 0;">
+                                                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMTIiIGhlaWdodD0iMTEyIiB2aWV3Qm94PSIwIDAgMTEyIDExMiI+PHJlY3Qgd2lkdGg9IjExMiIgaGVpZ2h0PSIxMTIiIGZpbGw9IiNkYmVhZmUiLz48Y2lyY2xlIGN4PSI1NiIgY3k9IjQzIiByPSIxOCIgZmlsbD0iIzdmOWJiOCIvPjxwYXRoIGQ9Ik0yMiAxMTJjMC0yMCAxNS0zNiAzNC0zNnMzNCAxNiAzNCAzNnoiIGZpbGw9IiM3ZjliYjgiLz48L3N2Zz4="
+                                                     width="56" height="56" alt="Photo de Kim Possible"
+                                                     style="display:block;width:56px;height:56px;border:0;border-radius:28px;">
+                                            </td>
+                                            <td valign="middle">
+                                                <span style="font-weight:bold;">Kim Possible</span><br>
+                                                <a href="https://wa.me/237677123456"
+                                                   style="color:#1d7edf;font-size:15px;line-height:1.5;text-decoration:underline;">WhatsApp
+                                                    +237 6 77 12 34 56</a><br>
+                                                <span style="font-size:13px;line-height:1.5;">Envoyé via Ndopify</span>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </section>
+
+    <section class="notes" aria-labelledby="hors-cadre">
+        <h2 id="hors-cadre">Hors cadre</h2>
+        <p>
+            Un e-mail transactionnel n'a ni état vide, ni chargement, ni erreur : seuls les états que les critères
+            d'acceptation décrivent sont cadrés ici. L'envoi échoué, l'agent sans nom ou la visite annulée ne relèvent
+            pas de cet e-mail.
+        </p>
+        <p>
+            Copie finale : elle est reprise telle quelle par le plan d'implémentation. Les liens pointent vers des URL
+            de démonstration ; le texte prérempli WhatsApp (<code>?text=</code>) est encodé comme le fera le helper
+            serveur.
+        </p>
+    </section>
+</main>
+</body>
+</html>
