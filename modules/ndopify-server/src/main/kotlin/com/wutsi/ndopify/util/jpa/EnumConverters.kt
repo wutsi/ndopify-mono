@@ -14,6 +14,7 @@ import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.listing.server.domain.ImageKind
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.FinancingType
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
@@ -69,6 +70,9 @@ class FurnitureTypeConverter : EnumConverter<FurnitureType>(FurnitureType::class
 
 @Converter(autoApply = true)
 class ImageStatusConverter : EnumConverter<ImageStatus>(ImageStatus::class.java, ImageStatus.UNKNOWN)
+
+@Converter(autoApply = true)
+class ImageKindConverter : EnumConverter<ImageKind>(ImageKind::class.java, ImageKind.PHOTO)
 
 @Converter(autoApply = true)
 class ListingSectionConverter : EnumConverter<ListingSection>(ListingSection::class.java, ListingSection.UNKNOWN)
