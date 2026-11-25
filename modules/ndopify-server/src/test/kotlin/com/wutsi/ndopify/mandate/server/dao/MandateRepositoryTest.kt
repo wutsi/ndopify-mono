@@ -70,4 +70,41 @@ class MandateRepositoryTest : TenantAwareEndpointIntegrationTest() {
 
         assertNull(transactionTemplate.execute { dao.findByIdForUpdate(9) })
     }
+
+    @Test
+    fun `the conversation subject is written once`() {
+        TenantContext.set(TENANT_ID)
+
+        val written = transactionTemplate.execute {
+            dao.markConversationSubject(1, "Votre recherche : appartement à Yaounde · mandat 1")
+        }
+        val again = transactionTemplate.execute { dao.markConversationSubject(1, "autre sujet") }
+
+        assertEquals(1, written)
+        assertEquals(0, again)
+        assertEquals(
+            "Votre recherche : appartement à Yaounde · mandat 1",
+            transactionTemplate.execute { dao.findConversationSubjectById(1) },
+        )
+    }
+
+    @Test
+    fun `writing the conversation subject does not bump the version`() {
+        TenantContext.set(TENANT_ID)
+        val before = transactionTemplate.execute { dao.findById(1).get().version }
+
+        transactionTemplate.execute { dao.markConversationSubject(1, "Votre recherche · mandat 1") }
+
+        assertEquals(before, transactionTemplate.execute { dao.findById(1).get().version })
+    }
+
+    @Test
+    fun `never another tenant's mandate`() {
+        TenantContext.set(TENANT_ID)
+
+        val written = transactionTemplate.execute { dao.markConversationSubject(9, "Votre recherche · mandat 9") }
+
+        assertEquals(0, written)
+        assertNull(transactionTemplate.execute { dao.findConversationSubjectById(9) })
+    }
 }

@@ -46,6 +46,12 @@ data class MandateEntity(
     val agentId: Long? = null,
     val contractId: String? = null,
 
+    /**
+     * The subject of the customer's e-mail conversation about the mandate, set by the first e-mail sent and kept:
+     * an edit of the mandate's place or type must never split the conversation.
+     */
+    val conversationSubject: String? = null,
+
     /** The listing the mandate was seeded from; null for a mandate created another way. */
     @Column(name = "origin_listing_id")
     val originListingId: Long? = null,
