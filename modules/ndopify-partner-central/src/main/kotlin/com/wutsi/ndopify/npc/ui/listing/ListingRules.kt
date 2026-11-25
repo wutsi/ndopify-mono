@@ -233,7 +233,10 @@ object ListingRules {
         return listing.errorCodes.map { REJECTIONS[it] ?: UNKNOWN_REJECTION }.distinct()
     }
 
-    /** Saved by the agent on site (PHOTOS: enough of them, none refused), as ndopify-server's checklist says. */
+    /**
+     * Saved by the agent on site (PHOTOS: enough images, none refused, one of them a photo of the property), as
+     * ndopify-server's checklist says.
+     */
     fun done(listing: Listing, section: ListingSection): Boolean =
         listing.sections.any { it.section == section && it.status == ListingSectionStatus.VERIFIED }
 

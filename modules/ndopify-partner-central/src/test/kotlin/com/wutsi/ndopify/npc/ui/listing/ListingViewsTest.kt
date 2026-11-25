@@ -605,7 +605,7 @@ class ListingViewsTest {
 
     @Test
     fun photos() {
-        val view = ListingViews.photos(IMAGES, editable = true)
+        val view = ListingViews.photos(IMAGES, editable = true, photosVerified = true)
 
         assertEquals(listOf(1L, 2L, 3L), view.photos.map { it.id })
         assertEquals(listOf("Photo 1", "Photo 2", "Photo 3"), view.photos.map { it.alt })
@@ -628,7 +628,7 @@ class ListingViewsTest {
             ),
         )
 
-        val photo = ListingViews.photos(listOf(image), editable = false).photos.single()
+        val photo = ListingViews.photos(listOf(image), editable = false, photosVerified = false).photos.single()
 
         assertEquals("https://ik/1-480.jpg", photo.url)
         assertEquals("https://ik/1-2048.jpg", photo.fullUrl)
@@ -636,10 +636,10 @@ class ListingViewsTest {
 
     @Test
     fun `photos - counts`() {
-        fun count(good: Int, refused: Int = 0, editable: Boolean = true): String {
+        fun count(good: Int, refused: Int = 0, editable: Boolean = true, photosVerified: Boolean = true): String {
             val images = (1..good).map { ListingImage(id = it.toLong(), status = ImageStatus.VERIFIED) } +
                 (1..refused).map { ListingImage(id = 100L + it, status = ImageStatus.REJECTED) }
-            return ListingViews.photos(images, editable).count
+            return ListingViews.photos(images, editable, photosVerified).count
         }
 
         assertEquals("0 photo · encore 5 au moins", count(0))
@@ -647,14 +647,24 @@ class ListingViewsTest {
         assertEquals("5 photos · c'est suffisant, ajoutez-en si utile", count(5))
         assertEquals("6 photos · supprimez les photos refusées et reprenez-la", count(6, refused = 2))
         assertEquals("3 photos", count(3, editable = false))
+        assertEquals("5 photos · une photo du bien est encore nécessaire", count(5, photosVerified = false))
+        assertEquals("6 photos · supprimez la photo refusée et reprenez-la", count(6, refused = 1, photosVerified = false))
+        assertEquals("3 photos · encore 2 au moins", count(3, photosVerified = false))
     }
 
     @Test
     fun `photos - full at 20`() {
         val images = (1L..20L).map { ListingImage(id = it, status = ImageStatus.VERIFIED) }
 
-        assertTrue(ListingViews.photos(images, editable = true).full)
-        assertEquals("Refusée", ListingViews.photos(listOf(ListingImage(id = 1, status = ImageStatus.REJECTED)), true).photos[0].note)
+        assertTrue(ListingViews.photos(images, editable = true, photosVerified = true).full)
+        assertEquals(
+            "Refusée",
+            ListingViews.photos(
+                listOf(ListingImage(id = 1, status = ImageStatus.REJECTED)),
+                editable = true,
+                photosVerified = true,
+            ).photos[0].note,
+        )
     }
 
     private val approved = Mandate(id = 203, status = MandateStatus.APPROVED, mandateType = MandateType.LISTING)

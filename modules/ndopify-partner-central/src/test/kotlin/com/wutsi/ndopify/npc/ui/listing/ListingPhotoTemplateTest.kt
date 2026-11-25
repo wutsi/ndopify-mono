@@ -13,6 +13,7 @@ import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.ScriptFixtures
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdviceTest
+import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.COMPLETE
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.IMAGES
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.LISTING
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.SENT
@@ -90,7 +91,11 @@ class ListingPhotoTemplateTest {
         assertEquals("listing-photos", page.body().attr("data-page"))
         assertNotNull(page.selectFirst("script[src=/assets/dist/app.min.js]"))
         assertEquals("Photos", page.selectFirst("h1")?.text())
-        assertEquals("Au moins 5 photos nettes, prises à la lumière du jour.", page.selectFirst("[data-section-instruction]")?.text())
+        assertEquals(
+            "Au moins 5 photos, dont une photo du bien : les plans et les cartes sont acceptés et comptent parmi les " +
+                "cinq. Un plan est jugé sur sa lisibilité, pas sur la lumière.",
+            page.selectFirst("[data-section-instruction]")?.text(),
+        )
         assertEquals("/listings/501", page.selectFirst(".back-link a")?.attr("href"))
         assertNotNull(page.selectFirst(".photo-tips"))
 
@@ -161,6 +166,27 @@ class ListingPhotoTemplateTest {
 
         assertEquals("https://ik/1-480.jpg", photos[0].selectFirst("img")?.attr("src"))
         assertEquals("https://ik/1-2048.jpg", photos[0].selectFirst("a[data-photo-link]")?.attr("href"))
+    }
+
+    @Test
+    fun `enough images but no photo yet`() {
+        doReturn((1L..5L).map { ListingImage(id = it, url = "https://cdn/$it.jpg", status = ImageStatus.VERIFIED) })
+            .whenever(listingClient).images(501)
+
+        val page = render()
+
+        assertEquals("5 photos · une photo du bien est encore nécessaire", page.selectFirst("[data-photo-count]")?.text())
+    }
+
+    @Test
+    fun `enough images and the photo, the section verified`() {
+        doReturn(COMPLETE).whenever(listingClient).get(501)
+        doReturn((1L..5L).map { ListingImage(id = it, url = "https://cdn/$it.jpg", status = ImageStatus.VERIFIED) })
+            .whenever(listingClient).images(501)
+
+        val page = render()
+
+        assertEquals("5 photos · c'est suffisant, ajoutez-en si utile", page.selectFirst("[data-photo-count]")?.text())
     }
 
     @Test
