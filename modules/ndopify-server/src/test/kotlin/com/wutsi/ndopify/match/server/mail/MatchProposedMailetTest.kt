@@ -16,6 +16,8 @@ import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.mandate.server.service.MandateConversation
+import com.wutsi.ndopify.mandate.server.service.MandateConversationService
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.match.server.service.MatchLinkTokenService
@@ -25,9 +27,7 @@ import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.mockMailImageService
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
-import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
-import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import java.net.URLDecoder
 import kotlin.test.BeforeTest
@@ -38,20 +38,20 @@ import kotlin.test.assertNull
 
 class MatchProposedMailetTest {
     private val tenantService = mock<TenantService>()
-    private val locationService = mock<LocationService>()
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
     private val linkTokenService = mock<MatchLinkTokenService>()
     private val listingImageService = mock<ListingImageService>()
     private val imageService = mockMailImageService()
+    private val conversationService = mock<MandateConversationService>()
     private val mailet = MatchProposedMailet(
         tenantService,
-        locationService,
         mailService,
         mailBodyResolver,
         linkTokenService,
         listingImageService,
         imageService,
+        conversationService,
     )
 
     private val tenant = TenantEntity(
@@ -94,12 +94,18 @@ class MatchProposedMailetTest {
     @BeforeTest
     fun setUp() {
         doReturn(tenant).whenever(tenantService).findById(1L)
-        doReturn(LocationEntity(id = 2370201L, name = "Yaounde")).whenever(locationService).findByIdOrNull(2370201L)
-        doReturn(LocationEntity(id = 111L, name = "Bastos")).whenever(locationService).findByIdOrNull(111L)
         doReturn("<html>proposed</html>").whenever(mailBodyResolver).resolve(any(), any())
         doReturn("xxx.yyy.zzz").whenever(linkTokenService).create(customer)
         doReturn(ListingImageEntity(id = 7L, listingId = 101L, url = "https://cdn.ndopify.com/7.jpg"))
             .whenever(listingImageService).cover(any())
+        doReturn(
+            MandateConversation(
+                subject = "Votre recherche : appartement à Bastos (Yaounde) · mandat 1",
+                messageId = "mandate-1-1-abc@wutsi.com",
+                inReplyTo = "mandate-1-1@wutsi.com",
+                references = listOf("mandate-1-1@wutsi.com"),
+            ),
+        ).whenever(conversationService).of(1L)
     }
 
     @Test
@@ -142,10 +148,14 @@ class MatchProposedMailetTest {
         verify(mailService).send(email.capture())
         assertEquals("ray.sponsible@gmail.com", email.firstValue.recipient.email)
         assertEquals("Ray Sponsible", email.firstValue.recipient.displayName)
-        assertEquals("Je vous propose un bien à Bastos (Yaounde)", email.firstValue.subject)
+        assertEquals("Votre recherche : appartement à Bastos (Yaounde) · mandat 1", email.firstValue.subject)
+        assertEquals("mandate-1-1-abc@wutsi.com", email.firstValue.messageId)
+        assertEquals("mandate-1-1@wutsi.com", email.firstValue.inReplyTo)
+        assertEquals(listOf("mandate-1-1@wutsi.com"), email.firstValue.references)
         assertEquals("<html>proposed</html>", email.firstValue.body)
         assertEquals("Kim Possible", email.firstValue.sender?.displayName)
         assertEquals("", email.firstValue.sender?.email)
+        verify(conversationService).of(1L)
     }
 
     @Test
@@ -180,7 +190,8 @@ class MatchProposedMailetTest {
 
         val email = argumentCaptor<Email>()
         verify(mailService).send(email.capture())
-        assertEquals("Je vous propose 2 biens à Bastos (Yaounde)", email.firstValue.subject)
+        assertEquals("Votre recherche : appartement à Bastos (Yaounde) · mandat 1", email.firstValue.subject)
+        verify(conversationService).of(1L) // One conversation for the mandate, whatever the number of listings
     }
 
     @Test
