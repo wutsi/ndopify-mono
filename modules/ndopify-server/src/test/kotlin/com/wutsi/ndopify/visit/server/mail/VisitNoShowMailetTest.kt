@@ -117,7 +117,7 @@ class VisitNoShowMailetTest {
                 "agent_whatsapp" to "+237 6 99 00 00 01",
                 "agent_whatsapp_url" to "https://wa.me/237699000001",
             ),
-            contexts().single() - "agent_whatsapp_reply_url",
+            contexts().single() - "agent_whatsapp_reply_url" - "agent_customer_email",
         )
 
         val replyUrl = contexts().single()["agent_whatsapp_reply_url"] as String
@@ -147,6 +147,10 @@ class VisitNoShowMailetTest {
             captor.allValues.single { it.recipient.email == "ray.sponsible@gmail.com" }.sender?.displayName,
         )
         assertNull(captor.allValues.single { it.recipient.email == "kim.possible@gmail.com" }.sender)
+        assertEquals(
+            "Ndopify: visite manquée avec Ray Sponsible",
+            captor.allValues.single { it.recipient.email == "kim.possible@gmail.com" }.subject,
+        )
         val contexts = contexts()
         assertEquals("Je ne me suis pas présenté.", contexts[0]["reason_label"])
         assertEquals("Vous ne vous êtes pas présenté.", contexts[1]["reason_label"])
