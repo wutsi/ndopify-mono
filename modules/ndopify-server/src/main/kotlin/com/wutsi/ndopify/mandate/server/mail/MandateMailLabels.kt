@@ -139,6 +139,19 @@ internal object MandateMailLabels {
         return if (city.isEmpty()) neighbourhoods else "$neighbourhoods ($city)"
     }
 
+    // The subject of the customer's conversation about the mandate, fixed at the first e-mail and stored: event-free,
+    // never the tenant's name, and naming the mandate so two mandates in one place never share it.
+    // Ex: "Votre recherche : appartement à Bastos, Mvan (Yaounde) · mandat 12", "Votre bien à Yaounde · mandat 12"
+    fun conversationSubject(mandate: MandateEntity, city: String, locationService: LocationService): String {
+        val owner = mandate.mandateType == MandateType.LISTING
+        val type = if (owner) null else propertyType(mandate)?.lowercase()
+        val where = place(mandate, city, locationService).ifBlank { null }
+        val subject = (if (owner) "Votre bien" else "Votre recherche") +
+            (type?.let { " : $it" } ?: "") +
+            (where?.let { " à $it" } ?: "")
+        return "$subject · mandat ${mandate.id}"
+    }
+
     // Ex: 150 000 FCFA / mois
     fun budget(mandate: MandateEntity, formatter: TenantFormatter): String =
         price(mandate.price, mandate.currencyCode, mandate.pricePeriodicityType, formatter)
