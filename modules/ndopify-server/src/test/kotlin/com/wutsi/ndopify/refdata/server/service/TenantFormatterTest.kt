@@ -89,4 +89,23 @@ class TenantFormatterTest {
         assertNull(TenantFormatter(tenant).phone(" "))
         assertNull(TenantFormatter(tenant).phone(null))
     }
+
+    @Test
+    fun `compact number - the smallest unit that reads under 1000`() {
+        val formatter = TenantFormatter(tenant)
+
+        assertEquals("0", formatter.compactNumber(0))
+        assertEquals("999", formatter.compactNumber(999))
+        assertEquals("500K", formatter.compactNumber(500_000))
+        assertEquals("1,5M", formatter.compactNumber(1_500_000))
+        assertEquals("25M", formatter.compactNumber(25_000_000))
+        assertEquals("1M", formatter.compactNumber(999_950))
+        assertEquals("1G", formatter.compactNumber(999_995_000))
+        assertEquals("1,25G", formatter.compactNumber(1_250_000_000))
+    }
+
+    @Test
+    fun `compact number follows the tenant's decimal separator`() {
+        assertEquals("1.5M", TenantFormatter(tenant.copy(locales = listOf("en-CM"))).compactNumber(1_500_000))
+    }
 }
