@@ -11,6 +11,9 @@ import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.contract.dto.ContractType
 import com.wutsi.ndopify.contract.server.domain.ContractEntity
 import com.wutsi.ndopify.contract.server.domain.ContractPartyEntity
+import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.mandate.server.service.MandateConversation
+import com.wutsi.ndopify.mandate.server.service.MandateConversationService
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
@@ -29,7 +32,8 @@ class ContractSignatureMailetTest {
     private val tenantService = mock<TenantService>()
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
-    private val mailet = ContractSignatureMailet(tenantService, mailService, mailBodyResolver)
+    private val conversationService = mock<MandateConversationService>()
+    private val mailet = ContractSignatureMailet(tenantService, mailService, mailBodyResolver, conversationService)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -45,6 +49,7 @@ class ContractSignatureMailetTest {
         // 23:30 UTC: already the next day in Douala (UTC+1)
         signatureDeadline = Date.from(Instant.parse("2026-12-31T23:30:00Z")),
     )
+    private val mandate = MandateEntity(id = 7L, tenantId = 1L)
     private val party = ContractPartyEntity(
         id = "cp-1",
         contract = contract,
@@ -56,6 +61,14 @@ class ContractSignatureMailetTest {
     fun setUp() {
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn("<html>sign</html>").whenever(mailBodyResolver).resolve(any(), any())
+        doReturn(
+            MandateConversation(
+                subject = "Votre recherche : appartement à Yaounde · mandat 7",
+                messageId = "mandate-1-7-abc@wutsi.com",
+                inReplyTo = "mandate-1-7@wutsi.com",
+                references = listOf("mandate-1-7@wutsi.com"),
+            ),
+        ).whenever(conversationService).of(7L)
     }
 
     @Test
@@ -66,7 +79,7 @@ class ContractSignatureMailetTest {
             whatsappNumber = "+237699000001",
         )
 
-        mailet.send(contract, party, agent)
+        mailet.send(contract, party, agent, mandate)
 
         val context = argumentCaptor<Map<String, Any?>>()
         verify(mailBodyResolver).resolve(eq("/mail/contract/signature_request.mjml"), context.capture())
@@ -83,7 +96,32 @@ class ContractSignatureMailetTest {
         val email = argumentCaptor<Email>()
         verify(mailService).send(email.capture())
         assertEquals("Kim Possible", email.firstValue.sender?.displayName)
-        assertEquals("Votre contrat BAIL-2026-000042 est prêt à être signé", email.firstValue.subject)
+        assertEquals("Votre recherche : appartement à Yaounde · mandat 7", email.firstValue.subject)
+    }
+
+    @Test
+    fun `a mandate's contract joins its conversation`() {
+        mailet.send(contract, party, mandate = mandate)
+
+        verify(conversationService).of(7L)
+        val email = argumentCaptor<Email>()
+        verify(mailService).send(email.capture())
+        assertEquals("Votre recherche : appartement à Yaounde · mandat 7", email.firstValue.subject)
+        assertEquals("mandate-1-7-abc@wutsi.com", email.firstValue.messageId)
+        assertEquals("mandate-1-7@wutsi.com", email.firstValue.inReplyTo)
+        assertEquals(listOf("mandate-1-7@wutsi.com"), email.firstValue.references)
+    }
+
+    @Test
+    fun `a lease keeps the platform subject`() {
+        mailet.send(contract, party)
+
+        val email = argumentCaptor<Email>()
+        verify(mailService).send(email.capture())
+        assertEquals("Ndopify: Votre contrat BAIL-2026-000042 est prêt à être signé", email.firstValue.subject)
+        assertNull(email.firstValue.messageId)
+        assertNull(email.firstValue.inReplyTo)
+        assertEquals(emptyList<String>(), email.firstValue.references)
     }
 
     @Test
