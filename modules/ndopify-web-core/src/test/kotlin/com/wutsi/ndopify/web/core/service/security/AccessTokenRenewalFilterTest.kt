@@ -31,7 +31,10 @@ class AccessTokenRenewalFilterTest {
     private val request = MockHttpServletRequest()
     private val response = MockHttpServletResponse()
     private val chain = MockFilterChain()
-    private val now = Instant.parse("2026-11-24T12:00:00Z")
+
+    // The tokens below are dated relative to this instant, so they stay valid (and inside the renewal interval)
+    // whenever the suite runs: JwtDecoder refuses a token whose expiry is already past.
+    private val now = Instant.now()
     private val clock = Clock.fixed(now, ZoneOffset.UTC)
     private val tokenClient = mock<NdTokenClient>()
     private val service = AccessTokenService(request, response, "__npc_access_token", clock = clock)
