@@ -25,6 +25,7 @@ import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
+import java.net.URLDecoder
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Date
@@ -102,10 +103,15 @@ class VisitReminderMailetTest {
 
         val email = email()
         assertEquals("ray.sponsible@gmail.com", email.recipient.email)
-        assertEquals("Ndopify: rappel de votre visite", email.subject)
+        assertEquals("Votre visite, c'est demain", email.subject)
         assertEquals("Kim Possible", email.sender?.displayName)
 
         val customerContext = context(VisitReminderMailet.TEMPLATE_CUSTOMER)
+        val replyUrl = customerContext["agent_whatsapp_reply_url"] as String
+        assertEquals(
+            "Bonjour, je vous réponds au sujet de la visite du bien Nice apartment le 02/12/2026 à 10:00.",
+            URLDecoder.decode(replyUrl.substringAfter("?text="), "UTF-8"),
+        )
         assertEquals("02/12/2026", customerContext["visit_date"])
         assertEquals("10:00", customerContext["visit_time"])
         assertEquals("1234", customerContext["code"])
@@ -129,6 +135,7 @@ class VisitReminderMailetTest {
         assertEquals("+237 6 00 00 00 01", agentContext["customer_whatsapp"])
         assertEquals("https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg", agentContext["image_url"])
         assertEquals("https://partner.ndopify.com/visits/1", agentContext["visit_url"])
+        assertFalse(agentContext.containsKey("agent_whatsapp_reply_url"), "the agent copy has no reply button")
     }
 
     @Test
