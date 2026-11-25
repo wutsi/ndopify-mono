@@ -92,7 +92,7 @@ class VisitRequestedBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
             """
-            📅 Ray Sponsible demande une visite : Nice apartment (Bastos) — 150 000 FCFA / mois
+            📅 Ray Sponsible demande une visite : Nice apartment - 150K/mois
             01/12/2026 à 10:00 · Sur place
             Note : Je viens avec ma femme
             """.trimIndent(),
@@ -133,13 +133,13 @@ class VisitRequestedBotletTest {
     }
 
     @Test
-    fun `a listing without a title is named by its id`() {
+    fun `a blank title falls back to the usage and the neighbourhood`() {
         botlet.send(visit, customer, agent, listing.copy(title = null), 1000L)
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(listing.copy(title = null)), text.capture(), any())
         assertEquals(
-            "📅 Ray Sponsible demande une visite : Bien n° 101 (Bastos) — 150 000 FCFA / mois",
+            "📅 Ray Sponsible demande une visite : Bien à louer (Bastos) - 150K/mois",
             text.firstValue.lines().first(),
         )
     }

@@ -100,7 +100,7 @@ class VisitReminderBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
             """
-            ⏰ Rappel : Nice apartment (Bastos) — 150 000 FCFA / mois, demain à 10:00 avec Ray Sponsible
+            ⏰ Rappel : Nice apartment - 150K/mois, demain à 10:00 avec Ray Sponsible
             Sur place
             """.trimIndent(),
             text.firstValue,
@@ -122,7 +122,7 @@ class VisitReminderBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         assertEquals(
             """
-            ⏰ Rappel : Nice apartment (Bastos) — 150 000 FCFA / mois, demain à 10:00 avec Ray Sponsible
+            ⏰ Rappel : Nice apartment - 150K/mois, demain à 10:00 avec Ray Sponsible
             Visite vidéo
             Depuis le bien, appelez Ray Sponsible en vidéo sur WhatsApp. Le client vous lira son code de visite pendant l'appel.
             """.trimIndent(),
@@ -170,12 +170,12 @@ class VisitReminderBotletTest {
     }
 
     @Test
-    fun `a listing without a title is named by its id`() {
+    fun `a blank title falls back to the usage and the place`() {
         botlet.send(visit, customer, agent, listing.copy(title = " "), 1000L)
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(listing.copy(title = " ")), text.capture(), any())
-        assertTrue(text.firstValue.startsWith("⏰ Rappel : Bien n° 101 (Bastos) — 150 000 FCFA / mois, "))
+        assertTrue(text.firstValue.startsWith("⏰ Rappel : Bien à louer, Yaounde (Bastos) - 150K/mois, "))
     }
 
     @Test

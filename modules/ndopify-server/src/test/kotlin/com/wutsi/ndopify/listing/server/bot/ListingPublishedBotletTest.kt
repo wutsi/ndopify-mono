@@ -62,7 +62,7 @@ class ListingPublishedBotletTest {
     )
 
     private val caption =
-        "🏠 Votre annonce est publiée : Appartement à louer, 3 chambres (Bastos) — 150 000 FCFA / mois"
+        "🏠 Votre annonce est publiée : Appartement à louer, 3 chambres - 150K/mois"
     private val button = TelegramButton(
         "Voir l'annonce",
         url = "https://www.ndopify.com/yaounde/bastos/listing/1/appartement-a-louer-3-chambres-yaounde-bastos",
@@ -92,14 +92,14 @@ class ListingPublishedBotletTest {
     }
 
     @Test
-    fun `a blank title falls back to the listing id`() {
+    fun `a blank title falls back to the usage and the place`() {
         val text = argumentCaptor<String>()
 
         botlet.send(listing.copy(title = null), customer, agent, 1000L)
 
         verify(sender).send(eq(1000L), any(), text.capture(), any())
         assertEquals(
-            "🏠 Votre annonce est publiée : Bien n° 1 (Bastos) — 150 000 FCFA / mois",
+            "🏠 Votre annonce est publiée : Bien à louer, Yaounde (Bastos) - 150K/mois",
             text.firstValue,
         )
     }
@@ -121,8 +121,8 @@ class ListingPublishedBotletTest {
         botlet.send(listing.copy(price = -1), customer, agent, 1000L)
 
         verify(sender).send(eq(1000L), any(), text.capture(), any())
-        assertEquals("🏠 Votre annonce est publiée : Appartement à louer, 3 chambres (Bastos)", text.firstValue)
-        assertFalse(text.firstValue.contains(" — "))
+        assertEquals("🏠 Votre annonce est publiée : Appartement à louer, 3 chambres", text.firstValue)
+        assertFalse(text.firstValue.contains(" - "))
     }
 
     @Test

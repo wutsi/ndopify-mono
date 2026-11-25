@@ -81,8 +81,13 @@ internal object MandateMailLabels {
         return if (sale(mandate)) " — ${amountLabel(mandate)} : $budget" else " — $budget"
     }
 
-    fun propertyType(mandate: MandateEntity): String? =
-        mandate.propertyType?.let { PROPERTY_TYPES[it] }
+    fun propertyType(type: PropertyType?): String? = type?.let { PROPERTY_TYPES[it] }
+
+    fun propertyType(mandate: MandateEntity): String? = propertyType(mandate.propertyType)
+
+    // Ex: "500K/mois", "25M": a Telegram line's amount, compact and without currency. The e-mails keep [price].
+    fun compactPrice(amount: Long, periodicity: PeriodicityType?, formatter: TenantFormatter): String =
+        formatter.compactNumber(amount) + (PERIODICITIES[periodicity]?.let { "/$it" } ?: "")
 
     // "3 étages · 12 unités", for a building sold as a whole; null for any other mandate
     fun building(mandate: MandateEntity): String? =

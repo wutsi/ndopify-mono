@@ -40,7 +40,7 @@ class TelegramVisitCancelledEndpointTest : AuthorizationAwareEndpointIntegration
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
         assertTrue(
             text.firstValue.startsWith(
-                "❌ Ray Sponsible a annulé la visite : Small apartment (Bastos) — 140 000 FCFA / mois",
+                "❌ Ray Sponsible a annulé la visite : Small apartment - 140K/mois",
             ),
         )
         assertFalse(text.firstValue.contains("Motif"))

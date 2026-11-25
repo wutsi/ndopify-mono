@@ -48,7 +48,7 @@ class TelegramVisitRequestedEndpointTest : AuthorizationAwareEndpointIntegration
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
         assertTrue(
             text.firstValue.startsWith(
-                "📅 Ray Sponsible demande une visite : Nice apartment (Bastos) — 150 000 FCFA / mois",
+                "📅 Ray Sponsible demande une visite : Nice apartment - 150K/mois",
             ),
         )
         assertTrue(text.firstValue.contains(" · Sur place"))

@@ -73,7 +73,7 @@ class MatchVisitAgentNudgeBotletTest {
 
         assertEquals(
             """
-            ⏰ Ray Sponsible attend une visite : Nice apartment (Bastos) — 150 000 FCFA / mois
+            ⏰ Ray Sponsible attend une visite : Nice apartment - 150K/mois
             Acceptée il y a plus de 48 h. Appelez-le, puis planifiez la visite.
             """.trimIndent(),
             text(),
@@ -119,13 +119,13 @@ class MatchVisitAgentNudgeBotletTest {
     }
 
     @Test
-    fun `a listing without a title is named by its id`() {
+    fun `a blank title falls back to the usage and the neighbourhood`() {
         val withoutTitle = match.copy(listing = match.listing.copy(title = ""))
 
         botlet.send(withoutTitle, customer, agent, 1000L)
 
         assertEquals(
-            "⏰ Ray Sponsible attend une visite : Bien n° 501 (Bastos) — 150 000 FCFA / mois",
+            "⏰ Ray Sponsible attend une visite : Bien à louer (Bastos) - 150K/mois",
             text(withoutTitle.listing).lines().first(),
         )
     }

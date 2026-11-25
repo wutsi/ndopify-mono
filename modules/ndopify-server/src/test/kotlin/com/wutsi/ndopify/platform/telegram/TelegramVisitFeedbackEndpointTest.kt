@@ -45,7 +45,7 @@ class TelegramVisitFeedbackEndpointTest : AuthorizationAwareEndpointIntegrationT
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
         assertTrue(
             text.firstValue.startsWith(
-                "⭐ Avis de Ray Sponsible : Nice apartment (Bastos) — 150 000 FCFA / mois",
+                "⭐ Avis de Ray Sponsible : Nice apartment - 150K/mois",
             ),
         )
         assertTrue(text.firstValue.contains("Pas intéressé"))

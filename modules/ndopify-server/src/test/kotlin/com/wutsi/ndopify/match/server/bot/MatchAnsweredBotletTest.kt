@@ -97,7 +97,7 @@ class MatchAnsweredBotletTest {
 
         val message = text()
         assertEquals(
-            "✅ Ray Sponsible a accepté la proposition : Small apartment (Bastos) — 140 000 FCFA / mois",
+            "✅ Ray Sponsible a accepté la proposition : Small apartment - 140K/mois",
             message,
         )
         assertFalse(message.contains("Prix :"), "a rental's line keeps its bare amount")
@@ -116,7 +116,7 @@ class MatchAnsweredBotletTest {
 
         val message = text(saleListing)
         assertEquals(
-            "✅ Ray Sponsible a accepté la proposition : Achat — Small apartment (Bastos) — Prix : 140 000 FCFA",
+            "✅ Ray Sponsible a accepté la proposition : Achat — Small apartment - 140K",
             message,
         )
         listOf("location", "loyer", "logement").forEach { word ->
@@ -138,7 +138,7 @@ class MatchAnsweredBotletTest {
 
         assertEquals(
             """
-            ❌ Ray Sponsible a refusé la proposition : Achat — Small apartment (Bastos) — Prix : 140 000 FCFA
+            ❌ Ray Sponsible a refusé la proposition : Achat — Small apartment - 140K
             Motif : trop cher
             """.trimIndent(),
             text(saleListing),
@@ -160,7 +160,7 @@ class MatchAnsweredBotletTest {
 
         assertEquals(
             """
-            ❌ Ray Sponsible a refusé la proposition : Small apartment (Bastos) — 140 000 FCFA / mois
+            ❌ Ray Sponsible a refusé la proposition : Small apartment - 140K/mois
             Motif : trop cher · « Trop loin du travail. »
             """.trimIndent(),
             text(),
@@ -182,7 +182,7 @@ class MatchAnsweredBotletTest {
 
         assertEquals(
             """
-            ❌ Ray Sponsible a refusé la proposition : Small apartment (Bastos) — 140 000 FCFA / mois
+            ❌ Ray Sponsible a refusé la proposition : Small apartment - 140K/mois
             Motif : autre raison
             """.trimIndent(),
             text(),
@@ -191,13 +191,13 @@ class MatchAnsweredBotletTest {
     }
 
     @Test
-    fun `a listing without a title is named by its id`() {
+    fun `a blank title falls back to the usage and the neighbourhood`() {
         val withoutTitle = match.copy(listing = listing.copy(title = null))
 
         botlet.send(withoutTitle, customer, agent, 1000L)
 
         assertEquals(
-            "✅ Ray Sponsible a accepté la proposition : Bien n° 102 (Bastos) — 140 000 FCFA / mois",
+            "✅ Ray Sponsible a accepté la proposition : Bien à louer (Bastos) - 140K/mois",
             text(withoutTitle.listing),
         )
     }

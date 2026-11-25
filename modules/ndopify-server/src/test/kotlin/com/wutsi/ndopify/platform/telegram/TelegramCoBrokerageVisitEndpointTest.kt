@@ -57,7 +57,7 @@ class TelegramCoBrokerageVisitEndpointTest : AuthorizationAwareEndpointIntegrati
         verify(client).sendMessage(eq(2000L), text.capture(), buttons.capture())
         assertTrue(
             text.firstValue.startsWith(
-                "✅ Visite confirmée : Nice apartment (Bastos) — 150 000 FCFA / mois, ",
+                "✅ Visite confirmée : Nice apartment - 150K/mois, ",
             ),
         )
         assertTrue(text.firstValue.contains("Sur place — je vous y retrouve avec mon client."))

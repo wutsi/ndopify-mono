@@ -95,7 +95,7 @@ class VisitCancelledBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
             """
-            ❌ Ray Sponsible a annulé la visite : Nice apartment (Bastos) — 150 000 FCFA / mois
+            ❌ Ray Sponsible a annulé la visite : Nice apartment - 150K/mois
             02/12/2026 à 10:00 · Motif : Empêchement
             """.trimIndent(),
             text.firstValue,
@@ -118,7 +118,7 @@ class VisitCancelledBotletTest {
 
         assertEquals(
             """
-            ❌ Ray Sponsible a annulé la visite : Nice apartment (Bastos) — 150 000 FCFA / mois
+            ❌ Ray Sponsible a annulé la visite : Nice apartment - 150K/mois
             02/12/2026 à 10:00
             """.trimIndent(),
             text(listing),
@@ -133,13 +133,13 @@ class VisitCancelledBotletTest {
     }
 
     @Test
-    fun `a listing without a title is named by its id`() {
+    fun `a blank title falls back to the usage and the place`() {
         val withoutTitle = listing.copy(title = null)
 
         botlet.send(visit, customer, agent, withoutTitle, 1000L)
 
         assertEquals(
-            "❌ Ray Sponsible a annulé la visite : Bien n° 101 (Bastos) — 150 000 FCFA / mois",
+            "❌ Ray Sponsible a annulé la visite : Bien à louer, Yaounde (Bastos) - 150K/mois",
             text(withoutTitle).lines().first(),
         )
     }
@@ -150,7 +150,7 @@ class VisitCancelledBotletTest {
 
         assertEquals(
             """
-            ❌ Ray Sponsible a annulé la visite : Nice apartment (Bastos) — 150 000 FCFA / mois
+            ❌ Ray Sponsible a annulé la visite : Nice apartment - 150K/mois
             Motif : Empêchement
             """.trimIndent(),
             text(listing),

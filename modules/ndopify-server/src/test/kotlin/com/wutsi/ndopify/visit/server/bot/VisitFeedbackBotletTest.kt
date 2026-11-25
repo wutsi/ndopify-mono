@@ -88,7 +88,7 @@ class VisitFeedbackBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
             """
-            ⭐ Avis de Ray Sponsible : Nice apartment (Bastos) — 150 000 FCFA / mois
+            ⭐ Avis de Ray Sponsible : Nice apartment - 150K/mois
             Pas intéressé
             Raison : trop cher
             Commentaire : « Trop cher pour moi »
@@ -119,13 +119,13 @@ class VisitFeedbackBotletTest {
     }
 
     @Test
-    fun `a listing without a title is named by its id`() {
+    fun `a blank title falls back to the usage and the neighbourhood`() {
         botlet.send(visit, customer, agent, listing.copy(title = null), 1000L)
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(listing.copy(title = null)), text.capture(), any())
         assertEquals(
-            "⭐ Avis de Ray Sponsible : Bien n° 101 (Bastos) — 150 000 FCFA / mois",
+            "⭐ Avis de Ray Sponsible : Bien à louer (Bastos) - 150K/mois",
             text.firstValue.lines().first(),
         )
     }

@@ -71,7 +71,7 @@ class MatchInterestBotletTest {
         val buttons = argumentCaptor<List<TelegramButton>>()
         verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
-            "👀 Ray Sponsible s'intéresse à : Nice apartment (Bastos) — 150 000 FCFA / mois",
+            "👀 Ray Sponsible s'intéresse à : Nice apartment - 150K/mois",
             text.firstValue,
         )
         assertEquals(
@@ -89,7 +89,7 @@ class MatchInterestBotletTest {
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(sale), text.capture(), any())
         assertEquals(
-            "👀 Ray Sponsible s'intéresse à : Vente — Nice apartment (Bastos) — Prix : 150 000 FCFA",
+            "👀 Ray Sponsible s'intéresse à : Vente — Nice apartment - 150K",
             text.firstValue,
         )
         listOf("location", "loyer", "logement").forEach { word ->
@@ -98,7 +98,7 @@ class MatchInterestBotletTest {
     }
 
     @Test
-    fun `a listing without a title is named by its id`() {
+    fun `a blank title falls back to the usage and the neighbourhood`() {
         val withoutTitle = listing.copy(title = null)
 
         botlet.send(agent, customer, mandate, withoutTitle, 1000L)
@@ -106,7 +106,7 @@ class MatchInterestBotletTest {
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(withoutTitle), text.capture(), any())
         assertEquals(
-            "👀 Ray Sponsible s'intéresse à : Bien n° 101 (Bastos) — 150 000 FCFA / mois",
+            "👀 Ray Sponsible s'intéresse à : Bien à louer (Bastos) - 150K/mois",
             text.firstValue,
         )
     }

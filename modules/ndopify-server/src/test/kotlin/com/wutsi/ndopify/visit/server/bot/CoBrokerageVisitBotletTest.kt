@@ -102,7 +102,7 @@ class CoBrokerageVisitBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
             """
-            ✅ Visite confirmée : Villa Bastos (Bastos) — 150 000 FCFA / mois, 02/12/2026 à 10:00
+            ✅ Visite confirmée : Villa Bastos - 150K/mois, 02/12/2026 à 10:00
             Sur place — je vous y retrouve avec mon client.
             Visite organisée par Kim Possible.
             """.trimIndent(),
@@ -135,7 +135,7 @@ class CoBrokerageVisitBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         assertEquals(
             """
-            ⏰ Rappel : Villa Bastos (Bastos) — 150 000 FCFA / mois, 02/12/2026 à 10:00
+            ⏰ Rappel : Villa Bastos - 150K/mois, 02/12/2026 à 10:00
             Sur place — je vous y retrouve avec mon client.
             Visite organisée par Kim Possible.
             """.trimIndent(),
@@ -156,7 +156,7 @@ class CoBrokerageVisitBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         assertEquals(
             """
-            ❌ Visite annulée : Villa Bastos (Bastos) — 150 000 FCFA / mois, 02/12/2026 à 10:00
+            ❌ Visite annulée : Villa Bastos - 150K/mois, 02/12/2026 à 10:00
             J'ai annulé la visite.
             Visite organisée par Kim Possible.
             """.trimIndent(),
@@ -185,21 +185,21 @@ class CoBrokerageVisitBotletTest {
         verify(sender, times(2)).send(eq(1000L), eq(listing), text.capture(), any())
         assertTrue(
             text.allValues[0].lines().first()
-                .startsWith("⚠️ Visite non honorée : Villa Bastos (Bastos) — 150 000 FCFA / mois, "),
+                .startsWith("⚠️ Visite non honorée : Villa Bastos - 150K/mois, "),
         )
         assertTrue(text.allValues[0].lines()[1].contains("Le client ne s'est pas présenté à la visite."))
         assertTrue(text.allValues[1].lines()[1].contains("Le client a refusé de donner le code de visite."))
     }
 
     @Test
-    fun `a listing without a title is named by its id`() {
+    fun `a blank title falls back to the usage and the place`() {
         val withoutTitle = listing.copy(title = null)
 
         botlet.sendConfirmed(visit, withoutTitle, searchAgent, 1000L)
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(withoutTitle), text.capture(), any())
-        assertTrue(text.firstValue.startsWith("✅ Visite confirmée : Bien n° 101 (Bastos) — 150 000 FCFA / mois, "))
+        assertTrue(text.firstValue.startsWith("✅ Visite confirmée : Bien à louer, Yaounde (Bastos) - 150K/mois, "))
     }
 
     @Test
