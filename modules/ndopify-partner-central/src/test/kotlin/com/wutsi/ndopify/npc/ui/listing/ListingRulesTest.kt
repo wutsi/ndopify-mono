@@ -237,6 +237,21 @@ class ListingRulesTest {
     }
 
     @Test
+    fun `rejections - missing photo`() {
+        val listing = Listing(status = ListingStatus.DRAFT, errorCodes = listOf(ErrorCode.LISTING_MISSING_PHOTO))
+
+        assertEquals(
+            listOf(
+                ListingRules.Rejection(
+                    "Il faut au moins une photo du bien : un plan ou une carte ne suffisent pas.",
+                    ListingSection.PHOTOS,
+                ),
+            ),
+            ListingRules.rejections(listing),
+        )
+    }
+
+    @Test
     fun `rejections - draft without code`() {
         assertTrue(ListingRules.rejections(Listing(status = ListingStatus.DRAFT)).isEmpty())
     }

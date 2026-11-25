@@ -8,6 +8,7 @@ import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.server.dao.ListingImageRepository
 import com.wutsi.ndopify.listing.server.dao.ListingSectionRepository
+import com.wutsi.ndopify.listing.server.domain.ImageKind
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.domain.ListingSectionEntity
 import org.springframework.stereotype.Service
@@ -15,8 +16,9 @@ import java.util.Date
 
 /**
  * A listing's checklist. A section is VERIFIED once the agent saved it (the landlord's answers alone don't count),
- * PHOTOS once there are [MIN_PHOTOS] of them and none REJECTED. REMARKS is optional. A building sold as a whole has
- * no utilities, so its checklist has no AMENITIES section.
+ * PHOTOS once there are [MIN_PHOTOS] images, none REJECTED and at least one of them a [ImageKind.PHOTO] (a plan or a
+ * map counts toward the five, not as the photo). REMARKS is optional. A building sold as a whole has no utilities, so
+ * its checklist has no AMENITIES section.
  */
 @Service
 class ListingSectionService(
@@ -66,7 +68,9 @@ class ListingSectionService(
     }
 
     private fun photosVerified(listingId: Long): Boolean {
-        val statuses = imageDao.findByListingIdOrderById(listingId).map { image -> image.status }
-        return statuses.size >= MIN_PHOTOS && ImageStatus.REJECTED !in statuses
+        val images = imageDao.findByListingIdOrderById(listingId)
+        return images.size >= MIN_PHOTOS &&
+            images.none { image -> image.status == ImageStatus.REJECTED } &&
+            images.any { image -> image.status != ImageStatus.REJECTED && image.kind == ImageKind.PHOTO }
     }
 }

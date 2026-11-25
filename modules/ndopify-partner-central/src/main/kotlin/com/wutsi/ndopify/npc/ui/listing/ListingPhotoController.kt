@@ -35,8 +35,9 @@ import org.springframework.web.multipart.MultipartFile
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
 /**
- * The photos of a listing's checklist (`listing/photos.html`): at least [ListingRules.MIN_PHOTOS], none refused, for
- * the section to count; [ListingRules.MAX_PHOTOS] at most. Each upload is sent straight to the listing (the listing is
+ * The photos of a listing's checklist (`listing/photos.html`): at least [ListingRules.MIN_PHOTOS] images, none
+ * refused and one of them a photo of the property (plans and maps count toward the five), for the section to count;
+ * [ListingRules.MAX_PHOTOS] at most. Each upload is sent straight to the listing (the listing is
  * the state, nothing is kept in the session), PENDING_VERIFICATION; a photo is deleted (or replaced) before the
  * listing is sent, never after.
  *
@@ -94,7 +95,14 @@ class ListingPhotoController(
             sector.locations(listOfNotNull(listing.cityId, listing.neighborhoodId))
         } ?: emptyMap()
         model.addAttribute("section", ListingViews.section(listing, ListingSection.PHOTOS, locations, formatter))
-        model.addAttribute("photos", ListingViews.photos(images.orEmpty(), ListingRules.editable(listing)))
+        model.addAttribute(
+            "photos",
+            ListingViews.photos(
+                images.orEmpty(),
+                editable = ListingRules.editable(listing),
+                photosVerified = ListingRules.done(listing, ListingSection.PHOTOS),
+            ),
+        )
         model.addAttribute(PHOTO_ERROR, error ?: if (images == null) PHOTOS_UNAVAILABLE else null)
         return VIEW
     }

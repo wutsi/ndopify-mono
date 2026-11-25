@@ -374,7 +374,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `PROPERTY` section drops the bathrooms and parkings an agent posts. An update saves *one* `ListingSection` (`LOCATION`, `GPS`, `PROPERTY`, `AMENITIES`,
   `TERMS`, `REMARKS`), only that section's fields, as sent (a null clears an optional field), and marks it
   `VERIFIED` (`ListingSectionService.verify`): a section counts only once the agent saved it, the landlord's answers
-  alone don't. `PHOTOS` is never saved: it's `VERIFIED` once there are `MIN_PHOTOS` (5) photos and none `REJECTED`.
+  alone don't. `PHOTOS` is never saved: it's `VERIFIED` once there are `MIN_PHOTOS` (5) images, none `REJECTED` and at
+  least one of them a `PHOTO` (a plan or a map doesn't count as the photo; it does count toward the five).
   `REMARKS` is optional. `Listing.sections` carries each section's `TO_VERIFY` / `VERIFIED` status. Update errors:
   409 `LISTING_VERSION_CONFLICT` (`UpdateListingRequest.version`), 409 `LISTING_NOT_DRAFT` once sent, then 400 for no
   section or `PHOTOS`, a missing required field, or a neighbourhood outside the listing's city. The city never
@@ -392,7 +393,11 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   checklist isn't `VERIFIED`. `ListingJobs.verify` runs an UNDER_VERIFICATION listing through
   `ListingVerifierService`: `VERIFIED`, or back to `DRAFT` with the verifiers' `errorCodes` for the agent to fix and
   send again; a failed attempt leaves it UNDER_VERIFICATION for the next run, then after `MAX_RETRIES` back to `DRAFT`
-  with `INTERNAL_ERROR`. `PENDING_VERIFICATION` isn't used for a listing (only for its photos). `VerifyListingsJobTest`
+  with `INTERNAL_ERROR`. Each image is classified `PHOTO` / `FLOORPLAN` / `MAP` by the vision model, prompted with the
+  listing's property type, listing type, lot area and city: a floor plan is valid on any property, a parcel map only on
+  a `LAND` (or when the property type is unset and the parcel is identifiable). The verifier answers
+  `LISTING_NOT_ENOUGH_IMAGES` below `ndopify.listing.min-images`, then `LISTING_MISSING_PHOTO` without a `VERIFIED`
+  photo, else it passes. `PENDING_VERIFICATION` isn't used for a listing (only for its photos). `VerifyListingsJobTest`
   covers the send and the job together, end to end: keep it so. There is no rejected status:
   a DRAFT with `errorCodes` is one sent back. A send-back publishes `ListingSentBackEvent`, in the transaction that
   saves DRAFT with `errorCodes` (a verifier rejection, or `INTERNAL_ERROR` after `MAX_RETRIES`):
@@ -405,9 +410,10 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   **Publish**: `POST /{id}/publish` moves a `VERIFIED` listing
   to `PUBLISHING` (404 `LISTING_NOT_FOUND`, then 409 `LISTING_NOT_VERIFIED`), `retries` reset; `ListingJobs.publish`
   then has `ListingPublisherService` generate its title, summary and description (`ListingContentGenerator`, text
-  LLM, `ChatClients.TEXT`, from the listing's details, verified photos and agent remarks; a sold building is described
-  by its units and étages instead of its bedrooms), and its hero image (the
-  model's, else the verified photo of highest quality, then largest), and its public `url`, the path `/<city>/<neighborhood>/listing/<id>/<slug of the title>` (no host: the
+  LLM, `ChatClients.TEXT`, from the listing's details, verified images and agent remarks; a sold building is described
+  by its units and étages instead of its bedrooms), and its hero image (the model's when that image is a verified
+  `PHOTO`, else the verified `PHOTO` of highest quality, then largest: a plan or a map is never the hero, and only a
+  listing with no verified photo at all falls back to all its verified images), and its public `url`, the path `/<city>/<neighborhood>/listing/<id>/<slug of the title>` (no host: the
   tenant's `publicPortalUrl`; no neighbourhood nor title segment without them): `PUBLISHED`, or still `PUBLISHING` to be retried after a failure; after `MAX_RETRIES` failed attempts
   it's `PUBLISHED` without title, summary nor description (the UIs handle it), its last error kept. Either way it
   publishes `ListingPublishedEvent`: `ListingPublishedNotifier` messages a linked agent (its link's chat) through

@@ -50,7 +50,7 @@ class VerifyListingsJobTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals("VERIFIED", listing["status"])
         assertEquals(null, listing["error_codes"])
         assertEquals(0, listing["retries"])
-        verify(extractor, never()).extract(any())
+        verify(extractor, never()).extract(any(), any())
     }
 
     @Test

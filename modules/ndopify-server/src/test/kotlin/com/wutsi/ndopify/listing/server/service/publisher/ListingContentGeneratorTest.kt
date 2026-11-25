@@ -12,6 +12,7 @@ import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.server.dao.ListingImageRepository
+import com.wutsi.ndopify.listing.server.domain.ImageKind
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
@@ -67,8 +68,15 @@ class ListingContentGeneratorTest {
         ).whenever(locationService).search(any())
         doReturn(
             listOf(
-                ListingImageEntity(id = 11L, listingId = 1L, title = "Salon", description = "Grand salon", quality = 4),
-                ListingImageEntity(id = 12L, listingId = 1L, quality = 2),
+                ListingImageEntity(
+                    id = 11L,
+                    listingId = 1L,
+                    kind = ImageKind.PHOTO,
+                    title = "Salon",
+                    description = "Grand salon",
+                    quality = 4,
+                ),
+                ListingImageEntity(id = 12L, listingId = 1L, kind = ImageKind.MAP, quality = 2),
             ),
         ).whenever(imageDao).findByListingIdAndStatusInOrderById(any(), any())
         mockResponse(
@@ -142,8 +150,11 @@ class ListingContentGeneratorTest {
         generator.generate(listing)
 
         val prompt = prompt()
-        assertTrue(prompt.contains("## Image #1\n\n- ID: 11\n- Title: Salon\n- Quality: 4\n- Description: Grand salon"))
-        assertTrue(prompt.contains("## Image #2\n\n- ID: 12\n- Title: No title available\n- Quality: 2"))
+        assertTrue(
+            prompt.contains("## Image #1\n\n- ID: 11\n- Title: Salon\n- Quality: 4\n- Kind: PHOTO\n- Description: Grand salon"),
+        )
+        assertTrue(prompt.contains("- Kind: MAP"))
+        assertTrue(prompt.contains("The hero image must be a PHOTO"))
         verify(imageDao).findByListingIdAndStatusInOrderById(eq(1L), eq(listOf(ImageStatus.VERIFIED)))
     }
 

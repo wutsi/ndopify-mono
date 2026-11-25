@@ -211,6 +211,8 @@ object ListingRules {
     private val REJECTIONS = mapOf(
         ErrorCode.LISTING_NOT_ENOUGH_IMAGES to
             Rejection("Pas assez de photos acceptées : il en faut $MIN_PHOTOS au moins.", ListingSection.PHOTOS),
+        ErrorCode.LISTING_MISSING_PHOTO to
+            Rejection("Il faut au moins une photo du bien : un plan ou une carte ne suffisent pas.", ListingSection.PHOTOS),
         ErrorCode.LISTING_MISSING_LAT_LONG to Rejection("La position GPS du bien n'a pas été relevée.", ListingSection.GPS),
         ErrorCode.LISTING_MISSING_NEIGHBORHOOD to Rejection("Le quartier du bien n'est pas indiqué.", ListingSection.LOCATION),
         ErrorCode.LISTING_INVALID_NEIGHBORHOOD to
@@ -231,7 +233,10 @@ object ListingRules {
         return listing.errorCodes.map { REJECTIONS[it] ?: UNKNOWN_REJECTION }.distinct()
     }
 
-    /** Saved by the agent on site (PHOTOS: enough of them, none refused), as ndopify-server's checklist says. */
+    /**
+     * Saved by the agent on site (PHOTOS: enough images, none refused, one of them a photo of the property), as
+     * ndopify-server's checklist says.
+     */
     fun done(listing: Listing, section: ListingSection): Boolean =
         listing.sections.any { it.section == section && it.status == ListingSectionStatus.VERIFIED }
 

@@ -261,14 +261,20 @@ object ListingViews {
             )
         }
 
-    /** The photos page's list (the prototype's `initListingPhotos`): what's left to do only while it's a draft. */
-    fun photos(images: List<ListingImage>, editable: Boolean): PhotosView {
+    /**
+     * The photos page's list (the prototype's `initListingPhotos`): what's left to do only while it's a draft. With
+     * enough accepted images and none refused, a PHOTOS section still to verify ([photosVerified] false) is missing
+     * the photo of the property: the checklist counts plans and maps toward the five, and only a photo makes the
+     * section VERIFIED, so no image kind has to be exposed here.
+     */
+    fun photos(images: List<ListingImage>, editable: Boolean, photosVerified: Boolean): PhotosView {
         val good = good(images)
         val refused = images.size - good
         val left = when {
             !editable -> ""
             refused > 0 -> " · supprimez ${if (refused > 1) "les photos refusées" else "la photo refusée"} et reprenez-la"
             good < ListingRules.MIN_PHOTOS -> " · encore ${ListingRules.MIN_PHOTOS - good} au moins"
+            !photosVerified -> " · une photo du bien est encore nécessaire"
             else -> " · c'est suffisant, ajoutez-en si utile"
         }
         return PhotosView(
