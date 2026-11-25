@@ -57,7 +57,7 @@ class RefreshAuthenticationEndpointTest : AuthorizationAwareEndpointIntegrationT
     }
 
     @Test
-    fun `past the absolutely cap`() {
+    fun `past the absolute cap`() {
         issuedAt = Instant.now().minus(Duration.ofDays(10))
         sessionStartedAt = Instant.now().minus(Duration.ofDays(91))
         ttlSeconds = Duration.ofDays(30).seconds.toInt()
@@ -69,13 +69,19 @@ class RefreshAuthenticationEndpointTest : AuthorizationAwareEndpointIntegrationT
     }
 
     @Test
-    @Sql(statements = ["UPDATE T_MEMBERSHIP SET deleted = true WHERE id = 11"])
+    @Sql(
+        scripts = ["/db/test/clean.sql", "/db/test/security/RefreshAuthenticationEndpoint.sql"],
+        statements = ["UPDATE T_MEMBERSHIP SET deleted = true WHERE id = 11"],
+    )
     fun `membership removed`() {
         assertDenied()
     }
 
     @Test
-    @Sql(statements = ["DELETE FROM T_USER_APPLICATION WHERE membership_id = 11"])
+    @Sql(
+        scripts = ["/db/test/clean.sql", "/db/test/security/RefreshAuthenticationEndpoint.sql"],
+        statements = ["DELETE FROM T_USER_APPLICATION WHERE membership_id = 11"],
+    )
     fun `application access removed`() {
         assertDenied()
     }
