@@ -10,6 +10,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -31,11 +32,13 @@ class AgentFooterLayoutTest {
         "agent_whatsapp" to "+237 6 99 00 00 01",
         "agent_whatsapp_url" to "https://wa.me/237699000001",
         "tenant_logo_url" to "https://cdn.ndopify.com/logo.png",
+        "agent_customer_email" to true,
     )
 
     private val templates = listOf(
         "/mail/contract/signature_request.mjml",
         "/mail/match/proposed.mjml",
+        "/mail/match/visit_reminder.mjml",
         "/mail/visit/cancelled.mjml",
         "/mail/visit/no_show.mjml",
         "/mail/visit/expired.mjml",
@@ -44,6 +47,16 @@ class AgentFooterLayoutTest {
         "/mail/visit/confirmed.mjml",
         "/mail/mandate/assigned.mjml",
         "/mail/mandate/assigned_listing.mjml",
+    )
+
+    // E-mails the story keeps out of scope. They set agent_full_name too, so only the customer-voice marker keeps
+    // them on today's footer.
+    private val outOfScopeTemplates = listOf(
+        "/mail/match/agent_visit_nudge.mjml",
+        "/mail/visit/co_brokerage_confirmed.mjml",
+        "/mail/visit/co_brokerage_reminder.mjml",
+        "/mail/visit/co_brokerage_cancelled.mjml",
+        "/mail/visit/co_brokerage_no_show.mjml",
     )
 
     @Test
@@ -76,7 +89,7 @@ class AgentFooterLayoutTest {
     }
 
     @Test
-    fun `the agent footer shows the photo next to its details`() {
+    fun `the agent footer shows the photo next to its details in a group`() {
         templates.forEach { path ->
             val doc = Jsoup.parse(resolver.resolve(path, context))
             val link = assertNotNull(
@@ -84,23 +97,61 @@ class AgentFooterLayoutTest {
                 "$path: the agent footer is missing",
             )
             val details = link.parents().first { isColumn(it) }
+            val group = details.parents().first { isGroup(it) }
             val photo = assertNotNull(
-                doc.selectFirst("img[alt='Photo de Kim Possible']"),
+                group.selectFirst("img[alt='Photo de Kim Possible']"),
                 "$path: the agent photo is missing",
             )
             val photoColumn = photo.parents().first { isColumn(it) }
-            val section = details.parent()!!
 
-            assertEquals(2, section.children().count { isColumn(it) }, "$path: the footer needs 2 columns")
-            assertTrue(photoColumn != details, "$path: the photo and the details share a column")
+            // mj-group renders as a full-width wrapper holding its columns inline-block: they never stack on a phone
+            assertEquals(photoColumn.parent(), group, "$path: the photo and the details are not in one mj-group")
+            assertEquals(2, group.children().count { isColumn(it) }, "$path: the footer needs 2 columns")
+            assertTrue(photoColumn.attr("style").contains("width: 20%"), "$path: the photo column has no width")
+            assertTrue(details.attr("style").contains("width: 80%"), "$path: the details column has no width")
             assertTrue(details.text().contains("Kim Possible"), "$path: the details do not name the agent")
             assertTrue(details.text().contains("WhatsApp"), "$path: the details have no WhatsApp link")
+            assertTrue(details.text().contains("Envoyé via Ndopify"), "$path: the details do not carry the tenant line")
             assertFalse(details.text().contains("Votre agent"), "$path: the details still say 'Votre agent'")
-            assertEquals(
-                0,
-                section.select("img[alt='Ndopify']").size,
-                "$path: the footer still shows the tenant logo",
+            assertEquals(0, doc.select("img[alt='Ndopify']").size, "$path: the footer still shows the tenant logo")
+        }
+    }
+
+    @Test
+    fun `the agent footer without a photo keeps the details full width`() {
+        templates.forEach { path ->
+            val doc = Jsoup.parse(resolver.resolve(path, context - "agent_photo_url"))
+            val details = assertNotNull(
+                doc.selectFirst("a[href='https://wa.me/237699000001']"),
+                "$path: the agent footer is missing",
+            ).parents().first { isColumn(it) }
+
+            assertNull(details.selectFirst("img"), "$path: a photo renders without one")
+            assertEquals(1, details.parent()!!.children().count { isColumn(it) }, "$path: the empty photo column stays")
+            assertTrue(details.attr("style").contains("width: 100%"), "$path: the details are not full width")
+            assertTrue(details.text().contains("Envoyé via Ndopify"), "$path: the tenant line is missing")
+        }
+    }
+
+    @Test
+    fun `an e-mail outside the customer voice keeps today's footer`() {
+        outOfScopeTemplates.forEach { path ->
+            val doc = Jsoup.parse(resolver.resolve(path, context - "agent_customer_email"))
+            val details = assertNotNull(
+                doc.selectFirst("a[href='https://wa.me/237699000001']"),
+                "$path: the agent footer is missing",
+            ).parents().first { isColumn(it) }
+
+            assertNull(
+                details.parents().firstOrNull { isGroup(it) },
+                "$path: the footer uses the new mj-group layout",
             )
+            val text = details.text()
+            assertTrue(
+                details.classNames().contains("mj-column-per-75"),
+                "$path: the details are not in today's 75% column",
+            )
+            assertFalse(text.contains("Envoyé via"), "$path: the footer carries the new tenant line")
         }
     }
 
@@ -109,4 +160,9 @@ class AgentFooterLayoutTest {
 
     private fun isColumn(element: Element): Boolean =
         element.classNames().any { it.startsWith("mj-column-per-") }
+
+    // mj-group's wrapper: the full-width column that holds the group's own columns side by side
+    private fun isGroup(element: Element): Boolean =
+        element.classNames().contains("mj-column-per-100") &&
+            element.children().count { isColumn(it) } == 2
 }

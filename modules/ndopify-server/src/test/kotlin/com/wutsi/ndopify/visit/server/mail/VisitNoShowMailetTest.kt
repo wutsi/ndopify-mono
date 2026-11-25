@@ -28,6 +28,7 @@ import com.wutsi.ndopify.visit.dto.VisitParty
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
+import java.net.URLDecoder
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Date
@@ -62,6 +63,7 @@ class VisitNoShowMailetTest {
     private val agent = AgentEntity(
         id = 20L,
         party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible", email = "kim.possible@gmail.com"),
+        whatsappNumber = "+237699000001",
     )
     private val listing = ListingEntity(id = 101L, title = "Nice apartment")
     private val visit = VisitEntity(
@@ -94,7 +96,7 @@ class VisitNoShowMailetTest {
         val email = argumentCaptor<Email>()
         verify(mailService, times(1)).send(email.capture())
         assertEquals("ray.sponsible@gmail.com", email.firstValue.recipient.email)
-        assertEquals("Ndopify: la visite n'a pas eu lieu", email.firstValue.subject)
+        assertEquals("Notre visite n'a pas eu lieu", email.firstValue.subject)
         assertEquals("Kim Possible", email.firstValue.sender?.displayName)
 
         assertEquals(
@@ -112,10 +114,16 @@ class VisitNoShowMailetTest {
                 "visit_url" to "https://www.ndopify.com/visits/1?token=xxx.yyy.zzz",
                 "agent_full_name" to "Kim Possible",
                 "agent_photo_url" to null,
-                "agent_whatsapp" to null,
-                "agent_whatsapp_url" to null,
+                "agent_whatsapp" to "+237 6 99 00 00 01",
+                "agent_whatsapp_url" to "https://wa.me/237699000001",
             ),
-            contexts().single(),
+            contexts().single() - "agent_whatsapp_reply_url" - "agent_customer_email",
+        )
+
+        val replyUrl = contexts().single()["agent_whatsapp_reply_url"] as String
+        assertEquals(
+            "Bonjour, je vous réponds au sujet de notre visite du bien Nice apartment.",
+            URLDecoder.decode(replyUrl.substringAfter("?text="), "UTF-8"),
         )
     }
 
@@ -139,9 +147,14 @@ class VisitNoShowMailetTest {
             captor.allValues.single { it.recipient.email == "ray.sponsible@gmail.com" }.sender?.displayName,
         )
         assertNull(captor.allValues.single { it.recipient.email == "kim.possible@gmail.com" }.sender)
+        assertEquals(
+            "Ndopify: visite manquée avec Ray Sponsible",
+            captor.allValues.single { it.recipient.email == "kim.possible@gmail.com" }.subject,
+        )
         val contexts = contexts()
         assertEquals("Je ne me suis pas présenté.", contexts[0]["reason_label"])
         assertEquals("Vous ne vous êtes pas présenté.", contexts[1]["reason_label"])
+        assertEquals(null, contexts[1]["agent_whatsapp_reply_url"], "the agent copy has no reply button")
         assertEquals("Kim Possible", contexts[1]["recipient_name"])
         assertEquals("Ray Sponsible", contexts[1]["other_party"])
         assertEquals("https://partner.ndopify.com/visits/1", contexts[1]["visit_url"])
@@ -157,7 +170,7 @@ class VisitNoShowMailetTest {
         verify(linkTokenService, never()).create(any())
     }
 
-    private fun contexts(): List<Map<*, *>> {
+    private fun contexts(): List<Map<String, Any?>> {
         val captor = argumentCaptor<Map<String, Any?>>()
         verify(mailBodyResolver, atLeast(1)).resolve(eq(VisitNoShowMailet.TEMPLATE), captor.capture())
         return captor.allValues

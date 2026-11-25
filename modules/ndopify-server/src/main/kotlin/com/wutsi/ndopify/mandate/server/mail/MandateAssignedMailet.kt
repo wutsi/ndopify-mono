@@ -23,7 +23,7 @@ class MandateAssignedMailet(
     private val mailBodyResolver: MailBodyResolver,
 ) {
     companion object {
-        const val SUBJECT = "{{tenant_name}}: Un agent a été assigné à votre mandat à {{place}}"
+        const val SUBJECT = "Je prends en charge votre mandat à {{place}}"
         const val TEMPLATE = "/mail/mandate/assigned.mjml"
         const val TEMPLATE_LISTING = "/mail/mandate/assigned_listing.mjml"
     }
@@ -33,13 +33,13 @@ class MandateAssignedMailet(
         val party = customer.party
         val fullName = party.fullName()
         val city = locationService.findByIdOrNull(mandate.cityId)?.name ?: ""
+        val place = MandateMailLabels.place(mandate, city, locationService)
         val formatter = TenantFormatter(tenant)
         mailService.send(
             Email(
                 sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = party.email, displayName = fullName),
-                subject = SUBJECT.replace("{{tenant_name}}", tenant.name)
-                    .replace("{{place}}", MandateMailLabels.place(mandate, city, locationService)),
+                subject = SUBJECT.replace("{{place}}", place),
                 body = mailBodyResolver.resolve(
                     path = if (mandate.mandateType == MandateType.LISTING) TEMPLATE_LISTING else TEMPLATE,
                     context = mapOf(
@@ -50,7 +50,9 @@ class MandateAssignedMailet(
                         "agent_photo_url" to agent.party.photoUrl?.ifBlank { null },
                         "agent_presentation" to agent.biography?.ifBlank { null },
                         "sale" to MandateMailLabels.sale(mandate),
-                    ) + AgentMailContext.of(agent, formatter)
+                        "place" to place,
+                        "agent_whatsapp_reply_url" to AgentMailContext.replyUrl(agent, "de votre mandat à $place"),
+                    ) + AgentMailContext.customer(agent, formatter)
                 )
             )
         )

@@ -20,6 +20,7 @@ import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
+import java.net.URLDecoder
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -88,17 +89,25 @@ class MandateAssignedMailetTest {
                 "agent_whatsapp" to "+237 6 70 00 00 20",
                 "agent_whatsapp_url" to "https://wa.me/237670000020",
                 "sale" to false,
+                "place" to "Bastos, Mvan (Yaounde)",
             ),
-            context.firstValue,
+            context.firstValue - "agent_whatsapp_reply_url" - "agent_customer_email",
         )
 
         val email = argumentCaptor<Email>()
         verify(mailService).send(email.capture())
         assertEquals("ray.sponsible@gmail.com", email.firstValue.recipient.email)
         assertEquals("Ray Sponsible", email.firstValue.recipient.displayName)
-        assertEquals("Ndopify: Un agent a été assigné à votre mandat à Bastos, Mvan (Yaounde)", email.firstValue.subject)
+        assertEquals("Je prends en charge votre mandat à Bastos, Mvan (Yaounde)", email.firstValue.subject)
         assertEquals("<html>assigned</html>", email.firstValue.body)
         assertEquals("Kim Possible", email.firstValue.sender?.displayName)
+        assertEquals(
+            "Bonjour, je vous réponds au sujet de votre mandat à Bastos, Mvan (Yaounde).",
+            URLDecoder.decode(
+                (context.firstValue["agent_whatsapp_reply_url"] as String).substringAfter("?text="),
+                "UTF-8",
+            ),
+        )
     }
 
     @Test
@@ -107,7 +116,7 @@ class MandateAssignedMailetTest {
 
         val email = argumentCaptor<Email>()
         verify(mailService).send(email.capture())
-        assertEquals("Ndopify: Un agent a été assigné à votre mandat à Yaounde", email.firstValue.subject)
+        assertEquals("Je prends en charge votre mandat à Yaounde", email.firstValue.subject)
     }
 
     @Test
@@ -118,7 +127,7 @@ class MandateAssignedMailetTest {
 
         val email = argumentCaptor<Email>()
         verify(mailService).send(email.capture())
-        assertEquals("Ndopify: Un agent a été assigné à votre mandat à Bastos, Mvan", email.firstValue.subject)
+        assertEquals("Je prends en charge votre mandat à Bastos, Mvan", email.firstValue.subject)
     }
 
     @Test

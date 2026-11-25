@@ -38,7 +38,7 @@ class VisitConfirmedMailet(
     private val imageService: ImageService,
 ) {
     companion object {
-        const val SUBJECT_CUSTOMER = "{{tenant_name}}: votre visite est confirmée"
+        const val SUBJECT_CUSTOMER = "Votre visite de {{weekday}} est confirmée"
         const val SUBJECT_AGENT = "{{tenant_name}}: visite confirmée avec {{customer_name}}"
         const val TEMPLATE_CUSTOMER = "/mail/visit/confirmed.mjml"
         const val TEMPLATE_AGENT = "/mail/visit/confirmed_agent.mjml"
@@ -53,6 +53,8 @@ class VisitConfirmedMailet(
         val onSite = visit.type == VisitType.ON_SITE
         val place = placeOf(listing)
         val landmark = landmarkOf(listing)
+        val event = "de la visite du bien ${listingTitle(listing)} le ${formatter.date(visit.scheduledAt!!)} à " +
+            "${formatter.time(visit.scheduledAt)}"
         val token = tenant.publicPortalUrl?.let { linkTokenService.create(customer) }
         val customerUrl = tenant.publicPortalUrl?.removeSuffix("/")?.let { base ->
             val url = "$base/visits/${visit.id}"
@@ -64,7 +66,7 @@ class VisitConfirmedMailet(
             Email(
                 sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = customer.party.email, displayName = customerName),
-                subject = SUBJECT_CUSTOMER.replace("{{tenant_name}}", tenant.name),
+                subject = SUBJECT_CUSTOMER.replace("{{weekday}}", formatter.weekday(visit.scheduledAt!!)),
                 body = mailBodyResolver.resolve(
                     path = TEMPLATE_CUSTOMER,
                     context = mapOf(
@@ -83,7 +85,8 @@ class VisitConfirmedMailet(
                         "code" to visit.code,
                         "by_agent" to (visit.createdBy == VisitParty.AGENT),
                         "visit_url" to customerUrl,
-                    ) + AgentMailContext.of(agent, formatter),
+                        "agent_whatsapp_reply_url" to AgentMailContext.replyUrl(agent, event),
+                    ) + AgentMailContext.customer(agent, formatter),
                 ),
             ),
         )

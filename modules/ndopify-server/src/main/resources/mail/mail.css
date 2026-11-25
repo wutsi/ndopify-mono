@@ -32,6 +32,31 @@ div {
     text-decoration: none !important;
 }
 
+.btn-secondary td {
+    background-color: #ffffff !important;
+}
+
+.btn-secondary a {
+    display: inline-block !important;
+    background-color: #ffffff !important;
+    color: #1d7edf !important;
+    border: 1px solid #1d7edf !important;
+    font-size: 15px !important;
+    font-weight: bold !important;
+    border-radius: 30px !important;
+    padding: 12px 24px !important;
+    text-decoration: none !important;
+}
+
+.reply-note {
+    background-color: #f1f5f9 !important;
+    border-radius: 8px !important;
+    padding: 14px 16px !important;
+    color: #334155 !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+}
+
 .divider p {
     border-top: 4px solid #1d7edf !important;
     width: 100% !important;

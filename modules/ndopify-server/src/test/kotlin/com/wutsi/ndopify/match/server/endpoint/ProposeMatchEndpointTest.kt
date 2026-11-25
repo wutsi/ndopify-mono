@@ -51,7 +51,7 @@ class ProposeMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
         val message = smtp.receivedMessages.single()
         assertEquals("Ray Sponsible <ray.sponsible@gmail.com>", message.allRecipients.single().toString())
-        assertEquals("Ndopify: Kim Possible vous propose un bien à Bastos (Yaounde)", message.subject)
+        assertEquals("Je vous propose un bien à Bastos (Yaounde)", message.subject)
         val body = message.content.toString()
         assertTrue(body.contains("https://www.ndopify.com/match/1?token="))
         assertTrue(body.contains("Nice apartment"))

@@ -28,7 +28,7 @@ class VisitCompletedMailet(
     private val imageService: ImageService,
 ) {
     companion object {
-        const val SUBJECT = "{{tenant_name}}: votre visite est terminée"
+        const val SUBJECT = "Alors, ce bien vous intéresse ?"
         const val TEMPLATE = "/mail/visit/completed.mjml"
     }
 
@@ -46,21 +46,29 @@ class VisitCompletedMailet(
             Email(
                 sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = customer.party.email, displayName = customerName),
-                subject = SUBJECT.replace("{{tenant_name}}", tenant.name),
+                subject = SUBJECT,
                 body = mailBodyResolver.resolve(
                     path = TEMPLATE,
                     context = mapOf(
                         "tenant_logo_url" to tenant.logoUrl,
                         "tenant_name" to tenant.name,
                         "recipient_name" to customerName,
-                        "listing_title" to (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"),
+                        "listing_title" to listingTitle(listing),
                         "image_url" to imageUrl,
                         "visit_date" to formatter.date(visit.scheduledAt!!),
                         "visit_time" to formatter.time(visit.scheduledAt),
                         "visit_url" to visitUrl,
-                    ) + AgentMailContext.of(agent, formatter),
+                        "agent_whatsapp_reply_url" to AgentMailContext.replyUrl(
+                            agent,
+                            "de la visite du bien ${listingTitle(listing)} le ${formatter.date(visit.scheduledAt!!)} " +
+                                "à ${formatter.time(visit.scheduledAt)}",
+                        ),
+                    ) + AgentMailContext.customer(agent, formatter),
                 ),
             ),
         )
     }
+
+    private fun listingTitle(listing: ListingEntity): String =
+        listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"
 }

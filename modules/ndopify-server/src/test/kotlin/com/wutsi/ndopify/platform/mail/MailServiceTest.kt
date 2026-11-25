@@ -77,6 +77,7 @@ class MailServiceTest {
             .associate { header -> header.name to header.value }
         assertEquals(message.language, headers["Content-Language"])
         assertEquals(true, headers["Content-Type"]?.startsWith(message.mimeType))
+        assertEquals(null, headers["Reply-To"], "a customer reply must not reach the agent")
     }
 
     @Test

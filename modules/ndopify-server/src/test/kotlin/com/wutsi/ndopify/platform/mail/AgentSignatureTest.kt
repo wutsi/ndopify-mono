@@ -28,11 +28,13 @@ class AgentSignatureTest {
         "agent_whatsapp" to "+237 6 99 00 00 01",
         "agent_whatsapp_url" to "https://wa.me/237699000001",
         "tenant_logo_url" to "https://cdn.ndopify.com/logo.png",
+        "agent_customer_email" to true,
     )
 
     private val templates = listOf(
         "/mail/contract/signature_request.mjml",
         "/mail/match/proposed.mjml",
+        "/mail/match/visit_reminder.mjml",
         "/mail/visit/cancelled.mjml",
         "/mail/visit/no_show.mjml",
         "/mail/visit/expired.mjml",
@@ -57,7 +59,10 @@ class AgentSignatureTest {
     @Test
     fun `the tenant team signs when there is no agent`() {
         val text = Jsoup.parse(
-            resolver.resolve("/mail/contract/signature_request.mjml", context - "agent_full_name"),
+            resolver.resolve(
+                "/mail/contract/signature_request.mjml",
+                context - "agent_full_name" - "agent_customer_email",
+            ),
         ).text()
 
         assertTrue(text.contains("Cordialement, L'équipe Ndopify"))

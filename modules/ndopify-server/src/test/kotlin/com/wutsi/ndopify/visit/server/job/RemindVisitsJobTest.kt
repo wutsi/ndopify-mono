@@ -26,7 +26,7 @@ class RemindVisitsJobTest : BaseEndpointIntegrationTest() {
 
         assertTrue(smtp.waitForIncomingEmail(5000, 4), "two e-mails per reminded visit")
         assertEquals(
-            "Ndopify: rappel de votre visite",
+            "Votre visite, c'est demain",
             smtp.receivedMessages.first { it.allRecipients.single().toString().contains("ray.sponsible") }.subject,
         )
         assertNotNull(reminderSentAt(1L))

@@ -5,6 +5,7 @@ import com.github.mustachejava.resolver.ClasspathResolver
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.filter.MailFilterNull
 import dev.jcputney.mjml.MjmlRenderer
+import org.jsoup.Jsoup
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -31,6 +32,20 @@ class MandateListingTemplateTest {
         "area" to 85,
         "available_from" to "01/11/2026",
     )
+
+    // The agent's assignment e-mail: the agent introduces itself, the footer signs
+    private val assignedKeys = mapOf(
+        "place" to "Bastos, Mvan (Yaounde)",
+        "agent_full_name" to "Kim Possible",
+        "agent_photo_url" to "https://cdn.ndopify.com/agent.jpg",
+        "agent_presentation" to "Agent immobilier à Yaoundé",
+        "agent_whatsapp" to "+237 6 70 00 00 20",
+        "agent_whatsapp_url" to "https://wa.me/237670000020",
+        "agent_whatsapp_reply_url" to "https://wa.me/237670000020?text=Bonjour",
+        "sale" to false,
+        "agent_customer_email" to true,
+    )
+    private val assignedContext = context + assignedKeys
 
     // A SALE listing's context: Vente, its price, and the sale flag the templates switch on
     private val saleContext = context + mapOf(
@@ -70,35 +85,36 @@ class MandateListingTemplateTest {
 
     @Test
     fun assigned() {
-        val html = resolver.resolve(MandateAssignedMailet.TEMPLATE_LISTING, context)
+        val html = resolver.resolve(MandateAssignedMailet.TEMPLATE_LISTING, assignedContext)
+        val text = Jsoup.parse(html).text()
 
-        assertTrue(html.contains("la mise en location de votre bien"))
-        assertTrue(html.contains("Je suis votre agent dédié"))
-        assertTrue(html.contains("Je me présente"))
-        assertTrue(html.contains("Je vous contacterai"))
-        assertFalse(html.contains("Nous vous remercions"))
-        assertFalse(html.contains("Votre agent prendra contact"))
-        assertFalse(html.contains("recherche"))
+        assertTrue(text.contains("Je prends en charge la mise en location de votre bien."))
+        assertTrue(text.contains("Je serai votre interlocuteur pour ce mandat."))
+        assertTrue(text.contains("Je me présente"))
+        assertTrue(text.contains("Je vous contacterai"))
+        assertTrue(text.contains("d'organiser une visite de votre bien"))
+        assertFalse(text.contains("votre agent dédié"))
+        assertFalse(text.contains("recherche de votre bien"))
+        assertTrue(html.contains("Me répondre sur WhatsApp"))
     }
 
     @Test
     fun `assigned sale - the property is sold`() {
-        val html = resolver.resolve(MandateAssignedMailet.TEMPLATE_LISTING, saleContext)
+        val html = resolver.resolve(MandateAssignedMailet.TEMPLATE_LISTING, saleContext + (assignedKeys - "sale"))
 
-        assertTrue(html.contains("la vente de votre bien"))
+        assertTrue(html.contains("Je prends en charge la vente de votre bien."))
         assertFalse(html.contains("la mise en location de votre bien"))
     }
 
     @Test
     fun `assigned to a search`() {
-        val html = resolver.resolve(MandateAssignedMailet.TEMPLATE, context)
+        val html = resolver.resolve(MandateAssignedMailet.TEMPLATE, assignedContext)
 
-        assertTrue(html.contains("votre recherche immobilière"))
-        assertTrue(html.contains("Je suis votre agent dédié"))
+        assertTrue(html.contains("Je prends en charge la recherche de votre bien."))
+        assertTrue(html.contains("Je serai votre interlocuteur pour ce mandat."))
         assertTrue(html.contains("Je me présente"))
         assertTrue(html.contains("Je vous contacterai"))
-        assertFalse(html.contains("Nous vous remercions"))
-        assertFalse(html.contains("Votre agent prendra contact"))
+        assertFalse(html.contains("votre agent dédié"))
     }
 
     @Test

@@ -1,48 +1,80 @@
 <mjml>
     <mj-head>
+        {{#agent_customer_email}}
+        {{> mail/fragments/styles.mjml}}
+        <mj-preview>À signer avant le {{deadline}}</mj-preview>
+        {{/agent_customer_email}}
+        {{^agent_customer_email}}
         <mj-style inline="inline">
             {{__css__}}
         </mj-style>
+        {{/agent_customer_email}}
     </mj-head>
     <mj-body css-class="body">
         <mj-wrapper background-color="#ffffff" border-radius="30px" padding="20px">
             <mj-section padding="0">
                 <mj-column>
-                    <!-- Logo -->
+                    {{^agent_customer_email}}
+                    <!-- Logo: a contract without an agent keeps the platform layout -->
                     <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
 
-                    <!-- Divider with class for CSS injection -->
+                    {{/agent_customer_email}}
+                    <!-- Divider with class for CSS injection: the agent copy's only brand mark -->
                     <mj-divider css-class="divider"/>
 
                     <!-- Body Text -->
                     <mj-text>
                         Bonjour <strong>{{recipient_name}}</strong>,
                     </mj-text>
+                    {{#agent_full_name}}
                     <mj-text>
-                        Votre <strong>{{contract_type}}</strong> n° <strong>{{contract_number}}</strong> est prêt. Merci
-                        de le lire attentivement, puis de le signer électroniquement.
+                        Je vous ai préparé votre <strong>{{contract_type}}</strong> n° <strong>{{contract_number}}</strong>&#160;:
+                        lisez-le attentivement, puis signez-le électroniquement.
                     </mj-text>
+                    {{/agent_full_name}}
+                    {{^agent_full_name}}
+                    <mj-text>
+                        Votre <strong>{{contract_type}}</strong> n° <strong>{{contract_number}}</strong> est prêt. Merci de le lire
+                        attentivement, puis de le signer électroniquement.
+                    </mj-text>
+                    {{/agent_full_name}}
 
                     <mj-text font-weight="bold">
                         Vous avez jusqu'au <span class="text-primary">{{deadline}}</span> pour le signer.
                     </mj-text>
 
                     {{#sign_url}}
+                    {{#agent_customer_email}}
                     <!-- Button with class for CSS injection -->
+                    <mj-button href="{{sign_url}}" css-class="btn-primary nd-btn" align="center">
+                        Lire et signer le contrat
+                    </mj-button>
+                    {{/agent_customer_email}}
+                    {{^agent_customer_email}}
                     <mj-spacer/>
                     <mj-button href="{{sign_url}}" css-class="btn-primary" align="center">
                         Lire et signer le contrat
                     </mj-button>
                     <mj-spacer/>
+                    {{/agent_customer_email}}
                     {{/sign_url}}
 
+                    {{> mail/fragments/whatsapp-reply.mjml}}
+
                     <!-- Sign-off -->
+                    {{#agent_customer_email}}
+                    <mj-text>
+                        Cordialement,
+                    </mj-text>
+                    {{/agent_customer_email}}
+                    {{^agent_customer_email}}
                     <mj-spacer/>
                     <mj-text>
-                        Cordialement,{{^agent_full_name}}
+                        Cordialement,
                         <br/>
-                        L'équipe {{tenant_name}}{{/agent_full_name}}
+                        L'équipe {{tenant_name}}
                     </mj-text>
+                    {{/agent_customer_email}}
                 </mj-column>
             </mj-section>
             {{> mail/fragments/agent-footer.mjml}}

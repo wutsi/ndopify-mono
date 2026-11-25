@@ -39,7 +39,7 @@ class VisitReminderMailet(
     private val imageService: ImageService,
 ) {
     companion object {
-        const val SUBJECT_CUSTOMER = "{{tenant_name}}: rappel de votre visite"
+        const val SUBJECT_CUSTOMER = "Votre visite, c'est demain"
         const val SUBJECT_AGENT = "{{tenant_name}}: rappel de la visite avec {{customer_name}}"
         const val TEMPLATE_CUSTOMER = "/mail/visit/reminder.mjml"
         const val TEMPLATE_AGENT = "/mail/visit/reminder_agent.mjml"
@@ -60,7 +60,7 @@ class VisitReminderMailet(
             Email(
                 sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = customer.party.email, displayName = customerName),
-                subject = SUBJECT_CUSTOMER.replace("{{tenant_name}}", tenant.name),
+                subject = SUBJECT_CUSTOMER,
                 body = mailBodyResolver.resolve(
                     path = TEMPLATE_CUSTOMER,
                     context = mapOf(
@@ -78,7 +78,12 @@ class VisitReminderMailet(
                         "on_site" to (visit.type == VisitType.ON_SITE),
                         "code" to visit.code,
                         "visit_url" to customerUrl,
-                    ) + AgentMailContext.of(agent, formatter),
+                        "agent_whatsapp_reply_url" to AgentMailContext.replyUrl(
+                            agent,
+                            "de la visite du bien ${listingTitle(listing)} le ${formatter.date(visit.scheduledAt!!)} " +
+                                "à ${formatter.time(visit.scheduledAt)}",
+                        ),
+                    ) + AgentMailContext.customer(agent, formatter),
                 ),
             ),
         )

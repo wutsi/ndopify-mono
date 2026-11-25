@@ -22,6 +22,7 @@ class ContractSignatureMailet(
 ) {
     companion object {
         const val SUBJECT = "{{tenant_name}}: Votre contrat {{contract_number}} est prêt à être signé"
+        const val SUBJECT_CUSTOMER = "Votre contrat {{contract_number}} est prêt à être signé"
 
         private val TYPES = mapOf(
             ContractType.SEARCH to "Mandat de recherche",
@@ -34,11 +35,15 @@ class ContractSignatureMailet(
 
     fun send(contract: ContractEntity, contractParty: ContractPartyEntity, agent: AgentEntity? = null) {
         val tenant = tenantService.findById(contract.tenantId!!)
+        val agentContext = agent?.let {
+            AgentMailContext.customer(it, TenantFormatter(tenant)) +
+                mapOf("agent_whatsapp_reply_url" to AgentMailContext.replyUrl(it, "de votre contrat ${contract.number}"))
+        } ?: emptyMap()
         mailService.send(
             Email(
                 sender = agent?.let { AgentMailContext.from(it) },
                 recipient = Receipient(email = contractParty.legalEmail, displayName = contractParty.legalName),
-                subject = SUBJECT
+                subject = (if (agent != null) SUBJECT_CUSTOMER else SUBJECT)
                     .replace("{{tenant_name}}", tenant.name)
                     .replace("{{contract_number}}", contract.number),
                 body = mailBodyResolver.resolve(
@@ -53,8 +58,8 @@ class ContractSignatureMailet(
                         "deadline" to contract.signatureDeadline?.let { TenantFormatter(tenant).date(it) },
                         // Shows the contract and signs it: the e-mail never links the document itself
                         "sign_url" to tenant.eSignaturePortalUrl?.let { url -> "$url/sign/${contractParty.id}" },
-                    ) + (agent?.let { AgentMailContext.of(it, TenantFormatter(tenant)) } ?: emptyMap())
-                )
+                    ) + agentContext,
+                ),
             )
         )
     }

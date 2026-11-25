@@ -23,6 +23,7 @@ import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
+import java.net.URLDecoder
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Date
@@ -98,12 +99,17 @@ class VisitCompletedMailetTest {
                 "agent_whatsapp" to "+237 6 99 00 00 01",
                 "agent_whatsapp_url" to "https://wa.me/237699000001",
             ),
-            context(),
+            context() - "agent_whatsapp_reply_url" - "agent_customer_email",
+        )
+        val replyUrl = context()["agent_whatsapp_reply_url"] as String
+        assertEquals(
+            "Bonjour, je vous réponds au sujet de la visite du bien Nice apartment le 02/12/2026 à 10:00.",
+            URLDecoder.decode(replyUrl.substringAfter("?text="), "UTF-8"),
         )
         val email = argumentCaptor<Email>()
         verify(mailService).send(email.capture())
         assertEquals("ray.sponsible@gmail.com", email.firstValue.recipient.email)
-        assertEquals("Ndopify: votre visite est terminée", email.firstValue.subject)
+        assertEquals("Alors, ce bien vous intéresse ?", email.firstValue.subject)
         assertEquals("<html>completed</html>", email.firstValue.body)
         assertEquals("Kim Possible", email.firstValue.sender?.displayName)
     }

@@ -24,6 +24,7 @@ import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
+import java.net.URLDecoder
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Date
@@ -57,6 +58,7 @@ class VisitExpiredMailetTest {
     private val agent = AgentEntity(
         id = 20L,
         party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible", email = "kim.possible@gmail.com"),
+        whatsappNumber = "+237699000001",
     )
     private val listing = ListingEntity(id = 101L, title = "Nice apartment")
     private val visit = VisitEntity(
@@ -86,7 +88,7 @@ class VisitExpiredMailetTest {
 
         val captor = argumentCaptor<Email>()
         verify(mailService, times(2)).send(captor.capture())
-        assertEquals("Ndopify: votre demande de visite a expiré", captor.allValues[0].subject)
+        assertEquals("Je n'ai pas pu confirmer votre visite", captor.allValues[0].subject)
         assertEquals("Ndopify: demande de visite expirée avec Ray Sponsible", captor.allValues[1].subject)
         assertEquals("Kim Possible", captor.allValues[0].sender?.displayName)
         assertEquals(null, captor.allValues[1].sender)
@@ -97,6 +99,14 @@ class VisitExpiredMailetTest {
         assertEquals("Kim Possible", customerContext["other_party"])
         assertEquals("https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg", customerContext["image_url"])
         assertEquals("https://www.ndopify.com/visits/1?token=xxx.yyy.zzz", customerContext["visit_url"])
+        assertEquals(
+            "Bonjour, je vous réponds au sujet de votre demande de visite du bien Nice apartment.",
+            URLDecoder.decode(
+                (customerContext["agent_whatsapp_reply_url"] as String).substringAfter("?text="),
+                "UTF-8",
+            ),
+        )
+        assertEquals(null, context("Kim Possible")["agent_whatsapp_reply_url"], "the agent copy has no reply")
     }
 
     private fun context(recipient: String): Map<*, *> {

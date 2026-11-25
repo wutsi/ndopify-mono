@@ -49,6 +49,12 @@ class TenantFormatter(private val tenant: TenantEntity) {
 
     fun time(date: Date): String = format(date, tenant.timeFormat.ifBlank { DEFAULT_TIME_FORMAT })
 
+    /** The weekday in the tenant's first locale and time zone, lowercase, for a subject line ("samedi"). */
+    fun weekday(date: Date): String =
+        date.toInstant().atZone(zone)
+            .format(DateTimeFormatter.ofPattern("EEEE", locale))
+            .lowercase(locale)
+
     /**
      * The tenant's `monetaryFormat` holds its currency (ex: `#,###,##0 FCFA`): an amount in another currency gets the
      * `numberFormat` followed by its currency code.

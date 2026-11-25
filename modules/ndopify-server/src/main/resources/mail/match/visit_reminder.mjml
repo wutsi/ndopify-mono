@@ -1,17 +1,13 @@
 <mjml>
     <mj-head>
-        <mj-style inline="inline">
-            {{__css__}}
-        </mj-style>
+        {{> mail/fragments/styles.mjml}}
+        <mj-preview>{{listing_title}} · {{price_label}} {{price}}</mj-preview>
     </mj-head>
     <mj-body css-class="body">
         <mj-wrapper background-color="#ffffff" border-radius="30px" padding="20px">
             <mj-section padding="0">
                 <mj-column>
-                    <!-- Logo -->
-                    <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
-
-                    <!-- Divider with class for CSS injection -->
+                    <!-- Divider with class for CSS injection: the card's only brand mark -->
                     <mj-divider css-class="divider"/>
 
                     <!-- Body Text -->
@@ -42,7 +38,7 @@
 
                     <!-- Button with class for CSS injection. The match's page: the visit form waits there -->
                     {{#listing_url}}
-                    <mj-button href="{{listing_url}}" css-class="btn-primary" align="center">
+                    <mj-button href="{{listing_url}}" css-class="btn-primary nd-btn" align="center">
                         Demander une visite
                     </mj-button>
                     <mj-spacer/>
@@ -55,16 +51,15 @@
                     {{/online}}
                     {{^online}}
                     <mj-text>
-                        Répondez-moi et je vous proposerai un créneau.
+                        Écrivez-moi sur WhatsApp et je vous proposerai un créneau.
                     </mj-text>
                     {{/online}}
 
+                    {{> mail/fragments/whatsapp-reply.mjml}}
+
                     <!-- Sign-off -->
-                    <mj-spacer/>
                     <mj-text>
-                        Cordialement,{{^agent_full_name}}
-                        <br/>
-                        L'équipe {{tenant_name}}{{/agent_full_name}}
+                        Cordialement,
                     </mj-text>
                 </mj-column>
             </mj-section>

@@ -46,6 +46,17 @@ class TenantFormatterTest {
     }
 
     @Test
+    fun `weekday in the first locale and time zone`() {
+        // 23:30 UTC on Friday: already Saturday in Douala
+        assertEquals("samedi", TenantFormatter(tenant).weekday(date))
+        assertEquals("saturday", TenantFormatter(tenant.copy(locales = listOf("en-CM"))).weekday(date))
+        assertEquals(
+            "friday",
+            TenantFormatter(tenant.copy(locales = listOf("en-CM"), timeZone = "America/Toronto")).weekday(date),
+        )
+    }
+
+    @Test
     fun `money in the tenant's currency`() {
         assertEquals("1 500 000 FCFA", TenantFormatter(tenant).money(1500000, "XAF"))
     }

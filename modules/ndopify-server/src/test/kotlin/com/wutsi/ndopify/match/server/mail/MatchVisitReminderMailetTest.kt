@@ -27,6 +27,7 @@ import com.wutsi.ndopify.platform.mail.mockMailImageService
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
+import java.net.URLDecoder
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -77,7 +78,11 @@ class MatchVisitReminderMailetTest {
         id = 10L,
         party = PartyEntity(id = 100L, firstName = "Ray", lastName = "Sponsible", email = "ray.sponsible@gmail.com"),
     )
-    private val agent = AgentEntity(id = 20L, party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible"))
+    private val agent = AgentEntity(
+        id = 20L,
+        party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible"),
+        whatsappNumber = "+237699000001",
+    )
 
     @BeforeTest
     fun setUp() {
@@ -99,8 +104,8 @@ class MatchVisitReminderMailetTest {
                 "recipient_name" to "Ray Sponsible",
                 "agent_full_name" to "Kim Possible",
                 "agent_photo_url" to null,
-                "agent_whatsapp" to null,
-                "agent_whatsapp_url" to null,
+                "agent_whatsapp" to "+237 6 99 00 00 01",
+                "agent_whatsapp_url" to "https://wa.me/237699000001",
                 "listing_title" to "Nice apartment",
                 "image_url" to "https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg",
                 "price_label" to "Loyer",
@@ -108,14 +113,21 @@ class MatchVisitReminderMailetTest {
                 "online" to true,
                 "listing_url" to "https://www.ndopify.com/match/1?token=xxx.yyy.zzz",
             ),
-            context(),
+            context() - "agent_whatsapp_reply_url" - "agent_customer_email",
+        )
+        assertEquals(
+            "Bonjour, je vous réponds au sujet de la visite du bien Nice apartment.",
+            URLDecoder.decode(
+                (context()["agent_whatsapp_reply_url"] as String).substringAfter("?text="),
+                "UTF-8",
+            ),
         )
 
         val email = argumentCaptor<Email>()
         verify(mailService).send(email.capture())
         assertEquals("ray.sponsible@gmail.com", email.firstValue.recipient.email)
         assertEquals("Ray Sponsible", email.firstValue.recipient.displayName)
-        assertEquals("Ndopify: n'oubliez pas de demander votre visite", email.firstValue.subject)
+        assertEquals("N'oubliez pas de demander votre visite", email.firstValue.subject)
         assertEquals("<html>reminder</html>", email.firstValue.body)
         assertEquals("Kim Possible", email.firstValue.sender?.displayName)
         assertEquals("", email.firstValue.sender?.email)

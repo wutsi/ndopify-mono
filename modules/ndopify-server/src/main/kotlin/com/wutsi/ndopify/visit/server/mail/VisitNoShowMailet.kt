@@ -35,7 +35,7 @@ class VisitNoShowMailet(
     private val imageService: ImageService,
 ) {
     companion object {
-        const val SUBJECT_CUSTOMER = "{{tenant_name}}: la visite n'a pas eu lieu"
+        const val SUBJECT_CUSTOMER = "Notre visite n'a pas eu lieu"
         const val SUBJECT_AGENT = "{{tenant_name}}: visite manquée avec {{customer_name}}"
         const val TEMPLATE = "/mail/visit/no_show.mjml"
 
@@ -62,7 +62,7 @@ class VisitNoShowMailet(
             Email(
                 sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = customer.party.email, displayName = customerName),
-                subject = SUBJECT_CUSTOMER.replace("{{tenant_name}}", tenant.name),
+                subject = SUBJECT_CUSTOMER,
                 body = mailBodyResolver.resolve(
                     path = TEMPLATE,
                     context = context(
@@ -74,7 +74,12 @@ class VisitNoShowMailet(
                         reason = reason,
                         visitUrl = customerUrl,
                         agentRecipient = false,
-                    ) + AgentMailContext.of(agent, TenantFormatter(tenant)),
+                    ) + AgentMailContext.customer(agent, TenantFormatter(tenant)) + mapOf(
+                        "agent_whatsapp_reply_url" to AgentMailContext.replyUrl(
+                            agent,
+                            "de notre visite du bien ${listingTitle(listing)}",
+                        ),
+                    ),
                 ),
             ),
         )
@@ -104,6 +109,9 @@ class VisitNoShowMailet(
         }
     }
 
+    private fun listingTitle(listing: ListingEntity): String =
+        listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"
+
     private fun context(
         tenant: TenantEntity,
         recipientName: String,
@@ -121,7 +129,7 @@ class VisitNoShowMailet(
             "tenant_name" to tenant.name,
             "recipient_name" to recipientName,
             "other_party" to otherParty,
-            "listing_title" to (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"),
+            "listing_title" to listingTitle(listing),
             "image_url" to imageUrl,
             "visit_date" to formatter.date(visit.scheduledAt!!),
             "visit_time" to formatter.time(visit.scheduledAt),
