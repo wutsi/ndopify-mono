@@ -1,5 +1,7 @@
 package com.wutsi.ndopify.npc.config
 
+import com.wutsi.ndopify.web.core.client.ndopify.NdTokenClient
+import com.wutsi.ndopify.web.core.service.security.AccessTokenRenewalFilter
 import com.wutsi.ndopify.web.core.service.security.AccessTokenService
 import com.wutsi.ndopify.web.core.service.security.JwtAuthenticationFilter
 import com.wutsi.ndopify.web.core.service.security.JwtDecoder
@@ -9,12 +11,15 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter
+import java.time.Clock
 
 @Configuration
 @EnableWebSecurity
 class SecurityConfiguration(
     private val accessTokenService: AccessTokenService,
     private val jwtDecoder: JwtDecoder,
+    private val tokenClient: NdTokenClient,
+    private val clock: Clock,
 ) {
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
@@ -31,7 +36,9 @@ class SecurityConfiguration(
                     .requestMatchers("/locations", "/locations/**").permitAll()
                     .anyRequest().authenticated()
             }
+            // The JWT filter first: Spring Security resolves the renewal one's anchor only once it is registered.
             .addFilterBefore(authorizationFilter(), AnonymousAuthenticationFilter::class.java)
+            .addFilterBefore(accessTokenRenewalFilter(), JwtAuthenticationFilter::class.java)
             .exceptionHandling { it.authenticationEntryPoint(SignInTargetEntryPoint("/login")) }
             .csrf { customizer -> customizer.disable() }
             .httpBasic { customizer -> customizer.disable() }
@@ -43,4 +50,8 @@ class SecurityConfiguration(
     fun authorizationFilter(): JwtAuthenticationFilter {
         return JwtAuthenticationFilter(accessTokenService, jwtDecoder)
     }
+
+    // Not a @Bean: Spring Boot also registers every Filter bean as a plain servlet filter, which would renew twice.
+    private fun accessTokenRenewalFilter(): AccessTokenRenewalFilter =
+        AccessTokenRenewalFilter(accessTokenService, jwtDecoder, tokenClient, clock)
 }
