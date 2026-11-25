@@ -3,7 +3,6 @@ name: developer
 description: Use when implementing a story in the ready state — code its plan on the story's branch, with tests, release its library changes, push it and open its PR for review, or address that PR's review findings.
 mode: all
 model: deepseek/deepseek-flash
-steps: 120
 permissions:
   - action: edit
     resource: "*"

@@ -3,7 +3,6 @@ name: designer
 description: Use when a story changes UI — build or update the static prototype so the user can review and approve the design before implementation.
 mode: subagent
 model: deepseek/deepseek-flash#high
-steps: 60
 permissions:
   - action: edit
     resource: "*"
