@@ -7,7 +7,9 @@ import com.wutsi.ndopify.platform.mail.filter.MailFilterNull
 import dev.jcputney.mjml.MjmlRenderer
 import org.jsoup.Jsoup
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class VisitCancelledTemplateTest {
@@ -29,35 +31,52 @@ class VisitCancelledTemplateTest {
         "visit_url" to "https://partner.ndopify.com/visits/1",
     )
 
-    @Test
-    fun render() {
-        val html = resolver.resolve(VisitCancelledMailet.TEMPLATE, context)
+    private val customer = context + mapOf(
+        "recipient_name" to "Ray Sponsible",
+        "other_party" to "Kim Possible",
+        "agent_full_name" to "Kim Possible",
+        "agent_whatsapp" to "+237699000001",
+        "agent_whatsapp_url" to "https://wa.me/237699000001",
+        "agent_whatsapp_reply_url" to "https://wa.me/237699000001?text=Bonjour",
+        "cancelled_by_label" to "J'ai annulé la visite.",
+        "visit_url" to "https://www.ndopify.com/visits/1?token=xxx.yyy.zzz",
+    )
 
-        assertTrue(html.contains("Kim Possible"))
-        assertTrue(html.contains("Nice apartment"))
-        assertTrue(html.contains("annul"))
-        assertTrue(html.contains("Contactez Ray Sponsible"))
-        assertTrue(html.contains("Empêchement"))
-        assertTrue(html.contains("https://partner.ndopify.com/visits/1"))
+    @Test
+    fun `the customer reads the cancellation as the agent's`() {
+        val html = resolver.resolve(VisitCancelledMailet.TEMPLATE, customer)
+        val text = Jsoup.parse(html).text()
+
+        assertTrue(text.contains("Je dois annuler notre visite du bien"))
+        assertTrue(text.contains("prévue le 02/12/2026 à 10:00"))
+        assertTrue(text.contains("Motif : Empêchement"))
+        assertFalse(text.contains("La visite du bien"))
+        assertFalse(text.contains("Votre agent"))
+        assertFalse(text.contains("L'équipe Ndopify"))
+        assertTrue(html.contains("Me répondre sur WhatsApp"))
+        assertTrue(html.contains("Envoyé via Ndopify"))
+        assertTrue(text.contains("Cordialement, Kim Possible WhatsAp"))
     }
 
     @Test
-    fun `the customer is told to contact the agent`() {
-        val html = resolver.resolve(
-            VisitCancelledMailet.TEMPLATE,
-            context + mapOf(
-                "recipient_name" to "Ray Sponsible",
-                "other_party" to "Kim Possible",
-                "agent_full_name" to "Kim Possible",
-                "cancelled_by_label" to "J'ai annulé la visite.",
-            ),
-        )
-
+    fun `the agent copy keeps the tenant voice`() {
+        val html = resolver.resolve(VisitCancelledMailet.TEMPLATE, context)
         val text = Jsoup.parse(html).text()
 
-        assertTrue(text.contains("J'ai annulé la visite."))
-        assertTrue(text.contains("Contactez-moi"))
-        assertFalse(text.contains("Contactez Kim Possible"))
+        assertTrue(text.contains("La visite du bien Nice apartment"))
+        assertTrue(text.contains("Le client a annulé la visite."))
+        assertTrue(text.contains("Contactez Ray Sponsible"))
+        assertTrue(text.contains("Cordialement, L'équipe Ndopify"))
+        assertFalse(html.contains("Me répondre sur WhatsApp"))
+        assertFalse(html.contains("Je dois annuler"))
+    }
+
+    @Test
+    fun `the customer copy's preview carries the event`() {
+        val doc = Jsoup.parse(resolver.resolve(VisitCancelledMailet.TEMPLATE, customer))
+        val preview = assertNotNull(doc.selectFirst("div[style*='display: none']"))
+
+        assertEquals("02/12/2026 à 10:00 · Nice apartment", preview.text())
     }
 
     @Test

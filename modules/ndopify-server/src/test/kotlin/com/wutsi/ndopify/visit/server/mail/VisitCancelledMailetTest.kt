@@ -26,6 +26,7 @@ import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
 import org.mockito.Mockito.verifyNoInteractions
+import java.net.URLDecoder
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Date
@@ -60,6 +61,7 @@ class VisitCancelledMailetTest {
     private val agent = AgentEntity(
         id = 20L,
         party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible", email = "kim.possible@gmail.com"),
+        whatsappNumber = "+237699000001",
     )
     private val listing = ListingEntity(id = 101L, title = "Nice apartment")
     private val visit = VisitEntity(
@@ -122,9 +124,24 @@ class VisitCancelledMailetTest {
         verify(mailService, times(1)).send(email.capture())
         assertEquals("ray.sponsible@gmail.com", email.firstValue.recipient.email)
         assertEquals("Kim Possible", email.firstValue.sender?.displayName)
+        assertEquals("Je dois annuler notre visite", email.firstValue.subject)
         assertEquals("J'ai annulé la visite.", context()["cancelled_by_label"])
         assertEquals("https://www.ndopify.com/visits/1?token=xxx.yyy.zzz", context()["visit_url"])
         assertEquals(false, context()["system_cancelled"])
+        assertEquals(
+            "Bonjour, je vous réponds au sujet de notre visite du bien Nice apartment le 02/12/2026 à 10:00.",
+            URLDecoder.decode(replyUrl(), "UTF-8"),
+        )
+    }
+
+    @Test
+    fun `no scheduled date - the reply names the property only`() {
+        mailet.sendToCustomer(visit.copy(cancelledBy = VisitParty.AGENT, scheduledAt = null), customer, agent, listing)
+
+        assertEquals(
+            "Bonjour, je vous réponds au sujet de notre visite du bien Nice apartment.",
+            URLDecoder.decode(replyUrl(), "UTF-8"),
+        )
     }
 
     @Test
@@ -155,4 +172,7 @@ class VisitCancelledMailetTest {
         verify(mailBodyResolver).resolve(eq(VisitCancelledMailet.TEMPLATE), captor.capture())
         return captor.firstValue
     }
+
+    private fun replyUrl(): String =
+        (context()["agent_whatsapp_reply_url"] as String).substringAfter("?text=")
 }

@@ -1,17 +1,13 @@
 <mjml>
     <mj-head>
-        <mj-style inline="inline">
-            {{__css__}}
-        </mj-style>
+        {{> mail/fragments/styles.mjml}}
+        <mj-preview>{{#visit_date}}{{visit_date}} à {{visit_time}} · {{/visit_date}}{{listing_title}}</mj-preview>
     </mj-head>
     <mj-body css-class="body">
         <mj-wrapper background-color="#ffffff" border-radius="30px" padding="20px">
             <mj-section padding="0">
                 <mj-column>
-                    <!-- Logo -->
-                    <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
-
-                    <!-- Divider with class for CSS injection -->
+                    <!-- Divider with class for CSS injection: the card's only brand mark -->
                     <mj-divider css-class="divider"/>
 
                     <!-- The listing's photo, if any, linked to the visit's page when there is one -->
@@ -24,6 +20,18 @@
                     <mj-text>
                         Bonjour <strong>{{recipient_name}}</strong>,
                     </mj-text>
+                    {{#agent_full_name}}
+                    <mj-text>
+                        Je dois annuler notre visite du bien <strong>{{listing_title}}</strong>{{#visit_date}} prévue le
+                        <strong>{{visit_date}} à {{visit_time}}</strong>{{/visit_date}}.
+                    </mj-text>
+                    {{#cancellation_reason}}
+                    <mj-text>
+                        <b>Motif</b>&#160;: {{cancellation_reason}}
+                    </mj-text>
+                    {{/cancellation_reason}}
+                    {{/agent_full_name}}
+                    {{^agent_full_name}}
                     <mj-text>
                         La visite du bien <strong>{{listing_title}}</strong>
                         {{#visit_date}}prévue le {{visit_date}} à {{visit_time}}{{/visit_date}}{{^visit_date}}que vous avez
@@ -39,22 +47,22 @@
                     {{/cancellation_reason}}
                     {{^system_cancelled}}
                     <mj-text>
-                        {{#agent_full_name}}Contactez-moi{{/agent_full_name}}{{^agent_full_name}}Contactez {{other_party}}{{/agent_full_name}} pour convenir d'une autre date.
+                        Contactez {{other_party}} pour convenir d'une autre date.
                     </mj-text>
                     {{/system_cancelled}}
+                    {{/agent_full_name}}
 
                     {{#visit_url}}
-                    <mj-button href="{{visit_url}}" css-class="btn-primary" align="center">
+                    <mj-button href="{{visit_url}}" css-class="btn-primary nd-btn" align="center">
                         Voir la visite
                     </mj-button>
                     {{/visit_url}}
 
+                    {{> mail/fragments/whatsapp-reply.mjml}}
+
                     <!-- Sign-off -->
-                    <mj-spacer/>
                     <mj-text>
-                        Cordialement,{{^agent_full_name}}
-                        <br/>
-                        L'équipe {{tenant_name}}{{/agent_full_name}}
+                        Cordialement,{{^agent_full_name}}<br/>L'équipe {{tenant_name}}{{/agent_full_name}}
                     </mj-text>
                 </mj-column>
             </mj-section>

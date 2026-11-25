@@ -38,7 +38,8 @@ class VisitCancelledMailet(
     private val imageService: ImageService,
 ) {
     companion object {
-        const val SUBJECT = "{{tenant_name}}: la visite a été annulée"
+        const val SUBJECT_CUSTOMER = "Je dois annuler notre visite"
+        const val SUBJECT_AGENT = "{{tenant_name}}: la visite a été annulée"
         const val TEMPLATE = "/mail/visit/cancelled.mjml"
 
         const val LABEL_BY_CUSTOMER = "Le client a annulé la visite."
@@ -57,6 +58,7 @@ class VisitCancelledMailet(
         val tenant = tenantService.findById(visit.tenantId!!)
         val formatter = TenantFormatter(tenant)
         val token = tenant.publicPortalUrl?.let { linkTokenService.create(customer) }
+        val scheduled = visit.scheduledAt?.let { " le ${formatter.date(it)} à ${formatter.time(it)}" } ?: ""
         send(
             tenant = tenant,
             formatter = formatter,
@@ -65,10 +67,16 @@ class VisitCancelledMailet(
             recipient = customer.party,
             otherParty = agent.party.fullName(),
             sender = AgentMailContext.from(agent),
+            subject = SUBJECT_CUSTOMER,
             label = LABEL_BY_AGENT,
             visitUrl = publicPortalUrl(tenant, visit, token),
             reason = visit.cancellationReason,
-            footer = AgentMailContext.of(agent, formatter),
+            footer = AgentMailContext.of(agent, formatter) + mapOf(
+                "agent_whatsapp_reply_url" to AgentMailContext.replyUrl(
+                    agent,
+                    "de notre visite du bien ${listingTitle(listing)}$scheduled",
+                ),
+            ),
         )
     }
 
@@ -91,6 +99,7 @@ class VisitCancelledMailet(
             recipient = agent.party,
             otherParty = customer.party.fullName(),
             sender = null,
+            subject = SUBJECT_AGENT.replace("{{tenant_name}}", tenant.name),
             label = LABEL_BY_CUSTOMER,
             visitUrl = partnerCentralUrl(tenant, visit),
             reason = visit.cancellationReason,
@@ -106,6 +115,7 @@ class VisitCancelledMailet(
         recipient: PartyEntity,
         otherParty: String,
         sender: Receipient?,
+        subject: String,
         label: String,
         visitUrl: String?,
         reason: String?,
@@ -115,7 +125,7 @@ class VisitCancelledMailet(
             Email(
                 sender = sender,
                 recipient = Receipient(email = recipient.email, displayName = recipient.fullName()),
-                subject = SUBJECT.replace("{{tenant_name}}", tenant.name),
+                subject = subject,
                 body = mailBodyResolver.resolve(
                     path = TEMPLATE,
                     context = context(
@@ -133,6 +143,9 @@ class VisitCancelledMailet(
             ),
         )
     }
+
+    private fun listingTitle(listing: ListingEntity): String =
+        listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"
 
     private fun partnerCentralUrl(tenant: TenantEntity, visit: VisitEntity): String? =
         tenant.partnerCentralUrl?.removeSuffix("/")?.let { "$it/visits/${visit.id}" }
@@ -159,7 +172,7 @@ class VisitCancelledMailet(
             "tenant_name" to tenant.name,
             "recipient_name" to recipientName,
             "other_party" to otherParty,
-            "listing_title" to (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"),
+            "listing_title" to listingTitle(listing),
             "image_url" to MailImages.imageUrl(listingImageService.cover(listing)?.url, imageService, MailImages.COVER),
             "visit_date" to visit.scheduledAt?.let { formatter.date(it) },
             "visit_time" to visit.scheduledAt?.let { formatter.time(it) },
