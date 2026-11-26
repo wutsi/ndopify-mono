@@ -18,7 +18,7 @@ object DocumentProblemCodes {
     /** A required field is missing, or was read under `ndopify.mandate.document.extract.min-confidence`. */
     const val DOCUMENT_FIELD_LOW_CONFIDENCE = "DOCUMENT_FIELD_LOW_CONFIDENCE"
 
-    /** An identity document whose expiry date can't be read. */
+    /** A document whose expiry date is required can't be read (an identity document, a bank pre-approval). */
     const val EXPIRY_DATE_UNREADABLE = "EXPIRY_DATE_UNREADABLE"
 
     /**
