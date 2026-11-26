@@ -7,6 +7,7 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
+import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
@@ -21,6 +22,12 @@ import com.wutsi.ndopify.platform.storage.StorageService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.platform.storage.StoredObject
 import com.wutsi.ndopify.refdata.dto.StorageType
+import org.apache.pdfbox.pdmodel.PDDocument
+import org.apache.pdfbox.pdmodel.PDPage
+import org.apache.pdfbox.pdmodel.PDPageContentStream
+import org.apache.pdfbox.pdmodel.common.PDRectangle
+import org.apache.pdfbox.pdmodel.font.PDType1Font
+import org.apache.pdfbox.pdmodel.font.Standard14Fonts
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.core.io.ByteArrayResource
@@ -110,18 +117,38 @@ class AddMandateDocumentPageEndpointTest : AuthorizationAwareEndpointIntegration
         value.toByte(),
     )
 
-    private fun uploadRequest(content: ByteArray): HttpEntity<LinkedMultiValueMap<String, Any>> {
+    private fun uploadRequest(
+        content: ByteArray,
+        name: String = "page.png",
+        contentType: MediaType = MediaType.IMAGE_PNG,
+    ): HttpEntity<LinkedMultiValueMap<String, Any>> {
         val body = LinkedMultiValueMap<String, Any>()
         val resource = object : ByteArrayResource(content) {
-            override fun getFilename(): String = "page.png"
+            override fun getFilename(): String = name
         }
         val fileHeaders = HttpHeaders()
-        fileHeaders.contentType = MediaType.IMAGE_PNG
+        fileHeaders.contentType = contentType
         body.add("file", HttpEntity(resource, fileHeaders))
 
         val headers = HttpHeaders()
         headers.contentType = MediaType.MULTIPART_FORM_DATA
         return HttpEntity(body, headers)
+    }
+
+    /** A PDF of [pages] pages with a text line on each, generated in memory: no binary fixture. */
+    private fun pdf(pages: Int): ByteArray = PDDocument().use { document ->
+        repeat(pages) { index ->
+            val page = PDPage(PDRectangle.LETTER)
+            document.addPage(page)
+            PDPageContentStream(document, page).use { content ->
+                content.beginText()
+                content.setFont(PDType1Font(Standard14Fonts.FontName.HELVETICA), 12f)
+                content.newLineAtOffset(72f, 720f)
+                content.showText("Page $index")
+                content.endText()
+            }
+        }
+        ByteArrayOutputStream().also { document.save(it) }.toByteArray()
     }
 
     @Test
@@ -197,6 +224,39 @@ class AddMandateDocumentPageEndpointTest : AuthorizationAwareEndpointIntegration
         assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
         assertEquals("path", response.body?.error?.parameter?.name)
         verify(storage).delete(newPath)
+        assertEquals(2, pageDao.findByDocumentIdOrderByPageIndex(1000).size)
+    }
+
+    @Test
+    fun `add - a posted pdf appends its rendered pages`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/100/documents/1000/pages/upload",
+            uploadRequest(pdf(2), "scan.pdf", MediaType.APPLICATION_PDF),
+            AttachMandateDocumentPageResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val pages = pageDao.findByDocumentIdOrderByPageIndex(1000)
+        // The document already had 2 pages: the PDF's pages follow, in its order
+        assertEquals(listOf(0, 1, 2, 3), pages.map { it.pageIndex })
+        assertTrue(pages.drop(2).all { it.path.endsWith(".jpg") }, "${pages.map { it.path }}")
+        assertTrue(pages.drop(2).all { it.mimeType == "image/jpeg" }, "${pages.map { it.mimeType }}")
+        verify(storage, times(2)).store(argThat { endsWith(".jpg") && !endsWith(".preview-v1.jpg") }, any(), eq("image/jpeg"))
+        verify(storage, never()).store(argThat { endsWith(".pdf") }, any(), any())
+    }
+
+    @Test
+    fun `add - a posted pdf over 10 pages is refused`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/100/documents/1000/pages/upload",
+            uploadRequest(pdf(11), "scan.pdf", MediaType.APPLICATION_PDF),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES, response.body?.error?.code)
+        assertEquals("file", response.body?.error?.parameter?.name)
+        verify(storage, never()).store(any(), any(), any())
         assertEquals(2, pageDao.findByDocumentIdOrderByPageIndex(1000).size)
     }
 

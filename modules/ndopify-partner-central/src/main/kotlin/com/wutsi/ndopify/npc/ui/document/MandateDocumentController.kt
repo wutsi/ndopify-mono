@@ -104,16 +104,43 @@ class MandateDocumentController(
 
         /** `?error=too-large` after a multipart post over `spring.servlet.multipart`'s limit (KycUploadErrorHandler). */
         const val ERROR_TOO_LARGE = "too-large"
-        const val TOO_LARGE = "Cette image dépasse 5 Mo : reprenez la photo, ou choisissez une image plus légère."
+        const val TOO_LARGE = "Ce fichier dépasse 5 Mo : choisissez un fichier plus léger."
 
         /** `?replaceError=size&page={pageId}` after a replacement over the multipart limit. */
         const val REPLACE_ERROR = "replaceError"
         const val REPLACE_SIZE = "size"
 
+        /** Which form ndopify-server's PDF refusal answers on: an add re-renders every page, a replacement one. */
+        enum class PageAction { ADD, REPLACE }
+
         private const val ADD_FAILED =
             "Le document n'a pas pu être ajouté. Réessayez dans quelques instants : choisissez de nouveau ses pages."
         private const val RENAME_FAILED = "Le titre n'a pas pu être enregistré. Réessayez dans quelques instants."
         private const val REPLACE_FAILED = "La page n'a pas pu être remplacée. Réessayez dans quelques instants."
+
+        /**
+         * ndopify-server's PDF refusals, worded for each form: an add loses every chosen file, a replacement only its
+         * own. The codes tell the causes apart (`MANDATE_DOCUMENT_PDF_*`); anything else on `file`/`files` is a bad
+         * type, a size or an expanded page count.
+         */
+        private const val ADD_INVALID_FILE =
+            "Un fichier n'a pas pu être ajouté : vérifiez qu'il s'agit d'une photo lisible ou d'un PDF non protégé de " +
+                "10 pages au plus. Choisissez de nouveau les pages."
+        private const val ADD_PDF_ENCRYPTED =
+            "Un PDF est protégé par un mot de passe : enregistrez-le sans protection, ou envoyez ses pages en photos. " +
+                "Choisissez de nouveau les pages."
+        private const val ADD_PDF_UNREADABLE =
+            "Un PDF est vide ou endommagé : envoyez ses pages en photos. Choisissez de nouveau les pages."
+        private const val ADD_PDF_TOO_MANY_PAGES =
+            "Un PDF fait plus de 10 pages : envoyez ses pages en photos, 10 au plus, ou un PDF plus court. Choisissez " +
+                "de nouveau les pages."
+        private const val REPLACE_INVALID_FILE =
+            "Cette page n'a pas pu être remplacée : vérifiez qu'il s'agit d'une photo lisible ou d'un PDF d'une page, " +
+                "non protégé."
+        private const val REPLACE_PDF_ENCRYPTED =
+            "Ce PDF est protégé par un mot de passe : enregistrez-le sans protection, ou envoyez une photo."
+        private const val REPLACE_PDF_UNREADABLE = "Ce PDF est vide ou endommagé : envoyez une photo."
+        private const val REPLACE_PDF_TOO_MANY_PAGES = "Ce PDF fait plusieurs pages : envoyez un PDF d'une page, ou une photo."
 
         private val CHANGED_STATUSES = setOf(403, 404, 409)
     }
@@ -170,7 +197,8 @@ class MandateDocumentController(
             LOGGER.warn("Documents of mandate ${mandate.id} not added: ${ex.statusCode}")
             when {
                 ex.statusCode.value() in CHANGED_STATUSES -> changed(mandate.id, redirect)
-                ex.statusCode.value() == 400 -> addPage(mandate, form, serverErrors(ex), null, model)
+                ex.statusCode.value() == 400 ->
+                    addPage(mandate, form, pageServerErrors(ex, PageAction.ADD, "files"), null, model)
                 else -> addPage(mandate, form, emptyMap(), ADD_FAILED, model)
             }
         } catch (ex: RestClientException) {
@@ -339,7 +367,7 @@ class MandateDocumentController(
                 document,
                 RenameDocumentForm(document.title, document.version),
                 emptyMap(),
-                mapOf(page.id to (error ?: MandateDocumentRules.IMAGE_REQUIRED)),
+                mapOf(page.id to (error ?: MandateDocumentRules.FILE_REQUIRED)),
                 false,
                 false,
                 model,
@@ -364,7 +392,7 @@ class MandateDocumentController(
                     document,
                     RenameDocumentForm(document.title, document.version),
                     emptyMap(),
-                    mapOf(page.id to (serverErrors(ex, "file")["file"] ?: REPLACE_FAILED)),
+                    mapOf(page.id to (pageServerErrors(ex, PageAction.REPLACE, "file")["file"] ?: REPLACE_FAILED)),
                     false,
                     false,
                     model,
@@ -669,25 +697,55 @@ class MandateDocumentController(
     private fun sniff(file: MultipartFile): SniffedPage {
         val content = file.bytes
         return SniffedPage(
-            filename = file.originalFilename?.ifBlank { null } ?: "Cette image",
+            filename = file.originalFilename?.ifBlank { null } ?: "Ce fichier",
             size = file.size,
             mimeType = TIKA.detect(content),
             content = content,
         )
     }
 
-    /** The server's 400 on its field (`error.parameter.name`), or on [fallback] when it names another one. */
-    private fun serverErrors(ex: HttpClientErrorException, fallback: String = "files"): Map<String, String> {
+    /**
+     * ndopify-server's 400 worded for the form that posted the pages: its PDF codes ([PageAction.ADD] loses every
+     * chosen page, [PageAction.REPLACE] one), or a bad type, size or expanded page count. It answers on the server's
+     * `type` / `title` field when it names one, else on the form's own field ([fallback]: `files` for an add, `file`
+     * for a replacement) — a `file` / `files` parameter always uses it, so the error lands where the agent looks.
+     */
+    private fun pageServerErrors(
+        ex: HttpClientErrorException,
+        action: PageAction,
+        fallback: String,
+    ): Map<String, String> {
         val error = try {
             ex.getResponseBodyAs(ErrorResponse::class.java)?.error
         } catch (ignored: Exception) {
             null
         }
-        val field = error?.parameter?.name?.takeIf { it == "type" || it == "title" || it == fallback } ?: fallback
-        val message = error?.message?.takeIf { it.isNotBlank() } ?: when (fallback) {
-            "file" -> TOO_LARGE
-            else -> "Le document n'a pas pu être ajouté : vérifiez ses pages."
+        val field = error?.parameter?.name?.takeIf { it == "type" || it == "title" } ?: fallback
+        val message = when (error?.code) {
+            ErrorCode.MANDATE_DOCUMENT_PDF_ENCRYPTED ->
+                if (action == PageAction.ADD) ADD_PDF_ENCRYPTED else REPLACE_PDF_ENCRYPTED
+            ErrorCode.MANDATE_DOCUMENT_PDF_UNREADABLE ->
+                if (action == PageAction.ADD) ADD_PDF_UNREADABLE else REPLACE_PDF_UNREADABLE
+            ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES ->
+                if (action == PageAction.ADD) ADD_PDF_TOO_MANY_PAGES else REPLACE_PDF_TOO_MANY_PAGES
+            else -> when (field) {
+                "type" -> MandateDocumentRules.TYPE_REQUIRED
+                "title" -> MandateDocumentRules.TITLE_TOO_LONG
+                else -> if (action == PageAction.ADD) ADD_INVALID_FILE else REPLACE_INVALID_FILE
+            }
         }
+        return mapOf(field to message)
+    }
+
+    /** The server's 400 on its field (`error.parameter.name`), or on `title` when it names another one. */
+    private fun serverErrors(ex: HttpClientErrorException): Map<String, String> {
+        val error = try {
+            ex.getResponseBodyAs(ErrorResponse::class.java)?.error
+        } catch (ignored: Exception) {
+            null
+        }
+        val field = error?.parameter?.name?.takeIf { it == "type" || it == "title" } ?: "title"
+        val message = error?.message?.takeIf { it.isNotBlank() } ?: MandateDocumentRules.TITLE_TOO_LONG
         return mapOf(field to message)
     }
 

@@ -1,14 +1,17 @@
 /*
- * mandate/document-new.html and mandate/document.html enhancements (#329). Every action works without this file: the
- * add and each replacement post their multipart form, ?delete=1 opens the confirmation.
- * - the add form: "Prendre une photo" / "Choisir des images" replace the native input, the chosen files are listed in
- *   order by name and size (read in the browser, no thumbnail) and each can be removed; the checks mirror
- *   MandateDocumentRules (JPEG, PNG or WEBP, 5 Mo, 10 pages), the pages are shrunk to 2000 px as KYC's and sent straight
- *   to the storage (direct-upload.js: presign → PUT), then "POST <action>/create" records the document and the page
- *   opens "<action>/saved?documentId=". Any failure posts the form with its files: the multipart add stays the path
- *   without JS, and a failed page never leaves a half-created document.
- * - the document page: each *Remplacer* form sends its page straight to the storage (upload, attachTimeout: it
- *   replaces), then opens "<action>/saved"; a failure posts the form. The delete confirmation opens in place.
+ * mandate/document-new.html and mandate/document.html enhancements (#329, #366). Every action works without this
+ * file: the add and each replacement post their multipart form, ?delete=1 opens the confirmation.
+ * - the add form: "Prendre une photo" (images) and "Choisir des fichiers" (images and PDFs) replace the native input,
+ *   the chosen files are listed in order by name and size (read in the browser, no thumbnail; a PDF shows "PDF", its
+ *   pages are the server's to count) and each can be removed; the checks mirror MandateDocumentRules (JPEG, PNG,
+ *   WEBP or PDF, 5 Mo, 10 files), the images are shrunk to 2000 px as KYC's and sent straight to the storage
+ *   (direct-upload.js: presign → PUT), then "POST <action>/create" records the document and the page opens
+ *   "<action>/saved?documentId=". A PDF is never presigned: with one in the list, every image is shrunk first and the
+ *   whole multipart form posts, so ndopify-server renders the PDF's pages. Any failure posts the form with its files:
+ *   the multipart add stays the path without JS, and a failed page never leaves a half-created document.
+ * - the document page: each *Remplacer* form sends its image straight to the storage (upload, attachTimeout: it
+ *   replaces), then opens "<action>/saved"; a PDF posts the form (the server renders its one page, or refuses it), and
+ *   a failed image upload posts the form. The delete confirmation opens in place.
  * The rules live in MandateDocumentRules; this file only mirrors them.
  */
 (function () {
@@ -18,7 +21,9 @@
     var MAX_FILE_BYTES = 5 * 1024 * 1024;
     var MAX_TITLE = 100;
     var MAX_SIDE = 2000;
-    var ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+    var IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+    var PDF_TYPE = "application/pdf";
+    var ACCEPTED_TYPES = IMAGE_TYPES.concat([PDF_TYPE]);
 
     function $(selector, root) {
         return (root || document).querySelector(selector);
@@ -56,13 +61,21 @@
         return count + (count > 1 ? " pages" : " page");
     }
 
-    // The rules of MandateDocumentRules, worded as they are there.
+    // The rules of MandateDocumentRules, worded as they are there. A PDF's password, pages and readability are the
+    // server's to check, not the browser's.
+    function isPdf(file) {
+        return file.type === PDF_TYPE;
+    }
+
     function fileError(file) {
         if (ACCEPTED_TYPES.indexOf(file.type) === -1) {
-            return "« " + file.name + " » n'est pas une image JPEG, PNG ou WEBP.";
+            return "« " + file.name + " » n'est ni une photo ni un PDF : choisissez une photo JPEG, PNG ou WEBP, " +
+                "ou un PDF.";
         }
         if (file.size > MAX_FILE_BYTES) {
-            return "« " + file.name + " » dépasse 5 Mo : reprenez la photo, ou choisissez une image plus légère.";
+            return isPdf(file)
+                ? "« " + file.name + " » dépasse 5 Mo : choisissez un PDF plus léger, ou envoyez ses pages en photos."
+                : "« " + file.name + " » dépasse 5 Mo : reprenez la photo, ou choisissez une image plus légère.";
         }
         return "";
     }
@@ -141,19 +154,42 @@
             }
         }
 
+        // The browser can't count a PDF's pages, so with one the line counts files and says when its pages count.
+        function countText() {
+            if (!chosen.length) return "Aucun fichier choisi.";
+            if (!chosen.some(isPdf)) return pageCount(chosen.length) + " sur " + MAX_PAGES + " au plus";
+            return chosen.length + " fichier" + (chosen.length > 1 ? "s" : "") + " choisi" +
+                (chosen.length > 1 ? "s" : "") + " · " + MAX_PAGES + " pages au plus. Les pages d'un PDF " +
+                "comptent à l'envoi.";
+        }
+
+        // What the screen reader hears when the list changes (the count line is not a live region).
+        function announcement() {
+            if (!chosen.length) return "Aucun fichier choisi.";
+            if (!chosen.some(isPdf)) return pageCount(chosen.length) + " choisie" + (chosen.length > 1 ? "s" : "") + ".";
+            return chosen.length + " fichier" + (chosen.length > 1 ? "s" : "") + " choisi" +
+                (chosen.length > 1 ? "s" : "") + ".";
+        }
+
         function render() {
             list.innerHTML = "";
+            var images = 0;
             chosen.forEach(function (file, i) {
+                var pdf = isPdf(file);
+                if (!pdf) images += 1;
                 var row = template.content.firstElementChild.cloneNode(true);
-                $("[data-page-index]", row).textContent = "Page " + (i + 1);
+                // A PDF isn't "Page N": its pages are the server's to count, so the row says only that it is a PDF.
+                $("[data-page-index]", row).textContent = pdf ? "PDF" : "Page " + images;
                 // The name and the size, read in the browser from the File: no thumbnail.
                 $("[data-page-name]", row).textContent = file.name;
                 $("[data-page-size]", row).textContent = formatSize(file.size);
                 var remove = $("[data-page-remove]", row);
-                remove.setAttribute("aria-label", "Retirer la page " + (i + 1) + " (" + file.name + ")");
+                remove.setAttribute(
+                    "aria-label",
+                    pdf ? "Retirer le PDF " + file.name : "Retirer la page " + images + " (" + file.name + ")",
+                );
                 remove.addEventListener("click", function () {
                     chosen.splice(i, 1);
-                    live.textContent = "Page " + (i + 1) + " retirée.";
                     sync();
                     render();
                     inputs[0].focus();
@@ -161,9 +197,8 @@
                 list.appendChild(row);
             });
             list.hidden = chosen.length === 0;
-            countLine.textContent = chosen.length
-                ? pageCount(chosen.length) + " sur " + MAX_PAGES + " au plus"
-                : "Aucune page choisie.";
+            countLine.textContent = countText();
+            if (!sending) live.textContent = announcement();
             var full = chosen.length >= MAX_PAGES;
             inputs.forEach(function (input) {
                 input.disabled = full || sending;
@@ -180,14 +215,15 @@
                     if (problem) {
                         refused.push(problem);
                     } else if (chosen.length >= MAX_PAGES) {
-                        refused.push(MAX_PAGES + " pages au plus.");
+                        // Every file gives at least one page, so more than 10 files is always more than 10 pages.
+                        refused.push(MAX_PAGES + " fichiers au plus par document : « " + file.name +
+                            " » n'a pas été ajouté.");
                     } else {
                         chosen.push(file);
                     }
                 });
                 input.value = "";
                 showError(error, refused.join(" "));
-                live.textContent = pageCount(chosen.length) + " choisie" + (chosen.length > 1 ? "s" : "") + ".";
                 sync();
                 render();
                 // A refused file keeps the document from being added until a valid one is chosen.
@@ -244,15 +280,49 @@
             sending = true;
             submit.textContent = "Envoi en cours…";
             render();
-            progress.hidden = false;
-            progressText.textContent = "Préparation des pages…";
-            progressBar.max = String(chosen.length);
-            progressBar.value = "0";
 
             function fallback() {
                 // Still busy: the form post leaves the page, and a second click would post it twice.
                 form.submit();
             }
+
+            // A PDF is never presigned: each image is shrunk, the files go back to the native input, and the whole
+            // multipart form posts so that ndopify-server renders the PDF's pages (a page count only it knows).
+            function sendAsForm() {
+                submit.textContent = "Envoi du document…";
+                render();
+                progress.hidden = false;
+                progressText.textContent = "Envoi du document…";
+                progressBar.removeAttribute("value");
+                var next = 0;
+                (function loop() {
+                    if (next >= chosen.length) {
+                        sync();
+                        form.submit();
+                        return;
+                    }
+                    var index = next;
+                    next += 1;
+                    if (isPdf(chosen[index])) {
+                        loop();
+                        return;
+                    }
+                    shrink(chosen[index], function (page) {
+                        chosen[index] = page;
+                        loop();
+                    });
+                })();
+            }
+
+            if (chosen.some(isPdf)) {
+                sendAsForm();
+                return;
+            }
+
+            progress.hidden = false;
+            progressText.textContent = "Préparation des pages…";
+            progressBar.max = String(chosen.length);
+            progressBar.value = "0";
 
             function create() {
                 progressText.textContent = "Document enregistré…";
@@ -326,12 +396,19 @@
             form.addEventListener("submit", function (event) {
                 if (event.defaultPrevented) return;
                 var file = input.files && input.files[0];
-                var problem = !file ? "Choisissez une image." : fileError(file);
+                var problem = !file ? "Choisissez la nouvelle page : une photo ou un PDF." : fileError(file);
                 showError(error, problem);
                 setInvalid(input, !!problem);
                 if (problem) {
                     event.preventDefault();
                     input.focus();
+                    return;
+                }
+                // A PDF is never presigned: the multipart form posts, and ndopify-server renders its one page or
+                // refuses it (a multi-page, protected or unreadable PDF comes back as this field's error).
+                if (isPdf(file)) {
+                    setActive(button, false);
+                    button.textContent = "Envoi du fichier…";
                     return;
                 }
                 if (!window.NdDirectUpload || sending) return;
