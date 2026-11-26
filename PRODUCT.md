@@ -8,64 +8,93 @@ web
 
 ## Users
 
-- **Primary: agents, of two kinds.** Mobile-money agents (*démarcheurs*) and official real estate agents attached to an
-  agency — the sign-up and profile record them as `INDEPENDANT` and `REAL_ESTATE_AGENT` ("Rattaché à une agence
-  immobilière"). Both work in the field, mostly from a phone, in French, and do the same job: sign up, pass KYC,
-  receive mandates, check properties on site, publish listings, propose matches and run visits. Ndopify is built on
-  their networks, so their app (Partner Central) sets the bar for every other surface.
-- **Customers.** Two kinds, both served by public wizards: tenants searching for a rental (*Trouver un bien*,
-  creating a SEARCH mandate) and owners offering a property (*Proposer un bien*, creating a LISTING mandate). They
-  also answer match proposals and sign contracts.
+- **Primary: agents, of two kinds.** Démarcheurs and official real estate agents attached to an agency — the sign-up
+  and profile record them as `INDEPENDANT` and `REAL_ESTATE_AGENT` ("Rattaché à une agence immobilière"). They work
+  in the field, mostly from a phone, in French; they receive customer mandates, give them visibility, run visits and
+  close the deal. Ndopify exists to feed them mandates and get those mandates to a signature, so their app (Partner
+  Central) sets the bar for every other surface.
+- **Customers.** The mandate holders: tenants searching for a rental (*Trouver un bien*, a SEARCH mandate) and owners
+  offering a property (*Proposer un bien*, a LISTING mandate). They enter their need through a public wizard, then
+  answer match proposals and sign the contract.
 - **Contract parties.** Customers and landlords who read and sign a contract from the e-signature portal.
-- **Public visitors.** People browsing a tenant's marketing site, a published listing or a match proposal.
+- **Public visitors.** The audience a mandate's visibility reaches. They browse a tenant's marketing site, a
+  published listing or a match proposal — and much of that reach happens in WhatsApp groups and channels, where
+  agents/démarcheurs build their audiences and share listing links.
 
 ## Product Purpose
 
-Ndopify turns a rental request or offer into a signed contract through its local agent networks — mobile-money agents
-and official real estate agents. A customer submits a mandate; the platform offers it exclusively to the
-best-scoring agent for its tenant; that agent follows it up, produces and verifies the listing (or matches existing
-listings), arranges visits, and the contract is signed online. Success means the customer reaches a signed contract
-with minimal back-and-forth, the agent can run several mandates from a phone, and mobile-money payments settle the
-money side.
+Ndopify matches each customer mandate — a tenant's search or an owner's offer — with the right démarcheur or real
+estate agent, then gives that mandate the maximum visibility: a public listing, reach into other agents' inventories
+through co-brokerage, and active match proposals to the customer. The point of that visibility is concrete: turn the
+mandate into visits, and the visits into a signed contract, as quickly as possible.
+
+Success means mandates do not stall. Each one reaches the right agent, is seen by the renters it can serve, produces
+visits, and closes; an agent can carry several mandates at once without losing track of the next step on any of them.
 
 ## Positioning
 
-**Trust through verification.** KYC on the agent, a mandatory on-site checklist and photos on every listing,
-asynchronous review before publication, e-signed contracts, and a public QR verification page for each signature.
-A competitor can copy a listing board; it cannot truthfully claim that the property, the agent and the signature were
-each verified inside the same chain.
+**Mandate-to-deal speed, on verified ground.** A competitor can copy a listing board or a CRM. It cannot truthfully
+copy the chain: a customer mandate is routed exclusively to the best-scoring local agent, then distributed on three
+channels at once (public listing, co-brokerage matching, active proposals), over an agent who passed KYC, a property
+that passed an on-site checklist, and a contract signed with a publicly verifiable signature. Trust is what makes the
+visibility worth acting on; speed is what the visibility is for.
 
 ## Operating Context
 
+- **The mandate is the unit of work.** One mandate follows one chain: intake (public wizard) → exclusive scored
+  dispatch to an agent → follow-up → listing publication and/or match proposals → visits → contract signature →
+  payment. Every surface is a step on that chain, not a destination of its own.
+- **Visibility has three levers, all required.** (1) Public exposure: a PUBLISHED listing with its public page and the
+  tenant's public search. (2) Co-brokerage reach: matches drawn from the agent's own inventory first, then from other
+  agents' published listings. (3) Active matching: the platform notifies the agent, proposes matches to the customer,
+  and expires unanswered proposals. Lean on one lever and the mandate underperforms.
+- **WhatsApp is where the audience already is.** Agents/démarcheurs build their audience in WhatsApp groups and
+  channels and share the listing or match link there. WhatsApp is also the contact rail: agents and mandates carry a
+  WhatsApp number (`Agent.whatsappNumber`, the mandate's contact), and a VIDEO visit is a WhatsApp video call. The
+  public page must arrive as a credible, previewable link (title, image) on a phone, without an app install. There is
+  no WhatsApp Business API integration or automated messaging today: the share and the call are the agent's, the
+  page is the platform's.
+- **Time-boxed dispatch.** An offer is exclusive to one agent and expires; the platform re-dispatches it. Designs
+  must show the deadline and the consequence of missing it.
+- **Field-first agents.** Agent work happens on a phone, often on mobile data; pages are server-rendered and must
+  work without JavaScript, which only enhances. Actions are short, resumable and explicit about their state.
 - **Multi-tenant.** Each tenant is a separate brand and market with its own URLs (`partnerCentralUrl`,
   `publicPortalUrl`, `eSignaturePortalUrl`), reference data (cities, neighbourhoods) and formatting (locale, time
   zone, currency). A request is resolved to its tenant by the URL it arrives on. No tenant ever sees another tenant's
   data.
-- **Field-first agents.** Agent work happens on a phone, often on mobile data; pages are server-rendered and must
-  work without JavaScript, which only enhances. Actions are short, resumable and explicit about their state.
 - **Cameroon now, Africa-wide later.** Current evidence is Cameroonian: the +237 phone example, E.164 storage, MTN
   Mobile Money as the only wired gateway. The product targets mobile-money payment integrations across Africa, so
   country, currency, language and payment-gateway assumptions stay tenant-level, never hard-coded.
 - **French product surface.** UI, e-mails and contracts are in French; code, comments, logs and docs are in English.
-- **Agents' mandates are time-boxed.** An offer is exclusive to one agent and expires; the platform re-dispatches it.
-  Designs must show the deadline and the consequence of missing it.
 
 ## Capabilities and Constraints
 
-- **Agent lifecycle:** public five-step sign-up wizard (*Rejoindre Ndopify*) that records the agent type
-  (independent vs attached to an agency), e-mail OTP sign-in, KYC (identity documents, mobile-money account or manual
-  check, verified offline by jobs), agent profile and coverage area.
-- **Mandates:** SEARCH and LISTING mandates with a lifecycle (pending assignment → assigned → pending approval →
-  approved → closed / cancelled), exclusive scored dispatch with expiry and re-dispatch, agent follow-up.
-- **Listings:** on-site checklist per section with photos, asynchronous verification, LLM-generated description and
-  hero image, publication to a public URL, public search of PUBLISHED listings.
-- **Matching and visits:** listings scored against APPROVED SEARCH mandates (an agent's own inventory first, then
-  other agents' published listings — co-brokerage), proposal to the customer, accept/reject with expiry, ON_SITE or
-  VIDEO visits with a 4-digit check-in code, no-show handling and rating.
+- **Mandate intake:** public five-step *Rejoindre Ndopify* sign-up (records the agent type, independent vs
+  agency-attached), the seven-step *Trouver un bien* (SEARCH mandate) and *Proposer un bien* (LISTING mandate)
+  wizards. These wizards' rules are the only validation a mandate gets; ndopify-server does not validate mandates
+  itself yet.
+- **Agent matching and dispatch:** SEARCH and LISTING mandates with a lifecycle (pending assignment → assigned →
+  pending approval → approved → closed / cancelled), exclusive scored dispatch with expiry and re-dispatch, agent
+  follow-up.
+- **Visibility — public:** on-site checklist per section with photos, asynchronous verification, LLM-generated
+  description and hero image, publication to a public URL, public search of PUBLISHED listings, the listing's public
+  page and the tenant's marketing site. The public pages carry Open Graph/Twitter card metadata, so a link pasted
+  into a WhatsApp group previews with its title and image.
+- **Visibility — co-brokerage:** listings scored against APPROVED SEARCH mandates, the agent's own inventory first,
+  then other agents' published listings.
+- **Visibility — active matching:** matches notified to the agent, proposed to the customer, accepted or rejected
+  with an expiry, and expired when unanswered. `ListingStats` reports matches and visits per listing — the activity
+  signal, since listings carry no counters of their own.
+- **Visits:** ON_SITE or VIDEO visits with a 4-digit check-in code, scheduled by the agent, checked in/out, marked
+  no-show or cancelled, then rated. A VIDEO visit is a WhatsApp video call.
 - **Contracts:** numbered per tenant, signature requested per party, last required signature makes the contract
   SIGNED; only the party itself can sign, from the e-signature portal; the signed PDF carries a QR code opening a
   public verification page.
 - **Payments:** mobile-money gateway abstraction; only MTN is implemented today.
+- **Verification, and its limit:** agent KYC (identity documents, mobile-money account or manual check, verified
+  offline by jobs), listing review and signature verification are real. **Customers are not identity-verified
+  today** — their details come from the wizard. Do not present customers as verified; if that changes, record it
+  here first.
 - **Surfaces today:** agent app (Partner Central), e-signature portal, public marketing site, and the shared
   `ndopify-web-core` library. All web apps are stateless clients of `ndopify-server` over REST, and all
   user-visible dates and amounts go through the tenant's formatter.
@@ -94,17 +123,20 @@ each verified inside the same chain.
   public site.
 - Local seed data (`db/migration/local/`) with tenants, cities and neighbourhoods.
 - **Absences future work must not fabricate:** no real customer testimonials, named agencies, benchmarks, press,
-  pricing page, production metrics or customer counts exist in the repository. Do not invent them.
+  pricing page, production metrics, time-to-visit or time-to-signature figures, or customer counts exist in the
+  repository. Do not invent them.
 
 ## Product Principles
 
-1. **The agent carries the relationship.** Every decision protects a field agent's (mobile-money or estate agency)
-   ability to move a mandate forward from a phone, in French, on a weak connection.
-2. **Trust is verified, not claimed.** Show the verification step (KYC, checklist, signature, QR check) instead of
-   asserting reliability.
-3. **One demand, one owner at a time.** Exclusivity plus a visible deadline is what makes dispatch fair; don't hide
-   timing or ownership.
-4. **Every surface belongs to a tenant.** Brand, data, locale, currency and market are the tenant's, resolved from
-   the URL; no cross-tenant leakage or shared assumptions.
-5. **State honesty over optimism.** Wizards, statuses and blocked views reflect the server's real state; never let a
-   page imply progress that has not happened.
+1. **Every mandate exists to close.** The measure of a mandate is visits and a signed contract, not a listing
+   published or a status advanced. Optimize the chain, end to end.
+2. **Match the right agent first.** Exclusive, scored, time-boxed dispatch gets a mandate into capable hands before
+   visibility work starts; don't dilute it across agents.
+3. **Maximum visibility means all three levers.** Public exposure, co-brokerage reach and active matching together;
+   a page, a report or a notification alone is not distribution. Public exposure must travel as a shareable,
+   previewable link into the agent's WhatsApp groups.
+4. **Speed is the scoreboard — and it must be real.** Collapse the steps between mandate, first visit and signature;
+   show the deadline and the true next action, and never imply progress that has not happened.
+5. **Verification makes the visibility credible.** KYC on the agent, the on-site checklist, the reviewed listing and
+   the verifiable signature are what let a renter act on a fast proposal. Keep the trust chain intact when adding
+   speed.
