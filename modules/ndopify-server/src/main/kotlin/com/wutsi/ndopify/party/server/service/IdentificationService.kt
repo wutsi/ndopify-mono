@@ -26,6 +26,7 @@ class IdentificationService(
     private val dao: IdentificationRepository,
     private val clock: Clock,
     private val partyService: PartyService,
+    private val accessService: KycAccessService,
 ) {
     fun findById(id: String): IdentificationEntity {
         return findByIdOrNull(id)
@@ -61,9 +62,15 @@ class IdentificationService(
         return dao.findAll(spec, OffsetLimitPageRequest(request.offset, request.limit, Sort.by("id"))).content
     }
 
+    /**
+     * Opens an identification for a party. Errors, in order: 404 PARTY_NOT_FOUND, then 403 HTTP_ACCESS_DENIED but for
+     * that party or an admin ([KycAccessService]).
+     */
     @Transactional
     fun create(request: CreateIdentificationRequest): IdentificationEntity {
         val party = partyService.findById(request.partyId)
+        accessService.ensureIsPartyOrAdmin(party.id)
+
         val now = Date(clock.millis())
 
         // ID

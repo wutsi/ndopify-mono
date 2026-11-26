@@ -137,9 +137,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   filter), 404 `PARTY_NOT_FOUND`, 403 `HTTP_ACCESS_DENIED`, then the upload's 400s),
   S3 only: presign answers `{url:null}` on local storage, and the multipart `POST /v1/parties/{id}/photo` stays the
   fallback. A replaced photo's object is kept, so e-mails already sent keep showing it.
-  Tenant-scoped (see Multi-Tenancy below). The image writes are the case's own party's only (`CallerService`, through
-  the token's membership; no admin bypass): 404 `KYC_CASE_NOT_FOUND` (another tenant too) → 403 `HTTP_ACCESS_DENIED` →
-  400 `KYC_CASE_NOT_PENDING` → the upload's 400s. `create`, `submit`, `get` and `search` stay tenant-scoped only.
+  Tenant-scoped (see Multi-Tenancy below). The image writes are the case's own party's only (`KycAccessService`,
+  through the token's membership; no admin bypass): 404 `KYC_CASE_NOT_FOUND` (another tenant too) → 403
+  `HTTP_ACCESS_DENIED` → 400 `KYC_CASE_NOT_PENDING` → the upload's 400s. `get`, `submit`, `search` and `create` are
+  for the case's own party or an admin (`KycAccessService`): a non-admin's search is forced to its own party (whatever
+  `partyId` it passes), and a non-admin creates only for its own party; `POST /v1/identifications` follows the same
+  create rule.
   **Direct upload** (#205, on #127's `DirectUploadService`): `POST /v1/kyc/cases/{id}/images/presign?identificationType=&imageType=`
   hands out a PUT URL for `kyc/{caseId}/images/{uuid}.{ext}` (`{url: null}` with local storage: the caller falls back to
   the multipart upload, which stays, and also stores each photo at a new `{uuid}.{ext}`; older photos at

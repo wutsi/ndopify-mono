@@ -13,6 +13,7 @@ import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.GetKycImageUrlResponse
 import com.wutsi.ndopify.platform.storage.StorageService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import com.wutsi.ndopify.refdata.dto.StorageType
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.http.HttpStatus
@@ -28,6 +29,11 @@ class GetKycImageUrlEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     private lateinit var storageProvider: StorageServiceProvider
 
     private val storage = mock<StorageService>()
+
+    private var admin = false
+
+    override val roles: Array<String>
+        get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
 
     @BeforeEach
     fun setUpStorage() {
@@ -72,6 +78,49 @@ class GetKycImageUrlEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.KYC_IMAGE_NO_CONTENT, response.body?.error?.code)
+        verify(storage, never()).generatePresignedUrl(any(), any())
+    }
+
+    @Test
+    fun `another party's image - forbidden`() {
+        val response = rest.getForEntity(
+            "/v1/kyc/cases/images/kyc-image-201-front/url",
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
+        verify(storage, never()).generatePresignedUrl(any(), any())
+    }
+
+    @Test
+    fun `admin gets another party's image`() {
+        admin = true
+        doReturn(URL("https://storage.example.com/kyc/kyc-case-201/images/kyc-image-201-front.jpg?sig=abc"))
+            .whenever(storage).generatePresignedUrl(eq("kyc/kyc-case-201/images/kyc-image-201-front.jpg"), eq(3600))
+
+        val response = rest.getForEntity(
+            "/v1/kyc/cases/images/kyc-image-201-front/url",
+            GetKycImageUrlResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(
+            "https://storage.example.com/kyc/kyc-case-201/images/kyc-image-201-front.jpg?sig=abc",
+            response.body?.url,
+        )
+    }
+
+    @Test
+    fun `caller without a party - forbidden`() {
+        userId = 12L
+        val response = rest.getForEntity(
+            "/v1/kyc/cases/images/kyc-image-100-front/url",
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
         verify(storage, never()).generatePresignedUrl(any(), any())
     }
 

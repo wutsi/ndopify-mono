@@ -6,7 +6,6 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
 import com.wutsi.ndopify.error.dto.ParameterType
 import com.wutsi.ndopify.error.server.exception.BadRequestException
-import com.wutsi.ndopify.error.server.exception.ForbiddenException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.party.dto.CreateKycCaseRequest
 import com.wutsi.ndopify.party.dto.IdentificationType
@@ -31,7 +30,6 @@ import com.wutsi.ndopify.platform.storage.upload.DirectUploadService
 import com.wutsi.ndopify.platform.util.MimeUtils
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
 import com.wutsi.ndopify.refdata.dto.StorageType
-import com.wutsi.ndopify.security.server.service.CallerService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
@@ -66,7 +64,7 @@ class KycService(
     private val clock: Clock,
     private val logger: KVLogger,
     private val eventPublisher: ApplicationEventPublisher,
-    private val callerService: CallerService,
+    private val accessService: KycAccessService,
     private val directUpload: DirectUploadService,
 ) {
     companion object {
@@ -119,9 +117,15 @@ class KycService(
         return dao.findAll(spec, OffsetLimitPageRequest(request.offset, request.limit, sort)).content
     }
 
+    /**
+     * Opens a new KYC case for a party's identification. Errors, in order: 404 PARTY_NOT_FOUND, then 403
+     * HTTP_ACCESS_DENIED but for that party or an admin ([KycAccessService]). The internal
+     * [create] overload (agent sign-up) checks nothing.
+     */
     @Transactional
     fun create(request: CreateKycCaseRequest): KycCaseEntity {
         val party = partyService.findById(request.partyId)
+        accessService.ensureIsPartyOrAdmin(party.id)
         return create(party, request.identificationType)
     }
 
@@ -158,7 +162,7 @@ class KycService(
         file: MultipartFile
     ): KycImageEntity {
         val case = findById(id)
-        ensureOwnCase(case)
+        accessService.ensureIsParty(case.party.id)
         ensureStatusIsPending(case)
         ensureImage(file)
 
@@ -203,7 +207,7 @@ class KycService(
         contentType: String?,
     ): PresignUploadResponse {
         val case = findById(id)
-        ensureOwnCase(case)
+        accessService.ensureIsParty(case.party.id)
         ensureStatusIsPending(case)
         return directUpload.presign(prefix(case.id), contentType)
     }
@@ -224,7 +228,7 @@ class KycService(
         path: String,
     ): KycImageEntity {
         val case = findById(id)
-        ensureOwnCase(case)
+        accessService.ensureIsParty(case.party.id)
         ensureStatusIsPending(case)
 
         val existing = kycImageDao.findByKycCaseAndIdentificationTypeAndImageType(case, identificationType, imageType)
@@ -303,13 +307,13 @@ class KycService(
         }
     }
 
-    fun getImageUrl(imageId: String): URL {
-        val image = findImageById(imageId)
+    /** A short-lived URL of [image]; the endpoint has already checked who may read it. */
+    fun getImageUrl(image: KycImageEntity): URL {
         if (image.path == null) {
             throw NotFoundException(
                 error = Error(
                     code = ErrorCode.KYC_IMAGE_NO_CONTENT,
-                    message = "Image#$imageId has no content"
+                    message = "Image#${image.id} has no content"
                 )
             )
         }
@@ -319,12 +323,15 @@ class KycService(
 
     /**
      * Sends a case for review: PENDING_VERIFICATION → SUBMITTED. Its documents are frozen from then on, and the offline
-     * verification (see [verify]) picks it up. Requires the document's front, and its back for two-sided
-     * documents (see [requiredImages]). The selfie is optional.
+     * verification (see [verify]) picks it up. Only the case's own party or an admin may submit it. Requires the
+     * document's front, and its back for two-sided documents (see [requiredImages]). The selfie is optional.
+     * Errors, in order: 404 KYC_CASE_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for the case's own party or an admin, 400
+     * KYC_CASE_NOT_PENDING, 400 KYC_CASE_MISSING_IDENTIFICATION_IMAGE.
      */
     @Transactional
     fun submit(id: String): KycCaseEntity {
         val case = findById(id)
+        accessService.ensureIsPartyOrAdmin(case.party.id)
         ensureStatusIsPending(case)
         ensureIdentificationImages(case)
 
@@ -534,14 +541,6 @@ class KycService(
 
         val verifier = verifierProvider.get(verificationType)
         return verifier?.verify(case) ?: emptyList()
-    }
-
-    /** The case's own party only: no admin bypass, a KYC document is personal. */
-    private fun ensureOwnCase(case: KycCaseEntity) {
-        val partyId = callerService.findPartyIdOrNull(callerService.getPrincipal())
-        if (partyId == null || partyId != case.party.id) {
-            throw ForbiddenException(error = Error(code = ErrorCode.HTTP_ACCESS_DENIED))
-        }
     }
 
     private fun ensureStatusIsPending(case: KycCaseEntity) {

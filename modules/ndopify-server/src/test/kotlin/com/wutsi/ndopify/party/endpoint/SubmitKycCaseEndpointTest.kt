@@ -12,6 +12,7 @@ import com.wutsi.ndopify.party.server.dao.PartyRepository
 import com.wutsi.ndopify.party.server.service.kyc.KycCaseVerifierIdentification
 import com.wutsi.ndopify.party.server.service.kyc.KycCaseVerifierMoMo
 import com.wutsi.ndopify.party.server.service.kyc.KycCaseVerifierSelfie
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.junit.jupiter.api.AfterEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -39,6 +40,11 @@ class SubmitKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
     @MockitoBean
     private lateinit var paymentMethodVerifier: KycCaseVerifierMoMo
+
+    private var admin = true
+
+    override val roles: Array<String>
+        get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
 
     @AfterEach
     fun assertNoVerifierCalled() {
@@ -129,6 +135,36 @@ class SubmitKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertEquals(ErrorCode.KYC_CASE_NOT_PENDING, response.body?.error?.code)
         assertStatus(KycStatus.REJECTED, "kyc-case-rejected")
+    }
+
+    @Test
+    fun `party submits its own case`() {
+        admin = false
+        val response = submit("kyc-case-complete")
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertStatus(KycStatus.SUBMITTED, "kyc-case-complete")
+    }
+
+    @Test
+    fun `party cannot submit another party's case`() {
+        admin = false
+        val response = submitWithError("kyc-case-no-selfie")
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
+        assertStatus(KycStatus.PENDING_VERIFICATION, "kyc-case-no-selfie")
+    }
+
+    @Test
+    fun `caller without a party cannot submit`() {
+        admin = false
+        userId = 12L
+        val response = submitWithError("kyc-case-complete")
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
+        assertStatus(KycStatus.PENDING_VERIFICATION, "kyc-case-complete")
     }
 
     @Test

@@ -12,6 +12,7 @@ import com.wutsi.ndopify.party.dto.KycImageType
 import com.wutsi.ndopify.party.dto.SearchKycCaseRequest
 import com.wutsi.ndopify.party.dto.SearchKycCaseResponse
 import com.wutsi.ndopify.party.server.mapper.KycCaseMapper
+import com.wutsi.ndopify.party.server.service.KycAccessService
 import com.wutsi.ndopify.party.server.service.KycService
 import com.wutsi.ndopify.platform.endpoint.OpsEndpoint
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
@@ -30,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile
 @RequestMapping("/v1/kyc/cases")
 class KycEndpoints(
     private val service: KycService,
+    private val accessService: KycAccessService,
     private val mapper: KycCaseMapper,
 ) {
     @PostMapping
@@ -38,15 +40,19 @@ class KycEndpoints(
         return CreateKycCaseResponse(caseId = case.id)
     }
 
+    /** The case's own party or an admin only ([KycAccessService]); 404 KYC_CASE_NOT_FOUND before 403. */
     @GetMapping("/{id}")
     fun get(@PathVariable id: String): GetKycCaseResponse {
         val case = service.findById(id)
+        accessService.ensureCanRead(case)
         return GetKycCaseResponse(case = mapper.toKycCase(case))
     }
 
+    /** A non-admin only gets its own party's cases ([KycAccessService.restrict]). */
     @GetMapping
     fun search(@ModelAttribute request: SearchKycCaseRequest): SearchKycCaseResponse {
-        val cases = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
+        val restricted = accessService.restrict(request)
+        val cases = service.search(restricted.copy(limit = OffsetLimitPageRequest.limit(restricted.limit)))
         return SearchKycCaseResponse(
             cases = cases.map { case -> mapper.toKycCaseSummary(case) },
         )
@@ -95,11 +101,16 @@ class KycEndpoints(
         service.attach(id, identificationType, imageType, request.path)
     }
 
+    /**
+     * The image's case's own party or an admin only ([KycAccessService]); 404 KYC_IMAGE_NOT_FOUND before 403, 404
+     * KYC_IMAGE_NO_CONTENT after.
+     */
     @GetMapping("/images/{id}/url")
     fun imageUrl(
         @PathVariable id: String,
     ): GetKycImageUrlResponse {
-        val url = service.getImageUrl(id)
-        return GetKycImageUrlResponse(url.toString())
+        val image = service.findImageById(id)
+        accessService.ensureCanRead(image)
+        return GetKycImageUrlResponse(service.getImageUrl(image).toString())
     }
 }

@@ -8,6 +8,7 @@ import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.dto.KycImageType
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.KycVerificationType
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
@@ -16,6 +17,11 @@ import kotlin.test.assertNull
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/GetKycCaseEndpoint.sql"])
 class GetKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    private var admin = false
+
+    override val roles: Array<String>
+        get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
+
     @Test
     fun `with payment method`() {
         val response = rest.getForEntity("/v1/kyc/cases/kyc-case-100", GetKycCaseResponse::class.java)
@@ -84,5 +90,31 @@ class GetKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.KYC_CASE_NOT_FOUND, response.body?.error?.code)
+    }
+
+    @Test
+    fun `another party's case - forbidden`() {
+        val response = rest.getForEntity("/v1/kyc/cases/kyc-case-201", ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
+    }
+
+    @Test
+    fun `admin reads another party's case`() {
+        admin = true
+        val response = rest.getForEntity("/v1/kyc/cases/kyc-case-201", GetKycCaseResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(200L, response.body!!.case.partyId)
+    }
+
+    @Test
+    fun `caller without a party - forbidden`() {
+        userId = 12L
+        val response = rest.getForEntity("/v1/kyc/cases/kyc-case-100", ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
     }
 }
