@@ -41,7 +41,7 @@ data class MandateDocumentEntity(
     @Convert(converter = StringListConverter::class)
     val problemCodes: List<String> = emptyList(),
 
-    /** The fields read on the document, as a raw JSON string for now (#330 adds the typed helper). */
+    /** The typed fields read on the document: the JSON of its `DocumentData`, written and read by `DocumentDataCodec`. */
     @JdbcTypeCode(SqlTypes.JSON)
     val data: String? = null,
 

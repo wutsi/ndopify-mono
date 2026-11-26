@@ -51,3 +51,14 @@ INSERT INTO T_MANDATE_DOCUMENT_PAGE(id, tenant_id, document_id, page_index, path
     (103, 1, 11, 1, 'mandate/100/documents/page-11-1.png', NULL, 'image/png', '2024-06-11 00:00:00', '2024-06-11 00:00:00'),
     (104, 1, 12, 0, 'mandate/101/documents/page-12-0.png', 'S3', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (105, 1, 12, 1, 'mandate/101/documents/page-12-1.png', 'LOCAL', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
+
+-- 13: an extracted land title   14: an expired identity (warning)   15: not extracted yet   16: a malformed payload
+INSERT INTO T_MANDATE_DOCUMENT(id, tenant_id, mandate_id, type, title, status, problem_codes, data, data_version, issued_at, expires_at, version, created_at, modified_at) VALUES
+    (13, 1, 100, 'LAND_TITLE', 'Titre foncier', 'EXTRACTED', NULL,
+     '{"detectedType":"LAND_TITLE","titleNumber":"TF-1","owners":["A","B"],"locality":"Yaoundé","surface":"500","issueDate":"2020-01-01","valid":true,"fieldConfidences":{"titleNumber":0.9,"owners":0.8,"locality":0.85}}',
+     1, '2020-01-01', NULL, 0, '2024-06-12 00:00:00', '2024-06-12 00:00:00'),
+    (14, 1, 100, 'NATIONAL_ID', 'Carte d''identité', 'EXTRACTED', 'DOCUMENT_EXPIRED',
+     '{"detectedType":"NATIONAL_ID","number":"AA1","firstName":"John","lastName":"Doe","expiryDate":"2021-01-01","valid":true,"fieldConfidences":{"number":0.9,"firstName":0.9,"lastName":0.9}}',
+     1, NULL, '2021-01-01', 0, '2024-06-12 00:00:00', '2024-06-12 00:00:00'),
+    (15, 1, 100, 'OTHER', 'Autre', 'UPLOADED', NULL, NULL, NULL, NULL, NULL, 0, '2024-06-12 00:00:00', '2024-06-12 00:00:00'),
+    (16, 1, 100, 'OTHER', 'Autre', 'EXTRACTED', NULL, '[]', 1, NULL, NULL, 0, '2024-06-12 00:00:00', '2024-06-12 00:00:00');

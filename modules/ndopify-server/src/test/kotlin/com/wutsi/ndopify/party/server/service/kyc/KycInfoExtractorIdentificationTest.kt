@@ -46,7 +46,11 @@ class KycInfoExtractorIdentificationTest {
                 "firstName": "DANIEL CHARLES AUGUSTINE",
                 "lastName": "TANDENT YANG AHANDA",
                 "countryCode": "CM",
+                "dateOfBirth": "1990-05-01",
+                "issueDate": "2020-01-12",
                 "expiryDate": "2032-01-12",
+                "sidesPresent": ["FRONT", "BACK"],
+                "fieldConfidences": {"number": 0.9, "firstName": 0.8},
                 "valid": true
             }
             """.trimIndent(),
@@ -62,9 +66,38 @@ class KycInfoExtractorIdentificationTest {
         assertEquals("DANIEL CHARLES AUGUSTINE", info.firstName)
         assertEquals("TANDENT YANG AHANDA", info.lastName)
         assertEquals("AA00000000", info.number)
+        assertEquals("1990-05-01", info.dateOfBirth)
+        assertEquals("2020-01-12", info.issueDate)
         assertEquals(fmt.parse("2032-01-12"), info.expiryDate)
+        assertEquals(listOf("FRONT", "BACK"), info.sidesPresent)
+        assertEquals(mapOf("number" to 0.9, "firstName" to 0.8), info.fieldConfidences)
         assertEquals(true, info.valid)
         assertEquals(IdentificationType.NATIONAL_ID, info.type)
+    }
+
+    @Test
+    fun `national_id - an answer without the new fields still reads`() {
+        mockResponse(
+            """
+            {
+                "type": "NATIONAL_ID",
+                "number": "AA00000000",
+                "firstName": "DANIEL",
+                "lastName": "TANDENT",
+                "valid": true
+            }
+            """.trimIndent(),
+        )
+
+        val info = extractor.extract(
+            listOfNotNull(KycInfoExtractorIdentificationTest::class.java.getResource("/files/identity/cm/cni-front.png"))
+                .map { image -> File(image.file) },
+        )
+
+        assertEquals(null, info.dateOfBirth)
+        assertEquals(null, info.issueDate)
+        assertEquals(emptyList(), info.sidesPresent)
+        assertEquals(emptyMap(), info.fieldConfidences)
     }
 
     @Test

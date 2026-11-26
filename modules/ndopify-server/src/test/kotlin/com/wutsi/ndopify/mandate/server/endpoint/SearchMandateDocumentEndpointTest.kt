@@ -39,8 +39,20 @@ class SearchMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
     fun `search - a mandate's documents newest first`() {
         val documents = rest.getForEntity("/v1/mandates/100/documents", SearchMandateDocumentResponse::class.java).body!!.documents
 
-        assertEquals(listOf(11L, 10L), documents.map { it.id })
-        assertEquals(listOf("Bulletin mars", "Titre foncier"), documents.map { it.title })
+        assertEquals(listOf(16L, 15L, 14L, 13L, 11L, 10L), documents.map { it.id })
+        assertEquals(
+            listOf("Autre", "Autre", "Carte d'identité", "Titre foncier", "Bulletin mars", "Titre foncier"),
+            documents.map { it.title },
+        )
+    }
+
+    @Test
+    fun `search - an extracted document carries its fields`() {
+        val documents = rest.getForEntity("/v1/mandates/100/documents", SearchMandateDocumentResponse::class.java)
+            .body!!.documents
+
+        val title = documents.first { document -> document.id == 13L }
+        assertEquals(listOf("titleNumber", "owners", "locality", "surface", "issueDate"), title.fields.map { it.key })
     }
 
     @Test

@@ -75,7 +75,8 @@ the visit's agent is the organizer A, the listing's agent the co-agent B; A's me
 contact A. The e-mails keep their own wording and full amounts (`MandateMailLabels.price`, `MatchAnsweredLabels`,
 `VisitFeedbackLabels`, `CoBrokerageVisitLabels`), so a Telegram-only capitalisation or wording happens in the botlet.
 
-Scheduled jobs live in `<domain>/server/job/`: `KycJobs` (party), `MandateJobs` (mandate), `ContractJobs`
+Scheduled jobs live in `<domain>/server/job/`: `KycJobs` (party), `MandateJobs` (mandate), `MandateDocumentJobs`
+(mandate, every 15 minutes: `extract`, the due documents through `MandateDocumentExtractionService`), `ContractJobs`
 (contract), `ListingJobs` (listing, every 15 minutes: `verify`, the UNDER_VERIFICATION listings through
 `ListingVerifierService`; `publish`, the VERIFIED ones sent for publication, then the PUBLISHING ones through `ListingPublisherService`;
 `close`, daily, the PUBLISHED listings of closed mandates) and
@@ -236,6 +237,27 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   every object deletion — a replaced/removed page's, or each page's of a deleted document — runs after the commit,
   quietly (a failure is logged, never fatal); a failed save deletes the new objects no page references. A legacy page
   with no `storageType` was written to the default storage.
+  **Extraction.** A document is read in the background (`UPLOADED → EXTRACTING → EXTRACTED | FAILED`,
+  `MandateDocumentExtractionService`): every page is re-encoded by `platform/image`'s `ImageResizer` (a JPEG of at most
+  ~1.7 MP, EXIF-oriented, never the stored original; an undecodable page or one over 40 MP is `DOCUMENT_UNREADABLE`
+  without an LLM call and without a retry), then the type's `DocumentDataExtractor` reads it with `ChatClients.VISION`.
+  The identity extractor reuses `KycInfoExtractorIdentification`'s prompt and `KycInfo` schema (`dateOfBirth`,
+  `issueDate`, `sidesPresent`, `fieldConfidences`); `PAY_SLIP`, `BANK_PRE_APPROVAL`, `PROOF_OF_FUNDS` (and `UNKNOWN`)
+  have no extractor yet (#333) and stay `UPLOADED`. `MandateDocumentJobs.extract` runs every 15 minutes per tenant
+  (`ndopify.mandate.document.extract.*`: `batch-size` 100, `max-attempts` 3 technical retries, `min-confidence` 0.7,
+  `in-progress-timeout-minutes` 15). The typed, versioned `DocumentData` (one subclass per type, `data_version` 1,
+  stored in `data`) is checked by `DocumentChecks`: any of `DOCUMENT_TYPE_MISMATCH`, `DOCUMENT_UNREADABLE`,
+  `DOCUMENT_PAGE_MISSING`, `DOCUMENT_FIELD_LOW_CONFIDENCE`, `EXPIRY_DATE_UNREADABLE`, `EXTRACTION_FAILED` makes the
+  document `FAILED`; a readable document whose expiry is past on the tenant's clock stays `EXTRACTED` with the warning
+  `DOCUMENT_EXPIRED`. `DocumentRequirements` holds each type's required fields (the only confidence-checked ones) and
+  sides; an identity's unreadable expiry is `EXPIRY_DATE_UNREADABLE`, not the generic field code. The DTO's generic
+  `fields` list is `DocumentData.toFields()` — the display keys in the type's order (`number`, `firstName`...;
+  `titleNumber`, `owners`...; `holderName`, `address`...), each with its 0..1 confidence — never the raw `data`, which
+  doesn't leave the server. `issued_at` / `expires_at` hold the dates read. Two `@OpsEndpoint`s (off in prod) re-run
+  it: `POST /v1/mandates/{id}/documents/{documentId}/extract` (synchronously) and `POST
+  /v1/mandate-documents/extract?type=` (a whole type back to `UPLOADED`, 400 for a type without an extractor). A page
+  change during a run wins through the document's version, and an `EXTRACTING` document older than the timeout goes
+  back to `UPLOADED`. An extracted value never reaches the logs.
   A search's `MandateSummary` has what a card shows (criteria, amenities, `movingPeriod`, `availableFrom`) and its
   `contractId` only (a client needing the contract's dates searches `/v1/contracts?id=`), not the terms nor the
   customer's comments. `GET /v1/mandates/{id}` carries `visitFee` (`Money`), read through from the mandate's signed
@@ -763,7 +785,12 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
 - `platform/image` — resizing through ImageKit, wired by `config/platform/ImageConfiguration` from `ndopify.image.*`:
   `ImageKit` rewrites a storage URL into an `ik.imagekit.io` transformation URL
   (`tr:w-…,h-…,f-…,ar-…,c-…,cm-…,q-…`), `ImageServiceLocal` returns it unchanged. `ListingTelegramSender` uses it for
-  Telegram (see *listing*); the e-mail mailets through `MailImages` (see *platform/mail*).
+  Telegram (see *listing*); the e-mail mailets through `MailImages` (see *platform/mail*). `ImagePreviewService` builds
+  the watermarked display copy (see *mandate*), and `ImageResizer` the vision copy the LLM reads: a JPEG of at most
+  ~1.69 MP (~1300×1300-equivalent, the `deepseek-flash` resample target), EXIF-oriented, transparent composited on
+  white, metadata dropped, never upscaled. Its dimensions come from the header, the decode is subsampled to 7 MP, at
+  most 2 images decode at once (a 24 MP page is ~70–96 MB fully decoded, for a `-Xmx300m` standard-1x dyno) and a page
+  over 40 MP is refused before decoding. It has no mandate nor KYC rule, so KYC validation can inject it later.
 - `platform/mail` — e-mail sending (`MailService`, `MailBodyResolver`, `MailFilter`); MJML templates under
   `src/main/resources/mail/`. E-mail listing images always go through `MailImages` (`COVER` 1200×800, `THUMBNAIL`
   160×120, JPEG quality 75), never the cover's original URL; a missing cover still sends no image.
@@ -939,6 +966,8 @@ Flyway, split across two classpath locations composed in `application.yml`
   never gets a null. A new enum stored in an entity needs its converter there. Inserting or reordering enum values is
   safe; renaming one needs a migration updating the rows. Native SQL binds `.name`, never `.ordinal`, and SQL fixtures
   write the names (`'VERIFIED'`).
+- `JsonHelper` — the JSON of a `@JdbcTypeCode(SqlTypes.JSON)` column, which stays a `String` in the entity: the domain
+  serializes its own class (ex: `DocumentData`) with `write` and reads it back with `read`.
 - `OffsetLimitPageRequest` — the `Pageable` of the searches (`offset` / `limit` rather than page numbers);
   `OffsetLimitPageRequest.limit` caps a request's `limit`.
 - `EnumListConverter` / `EnumListConverters` — base of the converters storing a `List` of enums as comma-separated

@@ -9,6 +9,7 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.GetMandateDocumentResponse
 import com.wutsi.ndopify.platform.storage.StorageService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
@@ -60,6 +61,52 @@ class GetMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationTest
         verify(s3, never()).generatePresignedUrl(any(), any())
         verify(local, never()).generatePresignedUrl(any(), any())
         verify(defaultStorage, never()).generatePresignedUrl(any(), any())
+    }
+
+    @Test
+    fun `get - an extracted document exposes its fields with their confidences`() {
+        val document = rest.getForEntity("/v1/mandates/100/documents/13", GetMandateDocumentResponse::class.java)
+            .body!!.document
+
+        assertEquals(DocumentStatus.EXTRACTED, document.status)
+        assertEquals(java.time.LocalDate.of(2020, 1, 1), document.issuedAt)
+        assertEquals(
+            listOf("titleNumber", "owners", "locality", "surface", "issueDate"),
+            document.fields.map { field -> field.key },
+        )
+        assertEquals(
+            listOf("TF-1", "A, B", "Yaoundé", "500", "2020-01-01"),
+            document.fields.map { field -> field.value },
+        )
+        assertEquals(listOf(0.9, 0.8, 0.85, null, null), document.fields.map { field -> field.confidence })
+    }
+
+    @Test
+    fun `get - the expiry warning and the date are mapped`() {
+        val document = rest.getForEntity("/v1/mandates/100/documents/14", GetMandateDocumentResponse::class.java)
+            .body!!.document
+
+        assertEquals(DocumentStatus.EXTRACTED, document.status)
+        assertEquals(listOf("DOCUMENT_EXPIRED"), document.problemCodes)
+        assertEquals(java.time.LocalDate.of(2021, 1, 1), document.expiresAt)
+        assertEquals(listOf("number", "firstName", "lastName", "expiryDate"), document.fields.map { it.key })
+    }
+
+    @Test
+    fun `get - an unextracted document has no fields`() {
+        val document = rest.getForEntity("/v1/mandates/100/documents/15", GetMandateDocumentResponse::class.java)
+            .body!!.document
+
+        assertEquals(DocumentStatus.UPLOADED, document.status)
+        assertTrue(document.fields.isEmpty())
+    }
+
+    @Test
+    fun `get - a malformed payload has no fields`() {
+        val response = rest.getForEntity("/v1/mandates/100/documents/16", GetMandateDocumentResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertTrue(response.body!!.document.fields.isEmpty())
     }
 
     @Test
