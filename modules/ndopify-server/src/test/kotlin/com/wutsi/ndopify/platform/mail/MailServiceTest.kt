@@ -187,6 +187,14 @@ class MailServiceTest {
     }
 
     @Test
+    fun `a relay that names no message id captures none`() {
+        val sentId = service.send(message.copy(messageId = "mandate-1-1@wutsi.com"))
+
+        assertNull(sentId, "GreenMail answers 250 OK, not an SES id")
+        assertEquals("<mandate-1-1@wutsi.com>", smtp.receivedMessages[0].getHeader("Message-ID")?.first())
+    }
+
+    @Test
     fun error() {
         // Stop
         smtp.stop()
