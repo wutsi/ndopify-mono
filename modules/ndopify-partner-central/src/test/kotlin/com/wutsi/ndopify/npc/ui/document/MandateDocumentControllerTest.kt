@@ -1112,30 +1112,36 @@ class MandateDocumentControllerTest {
     }
 
     @Test
-    fun `replace a page - the server's multi-page pdf code opens the row`() {
-        val ex = HttpClientErrorException(HttpStatus.BAD_REQUEST)
-        ex.setBodyConvertFunction {
-            ErrorResponse(
-                Error(
-                    code = ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES,
-                    parameter = Parameter(name = "file"),
-                ),
-            )
-        }
-        doThrow(ex).whenever(documentClient).uploadReplacementPage(any(), any(), any(), any())
-
-        val result = mvc
-            .perform(
-                multipart("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page2.id}")
-                    .file(MockMultipartFile("file", "scan.pdf", "application/pdf", pdf())),
-            )
-            .andReturn()
-
-        assertEquals(MandateDocumentController.VIEW_DOCUMENT, result.modelAndView?.viewName)
-        assertEquals(
-            mapOf(page2.id to "Ce PDF fait plusieurs pages : envoyez un PDF d'une page, ou une photo."),
-            model(result)["replaceErrors"],
+    fun `replace a page - the server's pdf codes map to the french page error`() {
+        val messages = mapOf(
+            ErrorCode.MANDATE_DOCUMENT_PDF_ENCRYPTED to
+                "Ce PDF est protégé par un mot de passe : enregistrez-le sans protection, ou envoyez une photo.",
+            ErrorCode.MANDATE_DOCUMENT_PDF_UNREADABLE to "Ce PDF est vide ou endommagé : envoyez une photo.",
+            ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES to
+                "Ce PDF fait plusieurs pages : envoyez un PDF d'une page, ou une photo.",
         )
+        for ((code, message) in messages) {
+            val ex = HttpClientErrorException(HttpStatus.BAD_REQUEST)
+            ex.setBodyConvertFunction {
+                ErrorResponse(
+                    Error(
+                        code = code,
+                        parameter = Parameter(name = "file"),
+                    ),
+                )
+            }
+            doThrow(ex).whenever(documentClient).uploadReplacementPage(any(), any(), any(), any())
+
+            val result = mvc
+                .perform(
+                    multipart("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page2.id}")
+                        .file(MockMultipartFile("file", "scan.pdf", "application/pdf", pdf())),
+                )
+                .andReturn()
+
+            assertEquals(MandateDocumentController.VIEW_DOCUMENT, result.modelAndView?.viewName)
+            assertEquals(mapOf(page2.id to message), model(result)["replaceErrors"], code)
+        }
     }
 
     @Test
