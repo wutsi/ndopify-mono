@@ -2,7 +2,7 @@
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
 <body>
 <!-- One card of *Visites d'autres agents*: never A's customer, note, code, address, report or feedback. -->
-<li th:fragment="coBrokerageVisit(v)" class="co-visit-card">
+<li th:fragment="coBrokerageVisit(v)" class="co-visit-card" th:id="|co-visit-${v.id}|">
     <article>
         <div class="co-visit-card__head">
             <p class="co-visit-card__when">

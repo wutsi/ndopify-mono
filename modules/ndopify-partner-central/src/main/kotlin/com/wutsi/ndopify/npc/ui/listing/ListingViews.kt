@@ -165,12 +165,13 @@ object ListingViews {
                 val agent = agents[visit.agentId]?.let { AgentCardViews.of(it, back) }?.takeIf { it.name.isNotBlank() }
                 val title = listingLabels[visit.listingId]
                 ListingVisitView(
+                    id = visit.id,
                     at = visit.scheduledAt?.let { VisitSlots.dateTimeLabel(it, tenant, formatter) }.orEmpty(),
                     typeLabel = VisitRules.typeLabel(visit.type),
                     inProgress = visit.status == VisitStatus.CHECKED_IN,
                     agent = agent,
                     listingTitle = title,
-                    listingUrl = title?.let { "/listings/${visit.listingId}#visits-title" },
+                    listingUrl = title?.let { "/listings/${visit.listingId}" },
                     video = visit.type == VisitType.VIDEO,
                 )
             }

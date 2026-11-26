@@ -1145,8 +1145,9 @@ class ListingViewsTest {
             mapOf(501L to "Appartement 2 chambres · Bonapriso"),
         )
 
+        assertEquals(1L, rows.single().id)
         assertEquals("Appartement 2 chambres · Bonapriso", rows.single().listingTitle)
-        assertEquals("/listings/501#visits-title", rows.single().listingUrl)
+        assertEquals("/listings/501", rows.single().listingUrl)
         assertEquals("/agent?id=20&back=/%23co-brokerage-visits-title", rows.single().agent?.profileUrl)
         assertEquals("SN", rows.single().agent?.initials)
         assertFalse(rows.single().video)

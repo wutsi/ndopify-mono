@@ -199,6 +199,10 @@ data class PhotoView(
  * longer shows them). Never the customer, the note, the code or the report.
  */
 data class ListingVisitView(
+    /**
+     * The visit's id: the card's `co-visit-{id}` anchor, which the co-brokerage Telegram message and e-mail open.
+     */
+    val id: Long = -1,
     /** "dimanche 22 novembre 2026 à 10:30", in the tenant's time zone. */
     val at: String,
     /** "Sur place" / "Visite vidéo". */

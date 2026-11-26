@@ -552,6 +552,7 @@
         list.textContent = "";
         CO_BROKERAGE_VISITS.forEach(function (visit) {
             var item = template.content.firstElementChild.cloneNode(true);
+            item.id = "co-visit-" + visit.id;
             $("[data-co-brokerage-at]", item).textContent = formatAt(visit.at);
             $("[data-co-brokerage-type]", item).textContent = visit.type === "VIDEO" ? "Visite vidéo" : "Sur place";
             $all("[data-co-brokerage-type-icon]", item).forEach(function (el) {
