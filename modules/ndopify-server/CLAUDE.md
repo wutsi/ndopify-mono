@@ -68,7 +68,8 @@ one line `{title} - {price}` (`ListingTelegramLabels`; a blank title falls back 
 message tied to a customer or a co-agent carries `Contacter sur WhatsApp` (`PhoneNumberUtils.toWhatsappUrl`, never a
 number in the text, no button without one), a mandate message `Voir le mandat`
 (`{partnerCentralUrl}/mandates/{id}`, none without a `partnerCentralUrl`), a visit message `Voir la visite`
-(`{partnerCentralUrl}/visits/{id}`, first button). A visit message reads `<object> : <date/time>`, then
+(`{partnerCentralUrl}/visits/{id}`, first button; the co-brokerage one opens the listing agent's home card
+`/#co-visit-{id}` instead, on the confirmation and the reminder only). A visit message reads `<object> : <date/time>`, then
 `{title} - {price} - Sur place|Vidéo`, then `Agent : <organizer>` on a co-brokerage visit only (`VisitTelegramLabels`):
 the visit's agent is the organizer A, the listing's agent the co-agent B; A's messages contact B on WhatsApp and B's
 contact A. The e-mails keep their own wording and full amounts (`MandateMailLabels.price`, `MatchAnsweredLabels`,
@@ -627,10 +628,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   its type, then `Agent : <A>` — the organizer is A, the recipient B — and only the event's own line (the
   cancellation's actor, or `Le client ne s'est pas présenté`). It drops the e-mail's *Visite organisée par …* signature
   and the *je vous y retrouve avec mon client* sentence, and carries `Voir la visite` to
-  `{partnerCentralUrl}/visits/{id}` then `Contacter sur WhatsApp` to A (each none without the URL / A's number). It
-  never A's customer nor its data. B's `Voir la visite` opens the visit page, still locked for B until the follow-up
-  story that gives the listing agent read-only access. The e-mail keeps its own wording through
-  `CoBrokerageVisitLabels`. **Cancellation notification**:
+  `{partnerCentralUrl}/#co-visit-{id}` — the card on B's Partner Central home page, since B can't read
+  `/visits/{id}` — then `Contacter sur WhatsApp` to A, on the confirmation and the reminder only; a cancellation or a
+  no-show carries only the WhatsApp button. Each button is none without the URL / A's number. It
+  never A's customer nor its data. The e-mail keeps its own wording through `CoBrokerageVisitLabels`; its
+  confirmation and reminder link the button and the photo to the same `/#co-visit-{id}` anchor, its cancellation and
+  no-show carry neither. **Cancellation notification**:
   a cancellation is notified only when a party cancelled a **scheduled** visit — the agent over Telegram
   (`VisitCancelledBotlet` through `VisitCancelledNotifier`, via `AgentTelegramService.chatId`, with a `Voir la visite`
   button to `{partnerCentralUrl}/visits/{id}`) or e-mail (`VisitCancelledMailet.sendToAgent`), the customer by e-mail

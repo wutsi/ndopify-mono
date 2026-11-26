@@ -554,6 +554,7 @@ class MandateTemplateTest {
 
         val block = page.selectFirst("[data-co-brokerage-visits]")!!
         val card = block.selectFirst(".co-visit-card")!!
+        assertEquals("co-visit-8001", card.id())
         assertEquals("Visites d'autres agents", block.selectFirst("#co-brokerage-visits-title")?.text())
         val footer = card.selectFirst(".agent-card")!!
         assertEquals("https://cdn.ndopify.com/clarisse.jpg", footer.selectFirst(".agent-card__avatar img")?.attr("src"))

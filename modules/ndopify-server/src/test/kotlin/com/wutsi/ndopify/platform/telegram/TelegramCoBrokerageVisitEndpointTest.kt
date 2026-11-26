@@ -60,7 +60,7 @@ class TelegramCoBrokerageVisitEndpointTest : AuthorizationAwareEndpointIntegrati
         assertEquals("Agent : John Doe", text.firstValue.lines()[2])
         assertEquals(
             listOf(
-                TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/3"),
+                TelegramButton("Voir la visite", url = "https://partner.ndopify.com/#co-visit-3"),
                 TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237699000002"),
             ),
             buttons.firstValue,

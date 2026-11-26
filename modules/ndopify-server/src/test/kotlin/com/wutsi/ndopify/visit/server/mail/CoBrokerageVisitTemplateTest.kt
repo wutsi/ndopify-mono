@@ -7,7 +7,9 @@ import com.wutsi.ndopify.platform.mail.filter.MailFilterNull
 import dev.jcputney.mjml.MjmlRenderer
 import org.jsoup.Jsoup
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -25,6 +27,7 @@ class CoBrokerageVisitTemplateTest {
         "tenant_name" to "Ndopify",
         "recipient_name" to "John Doe",
         "listing_title" to "Villa Bastos",
+        "image_url" to "https://cdn.ndopify.com/7.jpg",
         "visit_date" to "02/12/2026",
         "visit_time" to "10:00",
         "type_label" to "Sur place",
@@ -34,7 +37,7 @@ class CoBrokerageVisitTemplateTest {
         "agent_full_name" to "Kim Possible",
         "agent_profile_url" to "https://partner.ndopify.com/agent?id=20",
         "agent_whatsapp_url" to "https://wa.me/237699000001",
-        "listing_url" to "https://partner.ndopify.com/listings/101#visits-title",
+        "visit_url" to "https://partner.ndopify.com/#co-visit-1",
     )
 
     @Test
@@ -42,6 +45,7 @@ class CoBrokerageVisitTemplateTest {
         val html = resolver.resolve(CoBrokerageVisitMailet.TEMPLATE_CONFIRMED, context)
 
         assertCommon(html)
+        assertVisitLink(html)
         assertTrue(html.contains("J'ai organisé une visite de votre bien"))
         assertTrue(html.contains("Je vous y retrouve avec mon client"))
         assertFalse(html.contains("suivra en visio"))
@@ -64,6 +68,7 @@ class CoBrokerageVisitTemplateTest {
         val html = resolver.resolve(CoBrokerageVisitMailet.TEMPLATE_REMINDER, context)
 
         assertCommon(html)
+        assertVisitLink(html)
         assertTrue(html.contains("Rappel"))
         assertTrue(html.contains("a lieu"))
         assertFalse(html.contains("suivra en visio"))
@@ -85,6 +90,7 @@ class CoBrokerageVisitTemplateTest {
         val html = resolver.resolve(CoBrokerageVisitMailet.TEMPLATE_CANCELLED, context)
 
         assertCommon(html)
+        assertNoVisitLink(html)
         val text = Jsoup.parse(html).text()
         assertTrue(text.contains("J'ai annulé la visite."))
         assertTrue(text.contains("a été annulée"))
@@ -97,6 +103,7 @@ class CoBrokerageVisitTemplateTest {
         val html = resolver.resolve(CoBrokerageVisitMailet.TEMPLATE_NO_SHOW, context)
 
         assertCommon(html)
+        assertNoVisitLink(html)
         val text = Jsoup.parse(html).text()
         assertTrue(text.contains("Le client ne s'est pas présenté à la visite."))
         assertTrue(text.contains("n'a pas eu lieu"))
@@ -106,10 +113,30 @@ class CoBrokerageVisitTemplateTest {
         assertTrue(html.contains("Villa Bastos"))
         assertTrue(html.contains("Kim Possible"))
         assertTrue(html.contains("https://wa.me/237699000001"))
-        assertTrue(html.contains("https://partner.ndopify.com/listings/101#visits-title"))
         assertFalse(html.contains("Secret Client"))
         assertFalse(html.contains("secret@example.com"))
         assertFalse(html.contains("1234"))
         assertFalse(html.contains("Client pressé"))
+    }
+
+    private fun assertVisitLink(html: String) {
+        val doc = Jsoup.parse(html)
+        assertEquals(
+            "https://partner.ndopify.com/#co-visit-1",
+            doc.select("a:contains(Voir la visite)").attr("href"),
+        )
+        assertEquals(
+            "https://partner.ndopify.com/#co-visit-1",
+            doc.selectFirst("img[alt=\"Villa Bastos\"]")?.closest("a")?.attr("href"),
+        )
+        assertFalse(doc.text().contains("Voir l'annonce"))
+    }
+
+    private fun assertNoVisitLink(html: String) {
+        val doc = Jsoup.parse(html)
+        assertFalse(html.contains("#co-visit-1"))
+        assertFalse(doc.text().contains("Voir la visite"))
+        assertFalse(doc.text().contains("Voir l'annonce"))
+        assertNull(doc.selectFirst("img[alt=\"Villa Bastos\"]")?.closest("a"))
     }
 }

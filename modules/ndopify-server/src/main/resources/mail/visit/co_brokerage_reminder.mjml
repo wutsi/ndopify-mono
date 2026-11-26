@@ -14,9 +14,9 @@
                     <!-- Divider with class for CSS injection -->
                     <mj-divider css-class="divider"/>
 
-                    <!-- The listing's photo, if any, linked to the listing's page when there is one -->
+                    <!-- The listing's photo, if any, linked to the visit's card when there is one -->
                     {{#image_url}}
-                    <mj-image src="{{image_url}}" alt="{{listing_title}}" {{#listing_url}}href="{{listing_url}}"{{/listing_url}}
+                    <mj-image src="{{image_url}}" alt="{{listing_title}}" {{#visit_url}}href="{{visit_url}}"{{/visit_url}}
                               border-radius="8px" padding="10px 0"/>
                     {{/image_url}}
 
@@ -43,11 +43,11 @@
                         <a href="{{agent_profile_url}}">voir le profil</a>{{/agent_profile_url}}.
                     </mj-text>
 
-                    {{#listing_url}}
-                    <mj-button href="{{listing_url}}" css-class="btn-primary" align="center">
-                        Voir l'annonce
+                    {{#visit_url}}
+                    <mj-button href="{{visit_url}}" css-class="btn-primary" align="center">
+                        Voir la visite
                     </mj-button>
-                    {{/listing_url}}
+                    {{/visit_url}}
 
                     <!-- Sign-off -->
                     <mj-spacer/>

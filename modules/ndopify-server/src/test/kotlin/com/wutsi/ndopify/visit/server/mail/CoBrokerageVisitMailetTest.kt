@@ -105,7 +105,8 @@ class CoBrokerageVisitMailetTest {
         assertEquals("Kim Possible", context["agent_full_name"])
         assertEquals("https://partner.ndopify.com/agent?id=20", context["agent_profile_url"])
         assertEquals("https://wa.me/237699000001", context["agent_whatsapp_url"])
-        assertEquals("https://partner.ndopify.com/listings/101#visits-title", context["listing_url"])
+        assertEquals("https://partner.ndopify.com/#co-visit-1", context["visit_url"])
+        assertFalse(context.containsKey("listing_url"))
         assertEquals("https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg", context["image_url"])
         assertFalse(context.toString().contains("Secret Client"))
         assertFalse(context.toString().contains("secret@example.com"))
@@ -127,7 +128,10 @@ class CoBrokerageVisitMailetTest {
         mailet.sendReminder(visit, listing, searchAgent)
 
         assertEquals("Ndopify: rappel de la visite de votre bien", email("john.doe@gmail.com").subject)
-        assertEquals("Villa Bastos", context(CoBrokerageVisitMailet.TEMPLATE_REMINDER)["listing_title"])
+        val context = context(CoBrokerageVisitMailet.TEMPLATE_REMINDER)
+        assertEquals("Villa Bastos", context["listing_title"])
+        assertEquals("https://partner.ndopify.com/#co-visit-1", context["visit_url"])
+        assertFalse(context.containsKey("listing_url"))
     }
 
     @Test
@@ -142,6 +146,7 @@ class CoBrokerageVisitMailetTest {
         val context = context(CoBrokerageVisitMailet.TEMPLATE_CANCELLED)
         assertEquals("J'ai annulé la visite.", context["cancelled_by_label"])
         assertNull(context["cancellation_reason"])
+        assertNull(context["visit_url"])
     }
 
     @Test
@@ -157,9 +162,21 @@ class CoBrokerageVisitMailetTest {
     fun `no-show - both customer-caused labels`() {
         mailet.sendNoShow(visit.copy(noShowReason = VisitNoShowReason.CUSTOMER_ABSENT), listing, searchAgent)
         assertEquals("Le client ne s'est pas présenté à la visite.", context(CoBrokerageVisitMailet.TEMPLATE_NO_SHOW)["reason_label"])
+        assertNull(context(CoBrokerageVisitMailet.TEMPLATE_NO_SHOW)["visit_url"])
 
         mailet.sendNoShow(visit.copy(noShowReason = VisitNoShowReason.CODE_REFUSED), listing, searchAgent)
         assertEquals("Le client a refusé de donner le code de visite.", context(CoBrokerageVisitMailet.TEMPLATE_NO_SHOW)["reason_label"])
+    }
+
+    @Test
+    fun `no Partner Central - no visit link`() {
+        doReturn(tenant.copy(partnerCentralUrl = null)).whenever(tenantService).findById(1L)
+        mailet.sendConfirmed(visit, listing, searchAgent)
+        assertNull(context(CoBrokerageVisitMailet.TEMPLATE_CONFIRMED)["visit_url"])
+
+        doReturn(tenant.copy(partnerCentralUrl = " ")).whenever(tenantService).findById(1L)
+        mailet.sendReminder(visit, listing, searchAgent)
+        assertNull(context(CoBrokerageVisitMailet.TEMPLATE_REMINDER)["visit_url"])
     }
 
     @Test
