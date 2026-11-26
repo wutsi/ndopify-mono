@@ -884,4 +884,128 @@ class MandateDocumentControllerTest {
         assertEquals("redirect:/mandates/$MANDATE_ID", result.modelAndView?.viewName)
         assertEquals(MandateDocumentController.CHANGED, result.flashes()["documentOutcome"])
     }
+
+    // The uncovered error pages of the actions
+
+    private fun bodied(status: HttpStatus, message: String, parameter: String): HttpClientErrorException {
+        val ex = HttpClientErrorException(status)
+        ex.setBodyConvertFunction {
+            ErrorResponse(Error(code = "bad", message = message, parameter = Parameter(name = parameter)))
+        }
+        return ex
+    }
+
+    @Test
+    fun `rename - the server refuses the title - the field's error`() {
+        doThrow(bodied(HttpStatus.BAD_REQUEST, "Titre trop long", "title"))
+            .whenever(documentClient).rename(any(), any(), any())
+
+        val result = mvc
+            .perform(post("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/rename").param("title", "Titre"))
+            .andReturn()
+
+        assertEquals(MandateDocumentController.VIEW_DOCUMENT, result.modelAndView?.viewName)
+        assertEquals(mapOf("title" to "Titre trop long"), model(result)["renameErrors"])
+    }
+
+    @Test
+    fun `rename - a conflict it can't read is a stale page`() {
+        val ex = HttpClientErrorException(HttpStatus.CONFLICT)
+        ex.setBodyConvertFunction { throw IllegalStateException("no body") }
+        doThrow(ex).whenever(documentClient).rename(any(), any(), any())
+
+        val result = mvc
+            .perform(post("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/rename").param("title", "Titre"))
+            .andReturn()
+
+        assertEquals("redirect:/mandates/$MANDATE_ID", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.CHANGED, result.flashes()["documentOutcome"])
+    }
+
+    @Test
+    fun `replace a page - the server refuses the image - its page's error`() {
+        doThrow(bodied(HttpStatus.BAD_REQUEST, "Format non accepté", "file"))
+            .whenever(documentClient).uploadReplacementPage(any(), any(), any(), any())
+
+        val result = mvc
+            .perform(multipart("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page2.id}").file(replacement()))
+            .andReturn()
+
+        assertEquals(MandateDocumentController.VIEW_DOCUMENT, result.modelAndView?.viewName)
+        assertEquals(mapOf(page2.id to "Format non accepté"), model(result)["replaceErrors"])
+    }
+
+    @Test
+    fun `replace a page - the server fails - the document page says so`() {
+        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR))
+            .whenever(documentClient).uploadReplacementPage(any(), any(), any(), any())
+
+        val result = mvc
+            .perform(multipart("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page2.id}").file(replacement()))
+            .andReturn()
+
+        assertEquals("redirect:/mandates/$MANDATE_ID/documents/$DOCUMENT_ID", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.FAILED, result.flashes()["outcome"])
+    }
+
+    @Test
+    fun `attach - the server is unreachable - 502`() {
+        doThrow(ResourceAccessException("down")).whenever(documentClient).replacePage(any(), any(), any(), any())
+
+        mvc.perform(
+            json(post("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page2.id}/attach"))
+                .content("""{"path":"mandate/301/documents/b.png"}"""),
+        ).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isBadGateway)
+    }
+
+    @Test
+    fun `presign - a mandate the pages don't show - 404`() {
+        doReturn(mandate.copy(status = MandateStatus.PENDING_ASSIGNMENT)).whenever(mandateClient).get(MANDATE_ID)
+
+        mvc.perform(json(post("/mandates/$MANDATE_ID/documents/presign")).content("""{"contentType":"image/png"}"""))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNotFound)
+
+        verify(documentClient, never()).presign(any(), any())
+    }
+
+    @Test
+    fun `presign - the server is unreachable when the mandate is read - 502`() {
+        doThrow(ResourceAccessException("down")).whenever(mandateClient).get(MANDATE_ID)
+
+        mvc.perform(json(post("/mandates/$MANDATE_ID/documents/presign")).content("""{"contentType":"image/png"}"""))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isBadGateway)
+    }
+
+    @Test
+    fun `document page - the server is unreachable - changed`() {
+        doThrow(ResourceAccessException("down")).whenever(mandateClient).get(MANDATE_ID)
+
+        val result = mvc.perform(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID")).andReturn()
+
+        assertEquals("redirect:/mandates/$MANDATE_ID", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.CHANGED, result.flashes()["documentOutcome"])
+    }
+
+    @Test
+    fun `document page - the server is unreachable when the document is read - changed`() {
+        doThrow(ResourceAccessException("down")).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val result = mvc.perform(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID")).andReturn()
+
+        assertEquals("redirect:/mandates/$MANDATE_ID", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.CHANGED, result.flashes()["documentOutcome"])
+    }
+
+    @Test
+    fun `add - a server 400 whose body can't be read falls back to the pages`() {
+        val ex = HttpClientErrorException(HttpStatus.BAD_REQUEST)
+        ex.setBodyConvertFunction { throw IllegalStateException("no body") }
+        doThrow(ex).whenever(documentClient).upload(any(), any(), anyOrNull(), any())
+
+        val result = mvc
+            .perform(multipart("/mandates/$MANDATE_ID/documents").file(photo()).param("type", DocumentType.PASSPORT.name))
+            .andReturn()
+
+        assertNotNull((model(result)["errors"] as Map<*, *>)["files"])
+    }
 }

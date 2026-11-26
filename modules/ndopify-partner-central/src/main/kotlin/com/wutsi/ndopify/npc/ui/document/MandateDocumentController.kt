@@ -144,13 +144,8 @@ class MandateDocumentController(
         val errors = MandateDocumentRules.validateAdd(form, pages)
         if (errors.isNotEmpty()) return addPage(mandate, form, errors, null, model)
 
-        val type = MandateDocumentRules.type(form.type) ?: return addPage(
-            mandate,
-            form,
-            mapOf("type" to MandateDocumentRules.TYPE_REQUIRED),
-            null,
-            model,
-        )
+        // validateAdd accepted it: the type is a known one (never UNKNOWN, which it refuses).
+        val type = MandateDocumentRules.type(form.type)!!
         val title = form.title.trim().ifEmpty { null }
         return try {
             documentClient.upload(

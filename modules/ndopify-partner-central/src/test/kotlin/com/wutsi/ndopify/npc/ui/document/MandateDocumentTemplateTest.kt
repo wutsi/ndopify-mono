@@ -251,6 +251,20 @@ class MandateDocumentTemplateTest {
     }
 
     @Test
+    fun `document - an action that couldn't run`() {
+        val page = render(
+            get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID").flashAttr("outcome", "error")
+                .flashAttr("outcomeMessage", "Le titre n'a pas pu être enregistré. Réessayez dans quelques instants."),
+        )
+
+        assertEquals("alert alert--error", page.selectFirst("[data-document-flash]")?.className())
+        assertEquals(
+            "Le titre n'a pas pu être enregistré. Réessayez dans quelques instants.",
+            page.selectFirst("[data-document-flash]")?.text(),
+        )
+    }
+
+    @Test
     fun `document - a page replaced`() {
         val page = render(
             get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID")

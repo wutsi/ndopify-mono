@@ -143,6 +143,24 @@ class NdMandateDocumentClientTest {
     }
 
     @Test
+    fun `upload - no document id in the answer`() {
+        server.expect(requestTo("http://localhost:8080/v1/mandates/100/documents/upload"))
+            .andRespond(withSuccess())
+
+        assertEquals(-1, client.upload(100, DocumentType.LAND_TITLE, null, listOf(UploadedPage(byteArrayOf(1), "image/png", "a.png"))))
+        server.verify()
+    }
+
+    @Test
+    fun `upload a replacement page - no page id in the answer`() {
+        server.expect(requestTo("http://localhost:8080/v1/mandates/100/documents/12/pages/21/upload"))
+            .andRespond(withSuccess())
+
+        assertEquals(-1, client.uploadReplacementPage(100, 12, 21, UploadedPage(byteArrayOf(1), "image/jpeg", "page.jpg")))
+        server.verify()
+    }
+
+    @Test
     fun rename() {
         server.expect(requestTo("http://localhost:8080/v1/mandates/100/documents/12"))
             .andExpect(method(HttpMethod.POST))
