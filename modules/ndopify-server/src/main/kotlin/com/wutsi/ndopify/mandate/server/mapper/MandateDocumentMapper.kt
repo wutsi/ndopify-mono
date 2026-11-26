@@ -8,7 +8,8 @@ import org.springframework.stereotype.Service
 
 /**
  * Maps a [MandateDocumentEntity] and its pages to the DTO. The page's storage path is never handed out: only
- * [urlOf]'s presigned URL, so the page DTO carries no path. The extracted fields stay empty until Task 4.
+ * [urlOf]'s presigned URL, so the page DTO carries no path. The extracted fields stay empty until the extraction
+ * (#330).
  */
 @Service
 class MandateDocumentMapper {
