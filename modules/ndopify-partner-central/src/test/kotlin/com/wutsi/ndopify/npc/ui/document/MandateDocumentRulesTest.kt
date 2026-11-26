@@ -78,19 +78,46 @@ class MandateDocumentRulesTest {
     }
 
     @Test
-    fun `a page is an image of 5 Mo at most`() {
+    fun `a page is an image or a pdf of 5 Mo at most`() {
         assertEquals(emptyMap(), MandateDocumentRules.validateAdd(form(), listOf(page(size = 5 * 1024 * 1024L))))
         assertEquals(
             mapOf("files" to "« IMG_2041.jpg » dépasse 5 Mo : reprenez la photo, ou choisissez une image plus légère."),
             MandateDocumentRules.validateAdd(form(), listOf(page(size = 5 * 1024 * 1024L + 1))),
         )
         assertEquals(
-            mapOf("files" to "« IMG_2041.jpg » n'est pas une image JPEG, PNG ou WEBP."),
+            mapOf(
+                "files" to "« IMG_2041.jpg » n'est ni une photo ni un PDF : choisissez une photo JPEG, PNG ou WEBP, " +
+                    "ou un PDF.",
+            ),
             MandateDocumentRules.validateAdd(form(), listOf(page(mimeType = "image/gif"))),
         )
         assertEquals(
-            mapOf("files" to "« IMG_2041.jpg » n'est pas une image JPEG, PNG ou WEBP."),
+            mapOf(
+                "files" to "« IMG_2041.jpg » n'est ni une photo ni un PDF : choisissez une photo JPEG, PNG ou WEBP, " +
+                    "ou un PDF.",
+            ),
             MandateDocumentRules.validateAdd(form(), listOf(page(mimeType = null))),
+        )
+    }
+
+    @Test
+    fun `an add accepts a pdf`() {
+        assertEquals(
+            emptyMap(),
+            MandateDocumentRules.validateAdd(form(), listOf(page(filename = "scan.pdf", mimeType = "application/pdf"))),
+        )
+    }
+
+    @Test
+    fun `an add's pdf over 5 Mo is refused with the pdf message`() {
+        assertEquals(
+            mapOf(
+                "files" to "« scan.pdf » dépasse 5 Mo : choisissez un PDF plus léger, ou envoyez ses pages en photos.",
+            ),
+            MandateDocumentRules.validateAdd(
+                form(),
+                listOf(page(filename = "scan.pdf", size = 5 * 1024 * 1024L + 1, mimeType = "application/pdf")),
+            ),
         )
     }
 
@@ -116,16 +143,26 @@ class MandateDocumentRulesTest {
 
     @Test
     fun `a replacement page`() {
-        assertEquals("Choisissez une image.", MandateDocumentRules.validatePage(null))
+        assertEquals("Choisissez la nouvelle page : une photo ou un PDF.", MandateDocumentRules.validatePage(null))
         assertNull(MandateDocumentRules.validatePage(page()))
+        assertNull(MandateDocumentRules.validatePage(page(filename = "scan.pdf", mimeType = "application/pdf")))
+        assertEquals(MandateDocumentRules.NOT_A_PAGE, MandateDocumentRules.validatePage(page(mimeType = "image/gif")))
         assertEquals(
-            "« IMG_2041.jpg » n'est pas une image JPEG, PNG ou WEBP.",
-            MandateDocumentRules.validatePage(page(mimeType = "application/pdf")),
+            MandateDocumentRules.PDF_TOO_LARGE,
+            MandateDocumentRules.validatePage(
+                page(filename = "scan.pdf", size = 5 * 1024 * 1024L + 1, mimeType = "application/pdf"),
+            ),
         )
         assertEquals(
             "Cette image dépasse 5 Mo : reprenez la photo, ou choisissez une image plus légère.",
             MandateDocumentRules.validatePage(page(size = 5 * 1024 * 1024L + 1)),
         )
+    }
+
+    @Test
+    fun `a pdf is recognized by its mime type`() {
+        assertTrue(MandateDocumentRules.isPdf(page(mimeType = "application/pdf")))
+        assertFalse(MandateDocumentRules.isPdf(page()))
     }
 
     @Test
