@@ -10,6 +10,7 @@ import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.match.server.mail.CoBrokerageMatchMailet
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.transaction.support.TransactionTemplate
 import java.time.Clock
 import java.util.Date
 
@@ -19,6 +20,9 @@ import java.util.Date
  * agent ([CoBrokerageMatchMailet]), then its matches are marked notified, each agent on its own: a failed e-mail is
  * logged, its matches left to the next run, and the other agents still sent.
  *
+ * Each agent is sent in its own transaction, which reloads its matches: the mailet reads their lazy associations (ex:
+ * the mandate's neighbourhoods), and the selection's session is closed by then (the job runs outside any transaction).
+ *
  * The listing agents are not told here: a co-brokerage interest reaches them through the visits and the proposals
  * themselves, never as a digest of other agents' searches.
  */
@@ -27,6 +31,7 @@ class CoBrokerageNotificationService(
     private val dao: MatchRepository,
     private val agentService: AgentService,
     private val mailet: CoBrokerageMatchMailet,
+    private val tx: TransactionTemplate,
     private val clock: Clock,
 ) {
     companion object {
@@ -63,10 +68,16 @@ class CoBrokerageNotificationService(
                 return@forEach
             }
             try {
-                val agent = agentService.findByIdOrNull(agentId) ?: return@forEach
-                send(agent, matches)
-                mark(matches.map { match -> match.id!! }, Date(clock.millis()))
-                count++
+                val sent = tx.execute {
+                    val agent = agentService.findByIdOrNull(agentId) ?: return@execute false
+                    val ids = matches.map { match -> match.id!! }
+                    send(agent, dao.findAllById(ids).sortedBy { match -> ids.indexOf(match.id) })
+                    mark(ids, Date(clock.millis()))
+                    true
+                } ?: false
+                if (sent) {
+                    count++
+                }
             } catch (ex: Exception) {
                 // An agent failing must not prevent the others to be notified
                 LOGGER.warn("$label#$agentId - ${matches.size} match(es) not notified", ex)
