@@ -2,6 +2,8 @@ package com.wutsi.ndopify.npc.ui.document
 
 import org.junit.jupiter.api.Test
 import org.springframework.context.support.ResourceBundleMessageSource
+import org.springframework.context.support.StaticMessageSource
+import java.util.Locale
 import kotlin.test.assertEquals
 
 class DocumentFieldLabelsTest {
@@ -78,5 +80,18 @@ class DocumentFieldLabelsTest {
             "Un problème a été signalé sur ce document. Supprimez-le et ajoutez-le de nouveau pour relancer la lecture.",
             labels.instruction("  "),
         )
+    }
+
+    @Test
+    fun `the generic texts come from the bundle`() {
+        val bundle = StaticMessageSource().apply {
+            addMessage("document.field.unknown", Locale.FRENCH, "Donnée inconnue")
+            addMessage("document.problem.unknown", Locale.FRENCH, "Problème inconnu")
+        }
+        val labels = DocumentFieldLabels(bundle)
+
+        assertEquals("Donnée inconnue", labels.label("position"))
+        assertEquals("Problème inconnu", labels.instruction("DOCUMENT_BACK_MISSING"))
+        assertEquals("Problème inconnu", labels.instruction(null))
     }
 }
