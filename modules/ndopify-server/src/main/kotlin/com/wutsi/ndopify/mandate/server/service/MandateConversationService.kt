@@ -22,8 +22,9 @@ data class MandateConversation(
 
 /**
  * Opens (or continues) the customer's e-mail conversation about a mandate. The first e-mail sent stores the mandate's
- * conversation subject (`MandateEntity.conversationSubject`) and carries the conversation's root id,
- * `mandate-<tenant>-<id>@<domain>`; every later one keeps that subject and answers the root, whatever its event. The
+ * conversation subject (`MandateEntity.conversationSubject`) and carries the conversation's root id; every later one
+ * keeps that subject and answers the root, whatever its event. The root is the id Amazon SES assigned the first
+ * message, when one was captured (`recordRoot`), and the pinned `mandate-<tenant>-<id>@<domain>` otherwise. The
  * subject is never rebuilt once stored: a later edit of the mandate's place or type must not split the conversation.
  *
  * Runs in its own transaction: the e-mail is handed to SMTP from inside the caller's transaction, and the SMTP server
@@ -40,7 +41,8 @@ class MandateConversationService(
     fun of(mandateId: Long): MandateConversation {
         val mandate = dao.findById(mandateId).orElse(null)
             ?: throw IllegalStateException("Mandate#$mandateId not found")
-        val root = "mandate-${mandate.tenantId}-${mandate.id}@${mailService.fromDomain}"
+        val pinned = "mandate-${mandate.tenantId}-${mandate.id}@${mailService.fromDomain}"
+        val root = dao.findConversationMessageIdById(mandateId) ?: pinned
         dao.findConversationSubjectById(mandateId)?.let { return continueFrom(it, mandate, root) }
 
         val subject = MandateMailLabels.conversationSubject(
@@ -49,11 +51,22 @@ class MandateConversationService(
             locationService,
         )
         return if (dao.markConversationSubject(mandateId, subject) > 0) {
-            MandateConversation(subject, root, null, emptyList())
+            MandateConversation(subject, pinned, null, emptyList())
         } else {
             // Another e-mail stored a subject between the read and the write: its subject wins
             continueFrom(dao.findConversationSubjectById(mandateId) ?: subject, mandate, root)
         }
+    }
+
+    /**
+     * Stores the id the relay assigned the conversation's first message, once. `null` (a relay that named none) writes
+     * nothing. Runs in its own transaction on purpose: the message may already be in the customer's inbox, so the
+     * caller's later rollback must not erase the root. A lost race leaves the first recorded id in place (CAS).
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    fun recordRoot(mandateId: Long, messageId: String?) {
+        if (messageId == null) return
+        dao.markConversationMessageId(mandateId, messageId)
     }
 
     private fun continueFrom(subject: String, mandate: MandateEntity, root: String) = MandateConversation(
