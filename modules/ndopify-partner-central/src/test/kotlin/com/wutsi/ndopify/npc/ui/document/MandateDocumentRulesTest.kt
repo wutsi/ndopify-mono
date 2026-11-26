@@ -251,7 +251,6 @@ class MandateDocumentRulesTest {
 
     @Test
     fun `the replacement copy of a kind`() {
-        assertEquals("1", "1")
         assertTrue(MandateDocumentRules.replaceHint(DocumentSource.PDF).startsWith("PDF d'une page"))
         assertTrue(MandateDocumentRules.replaceHint(DocumentSource.IMAGE).startsWith("Photo JPEG"))
         assertTrue(MandateDocumentRules.replaceHint(DocumentSource.UNKNOWN).contains("ou PDF d'une page"))

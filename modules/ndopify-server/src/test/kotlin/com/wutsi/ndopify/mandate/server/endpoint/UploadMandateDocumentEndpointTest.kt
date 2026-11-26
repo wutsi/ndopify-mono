@@ -317,7 +317,7 @@ class UploadMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
         assertEquals("files", response.body?.error?.parameter?.name)
         verify(storage, never()).store(any(), any(), any())
         assertTrue(documentDao.findByMandateIdOrderByIdDesc(100L).isEmpty())
-        assertTrue(pageDao.findByDocumentIdOrderByPageIndex(100L).isEmpty())
+        assertEquals(0L, pageDao.count())
     }
 
     @Test
