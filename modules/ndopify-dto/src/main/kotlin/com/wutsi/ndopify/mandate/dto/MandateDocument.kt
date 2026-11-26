@@ -14,6 +14,9 @@ data class MandateDocument(
     val type: DocumentType = DocumentType.UNKNOWN,
     val title: String = "",
     val status: DocumentStatus = DocumentStatus.UNKNOWN,
+
+    /** The kind of files it was created from; [DocumentSource.UNKNOWN] for a document written before it was recorded. */
+    val source: DocumentSource = DocumentSource.UNKNOWN,
     val problemCodes: List<String> = emptyList(),
     val fields: List<DocumentField> = emptyList(),
     val issuedAt: LocalDate? = null,

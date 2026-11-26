@@ -92,6 +92,12 @@ object ErrorCode {
     val MANDATE_VERSION_CONFLICT = "$PREFIX:mandate:version-conflict"
 
     val MANDATE_DOCUMENT_LAST_PAGE = "$PREFIX:mandate-document:last-page"
+
+    /** A mandate holds 5 documents at most. */
+    val MANDATE_DOCUMENT_LIMIT_REACHED = "$PREFIX:mandate-document:limit-reached"
+
+    /** A document is photos or one PDF, never both nor two PDFs. */
+    val MANDATE_DOCUMENT_MIXED_SOURCES = "$PREFIX:mandate-document:mixed-sources"
     val MANDATE_DOCUMENT_NOT_FOUND = "$PREFIX:mandate-document:not-found"
     val MANDATE_DOCUMENT_PAGE_NOT_FOUND = "$PREFIX:mandate-document-page:not-found"
 
