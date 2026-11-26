@@ -1097,12 +1097,13 @@ h1.alert__title {
     font: 600 var(--step-body) / 1.3 var(--font-body);
 }
 
-/* The card title is the one link on the row: a 44px hit area without changing its line rhythm. */
+/* The card title is the one link on the row: a 44px tap area on one line, and a wrapped title keeps its own
+   height instead of bleeding over the facts line. */
 .match__title a,
 .proposal-card .assignment__type a {
     display: inline-flex;
     align-items: center;
-    min-height: var(--target);
+    padding-block: calc((var(--target) - 1.3em) / 2);
     margin-block: calc((1.3em - var(--target)) / 2);
     color: inherit;
     text-underline-offset: 0.2em;
