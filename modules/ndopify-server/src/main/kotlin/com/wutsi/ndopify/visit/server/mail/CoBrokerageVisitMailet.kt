@@ -10,6 +10,7 @@ import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailImages
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
+import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.visit.dto.VisitType
@@ -21,7 +22,10 @@ import org.springframework.stereotype.Service
  * asked: A has already agreed with him by phone. The e-mail speaks in A's voice ([AgentMailContext]), and never
  * carries A's customer's name, e-mail, WhatsApp, code, note, address, report, feedback, mandate, match or search
  * criteria — the customer is only ever "mon client".
- * The photo is resized through [MailImages] for the e-mail (never the original URL).
+ * The photo is resized through [MailImages] for the e-mail (never the original URL). The confirmation and the reminder
+ * carry a `Voir la visite` button and link their photo to the visit's card on B's Partner Central home page
+ * (`/#co-visit-{id}`): B can't read `/visits/{id}`. The cancellation and the no-show carry no button and leave the
+ * photo unlinked — the visit is no longer on the home page.
  */
 @Service
 class CoBrokerageVisitMailet(
@@ -44,10 +48,10 @@ class CoBrokerageVisitMailet(
     }
 
     fun sendConfirmed(visit: VisitEntity, listing: ListingEntity, agent: AgentEntity) =
-        send(visit, listing, agent, TEMPLATE_CONFIRMED, SUBJECT_CONFIRMED)
+        send(visit, listing, agent, TEMPLATE_CONFIRMED, SUBJECT_CONFIRMED, withVisitLink = true)
 
     fun sendReminder(visit: VisitEntity, listing: ListingEntity, agent: AgentEntity) =
-        send(visit, listing, agent, TEMPLATE_REMINDER, SUBJECT_REMINDER)
+        send(visit, listing, agent, TEMPLATE_REMINDER, SUBJECT_REMINDER, withVisitLink = true)
 
     fun sendCancelled(visit: VisitEntity, listing: ListingEntity, agent: AgentEntity) =
         send(
@@ -81,6 +85,7 @@ class CoBrokerageVisitMailet(
         template: String,
         subject: String,
         extra: Map<String, Any?> = emptyMap(),
+        withVisitLink: Boolean = false,
     ) {
         val tenant = tenantService.findById(visit.tenantId!!)
         val formatter = TenantFormatter(tenant)
@@ -103,10 +108,13 @@ class CoBrokerageVisitMailet(
                         "type_label" to CoBrokerageVisitLabels.typeLabel(visit.type),
                         "on_site" to (visit.type == VisitType.ON_SITE),
                         "agent_profile_url" to tenant.partnerCentralUrl?.removeSuffix("/")?.let { "$it/agent?id=${agent.id}" },
-                        "listing_url" to tenant.partnerCentralUrl?.removeSuffix("/")?.let { "$it/listings/${listing.id}#visits-title" },
+                        "visit_url" to visitUrl(visit, tenant).takeIf { withVisitLink },
                     ) + extra + AgentMailContext.of(agent, formatter),
                 ),
             ),
         )
     }
+
+    private fun visitUrl(visit: VisitEntity, tenant: TenantEntity): String? =
+        tenant.partnerCentralUrl?.removeSuffix("/")?.takeIf { it.isNotBlank() }?.let { "$it/#co-visit-${visit.id}" }
 }
