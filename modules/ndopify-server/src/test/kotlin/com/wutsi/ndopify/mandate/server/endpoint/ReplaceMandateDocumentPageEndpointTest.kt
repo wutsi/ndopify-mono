@@ -22,6 +22,12 @@ import com.wutsi.ndopify.platform.storage.StorageService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.platform.storage.StoredObject
 import com.wutsi.ndopify.refdata.dto.StorageType
+import org.apache.pdfbox.pdmodel.PDDocument
+import org.apache.pdfbox.pdmodel.PDPage
+import org.apache.pdfbox.pdmodel.PDPageContentStream
+import org.apache.pdfbox.pdmodel.common.PDRectangle
+import org.apache.pdfbox.pdmodel.font.PDType1Font
+import org.apache.pdfbox.pdmodel.font.Standard14Fonts
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.core.io.ByteArrayResource
@@ -40,6 +46,7 @@ import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /** Replacing a page's file of a document of a mandate, keeping its index. */
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/MandateDocumentMutationEndpoint.sql"])
@@ -169,18 +176,41 @@ class ReplaceMandateDocumentPageEndpointTest : AuthorizationAwareEndpointIntegra
         assertEquals(oldPath, pageDao.findById(2001).orElseThrow().path)
     }
 
+    private fun uploadRequest(
+        content: ByteArray,
+        name: String = "page.png",
+        contentType: MediaType = MediaType.IMAGE_PNG,
+    ): HttpEntity<LinkedMultiValueMap<String, Any>> {
+        val body = LinkedMultiValueMap<String, Any>()
+        val resource = object : ByteArrayResource(content) {
+            override fun getFilename(): String = name
+        }
+        body.add("file", HttpEntity(resource, HttpHeaders().apply { this.contentType = contentType }))
+        val headers = HttpHeaders().apply { this.contentType = MediaType.MULTIPART_FORM_DATA }
+        return HttpEntity(body, headers)
+    }
+
+    /** A PDF of [pages] pages with a text line on each, generated in memory: no binary fixture. */
+    private fun pdf(pages: Int): ByteArray = PDDocument().use { document ->
+        repeat(pages) { index ->
+            val page = PDPage(PDRectangle.LETTER)
+            document.addPage(page)
+            PDPageContentStream(document, page).use { content ->
+                content.beginText()
+                content.setFont(PDType1Font(Standard14Fonts.FontName.HELVETICA), 12f)
+                content.newLineAtOffset(72f, 720f)
+                content.showText("Page $index")
+                content.endText()
+            }
+        }
+        ByteArrayOutputStream().also { document.save(it) }.toByteArray()
+    }
+
     @Test
     fun `replace - a posted file that cannot be previewed is refused and deleted`() {
-        val body = LinkedMultiValueMap<String, Any>()
-        val resource = object : ByteArrayResource(pngHeader(10_000, 10_000)) {
-            override fun getFilename(): String = "page.png"
-        }
-        body.add("file", HttpEntity(resource, HttpHeaders().apply { contentType = MediaType.IMAGE_PNG }))
-        val headers = HttpHeaders().apply { contentType = MediaType.MULTIPART_FORM_DATA }
-
         val response = rest.postForEntity(
             "/v1/mandates/100/documents/1000/pages/2001/upload",
-            HttpEntity(body, headers),
+            uploadRequest(pngHeader(10_000, 10_000)),
             ErrorResponse::class.java,
         )
 
@@ -190,6 +220,48 @@ class ReplaceMandateDocumentPageEndpointTest : AuthorizationAwareEndpointIntegra
         verify(s3).delete(argThat { startsWith("mandate/100/documents/") && endsWith(".png") })
         verify(local, never()).delete(any())
         assertEquals(oldPath, pageDao.findById(2001).orElseThrow().path)
+    }
+
+    @Test
+    fun `replace - a one-page pdf keeps the page's id and index, and deletes the old object`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/100/documents/1000/pages/2001/upload",
+            uploadRequest(pdf(1), "scan.pdf", MediaType.APPLICATION_PDF),
+            AttachMandateDocumentPageResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(2001L, response.body?.pageId)
+        val page = pageDao.findById(2001).orElseThrow()
+        assertEquals(1, page.pageIndex)
+        assertTrue(page.path.endsWith(".jpg"), page.path)
+        assertEquals("image/jpeg", page.mimeType)
+        assertEquals(StorageType.S3, page.storageType)
+        verify(s3).store(eq("${page.path}.preview-v1.jpg"), any(), eq("image/jpeg"))
+        // The old page was on the local storage: its object and its display copy go with it
+        verify(local).delete(oldPath)
+        verify(local).delete("$oldPath.preview-v1.jpg")
+        assertEquals(DocumentStatus.UPLOADED, documentDao.findById(1000).orElseThrow().status)
+    }
+
+    @Test
+    fun `replace - a multi-page pdf is refused and the page and its object are unchanged`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/100/documents/1000/pages/2001/upload",
+            uploadRequest(pdf(2), "scan.pdf", MediaType.APPLICATION_PDF),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES, response.body?.error?.code)
+        assertEquals("file", response.body?.error?.parameter?.name)
+        verify(s3, never()).store(any(), any(), any())
+        verify(local, never()).delete(any())
+        val page = pageDao.findById(2001).orElseThrow()
+        assertEquals(oldPath, page.path)
+        assertEquals(StorageType.LOCAL, page.storageType)
+        assertEquals(1, page.pageIndex)
+        assertEquals(DocumentStatus.FAILED, documentDao.findById(1000).orElseThrow().status)
     }
 
     private fun replacePage(id: Long, documentId: Long, pageId: Long, request: AttachUploadRequest) =
