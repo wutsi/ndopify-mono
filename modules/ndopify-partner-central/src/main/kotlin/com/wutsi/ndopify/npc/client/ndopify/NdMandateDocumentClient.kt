@@ -1,0 +1,145 @@
+package com.wutsi.ndopify.npc.client.ndopify
+
+import com.wutsi.ndopify.common.dto.AttachUploadRequest
+import com.wutsi.ndopify.common.dto.PresignUploadRequest
+import com.wutsi.ndopify.common.dto.PresignUploadResponse
+import com.wutsi.ndopify.mandate.dto.AttachMandateDocumentPageResponse
+import com.wutsi.ndopify.mandate.dto.CreateMandateDocumentRequest
+import com.wutsi.ndopify.mandate.dto.CreateMandateDocumentResponse
+import com.wutsi.ndopify.mandate.dto.DocumentType
+import com.wutsi.ndopify.mandate.dto.GetMandateDocumentResponse
+import com.wutsi.ndopify.mandate.dto.MandateDocument
+import com.wutsi.ndopify.mandate.dto.SearchMandateDocumentResponse
+import com.wutsi.ndopify.mandate.dto.UpdateMandateDocumentRequest
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.core.io.ByteArrayResource
+import org.springframework.http.HttpEntity
+import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
+import org.springframework.stereotype.Service
+import org.springframework.util.LinkedMultiValueMap
+import org.springframework.web.client.RestClient
+import org.springframework.web.client.body
+
+/**
+ * Client for the ndopify-server mandate document endpoints (`/v1/mandates/{id}/documents`). Documents are private: a
+ * page only comes back with its short-lived presigned `url`, never its storage path, and ndopify-server refuses the
+ * endpoints to anyone but the mandate's agent (or an admin).
+ *
+ * [upload] and [uploadReplacementPage] are the without-JavaScript forms; [presign] + [create] and [presign] + [attach]
+ * are the direct uploads `mandate-document.js` makes, which fall back to them.
+ */
+@Service
+class NdMandateDocumentClient(
+    @Value("\${ndopify.server.api.base-url}") baseUrl: String,
+
+    builder: RestClient.Builder,
+) {
+    /** One page sent with a form: its bytes, the type Tika read on them (the browser's claim isn't trusted) and its name. */
+    data class UploadedPage(val content: ByteArray, val mimeType: String, val filename: String)
+
+    private val rest: RestClient = builder
+        .baseUrl(baseUrl)
+        .build()
+
+    /** The mandate's documents, newest first. */
+    fun search(mandateId: Long): List<MandateDocument> =
+        rest.get()
+            .uri("/v1/mandates/{id}/documents", mandateId)
+            .retrieve()
+            .body<SearchMandateDocumentResponse>()
+            ?.documents
+            ?: emptyList()
+
+    fun get(mandateId: Long, documentId: Long): MandateDocument =
+        rest.get()
+            .uri("/v1/mandates/{id}/documents/{documentId}", mandateId, documentId)
+            .retrieve()
+            .body<GetMandateDocumentResponse>()
+            ?.document
+            ?: MandateDocument()
+
+    /** A short-lived URL to upload a page straight to the storage, with the `path` [create] takes. */
+    fun presign(mandateId: Long, contentType: String): PresignUploadResponse =
+        rest.post()
+            .uri("/v1/mandates/{id}/documents/presign", mandateId)
+            .body(PresignUploadRequest(contentType))
+            .retrieve()
+            .body<PresignUploadResponse>()
+            ?: PresignUploadResponse()
+
+    /** Records a document from pages already uploaded at [CreateMandateDocumentRequest.paths]; returns its id. */
+    fun create(mandateId: Long, request: CreateMandateDocumentRequest): Long =
+        rest.post()
+            .uri("/v1/mandates/{id}/documents", mandateId)
+            .body(request)
+            .retrieve()
+            .body<CreateMandateDocumentResponse>()
+            ?.documentId
+            ?: -1
+
+    /** The without-JS add: the server stores the pages and records the document itself; returns its id. */
+    fun upload(mandateId: Long, type: DocumentType, title: String?, files: List<UploadedPage>): Long {
+        val body = LinkedMultiValueMap<String, Any>().apply {
+            add("type", type.name)
+            title?.takeIf { it.isNotBlank() }?.let { add("title", it) }
+            files.forEach { page -> add("files", pageEntity(page)) }
+        }
+        return rest.post()
+            .uri("/v1/mandates/{id}/documents/upload", mandateId)
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .body(body)
+            .retrieve()
+            .body<CreateMandateDocumentResponse>()
+            ?.documentId
+            ?: -1
+    }
+
+    /** Renames a document; [UpdateMandateDocumentRequest.version] is the one the agent read (null to not check it). */
+    fun rename(mandateId: Long, documentId: Long, request: UpdateMandateDocumentRequest) {
+        rest.post()
+            .uri("/v1/mandates/{id}/documents/{documentId}", mandateId, documentId)
+            .body(request)
+            .retrieve()
+            .toBodilessEntity()
+    }
+
+    /** Replaces a page by a file uploaded at [path], from a [presign]; returns the page's id. */
+    fun replacePage(mandateId: Long, documentId: Long, pageId: Long, path: String): Long =
+        rest.post()
+            .uri("/v1/mandates/{id}/documents/{documentId}/pages/{pageId}", mandateId, documentId, pageId)
+            .body(AttachUploadRequest(path))
+            .retrieve()
+            .body<AttachMandateDocumentPageResponse>()
+            ?.pageId
+            ?: -1
+
+    /** The without-JS replacement of a page; returns the page's id. */
+    fun uploadReplacementPage(mandateId: Long, documentId: Long, pageId: Long, page: UploadedPage): Long {
+        val body = LinkedMultiValueMap<String, Any>().apply { add("file", pageEntity(page)) }
+        return rest.post()
+            .uri("/v1/mandates/{id}/documents/{documentId}/pages/{pageId}/upload", mandateId, documentId, pageId)
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .body(body)
+            .retrieve()
+            .body<AttachMandateDocumentPageResponse>()
+            ?.pageId
+            ?: -1
+    }
+
+    fun delete(mandateId: Long, documentId: Long) {
+        rest.delete()
+            .uri("/v1/mandates/{id}/documents/{documentId}", mandateId, documentId)
+            .retrieve()
+            .toBodilessEntity()
+    }
+
+    /** A multipart part the server reads as a file: [UploadedPage.mimeType] is its content type, its name the part's. */
+    private fun pageEntity(page: UploadedPage): HttpEntity<ByteArrayResource> {
+        val file = object : ByteArrayResource(page.content) {
+            override fun getFilename(): String = page.filename
+        }
+        val headers = HttpHeaders().apply { contentType = MediaType.parseMediaType(page.mimeType) }
+        return HttpEntity(file, headers)
+    }
+}
