@@ -16,9 +16,7 @@ import org.springframework.test.context.jdbc.Sql
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.util.Date
-import java.util.Locale
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -59,7 +57,7 @@ class CreateMatchVisitEndpointTest : AuthorizationAwareEndpointIntegrationTest()
 
         assertTrue(smtp.waitForIncomingEmail(5000, 2), "customer + agent e-mails")
         val customer = smtp.receivedMessages.single { "ray.sponsible" in it.allRecipients.single().toString() }
-        assertEquals("Votre visite de ${weekday(slot(2, 10, 0))} est confirmée", customer.subject)
+        assertEquals("Votre recherche : appartement à Yaounde · mandat 1", customer.subject)
         assertTrue(customer.content.toString().contains(visit.code!!))
         // The customer's copy is the agent-booked wording ("Je vous confirme la visite que j'ai organisée"); the
         // e-mail body is quoted-printable, so the assertion stays ASCII.
@@ -198,7 +196,4 @@ class CreateMatchVisitEndpointTest : AuthorizationAwareEndpointIntegrationTest()
 
     private fun slot(dayOffset: Long, hour: Int, minute: Int): Date =
         Date.from(LocalDate.now(zone).plusDays(dayOffset).atTime(LocalTime.of(hour, minute)).atZone(zone).toInstant())
-
-    private fun weekday(date: Date): String =
-        date.toInstant().atZone(zone).format(DateTimeFormatter.ofPattern("EEEE", Locale.forLanguageTag("fr-CM")))
 }

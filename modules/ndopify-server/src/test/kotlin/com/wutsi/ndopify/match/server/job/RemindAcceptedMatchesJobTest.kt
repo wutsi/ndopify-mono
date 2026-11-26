@@ -28,7 +28,7 @@ class RemindAcceptedMatchesJobTest : BaseEndpointIntegrationTest() {
 
         assertTrue(smtp.waitForIncomingEmail(5000, 2), "one e-mail per idle accepted match")
         assertEquals(
-            "N'oubliez pas de demander votre visite",
+            "Votre recherche à Yaounde · mandat 1",
             smtp.receivedMessages.first { it.allRecipients.single().toString().contains("ray.sponsible") }.subject,
         )
         val body = smtp.receivedMessages.first { it.allRecipients.single().toString().contains("ray.sponsible") }

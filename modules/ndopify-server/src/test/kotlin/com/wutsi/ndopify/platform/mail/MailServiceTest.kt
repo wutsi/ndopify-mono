@@ -15,6 +15,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -141,6 +142,48 @@ class MailServiceTest {
 
         val messages = smtp.receivedMessages
         assertTrue(messages.isNotEmpty())
+    }
+
+    @Test
+    fun `a pinned Message-ID survives the send`() {
+        service.send(
+            message.copy(
+                messageId = "mandate-1-1@wutsi.com",
+                inReplyTo = "mandate-1-1@wutsi.com",
+                references = listOf("mandate-1-1@wutsi.com"),
+            ),
+        )
+
+        val headers = smtp.receivedMessages[0].allHeaders.toList().associate { it.name to it.value }
+        assertEquals("<mandate-1-1@wutsi.com>", headers["Message-ID"])
+        assertEquals("<mandate-1-1@wutsi.com>", headers["In-Reply-To"])
+        assertEquals("<mandate-1-1@wutsi.com>", headers["References"])
+        assertEquals("Hello", headers["Thread-Topic"])
+        assertEquals("wutsi.com", service.fromDomain)
+    }
+
+    @Test
+    fun `several references are one space-separated header`() {
+        service.send(
+            message.copy(
+                messageId = "mandate-1-1-x@wutsi.com",
+                references = listOf("mandate-1-1@wutsi.com", "other@wutsi.com"),
+            ),
+        )
+
+        val headers = smtp.receivedMessages[0].allHeaders.toList().associate { it.name to it.value }
+        assertEquals("<mandate-1-1@wutsi.com> <other@wutsi.com>", headers["References"])
+    }
+
+    @Test
+    fun `no conversation headers without a message id`() {
+        service.send(message)
+
+        val headers = smtp.receivedMessages[0].allHeaders.toList().associate { it.name to it.value }
+        assertNull(headers["In-Reply-To"], "no In-Reply-To on a platform e-mail")
+        assertNull(headers["References"], "no References on a platform e-mail")
+        assertNull(headers["Thread-Topic"], "no Thread-Topic on a platform e-mail")
+        assertFalse(headers["Message-ID"].orEmpty().contains("mandate-"), "JavaMail keeps generating its own Message-ID")
     }
 
     @Test

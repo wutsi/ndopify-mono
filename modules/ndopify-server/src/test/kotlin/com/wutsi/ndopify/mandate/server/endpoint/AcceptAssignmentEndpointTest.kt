@@ -7,15 +7,21 @@ import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.GetAssignmentResponse
 import com.wutsi.ndopify.mandate.dto.GetMandateResponse
 import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.server.dao.MandateRepository
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/AcceptAssignmentEndpoint.sql"])
 class AcceptAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    @Autowired
+    private lateinit var mandateDao: MandateRepository
+
     @Test
     fun accept() {
         val response = rest.postForEntity("/v1/assignments/1/accept", null, Any::class.java)
@@ -29,14 +35,22 @@ class AcceptAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest()
         assertEquals(20L, mandate.agentId)
         assertEquals(MandateStatus.ASSIGNED, mandate.status)
 
-        // The customer is told who its agent is, asynchronously
+        // The customer is told who its agent is, asynchronously, in the mandate's conversation
         assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
         val messages = smtp.receivedMessages
         assertEquals(1, messages.size)
-        assertEquals("Je prends en charge votre mandat à Yaounde", messages[0].subject)
-        assertEquals("Ray Sponsible <ray.sponsible@gmail.com>", messages[0].allRecipients.single().toString())
+        val message = messages[0]
+        assertEquals("Votre recherche : appartement à Yaounde · mandat 1", message.subject)
+        assertEquals("<mandate-1-1@wutsi.com>", message.getHeader("Message-ID")?.first())
+        assertNull(message.getHeader("In-Reply-To")?.first(), "the assigned e-mail opens the conversation")
+        assertEquals("Votre recherche : appartement à Yaounde · mandat 1", message.getHeader("Thread-Topic")?.first())
+        assertEquals("Ray Sponsible <ray.sponsible@gmail.com>", message.allRecipients.single().toString())
+        assertEquals(
+            "Votre recherche : appartement à Yaounde · mandat 1",
+            mandateDao.findById(1L).get().conversationSubject,
+        )
 
-        val body = messages[0].content.toString()
+        val body = message.content.toString()
         assertTrue(body.contains("Ray Sponsible"))
         assertTrue(body.contains("Kim Possible"))
         assertTrue(body.contains("10 ans"))

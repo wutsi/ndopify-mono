@@ -5,6 +5,7 @@ import com.wutsi.ndopify.agent.server.mail.AgentMailContext
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.mandate.server.mail.MandateMailLabels
+import com.wutsi.ndopify.mandate.server.service.MandateConversationService
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.match.server.service.MatchLinkTokenService
@@ -15,7 +16,6 @@ import com.wutsi.ndopify.platform.mail.MailImages
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
-import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.springframework.stereotype.Service
@@ -26,21 +26,20 @@ import org.springframework.stereotype.Service
  * to its proposal's page on the public portal, `{publicPortalUrl}/match/{matchId}?token={token}`, where the customer
  * accepts or rejects it (none without the tenant's `publicPortalUrl`: the customer then answers its agent). The token
  * signs the customer in to the public portal ([MatchLinkTokenService]); without one, the link has no `token`. The photo
- * is resized through [MailImages] for the e-mail (never the original URL).
+ * is resized through [MailImages] for the e-mail (never the original URL). The e-mail joins the mandate's conversation
+ * ([MandateConversationService]): its subject names the mandate, not the event.
  */
 @Service
 class MatchProposedMailet(
     private val tenantService: TenantService,
-    private val locationService: LocationService,
     private val mailService: MailService,
     private val mailBodyResolver: MailBodyResolver,
     private val linkTokenService: MatchLinkTokenService,
     private val listingImageService: ListingImageService,
     private val imageService: ImageService,
+    private val conversationService: MandateConversationService,
 ) {
     companion object {
-        const val SUBJECT_ONE = "Je vous propose un bien à {{place}}"
-        const val SUBJECT_MANY = "Je vous propose {{count}} biens à {{place}}"
         const val TEMPLATE = "/mail/match/proposed.mjml"
     }
 
@@ -49,19 +48,19 @@ class MatchProposedMailet(
         val mandate = matches.first().mandate
         val tenant = tenantService.findById(mandate.tenantId!!)
         val formatter = TenantFormatter(tenant)
-        val city = locationService.findByIdOrNull(mandate.cityId)?.name ?: ""
         val party = customer.party
         val fullName = party.fullName()
         val agentName = agent.party.fullName()
-        val subject = if (matches.size == 1) SUBJECT_ONE else SUBJECT_MANY
+        val conversation = conversationService.of(mandate.id!!)
         val token = tenant.publicPortalUrl?.let { linkTokenService.create(customer) } // One for all the links
         mailService.send(
             Email(
                 sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = party.email, displayName = fullName),
-                subject = subject
-                    .replace("{{count}}", matches.size.toString())
-                    .replace("{{place}}", MandateMailLabels.place(mandate, city, locationService)),
+                subject = conversation.subject,
+                messageId = conversation.messageId,
+                inReplyTo = conversation.inReplyTo,
+                references = conversation.references,
                 body = mailBodyResolver.resolve(
                     path = TEMPLATE,
                     context = mapOf(

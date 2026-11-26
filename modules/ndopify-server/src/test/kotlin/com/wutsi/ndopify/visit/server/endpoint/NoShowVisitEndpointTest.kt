@@ -41,7 +41,7 @@ class NoShowVisitEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertTrue(smtp.waitForIncomingEmail(5000, 1), "one email expected")
         val message = smtp.receivedMessages.single()
         assertEquals("Ray Sponsible <ray.sponsible@gmail.com>", message.allRecipients.single().toString())
-        assertEquals("Notre visite n'a pas eu lieu", message.subject)
+        assertEquals("Votre recherche : appartement à Yaounde · mandat 1", message.subject)
         assertTrue(message.content.toString().contains("Nice apartment"))
     }
 

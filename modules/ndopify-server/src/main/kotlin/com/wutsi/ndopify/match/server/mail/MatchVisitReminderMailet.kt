@@ -6,6 +6,7 @@ import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.mandate.server.mail.MandateMailLabels
+import com.wutsi.ndopify.mandate.server.service.MandateConversationService
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.match.server.service.MatchLinkTokenService
 import com.wutsi.ndopify.platform.image.ImageService
@@ -33,9 +34,9 @@ class MatchVisitReminderMailet(
     private val linkTokenService: MatchLinkTokenService,
     private val listingImageService: ListingImageService,
     private val imageService: ImageService,
+    private val conversationService: MandateConversationService,
 ) {
     companion object {
-        const val SUBJECT = "N'oubliez pas de demander votre visite"
         const val TEMPLATE = "/mail/match/visit_reminder.mjml"
     }
 
@@ -45,12 +46,16 @@ class MatchVisitReminderMailet(
         val listing = match.listing
         val party = customer.party
         val fullName = party.fullName()
+        val conversation = conversationService.of(match.mandate.id!!)
         val token = tenant.publicPortalUrl?.let { linkTokenService.create(customer) }
         mailService.send(
             Email(
                 sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = party.email, displayName = fullName),
-                subject = SUBJECT,
+                subject = conversation.subject,
+                messageId = conversation.messageId,
+                inReplyTo = conversation.inReplyTo,
+                references = conversation.references,
                 body = mailBodyResolver.resolve(
                     path = TEMPLATE,
                     context = mapOf(

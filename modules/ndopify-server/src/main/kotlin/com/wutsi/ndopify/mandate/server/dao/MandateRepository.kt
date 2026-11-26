@@ -10,9 +10,12 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.EntityGraph
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
+import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
+import org.springframework.transaction.annotation.Transactional
 import java.util.Date
 
 /** Number of mandates of an agent. */
@@ -31,6 +34,20 @@ interface MandateRepository : CrudRepository<MandateEntity, Long>, JpaSpecificat
 
     @Query("SELECT m.contractId FROM MandateEntity m WHERE m.id = :id")
     fun findContractIdById(id: Long): String?
+
+    // Read from the database: a bulk update below is not reflected in an entity already loaded in the session
+    @Query("SELECT m.conversationSubject FROM MandateEntity m WHERE m.id = :id")
+    fun findConversationSubjectById(@Param("id") id: Long): String?
+
+    /**
+     * Stores the mandate's conversation subject once. A bulk update on purpose: it skips the `@Version` check, so an
+     * agent editing the mandate meanwhile neither fails with a 409 nor loses the edit. 0 when another e-mail stored a
+     * subject first, which is then the one to use.
+     */
+    @Transactional
+    @Modifying
+    @Query("UPDATE MandateEntity m SET m.conversationSubject = :subject WHERE m.id = :id AND m.conversationSubject IS NULL")
+    fun markConversationSubject(@Param("id") id: Long, @Param("subject") subject: String): Int
 
     // The customer's search still open in the same city and for the same listing type: a listing asked for from its
     // public page attaches to it instead of creating a duplicate search. Newest first, should a customer have two.

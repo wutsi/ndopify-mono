@@ -281,13 +281,15 @@ class ContractService(
             return 0 // Signed or cancelled in the meantime: nothing to sign anymore
         }
 
-        // A mandate's contract also carries its agent, for the customer e-mail's signature; a lease has none
-        val agent = mandateDao.findByContractId(id)?.agentId?.let { agentService.findByIdOrNull(it) }
+        // A mandate's contract also carries its agent, for the customer e-mail's signature, and joins the mandate's
+        // customer conversation; a lease has neither
+        val mandate = mandateDao.findByContractId(id)
+        val agent = mandate?.agentId?.let { agentService.findByIdOrNull(it) }
         return partyDao.findByContract(contract)
             .filter { party -> party.signatureRequired && !party.signed }
             .count { party ->
                 try {
-                    signatureMailet.send(contract, party, agent)
+                    signatureMailet.send(contract, party, agent, mandate)
                     true
                 } catch (ex: Exception) {
                     LOGGER.warn("Contract#$id - Unable to send the signature request to party#${party.id}", ex)

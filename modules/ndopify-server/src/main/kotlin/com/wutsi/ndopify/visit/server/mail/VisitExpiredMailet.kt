@@ -5,6 +5,7 @@ import com.wutsi.ndopify.agent.server.mail.AgentMailContext
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
+import com.wutsi.ndopify.mandate.server.service.MandateConversationService
 import com.wutsi.ndopify.match.server.service.MatchLinkTokenService
 import com.wutsi.ndopify.platform.image.ImageService
 import com.wutsi.ndopify.platform.mail.Email
@@ -30,9 +31,9 @@ class VisitExpiredMailet(
     private val linkTokenService: MatchLinkTokenService,
     private val listingImageService: ListingImageService,
     private val imageService: ImageService,
+    private val conversationService: MandateConversationService,
 ) {
     companion object {
-        const val SUBJECT_CUSTOMER = "Je n'ai pas pu confirmer votre visite"
         const val SUBJECT_AGENT = "{{tenant_name}}: demande de visite expirée avec {{customer_name}}"
         const val TEMPLATE = "/mail/visit/expired.mjml"
     }
@@ -47,12 +48,16 @@ class VisitExpiredMailet(
             token?.let { "$url?token=$it" } ?: url
         }
         val agentUrl = tenant.partnerCentralUrl?.removeSuffix("/")?.let { "$it/visits/${visit.id}" }
+        val conversation = conversationService.of(visit.mandateId)
 
         mailService.send(
             Email(
                 sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = customer.party.email, displayName = customerName),
-                subject = SUBJECT_CUSTOMER,
+                subject = conversation.subject,
+                messageId = conversation.messageId,
+                inReplyTo = conversation.inReplyTo,
+                references = conversation.references,
                 body = mailBodyResolver.resolve(
                     path = TEMPLATE,
                     context = context(

@@ -5,6 +5,7 @@ import com.wutsi.ndopify.agent.server.mail.AgentMailContext
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.mandate.server.service.MandateConversationService
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
@@ -21,9 +22,9 @@ class MandateAssignedMailet(
     private val locationService: LocationService,
     private val mailService: MailService,
     private val mailBodyResolver: MailBodyResolver,
+    private val conversationService: MandateConversationService,
 ) {
     companion object {
-        const val SUBJECT = "Je prends en charge votre mandat à {{place}}"
         const val TEMPLATE = "/mail/mandate/assigned.mjml"
         const val TEMPLATE_LISTING = "/mail/mandate/assigned_listing.mjml"
     }
@@ -35,11 +36,15 @@ class MandateAssignedMailet(
         val city = locationService.findByIdOrNull(mandate.cityId)?.name ?: ""
         val place = MandateMailLabels.place(mandate, city, locationService)
         val formatter = TenantFormatter(tenant)
+        val conversation = conversationService.of(mandate.id!!)
         mailService.send(
             Email(
                 sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = party.email, displayName = fullName),
-                subject = SUBJECT.replace("{{place}}", place),
+                subject = conversation.subject,
+                messageId = conversation.messageId,
+                inReplyTo = conversation.inReplyTo,
+                references = conversation.references,
                 body = mailBodyResolver.resolve(
                     path = if (mandate.mandateType == MandateType.LISTING) TEMPLATE_LISTING else TEMPLATE,
                     context = mapOf(

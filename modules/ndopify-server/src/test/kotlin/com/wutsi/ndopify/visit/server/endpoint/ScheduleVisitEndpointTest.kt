@@ -13,9 +13,7 @@ import org.springframework.test.context.jdbc.Sql
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.util.Date
-import java.util.Locale
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -44,7 +42,7 @@ class ScheduleVisitEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertTrue(smtp.waitForIncomingEmail(5000, 2), "two emails expected")
         val messages = smtp.receivedMessages.toList()
         val customerMessage = messages.single { it.allRecipients.single().toString() == "Ray Sponsible <ray.sponsible@gmail.com>" }
-        assertEquals("Votre visite de ${weekday(slot(2, 10, 0))} est confirmée", customerMessage.subject)
+        assertEquals("Votre recherche : appartement à Yaounde · mandat 1", customerMessage.subject)
         val customerBody = customerMessage.content.toString()
         assertTrue(customerBody.contains(visit.code!!))
         assertTrue(customerBody.contains("Bastos, Yaounde"), customerBody)
@@ -189,7 +187,4 @@ class ScheduleVisitEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
     private fun slot(dayOffset: Long, hour: Int, minute: Int): Date =
         Date.from(LocalDate.now(zone).plusDays(dayOffset).atTime(LocalTime.of(hour, minute)).atZone(zone).toInstant())
-
-    private fun weekday(date: Date): String =
-        date.toInstant().atZone(zone).format(DateTimeFormatter.ofPattern("EEEE", Locale.forLanguageTag("fr-CM")))
 }

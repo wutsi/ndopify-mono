@@ -13,6 +13,8 @@ import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
+import com.wutsi.ndopify.mandate.server.service.MandateConversation
+import com.wutsi.ndopify.mandate.server.service.MandateConversationService
 import com.wutsi.ndopify.match.server.service.MatchLinkTokenService
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
@@ -42,8 +44,9 @@ class VisitCancelledMailetTest {
     private val linkTokenService = mock<MatchLinkTokenService>()
     private val listingImageService = mock<ListingImageService>()
     private val imageService = mockMailImageService()
+    private val conversationService = mock<MandateConversationService>()
     private val mailet =
-        VisitCancelledMailet(tenantService, mailService, mailBodyResolver, linkTokenService, listingImageService, imageService)
+        VisitCancelledMailet(tenantService, mailService, mailBodyResolver, linkTokenService, listingImageService, imageService, conversationService)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -67,6 +70,7 @@ class VisitCancelledMailetTest {
     private val visit = VisitEntity(
         id = 1L,
         tenantId = 1L,
+        mandateId = 1L,
         listingId = 101L,
         agentId = 20L,
         customerId = 10L,
@@ -85,6 +89,14 @@ class VisitCancelledMailetTest {
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn("xxx.yyy.zzz").whenever(linkTokenService).create(customer)
         doReturn("<html>cancelled</html>").whenever(mailBodyResolver).resolve(any(), any())
+        doReturn(
+            MandateConversation(
+                subject = "Votre recherche : appartement à Bastos (Yaounde) · mandat 1",
+                messageId = "mandate-1-1-abc@wutsi.com",
+                inReplyTo = "mandate-1-1@wutsi.com",
+                references = listOf("mandate-1-1@wutsi.com"),
+            ),
+        ).whenever(conversationService).of(1L)
     }
 
     @Test
@@ -95,6 +107,9 @@ class VisitCancelledMailetTest {
         verify(mailService, times(1)).send(email.capture())
         assertEquals("kim.possible@gmail.com", email.firstValue.recipient.email)
         assertEquals("Ndopify: la visite a été annulée", email.firstValue.subject)
+        assertNull(email.firstValue.messageId, "the agent's copy is not threaded")
+        assertNull(email.firstValue.inReplyTo)
+        assertEquals(emptyList<String>(), email.firstValue.references)
         assertNull(email.firstValue.sender)
         assertEquals(
             mapOf(
@@ -124,7 +139,11 @@ class VisitCancelledMailetTest {
         verify(mailService, times(1)).send(email.capture())
         assertEquals("ray.sponsible@gmail.com", email.firstValue.recipient.email)
         assertEquals("Kim Possible", email.firstValue.sender?.displayName)
-        assertEquals("Je dois annuler notre visite", email.firstValue.subject)
+        assertEquals("Votre recherche : appartement à Bastos (Yaounde) · mandat 1", email.firstValue.subject)
+        assertEquals("mandate-1-1-abc@wutsi.com", email.firstValue.messageId)
+        assertEquals("mandate-1-1@wutsi.com", email.firstValue.inReplyTo)
+        assertEquals(listOf("mandate-1-1@wutsi.com"), email.firstValue.references)
+        verify(conversationService).of(1L)
         assertEquals("J'ai annulé la visite.", context()["cancelled_by_label"])
         assertEquals("https://www.ndopify.com/visits/1?token=xxx.yyy.zzz", context()["visit_url"])
         assertEquals(false, context()["system_cancelled"])

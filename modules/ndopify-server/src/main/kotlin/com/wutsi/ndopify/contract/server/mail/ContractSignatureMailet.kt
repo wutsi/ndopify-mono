@@ -5,6 +5,8 @@ import com.wutsi.ndopify.agent.server.mail.AgentMailContext
 import com.wutsi.ndopify.contract.dto.ContractType
 import com.wutsi.ndopify.contract.server.domain.ContractEntity
 import com.wutsi.ndopify.contract.server.domain.ContractPartyEntity
+import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.mandate.server.service.MandateConversationService
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
@@ -13,16 +15,20 @@ import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.springframework.stereotype.Service
 
-/** Asks a party of a contract to read and sign it. */
+/**
+ * Asks a party of a contract to read and sign it. A mandate's contract joins the customer's conversation about that
+ * mandate ([MandateConversationService]): its subject names the mandate, not the request. A lease keeps the platform
+ * subject and carries no thread header, since it has no mandate to thread on.
+ */
 @Service
 class ContractSignatureMailet(
     private val tenantService: TenantService,
     private val mailService: MailService,
     private val mailBodyResolver: MailBodyResolver,
+    private val conversationService: MandateConversationService,
 ) {
     companion object {
         const val SUBJECT = "{{tenant_name}}: Votre contrat {{contract_number}} est prêt à être signé"
-        const val SUBJECT_CUSTOMER = "Votre contrat {{contract_number}} est prêt à être signé"
 
         private val TYPES = mapOf(
             ContractType.SEARCH to "Mandat de recherche",
@@ -33,8 +39,14 @@ class ContractSignatureMailet(
         )
     }
 
-    fun send(contract: ContractEntity, contractParty: ContractPartyEntity, agent: AgentEntity? = null) {
+    fun send(
+        contract: ContractEntity,
+        contractParty: ContractPartyEntity,
+        agent: AgentEntity? = null,
+        mandate: MandateEntity? = null,
+    ) {
         val tenant = tenantService.findById(contract.tenantId!!)
+        val conversation = mandate?.let { conversationService.of(it.id!!) }
         val agentContext = agent?.let {
             AgentMailContext.customer(it, TenantFormatter(tenant)) +
                 mapOf("agent_whatsapp_reply_url" to AgentMailContext.replyUrl(it, "de votre contrat ${contract.number}"))
@@ -43,9 +55,11 @@ class ContractSignatureMailet(
             Email(
                 sender = agent?.let { AgentMailContext.from(it) },
                 recipient = Receipient(email = contractParty.legalEmail, displayName = contractParty.legalName),
-                subject = (if (agent != null) SUBJECT_CUSTOMER else SUBJECT)
-                    .replace("{{tenant_name}}", tenant.name)
-                    .replace("{{contract_number}}", contract.number),
+                subject = conversation?.subject
+                    ?: SUBJECT.replace("{{tenant_name}}", tenant.name).replace("{{contract_number}}", contract.number),
+                messageId = conversation?.messageId,
+                inReplyTo = conversation?.inReplyTo,
+                references = conversation?.references ?: emptyList(),
                 body = mailBodyResolver.resolve(
                     path = "/mail/contract/signature_request.mjml",
                     context = mapOf(
