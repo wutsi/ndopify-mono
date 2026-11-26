@@ -111,6 +111,7 @@ class MandateDocumentControllerTest {
         doReturn(mandate).whenever(mandateClient).get(MANDATE_ID)
         doReturn(mandate.copy(status = MandateStatus.CANCELLED)).whenever(mandateClient).get(311)
         doReturn(document).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+        doReturn(emptyList<MandateDocument>()).whenever(documentClient).search(MANDATE_ID)
 
         mvc = MockMvcBuilders.standaloneSetup(
             MandateDocumentController(currentAgent, mandateClient, documentClient, labels, tenantContext, clock),
