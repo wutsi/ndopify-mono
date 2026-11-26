@@ -677,7 +677,7 @@ class MandateDocumentService(
 
     /**
      * Deletes an object no row references any more (a legacy page's object is in the default storage); a failure is
-     * logged, not fatal.
+     * logged with the mandate id and the exception class only — never the path, which is private.
      */
     private fun deleteQuietly(mandateId: Long, path: String, storageType: StorageType) {
         val storage = if (storageType == StorageType.UNKNOWN) {
@@ -688,7 +688,7 @@ class MandateDocumentService(
         try {
             storage.delete(path)
         } catch (ex: Exception) {
-            LOGGER.warn(">>> Mandate#$mandateId - Could not delete $path", ex)
+            LOGGER.warn(">>> Mandate#$mandateId - could not delete a page object (${ex.javaClass.name})")
         }
     }
 }
