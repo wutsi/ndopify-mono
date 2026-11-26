@@ -2,6 +2,7 @@ package com.wutsi.ndopify.listing.server.service.verifier
 
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.argumentCaptor
+import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
@@ -16,6 +17,7 @@ import com.wutsi.ndopify.listing.server.dao.ListingImageRepository
 import com.wutsi.ndopify.listing.server.domain.ImageKind
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
+import com.wutsi.ndopify.platform.image.ImageService
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -24,6 +26,7 @@ import org.springframework.transaction.TransactionStatus
 import org.springframework.transaction.support.TransactionTemplate
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.time.Clock
@@ -43,12 +46,13 @@ class ListingVerifierImageTest {
     private val extractor = mock<ListingImageInfoExtractor>()
     private val dao = mock<ListingImageRepository>()
     private val clock = mock<Clock>()
+    private val imageService = mock<ImageService>()
     private val tx = TransactionTemplate(
         mock<PlatformTransactionManager> {
             on { getTransaction(any()) } doReturn mock<TransactionStatus>()
         },
     )
-    private val verifier = ListingVerifierImage(extractor, dao, tx, clock, 2)
+    private val verifier = ListingVerifierImage(extractor, dao, tx, clock, imageService, 2)
 
     private val listing = ListingEntity(id = LISTING_ID)
     private lateinit var server: HttpServer
@@ -56,10 +60,12 @@ class ListingVerifierImageTest {
     @BeforeEach
     fun setUp() {
         doReturn(NOW).whenever(clock).millis()
+        doAnswer { it.getArgument<String>(0) }.whenever(imageService).transform(any(), any())
 
         server = HttpServer.create(InetSocketAddress("localhost", 0), 0)
         serve("/image.png", "image/png", png(640, 480))
         serve("/image.webp", "image/webp", byteArrayOf(1, 2, 3))
+        serve("/rendition.jpg", "image/jpeg", byteArrayOf(9, 9, 9))
         server.start()
     }
 
@@ -285,18 +291,69 @@ class ListingVerifierImageTest {
     }
 
     @Test
-    fun `one photo among the maps is enough`() {
-        mockImages(
-            pending = emptyList(),
-            verified = listOf(
-                image(11, status = ImageStatus.VERIFIED).copy(kind = ImageKind.MAP),
-                image(12, status = ImageStatus.VERIFIED),
-            ),
-        )
+    fun `the rendition is sent to the extractor`() {
+        mockImages(pending = listOf(image(11)), verified = emptyList())
+        doReturn(url("/rendition.jpg")).whenever(imageService).transform(any(), any())
+        doReturn(ListingImageInfo(title = "Salon", valid = true, quality = 4))
+            .whenever(extractor).extract(any(), any())
+
+        verifier.verify(listing)
+
+        val file = argumentCaptor<File>()
+        verify(extractor).extract(file.capture(), eq(listing))
+        assertEquals("jpg", file.firstValue.extension)
+        assertEquals(3L, file.firstValue.length())
+        verify(imageService).transform(image(11).url, ListingVerifierImage.VISION_TRANSFORMATION)
+
+        val saved = argumentCaptor<ListingImageEntity>()
+        verify(dao).save(saved.capture())
+        assertEquals(640, saved.firstValue.width)
+        assertEquals(480, saved.firstValue.height)
+    }
+
+    @Test
+    fun `the original is used when the image service leaves the URL unchanged`() {
+        mockImages(pending = listOf(image(11)), verified = emptyList())
+        doReturn(ListingImageInfo(valid = true, quality = 3)).whenever(extractor).extract(any(), any())
+
+        verifier.verify(listing)
+
+        val file = argumentCaptor<File>()
+        verify(extractor).extract(file.capture(), eq(listing))
+        assertEquals("png", file.firstValue.extension)
+        verify(imageService).transform(image(11).url, ListingVerifierImage.VISION_TRANSFORMATION)
+    }
+
+    @Test
+    fun `a failed rendition falls back to the original`() {
+        mockImages(pending = listOf(image(11)), verified = emptyList())
+        doReturn(url("/missing.jpg")).whenever(imageService).transform(any(), any())
+        doReturn(ListingImageInfo(valid = true, quality = 3)).whenever(extractor).extract(any(), any())
 
         val result = verifier.verify(listing)
 
-        assertTrue(result.success)
-        assertNull(result.errorCode)
+        assertEquals(false, result.success) // the mock DAO reports no VERIFIED image, not a resize failure
+        val file = argumentCaptor<File>()
+        verify(extractor).extract(file.capture(), eq(listing))
+        assertEquals("png", file.firstValue.extension)
+
+        val saved = argumentCaptor<ListingImageEntity>()
+        verify(dao).save(saved.capture())
+        assertEquals(ImageStatus.VERIFIED, saved.firstValue.status)
+        assertEquals(640, saved.firstValue.width)
+        assertEquals(480, saved.firstValue.height)
+    }
+
+    @Test
+    fun `a webp upload gets a jpeg rendition`() {
+        mockImages(pending = listOf(image(11, path = "/image.webp")), verified = emptyList())
+        doReturn(url("/rendition.jpg")).whenever(imageService).transform(any(), any())
+        doReturn(ListingImageInfo(valid = true)).whenever(extractor).extract(any(), any())
+
+        verifier.verify(listing)
+
+        val file = argumentCaptor<File>()
+        verify(extractor).extract(file.capture(), eq(listing))
+        assertEquals("jpg", file.firstValue.extension)
     }
 }
