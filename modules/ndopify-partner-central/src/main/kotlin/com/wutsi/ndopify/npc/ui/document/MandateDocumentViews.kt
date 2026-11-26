@@ -46,6 +46,7 @@ object MandateDocumentViews {
         val intro = "Les pièces d'identité et " + (if (listing) "de propriété " else "de financement ") +
             "${words.of}. Privées : jamais publiées ni montrées à un autre agent."
         val count = documents?.size ?: 0
+        val writable = MandateDocumentRules.writable(mandate)
         return DocumentSectionView(
             rows = documents.orEmpty()
                 .sortedByDescending { it.createdAt.time }
@@ -63,11 +64,11 @@ object MandateDocumentViews {
                     )
                 },
             unavailable = documents == null,
-            writable = MandateDocumentRules.writable(mandate),
+            writable = writable,
             emptyHint = hint,
             intro = intro,
             count = count,
-            atLimit = documents != null && MandateDocumentRules.atLimit(count),
+            atLimit = documents != null && writable && MandateDocumentRules.atLimit(count),
         )
     }
 

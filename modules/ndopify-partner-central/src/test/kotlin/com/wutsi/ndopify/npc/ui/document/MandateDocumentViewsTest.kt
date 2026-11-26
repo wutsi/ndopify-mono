@@ -144,6 +144,20 @@ class MandateDocumentViewsTest {
     }
 
     @Test
+    fun `section - a closed mandate at the cap shows no cap notice`() {
+        val section = MandateDocumentViews.section(
+            mandate.copy(status = MandateStatus.CLOSED),
+            List(5) { index -> doc(id = index.toLong()) },
+            FORMATTER,
+            TODAY,
+        )
+
+        assertEquals(5, section.count)
+        assertFalse(section.atLimit)
+        assertFalse(section.writable)
+    }
+
+    @Test
     fun `section - the hint and the intro follow the kind of mandate`() {
         val rentalListing = MandateDocumentViews.section(
             mandate.copy(listingType = ListingType.RENTAL),
