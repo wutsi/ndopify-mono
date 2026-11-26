@@ -2,7 +2,9 @@ package com.wutsi.ndopify.mandate.server.service
 
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.error.dto.ErrorCode
@@ -13,6 +15,8 @@ import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.server.dao.MandateDocumentPageRepository
 import com.wutsi.ndopify.mandate.server.dao.MandateDocumentRepository
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
+import com.wutsi.ndopify.mandate.server.domain.MandateDocumentEntity
+import com.wutsi.ndopify.mandate.server.domain.MandateDocumentPageEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.platform.storage.StorageService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
@@ -22,6 +26,7 @@ import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionStatus
 import org.springframework.transaction.support.TransactionTemplate
 import java.time.Clock
+import java.util.Optional
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -81,5 +86,40 @@ class MandateDocumentServiceTest {
         assertEquals(ErrorCode.MANDATE_ALREADY_CLOSED, exception.error.code)
         verify(storage).delete(path1)
         verify(storage).delete(path2)
+    }
+
+    @Test
+    fun `replacePage - a page save that throws deletes the new object, not the old one`() {
+        val oldPath = "mandate/100/documents/page-1000-1.png"
+        val newPath = "mandate/100/documents/0f8fad5b-d9cb-469f-a165-70867728950e.png"
+
+        doReturn(MandateEntity(id = 100L, status = MandateStatus.ASSIGNED)).whenever(mandateService).findById(100L)
+        doReturn(MandateEntity(id = 100L, status = MandateStatus.ASSIGNED)).whenever(mandateDao).findByIdForUpdate(100L)
+        doReturn(Optional.of(MandateDocumentEntity(id = 1000L, mandateId = 100L))).whenever(documentDao).findById(1000L)
+        doReturn(
+            Optional.of(
+                MandateDocumentPageEntity(
+                    id = 2001L,
+                    documentId = 1000L,
+                    pageIndex = 1,
+                    path = oldPath,
+                    storageType = StorageType.LOCAL,
+                ),
+            ),
+        ).whenever(pageDao).findById(2001L)
+        doReturn(null).whenever(pageDao).findByPath(newPath)
+        doReturn(storage).whenever(storageProvider).get()
+        doReturn(storage).whenever(storageProvider).get(StorageType.S3)
+        doReturn(StorageType.S3).whenever(storage).type()
+        doReturn("image/png").whenever(directUpload).verify(newPath, MandateDocumentService.prefix(100L))
+        doReturn(mock<TransactionStatus>()).whenever(transactionManager).getTransaction(any())
+        doThrow(RuntimeException("boom")).whenever(pageDao).save(any<MandateDocumentPageEntity>())
+
+        assertFailsWith<RuntimeException> {
+            service.replacePage(100, 1000, 2001, newPath)
+        }
+
+        verify(storage).delete(newPath)
+        verify(storage, never()).delete(oldPath)
     }
 }
