@@ -42,8 +42,10 @@ data class KycInfo(
     val issueDate: String? = null,
 
     /** The sides visible among the images provided (`FRONT`, `BACK`), for a two-sided identity document. */
-    val sidesPresent: List<String>? = null,
+    @param:JsonSetter(nulls = Nulls.AS_EMPTY)
+    val sidesPresent: List<String> = emptyList(),
 
     /** One 0..1 confidence per extracted field key, for the mandate document extraction. */
-    val fieldConfidences: Map<String, Double>? = null,
+    @param:JsonSetter(nulls = Nulls.AS_EMPTY)
+    val fieldConfidences: Map<String, Double> = emptyMap(),
 )

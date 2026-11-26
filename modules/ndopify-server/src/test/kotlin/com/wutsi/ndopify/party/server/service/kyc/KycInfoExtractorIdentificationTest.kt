@@ -96,8 +96,8 @@ class KycInfoExtractorIdentificationTest {
 
         assertEquals(null, info.dateOfBirth)
         assertEquals(null, info.issueDate)
-        assertEquals(null, info.sidesPresent)
-        assertEquals(null, info.fieldConfidences)
+        assertEquals(emptyList(), info.sidesPresent)
+        assertEquals(emptyMap(), info.fieldConfidences)
     }
 
     @Test
