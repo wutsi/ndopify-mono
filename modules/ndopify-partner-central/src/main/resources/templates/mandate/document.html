@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(${document} ? |${document.title} — Ndopify Partner Central| : 'Document — Ndopify Partner Central', |Un document d'un mandat : son type, son titre et ses pages.|, false)}"></head>
+<!--/*
+  One document of a mandate (MandateDocumentController, GET /mandates/{id}/documents/{documentId}), opened from a row
+  of the mandate page's Documents section. Its header: the title, the status pill, the type and ONE upload date
+  ("Ajouté le 25 nov. 2026", tenant dateFormat with the year), for the whole document. No image, no preview, no
+  thumbnail, no size anywhere: a page is a plain row "*Page 1*", its *Voir* link (the page's presigned URL, a new
+  tab) and its folded *Remplacer* form. Nothing of a page's path is ever in the HTML.
+  Then *Renommer* (the title and the version the page was loaded with; a blank or over-100 title is a field error,
+  [conflict] is ndopify-server's 409 MANDATE_DOCUMENT_VERSION_CONFLICT with the current title) and *Supprimer le
+  document* (a confirmation; without JS a link to ?delete=1 opens it on this same page, [deleting]).
+  "document" is the DocumentView, "mandate" the MandateView (number and back link). "replaceErrors" holds the
+  replacement error of a page, by page id, and "outcomeText" / "outcomeStyle" the last action's outcome.
+  A CLOSED / CANCELLED mandate shows the document read-only: its pages keep *Voir*, and there is no Remplacer,
+  Renommer nor Supprimer ([document.writable]).
+*/-->
+<body data-page="mandate-document">
+    <th:block th:replace="~{fragments/site-header :: header(@{/}, true)}"></th:block>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link"><a th:href="@{/mandates/{id}#documents-title(id=${document.mandateId})}"
+                    data-back-link>← Retour au mandat</a></p>
+
+            <div class="stack" th:with="d=${document}" data-document>
+                <div class="doc-intro">
+                    <div class="doc-intro__head">
+                        <h1 th:text="${d.title}" data-document-heading>Titre foncier n° 4521</h1>
+                        <span th:class="|status-tag ${#strings.isEmpty(d.status.style) ? '' : 'status-tag--' + d.status.style}|"
+                              data-document-status><span class="visually-hidden">Statut&nbsp;: </span><span
+                                th:text="${d.status.label}">Analysé</span></span>
+                    </div>
+                    <p class="mandate__meta" data-document-meta><th:block th:if="${d.typeLabel}"><span
+                            th:text="${d.typeLabel}" data-document-type>Titre foncier</span> · </th:block>Ajouté le
+                        <span th:text="${d.addedOn}">25 nov. 2026</span></p>
+                    <p class="mandate__meta">Mandat n° <span th:text="${d.mandateId}">301</span></p>
+                </div>
+
+                <!-- The outcome of the last action: renamed, page replaced, or why it couldn't be done. -->
+                <div th:if="${outcomeText}" th:class="|alert alert--${outcomeStyle}|" tabindex="-1"
+                     th:attr="role=${outcomeStyle == 'error'} ? 'alert' : 'status'" data-document-flash>
+                    <th:block th:if="${outcomeStyle == 'success'}"><svg th:replace="~{fragments/icon :: check('icon')}"></svg></th:block>
+                    <th:block th:if="${outcomeStyle == 'error'}"><svg th:replace="~{fragments/icon :: close}"></svg></th:block>
+                    <p th:text="${outcomeText}" data-document-flash-text>Titre du document enregistré.</p>
+                </div>
+
+                <div class="hint" th:unless="${d.writable}" data-document-readonly>
+                    <svg th:replace="~{fragments/icon :: info}"></svg>
+                    <p>Mandat fermé&nbsp;: ce document reste consultable, sans modification.</p>
+                </div>
+
+                <section class="doc-pages-section" aria-labelledby="pages-title">
+                    <h2 id="pages-title" class="doc-manage__title">Pages</h2>
+                    <ol class="doc-pages" data-document-pages>
+                        <li class="doc-page" th:each="page : ${d.pages}">
+                            <div class="doc-page__bar">
+                                <span class="doc-page__caption" th:text="|Page ${page.number}|" data-page-caption>Page 1</span>
+                                <a class="doc-page__view" th:href="${page.url}" target="_blank" rel="noopener"
+                                   data-page-link>Voir<span class="visually-hidden"
+                                        th:text="| la page ${page.number} (nouvel onglet)|"> la page 1 (nouvel onglet)</span></a>
+                            </div>
+                            <details class="doc-page__replace" th:if="${d.writable}"
+                                     th:attr="open=${replaceErrors[page.id] != null ? 'open' : null}" data-page-replace>
+                                <summary>Remplacer<span class="visually-hidden"
+                                        th:text="| la page ${page.number}|"> la page 1</span></summary>
+                                <form class="form" method="post" enctype="multipart/form-data" novalidate
+                                      th:action="@{/mandates/{id}/documents/{documentId}/pages/{pageId}(id=${d.mandateId},documentId=${d.id},pageId=${page.id})}">
+                                    <div class="field">
+                                        <label class="field__label"
+                                               th:for="|page-${page.id}-file|">Nouvelle image de la page <span
+                                                th:text="${page.number}">1</span></label>
+                                        <input class="input input--file" th:id="|page-${page.id}-file|" name="file"
+                                               type="file" accept="image/jpeg,image/png,image/webp"
+                                               th:aria-describedby="|page-${page.id}-file-hint page-${page.id}-file-error|"
+                                               th:aria-invalid="${replaceErrors[page.id] != null ? 'true' : null}">
+                                        <p class="field__hint" th:id="|page-${page.id}-file-hint|">JPEG, PNG ou WEBP,
+                                            5&nbsp;Mo au plus. Elle prend la place de cette page.</p>
+                                        <p class="field__error" th:id="|page-${page.id}-file-error|"
+                                           th:hidden="${replaceErrors[page.id] == null}">
+                                            <svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text
+                                                th:text="${replaceErrors[page.id]}">Cette image dépasse 5 Mo.</span></p>
+                                    </div>
+                                    <button type="submit" class="btn btn--primary btn--compact">Remplacer la page</button>
+                                </form>
+                            </details>
+                        </li>
+                    </ol>
+                </section>
+
+                <!-- Renommer and Supprimer: rare, under the pages. Absent on a closed or cancelled mandate. -->
+                <div class="doc-manage" th:if="${d.writable}" data-document-manage>
+                    <details class="edit-group" th:attr="open=${conflict or renameErrors['title'] != null ? 'open' : null}"
+                             data-rename>
+                        <summary>
+                            <span class="edit-group__title">Renommer</span>
+                            <span class="edit-group__value">Changer le titre du document</span>
+                        </summary>
+                        <div class="edit-group__body">
+                            <!-- 409 MANDATE_DOCUMENT_VERSION_CONFLICT: the current title is back in the field. -->
+                            <div class="alert alert--warning" role="alert" tabindex="-1" th:if="${conflict}"
+                                 data-rename-conflict>
+                                <svg th:replace="~{fragments/icon :: warning}"></svg>
+                                <div>
+                                    <p class="alert__title">Le document a changé entre-temps</p>
+                                    <p>Il a été modifié depuis que vous l'avez ouvert (dans un autre onglet, par
+                                        exemple). Voici son titre actuel&nbsp;: vérifiez-le, puis enregistrez de
+                                        nouveau.</p>
+                                </div>
+                            </div>
+                            <form class="form" method="post" novalidate
+                                  th:action="@{/mandates/{id}/documents/{documentId}/rename(id=${d.mandateId},documentId=${d.id})}"
+                                  data-rename-form>
+                                <input type="hidden" name="version" th:value="${renameForm.version}">
+                                <div class="field">
+                                    <label class="field__label" for="documentTitle">Titre</label>
+                                    <input class="input" id="documentTitle" name="title" type="text" maxlength="100"
+                                           autocomplete="off" th:value="${renameForm.title}" placeholder="Titre foncier"
+                                           aria-describedby="documentTitle-counter documentTitle-error"
+                                           th:attr="aria-invalid=${renameErrors['title'] != null ? 'true' : null}">
+                                    <p class="field__counter" id="documentTitle-counter" data-title-counter>0 / 100</p>
+                                    <p class="field__error" id="documentTitle-error"
+                                       th:hidden="${renameErrors['title'] == null}">
+                                        <svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text
+                                            th:text="${renameErrors['title']}">Indiquez un titre.</span></p>
+                                </div>
+                                <div class="form__actions form__actions--end">
+                                    <button type="submit" class="btn btn--primary">Enregistrer le titre</button>
+                                </div>
+                            </form>
+                        </div>
+                    </details>
+
+                    <div class="doc-manage__box">
+                        <a class="btn btn--danger"
+                           th:href="@{/mandates/{id}/documents/{documentId}(id=${d.mandateId},documentId=${d.id},delete=1)}"
+                           th:attr="aria-expanded=${deleting},aria-controls=delete-confirm" data-delete-open>Supprimer le
+                            document</a>
+                        <!-- Without JS: ?delete=1 renders this page with the panel open. -->
+                        <div id="delete-confirm" class="alert alert--warning" th:if="${deleting}" data-delete-confirm>
+                            <svg th:replace="~{fragments/icon :: warning}"></svg>
+                            <div>
+                                <p class="alert__title" tabindex="-1">Supprimer ce document&nbsp;?</p>
+                                <p><span th:text="|Ses ${#lists.size(d.pages)} ${#lists.size(d.pages) > 1 ? 'pages sont' : 'page est'}|">Ses
+                                    2 pages sont</span> supprimées définitivement. Pour le remplacer, ajoutez-le de
+                                    nouveau depuis le mandat.</p>
+                                <form method="post"
+                                      th:action="@{/mandates/{id}/documents/{documentId}/delete(id=${d.mandateId},documentId=${d.id})}"
+                                      data-delete-form>
+                                    <div class="assignment__actions">
+                                        <button type="submit" class="btn btn--danger">Supprimer</button>
+                                        <a class="btn btn--outline"
+                                           th:href="@{/mandates/{id}/documents/{documentId}(id=${d.mandateId},documentId=${d.id})}"
+                                           data-delete-cancel>Annuler</a>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

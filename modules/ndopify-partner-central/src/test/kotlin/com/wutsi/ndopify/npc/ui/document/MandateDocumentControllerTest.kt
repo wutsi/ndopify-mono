@@ -1,0 +1,643 @@
+package com.wutsi.ndopify.npc.ui.document
+
+import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.anyOrNull
+import com.nhaarman.mockitokotlin2.argumentCaptor
+import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.doThrow
+import com.nhaarman.mockitokotlin2.eq
+import com.nhaarman.mockitokotlin2.isNull
+import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.never
+import com.nhaarman.mockitokotlin2.verify
+import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.error.dto.Error
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.error.dto.Parameter
+import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.mandate.dto.DocumentStatus
+import com.wutsi.ndopify.mandate.dto.DocumentType
+import com.wutsi.ndopify.mandate.dto.Mandate
+import com.wutsi.ndopify.mandate.dto.MandateDocument
+import com.wutsi.ndopify.mandate.dto.MandateDocumentPage
+import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.UpdateMandateDocumentRequest
+import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMandateDocumentClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMandateDocumentClient.UploadedPage
+import com.wutsi.ndopify.npc.service.TenantFixtures
+import com.wutsi.ndopify.npc.service.security.CurrentAgent
+import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
+import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
+import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
+import com.wutsi.ndopify.web.core.service.TenantContext
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.springframework.http.HttpStatus
+import org.springframework.mock.web.MockMultipartFile
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.MvcResult
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.setup.MockMvcBuilders
+import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.HttpServerErrorException
+import org.springframework.web.client.ResourceAccessException
+import org.springframework.web.servlet.view.InternalResourceViewResolver
+import java.time.Clock
+import java.time.Instant
+import java.util.Date
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+class MandateDocumentControllerTest {
+    companion object {
+        const val MANDATE_ID = 301L
+        const val DOCUMENT_ID = 3103L
+    }
+
+    private val currentAgent = mock<CurrentAgent>()
+    private val mandateClient = mock<NdMandateClient>()
+    private val documentClient = mock<NdMandateDocumentClient>()
+    private val tenantContext = mock<TenantContext>()
+    private val clock = mock<Clock>()
+    private lateinit var mvc: MockMvc
+
+    private val mandate = Mandate(
+        id = MANDATE_ID,
+        status = MandateStatus.APPROVED,
+        mandateType = MandateType.LISTING,
+        listingType = ListingType.SALE,
+    )
+    private val page1 = MandateDocumentPage(id = 2001, index = 0, url = "https://s3/1")
+    private val page2 = MandateDocumentPage(id = 2002, index = 1, url = "https://s3/2")
+    private val document = MandateDocument(
+        id = DOCUMENT_ID,
+        mandateId = MANDATE_ID,
+        type = DocumentType.LAND_TITLE,
+        title = "Titre foncier n° 4521",
+        status = DocumentStatus.EXTRACTED,
+        pages = listOf(page1, page2),
+        version = 3,
+        createdAt = Date.from(Instant.parse("2026-11-25T10:00:00Z")),
+        modifiedAt = Date.from(Instant.parse("2026-11-25T10:00:00Z")),
+    )
+
+    // Magic numbers are enough for Tika to tell the type from the bytes.
+    private val jpeg = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte(), 0, 0x10) + ByteArray(64)
+
+    @BeforeEach
+    fun setUp() {
+        doReturn(AGENT).whenever(currentAgent).get()
+        doReturn(TenantFixtures.TENANT).whenever(tenantContext).getTenant()
+        doReturn(Date.from(Instant.parse("2026-11-26T10:00:00Z")).time).whenever(clock).millis()
+        doReturn(mandate).whenever(mandateClient).get(MANDATE_ID)
+        doReturn(mandate.copy(status = MandateStatus.CANCELLED)).whenever(mandateClient).get(311)
+        doReturn(document).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        mvc = MockMvcBuilders.standaloneSetup(
+            MandateDocumentController(currentAgent, mandateClient, documentClient, tenantContext, clock),
+        )
+            .setControllerAdvice(HttpClientErrorHandler(mock()))
+            .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
+            .build()
+    }
+
+    private fun model(result: MvcResult) = result.modelAndView!!.model
+
+    private fun photo(bytes: ByteArray = jpeg, name: String = "IMG_2041.jpg") =
+        MockMultipartFile("files", name, "image/jpeg", bytes)
+
+    private fun replacement(bytes: ByteArray = jpeg) = MockMultipartFile("file", "page.jpg", "image/jpeg", bytes)
+
+    private fun serverError(status: HttpStatus, code: String = "", parameter: String? = null): HttpClientErrorException {
+        val ex = HttpClientErrorException(status)
+        ex.setBodyConvertFunction {
+            ErrorResponse(Error(code = code, parameter = parameter?.let { Parameter(name = it) }))
+        }
+        return ex
+    }
+
+    @Test
+    fun `add form`() {
+        val result = mvc.perform(get("/mandates/$MANDATE_ID/documents/new")).andReturn()
+
+        assertEquals(MandateDocumentController.VIEW_NEW, result.modelAndView?.viewName)
+        val model = model(result)
+        assertEquals(
+            listOf(
+                DocumentType.NATIONAL_ID,
+                DocumentType.PASSPORT,
+                DocumentType.LAND_TITLE,
+                DocumentType.CERTIFICATE_OF_OWNERSHIP,
+                DocumentType.SURVEY_PLAN,
+                DocumentType.POWER_OF_ATTORNEY,
+            ),
+            model["suggested"],
+        )
+        assertTrue((model["others"] as List<*>).last() == DocumentType.OTHER)
+        assertEquals(AddDocumentForm(), model["form"])
+        assertEquals(emptyMap<String, String>(), model["errors"])
+        assertEquals(MANDATE_ID, (model["mandate"] as com.wutsi.ndopify.npc.ui.mandate.MandateView).id)
+    }
+
+    @Test
+    fun `add - a 5 Mo page shows the size error`() {
+        val result = mvc
+            .perform(
+                multipart("/mandates/$MANDATE_ID/documents")
+                    .file(photo(jpeg + ByteArray(5 * 1024 * 1024)))
+                    .param("type", DocumentType.LAND_TITLE.name)
+                    .param("title", "Titre foncier lot 12"),
+            )
+            .andReturn()
+
+        assertEquals(
+            "« IMG_2041.jpg » dépasse 5 Mo : reprenez la photo, ou choisissez une image plus légère.",
+            (model(result)["errors"] as Map<*, *>)["files"],
+        )
+        assertEquals("Titre foncier lot 12", (model(result)["form"] as AddDocumentForm).title)
+    }
+
+    @Test
+    fun `add form - closed mandate - changed`() {
+        val result = mvc.perform(get("/mandates/311/documents/new")).andReturn()
+
+        assertEquals("redirect:/mandates/311", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.CHANGED, result.flashes()["documentOutcome"])
+    }
+
+    @Test
+    fun `add form - another agent's mandate - changed`() {
+        doThrow(HttpClientErrorException.Forbidden::class).whenever(mandateClient).get(MANDATE_ID)
+
+        val result = mvc.perform(get("/mandates/$MANDATE_ID/documents/new")).andReturn()
+
+        assertEquals("redirect:/mandates/$MANDATE_ID", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.CHANGED, result.flashes()["documentOutcome"])
+    }
+
+    @Test
+    fun `add - redirects to the mandate page with its title`() {
+        doReturn(42L).whenever(documentClient).upload(any(), any(), any(), any())
+
+        val result = mvc
+            .perform(
+                multipart("/mandates/$MANDATE_ID/documents")
+                    .file(photo())
+                    .file(photo(name = "verso.png"))
+                    .param("type", DocumentType.LAND_TITLE.name)
+                    .param("title", "  Titre foncier lot 12  "),
+            )
+            .andReturn()
+
+        val pages = argumentCaptor<List<UploadedPage>>()
+        verify(documentClient).upload(any(), any(), any(), pages.capture())
+        assertEquals(listOf("IMG_2041.jpg", "verso.png"), pages.firstValue.map { it.filename })
+        assertEquals("image/jpeg", pages.firstValue.first().mimeType)
+        assertEquals("redirect:/mandates/$MANDATE_ID#documents-title", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.ADDED, result.flashes()["documentOutcome"])
+        assertEquals("Titre foncier lot 12", result.flashes()["documentTitle"])
+    }
+
+    @Test
+    fun `add - a blank title takes the type's name back`() {
+        val result = mvc
+            .perform(
+                multipart("/mandates/$MANDATE_ID/documents")
+                    .file(photo())
+                    .param("type", DocumentType.PASSPORT.name)
+                    .param("title", "   "),
+            )
+            .andReturn()
+
+        verify(documentClient).upload(eq(MANDATE_ID), eq(DocumentType.PASSPORT), isNull(), any())
+        assertEquals("Passeport", result.flashes()["documentTitle"])
+    }
+
+    @Test
+    fun `add - no type - the form again, the title kept`() {
+        val result = mvc
+            .perform(multipart("/mandates/$MANDATE_ID/documents").file(photo()).param("title", "Titre foncier"))
+            .andReturn()
+
+        assertEquals(MandateDocumentController.VIEW_NEW, result.modelAndView?.viewName)
+        assertEquals(mapOf("type" to "Choisissez le type de document."), model(result)["errors"])
+        assertEquals(AddDocumentForm(type = "", title = "Titre foncier"), model(result)["form"])
+        verify(documentClient, never()).upload(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `add - no page`() {
+        val result = mvc
+            .perform(multipart("/mandates/$MANDATE_ID/documents").param("type", DocumentType.PASSPORT.name))
+            .andReturn()
+
+        assertEquals(mapOf("files" to "Ajoutez au moins une page."), model(result)["errors"])
+    }
+
+    @Test
+    fun `add - eleven pages`() {
+        val request = multipart("/mandates/$MANDATE_ID/documents").param("type", DocumentType.PASSPORT.name)
+        repeat(11) { request.file(photo(name = "p$it.jpg")) }
+
+        val result = mvc.perform(request).andReturn()
+
+        assertEquals(mapOf("files" to "10 pages au plus."), model(result)["errors"])
+    }
+
+    @Test
+    fun `add - a title over 100 characters`() {
+        val result = mvc
+            .perform(
+                multipart("/mandates/$MANDATE_ID/documents")
+                    .file(photo())
+                    .param("type", DocumentType.PASSPORT.name)
+                    .param("title", "a".repeat(101)),
+            )
+            .andReturn()
+
+        assertEquals(mapOf("title" to "100 caractères au plus."), model(result)["errors"])
+    }
+
+    @Test
+    fun `add - a file that isn't an image`() {
+        val result = mvc
+            .perform(
+                multipart("/mandates/$MANDATE_ID/documents")
+                    .file(MockMultipartFile("files", "scan.pdf", "image/jpeg", "%PDF-1.4\n".toByteArray() + ByteArray(64)))
+                    .param("type", DocumentType.PASSPORT.name),
+            )
+            .andReturn()
+
+        assertEquals(
+            mapOf("files" to "« scan.pdf » n'est pas une image JPEG, PNG ou WEBP."),
+            model(result)["errors"],
+        )
+    }
+
+    @Test
+    fun `add - over the multipart limit - the size error`() {
+        val result = mvc.perform(get("/mandates/$MANDATE_ID/documents/new").param("error", "too-large")).andReturn()
+
+        assertEquals(MandateDocumentController.VIEW_NEW, result.modelAndView?.viewName)
+        assertEquals(mapOf("files" to MandateDocumentController.TOO_LARGE), model(result)["errors"])
+    }
+
+    @Test
+    fun `add - a server 400 on a field`() {
+        doThrow(serverError(HttpStatus.BAD_REQUEST, ErrorCode.HTTP_INVALID_PARAMETER, "title"))
+            .whenever(documentClient).upload(any(), any(), any(), any())
+
+        val result = mvc
+            .perform(
+                multipart("/mandates/$MANDATE_ID/documents")
+                    .file(photo())
+                    .param("type", DocumentType.PASSPORT.name)
+                    .param("title", "Titre"),
+            )
+            .andReturn()
+
+        assertEquals(MandateDocumentController.VIEW_NEW, result.modelAndView?.viewName)
+        assertNotNull((model(result)["errors"] as Map<*, *>)["title"])
+        assertEquals("Titre", (model(result)["form"] as AddDocumentForm).title)
+    }
+
+    @Test
+    fun `add - a server 400 without a field is on the pages`() {
+        doThrow(serverError(HttpStatus.BAD_REQUEST, ErrorCode.HTTP_INVALID_PARAMETER, "file"))
+            .whenever(documentClient).upload(any(), any(), anyOrNull(), any())
+
+        val result = mvc
+            .perform(multipart("/mandates/$MANDATE_ID/documents").file(photo()).param("type", DocumentType.PASSPORT.name))
+            .andReturn()
+
+        assertNotNull((model(result)["errors"] as Map<*, *>)["files"])
+    }
+
+    @Test
+    fun `add - the mandate closed meanwhile - changed`() {
+        doThrow(serverError(HttpStatus.CONFLICT, ErrorCode.MANDATE_ALREADY_CLOSED))
+            .whenever(documentClient).upload(any(), any(), anyOrNull(), any())
+
+        val result = mvc
+            .perform(multipart("/mandates/$MANDATE_ID/documents").file(photo()).param("type", DocumentType.PASSPORT.name))
+            .andReturn()
+
+        assertEquals("redirect:/mandates/$MANDATE_ID", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.CHANGED, result.flashes()["documentOutcome"])
+    }
+
+    @Test
+    fun `add - the server fails - the form again`() {
+        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR))
+            .whenever(documentClient).upload(any(), any(), anyOrNull(), any())
+
+        val result = mvc
+            .perform(multipart("/mandates/$MANDATE_ID/documents").file(photo()).param("type", DocumentType.PASSPORT.name))
+            .andReturn()
+
+        assertEquals(MandateDocumentController.VIEW_NEW, result.modelAndView?.viewName)
+        assertNotNull(model(result)["error"])
+    }
+
+    @Test
+    fun `add - the server is unreachable - the form again`() {
+        doThrow(ResourceAccessException("down")).whenever(documentClient).upload(any(), any(), anyOrNull(), any())
+
+        val result = mvc
+            .perform(multipart("/mandates/$MANDATE_ID/documents").file(photo()).param("type", DocumentType.PASSPORT.name))
+            .andReturn()
+
+        assertEquals(MandateDocumentController.VIEW_NEW, result.modelAndView?.viewName)
+        assertNotNull(model(result)["error"])
+    }
+
+    @Test
+    fun `document page`() {
+        val result = mvc.perform(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID")).andReturn()
+
+        assertEquals(MandateDocumentController.VIEW_DOCUMENT, result.modelAndView?.viewName)
+        val view = model(result)["document"] as DocumentView
+        assertEquals("Titre foncier n° 4521", view.title)
+        assertEquals(listOf("https://s3/1", "https://s3/2"), view.pages.map { it.url })
+        assertEquals(RenameDocumentForm(title = "Titre foncier n° 4521", version = 3), model(result)["renameForm"])
+        assertEquals(false, model(result)["conflict"])
+        assertEquals(false, model(result)["deleting"])
+    }
+
+    @Test
+    fun `document page - delete confirmation open without JS`() {
+        val result = mvc.perform(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID").param("delete", "1")).andReturn()
+
+        assertEquals(true, model(result)["deleting"])
+    }
+
+    @Test
+    fun `document page - a document of another mandate - changed`() {
+        doThrow(serverError(HttpStatus.NOT_FOUND, ErrorCode.MANDATE_DOCUMENT_NOT_FOUND))
+            .whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val result = mvc.perform(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID")).andReturn()
+
+        assertEquals("redirect:/mandates/$MANDATE_ID", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.CHANGED, result.flashes()["documentOutcome"])
+    }
+
+    @Test
+    fun `document page - a malformed id - changed`() {
+        val result = mvc.perform(get("/mandates/$MANDATE_ID/documents/not-a-number")).andReturn()
+
+        assertEquals("redirect:/mandates/$MANDATE_ID", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun `document page - a replacement over the multipart limit shows its page's error`() {
+        val result = mvc
+            .perform(
+                get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID")
+                    .param("replaceError", "size")
+                    .param("page", page2.id.toString()),
+            )
+            .andReturn()
+
+        assertEquals(mapOf(page2.id to MandateDocumentController.TOO_LARGE), model(result)["replaceErrors"])
+    }
+
+    @Test
+    fun `document page - a closed mandate keeps it readable`() {
+        doReturn(mandate.copy(status = MandateStatus.CLOSED)).whenever(mandateClient).get(MANDATE_ID)
+
+        val result = mvc.perform(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID")).andReturn()
+
+        assertEquals(MandateDocumentController.VIEW_DOCUMENT, result.modelAndView?.viewName)
+        assertFalse((model(result)["document"] as DocumentView).writable)
+    }
+
+    @Test
+    fun `rename`() {
+        val result = mvc
+            .perform(
+                post("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/rename")
+                    .param("title", "  Titre foncier lot 12 ")
+                    .param("version", "3"),
+            )
+            .andReturn()
+
+        verify(documentClient).rename(
+            MANDATE_ID,
+            DOCUMENT_ID,
+            UpdateMandateDocumentRequest(title = "Titre foncier lot 12", version = 3),
+        )
+        assertEquals("redirect:/mandates/$MANDATE_ID/documents/$DOCUMENT_ID", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.RENAMED, result.flashes()["outcome"])
+    }
+
+    @Test
+    fun `rename - a blank title`() {
+        val result = mvc
+            .perform(post("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/rename").param("title", "  "))
+            .andReturn()
+
+        assertEquals(MandateDocumentController.VIEW_DOCUMENT, result.modelAndView?.viewName)
+        assertEquals(mapOf("title" to "Indiquez un titre."), model(result)["renameErrors"])
+        verify(documentClient, never()).rename(any(), any(), any())
+    }
+
+    @Test
+    fun `rename - over 100 characters`() {
+        val result = mvc
+            .perform(post("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/rename").param("title", "a".repeat(101)))
+            .andReturn()
+
+        assertEquals(mapOf("title" to "100 caractères au plus."), model(result)["renameErrors"])
+    }
+
+    @Test
+    fun `rename - changed since the page was loaded - the current title`() {
+        doThrow(serverError(HttpStatus.CONFLICT, ErrorCode.MANDATE_DOCUMENT_VERSION_CONFLICT))
+            .whenever(documentClient).rename(any(), any(), any())
+
+        val result = mvc
+            .perform(
+                post("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/rename")
+                    .param("title", "Titre foncier lot 12")
+                    .param("version", "2"),
+            )
+            .andReturn()
+
+        assertEquals(MandateDocumentController.VIEW_DOCUMENT, result.modelAndView?.viewName)
+        assertEquals(true, model(result)["conflict"])
+        assertEquals("Titre foncier n° 4521", (model(result)["renameForm"] as RenameDocumentForm).title)
+        assertEquals(3, (model(result)["renameForm"] as RenameDocumentForm).version)
+    }
+
+    @Test
+    fun `rename - the mandate closed meanwhile - changed`() {
+        doThrow(serverError(HttpStatus.CONFLICT, ErrorCode.MANDATE_ALREADY_CLOSED))
+            .whenever(documentClient).rename(any(), any(), any())
+
+        val result = mvc
+            .perform(post("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/rename").param("title", "Titre"))
+            .andReturn()
+
+        assertEquals("redirect:/mandates/$MANDATE_ID", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.CHANGED, result.flashes()["documentOutcome"])
+    }
+
+    @Test
+    fun `rename - the document is gone - changed`() {
+        doThrow(serverError(HttpStatus.NOT_FOUND, ErrorCode.MANDATE_DOCUMENT_NOT_FOUND))
+            .whenever(documentClient).rename(any(), any(), any())
+
+        val result = mvc
+            .perform(post("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/rename").param("title", "Titre"))
+            .andReturn()
+
+        assertEquals("redirect:/mandates/$MANDATE_ID", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun `rename - the server fails - the document page says so`() {
+        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR))
+            .whenever(documentClient).rename(any(), any(), any())
+
+        val result = mvc
+            .perform(post("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/rename").param("title", "Titre"))
+            .andReturn()
+
+        assertEquals("redirect:/mandates/$MANDATE_ID/documents/$DOCUMENT_ID", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.FAILED, result.flashes()["outcome"])
+        assertNotNull(result.flashes()["outcomeMessage"])
+    }
+
+    @Test
+    fun `replace a page`() {
+        val result = mvc
+            .perform(multipart("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page2.id}").file(replacement()))
+            .andReturn()
+
+        val page = argumentCaptor<UploadedPage>()
+        verify(documentClient).uploadReplacementPage(any(), any(), any(), page.capture())
+        assertEquals("page.jpg", page.firstValue.filename)
+        assertEquals("redirect:/mandates/$MANDATE_ID/documents/$DOCUMENT_ID", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.REPLACED, result.flashes()["outcome"])
+        assertEquals(2, result.flashes()["page"])
+    }
+
+    @Test
+    fun `replace a page - no file`() {
+        val result = mvc
+            .perform(multipart("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page2.id}"))
+            .andReturn()
+
+        assertEquals(
+            mapOf(page2.id to "Choisissez une image."),
+            model(result)["replaceErrors"],
+        )
+        verify(documentClient, never()).uploadReplacementPage(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `replace a page - a 6 Mo file`() {
+        val result = mvc
+            .perform(
+                multipart("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page2.id}")
+                    .file(replacement(jpeg + ByteArray(6 * 1024 * 1024))),
+            )
+            .andReturn()
+
+        assertEquals(
+            mapOf(page2.id to "Cette image dépasse 5 Mo : reprenez la photo, ou choisissez une image plus légère."),
+            model(result)["replaceErrors"],
+        )
+    }
+
+    @Test
+    fun `replace a page - a page of another document - changed`() {
+        val result = mvc
+            .perform(multipart("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/9999").file(replacement()))
+            .andReturn()
+
+        assertEquals("redirect:/mandates/$MANDATE_ID", result.modelAndView?.viewName)
+        verify(documentClient, never()).uploadReplacementPage(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `replace a page - the server refuses it - changed`() {
+        doThrow(serverError(HttpStatus.NOT_FOUND, ErrorCode.MANDATE_DOCUMENT_PAGE_NOT_FOUND))
+            .whenever(documentClient).uploadReplacementPage(any(), any(), any(), any())
+
+        val result = mvc
+            .perform(multipart("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page2.id}").file(replacement()))
+            .andReturn()
+
+        assertEquals("redirect:/mandates/$MANDATE_ID", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.CHANGED, result.flashes()["documentOutcome"])
+    }
+
+    @Test
+    fun `delete`() {
+        val result = mvc.perform(post("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/delete")).andReturn()
+
+        verify(documentClient).delete(MANDATE_ID, DOCUMENT_ID)
+        assertEquals("redirect:/mandates/$MANDATE_ID#documents-title", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.DELETED, result.flashes()["documentOutcome"])
+    }
+
+    @Test
+    fun `delete - the mandate closed meanwhile - changed`() {
+        doThrow(serverError(HttpStatus.CONFLICT, ErrorCode.MANDATE_ALREADY_CLOSED))
+            .whenever(documentClient).delete(any(), any())
+
+        val result = mvc.perform(post("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/delete")).andReturn()
+
+        assertEquals("redirect:/mandates/$MANDATE_ID", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.CHANGED, result.flashes()["documentOutcome"])
+    }
+
+    @Test
+    fun `delete - the document is gone - changed`() {
+        doThrow(serverError(HttpStatus.NOT_FOUND, ErrorCode.MANDATE_DOCUMENT_NOT_FOUND))
+            .whenever(documentClient).delete(any(), any())
+
+        val result = mvc.perform(post("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/delete")).andReturn()
+
+        assertEquals("redirect:/mandates/$MANDATE_ID", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun `delete - the server fails - the mandate page says so`() {
+        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR))
+            .whenever(documentClient).delete(any(), any())
+
+        val result = mvc.perform(post("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/delete")).andReturn()
+
+        assertEquals("redirect:/mandates/$MANDATE_ID#documents-title", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.FAILED, result.flashes()["documentOutcome"])
+    }
+
+    @Test
+    fun `not an agent - signed out`() {
+        doReturn(null).whenever(currentAgent).get()
+
+        val result = mvc.perform(get("/mandates/$MANDATE_ID/documents/new")).andReturn()
+
+        assertEquals("redirect:/login", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun `a malformed mandate id - the Espace agent`() {
+        val result = mvc.perform(get("/mandates/not-a-number/documents/new")).andReturn()
+
+        assertEquals("redirect:/", result.modelAndView?.viewName)
+    }
+
+    private fun MvcResult.flashes(): Map<String, Any?> = flashMap
+}
