@@ -304,6 +304,16 @@ class ReplaceMandateDocumentPageEndpointTest : AuthorizationAwareEndpointIntegra
         assertEquals(newPath, pageDao.findById(2020).orElseThrow().path)
     }
 
+    @Test
+    fun `replace - a page of an 11-page grandfathered document is replaced`() {
+        uploaded(newPath)
+
+        val response = replacePage(100, 1008, 2060, AttachUploadRequest(path = newPath))
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(newPath, pageDao.findById(2060).orElseThrow().path)
+    }
+
     private fun replacePage(id: Long, documentId: Long, pageId: Long, request: AttachUploadRequest) =
         rest.postForEntity(
             "/v1/mandates/$id/documents/$documentId/pages/$pageId",

@@ -683,6 +683,37 @@ class MandateDocumentServiceTest {
     }
 
     @Test
+    fun `create - a mandate with 6 documents refuses the 7th`() {
+        writable()
+        doReturn(6L).whenever(documentDao).countByMandateId(100L)
+
+        val exception = assertFailsWith<BadRequestException> {
+            service.create(100, CreateMandateDocumentRequest(type = DocumentType.LAND_TITLE, paths = listOf(path1)))
+        }
+
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_LIMIT_REACHED, exception.error.code)
+        verify(documentDao, never()).save(any<MandateDocumentEntity>())
+    }
+
+    @Test
+    fun `create - a delete frees a document slot`() {
+        writable()
+        doReturn(5L, 4L).whenever(documentDao).countByMandateId(100L)
+        doReturn("image/png").whenever(directUpload).verify(any(), any())
+        doReturn(null).whenever(pageDao).findByPath(any())
+        doReturn(MandateDocumentEntity(id = 2000L, mandateId = 100L)).whenever(documentDao).save(any())
+        doAnswer { it.getArgument<MandateDocumentPageEntity>(0) }.whenever(pageDao).save(any())
+
+        assertFailsWith<BadRequestException> {
+            service.create(100, CreateMandateDocumentRequest(type = DocumentType.LAND_TITLE, paths = listOf(path1)))
+        }
+        // The count is live: once a document is deleted, the slot is free again.
+        service.create(100, CreateMandateDocumentRequest(type = DocumentType.LAND_TITLE, paths = listOf(path2)))
+
+        verify(documentDao).save(any<MandateDocumentEntity>())
+    }
+
+    @Test
     fun `upload - a 6th document is refused before a file is stored`() {
         writable()
         doReturn(5L).whenever(documentDao).countByMandateId(100L)

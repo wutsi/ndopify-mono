@@ -59,7 +59,8 @@ INSERT INTO T_MANDATE_DOCUMENT(id, tenant_id, mandate_id, type, title, status, s
     (1004, 1, 100, 'LAND_TITLE', 'Dix pages', 'UPLOADED', 'IMAGE', 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (1005, 1, 100, 'LAND_TITLE', 'Onze pages', 'UPLOADED', 'IMAGE', 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (1006, 1, 100, 'LAND_TITLE', 'Neuf pages PDF', 'UPLOADED', 'PDF', 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    (1007, 1, 100, 'LAND_TITLE', 'Sans kind', 'UPLOADED', NULL, 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00');
+    (1007, 1, 100, 'LAND_TITLE', 'Sans kind', 'UPLOADED', NULL, 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (1008, 1, 100, 'LAND_TITLE', 'Onze pages sans kind', 'UPLOADED', NULL, 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
 INSERT INTO T_MANDATE_DOCUMENT_PAGE(id, tenant_id, document_id, page_index, path, storage_type, mime_type, created_at, modified_at) VALUES
     (2005, 1, 1002, 0, 'mandate/100/documents/page-1002-0.jpg', 'S3', 'image/jpeg', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
@@ -94,5 +95,15 @@ INSERT INTO T_MANDATE_DOCUMENT_PAGE(id, tenant_id, document_id, page_index, path
     (2046, 1, 1006, 6, 'mandate/100/documents/page-1006-6.jpg', 'S3', 'image/jpeg', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (2047, 1, 1006, 7, 'mandate/100/documents/page-1006-7.jpg', 'S3', 'image/jpeg', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (2048, 1, 1006, 8, 'mandate/100/documents/page-1006-8.jpg', 'S3', 'image/jpeg', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    (2050, 1, 1007, 0, 'mandate/100/documents/page-1007-0.png', 'S3', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
-
+    (2050, 1, 1007, 0, 'mandate/100/documents/page-1007-0.png', 'S3', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (2060, 1, 1008, 0, 'mandate/100/documents/page-1008-0.png', 'S3', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (2061, 1, 1008, 1, 'mandate/100/documents/page-1008-1.png', 'S3', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (2062, 1, 1008, 2, 'mandate/100/documents/page-1008-2.png', 'S3', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (2063, 1, 1008, 3, 'mandate/100/documents/page-1008-3.png', 'S3', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (2064, 1, 1008, 4, 'mandate/100/documents/page-1008-4.png', 'S3', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (2065, 1, 1008, 5, 'mandate/100/documents/page-1008-5.png', 'S3', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (2066, 1, 1008, 6, 'mandate/100/documents/page-1008-6.png', 'S3', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (2067, 1, 1008, 7, 'mandate/100/documents/page-1008-7.png', 'S3', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (2068, 1, 1008, 8, 'mandate/100/documents/page-1008-8.png', 'S3', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (2069, 1, 1008, 9, 'mandate/100/documents/page-1008-9.png', 'S3', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (2070, 1, 1008, 10, 'mandate/100/documents/page-1008-10.png', 'S3', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00');

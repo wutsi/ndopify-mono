@@ -66,11 +66,21 @@ class GetMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationTest
 
     @Test
     fun `get - the kind the document was created from`() {
-        val pdf = rest.getForEntity("/v1/mandates/100/documents/17", GetMandateDocumentResponse::class.java).body!!.document
-        val legacy = rest.getForEntity("/v1/mandates/100/documents/18", GetMandateDocumentResponse::class.java).body!!.document
+        val pdf = rest.getForEntity("/v1/mandates/101/documents/17", GetMandateDocumentResponse::class.java).body!!.document
+        val legacy = rest.getForEntity("/v1/mandates/101/documents/18", GetMandateDocumentResponse::class.java).body!!.document
 
         assertEquals(DocumentSource.PDF, pdf.source)
         assertEquals(DocumentSource.UNKNOWN, legacy.source)
+    }
+
+    @Test
+    fun `get - a grandfathered document keeps its 11 pages`() {
+        val document = rest.getForEntity("/v1/mandates/101/documents/19", GetMandateDocumentResponse::class.java)
+            .body!!.document
+
+        assertEquals(DocumentSource.UNKNOWN, document.source)
+        assertEquals(11, document.pages.size)
+        assertEquals((0..10).toList(), document.pages.map { it.index })
     }
 
     @Test

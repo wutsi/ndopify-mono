@@ -68,6 +68,15 @@ class DeleteMandateDocumentPageEndpointTest : AuthorizationAwareEndpointIntegrat
         verify(s3, never()).delete(any())
     }
 
+    @Test
+    fun `delete - a page of an 11-page grandfathered document`() {
+        val response = deletePage(100, 1008, 2060)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(10, pageDao.findByDocumentIdOrderByPageIndex(1008).size)
+        verify(s3).delete("mandate/100/documents/page-1008-0.png")
+    }
+
     private fun deletePage(id: Long, documentId: Long, pageId: Long) =
         rest.exchange("/v1/mandates/$id/documents/$documentId/pages/$pageId", HttpMethod.DELETE, null, Void::class.java)
 

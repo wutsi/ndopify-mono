@@ -318,6 +318,20 @@ class AddMandateDocumentPageEndpointTest : AuthorizationAwareEndpointIntegration
         verify(storage, never()).store(any(), any(), any())
     }
 
+    @Test
+    fun `add - an 11-page grandfathered document refuses a new page`() {
+        val newPath = "mandate/100/documents/0f8fad5b-d9cb-469f-a165-70867728950e.png"
+        uploaded(newPath)
+
+        val response = addPageError(100, 1008, AttachUploadRequest(path = newPath))
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES, response.body?.error?.code)
+        assertEquals("path", response.body?.error?.parameter?.name)
+        assertEquals(11, pageDao.findByDocumentIdOrderByPageIndex(1008).size)
+        verify(storage, never()).store(any(), any(), any())
+    }
+
     private fun addPage(id: Long, documentId: Long, request: AttachUploadRequest) =
         rest.postForEntity("/v1/mandates/$id/documents/$documentId/pages", request, AttachMandateDocumentPageResponse::class.java)
 
