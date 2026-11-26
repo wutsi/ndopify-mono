@@ -208,6 +208,28 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   403), or with `offered-to` (its own id only, else 403) to the mandates with a PENDING offer to it: those it may get.
   `GET /{id}` is also open to the mandate's customer (`ensureCanReadAsCustomerOrAgent`, any application, any
   status), for its match proposal page.
+  **Documents.** A mandate's documents (`MandateDocumentEntity` + `MandateDocumentPageEntity`, `V19_0`) are its agent's
+  private papers: identity cards, payslips, land titles. `/v1/mandates/{id}/documents`: `GET` (search, newest first),
+  `GET /{documentId}`, `POST` (create from presigned `paths`), `POST /presign`, `POST /{documentId}` (rename), `POST
+  /{documentId}/pages` (add), `POST /{documentId}/pages/{pageId}` (replace), `DELETE /{documentId}/pages/{pageId}`,
+  `DELETE /{documentId}`, plus the `upload` variants (`POST /upload`, `/{documentId}/pages/upload`,
+  `/{documentId}/pages/{pageId}/upload`) that post a `MultipartFile` instead of a presigned path. Only the mandate's
+  agent or an admin may use them — never the agent it's offered to, nor its customer — on the reads too: the search and
+  get check `MandateAccessService.ensureCanUpdate` (`MandateDocumentEndpoints`), the writes through
+  `MandateDocumentService.loadWritable`. The customer reads its mandate via `GET /v1/mandates/{id}` alone, which carries
+  no document. A page's file is private: read through a short-lived presigned URL (`pageUrl`, TTL
+  `ndopify.mandate.document.url-ttl-seconds`), the storage `path` (under `mandate/{id}/documents/`) never handed out nor
+  served from a public URL. Errors, in order: 404 `MANDATE_NOT_FOUND`, 403 `MANDATE_ACCESS_DENIED`, then for the URLs
+  naming a document/page 404 `MANDATE_DOCUMENT_NOT_FOUND` / `MANDATE_DOCUMENT_PAGE_NOT_FOUND`, 409
+  `MANDATE_ALREADY_CLOSED` (closed or cancelled; create/presign check it right after the access), then 400
+  `HTTP_INVALID_PARAMETER` (create: `type` UNKNOWN, `title` > 100 chars, `paths` empty/duplicate, a path outside the
+  mandate's folder, missing/oversized/not JPEG-PNG-WEBP, or already a page's; rename: blank or > 100 chars, or 409
+  `MANDATE_DOCUMENT_VERSION_CONFLICT`). Any page change (add, replace, delete) resets the document to `UPLOADED` and
+  clears its extracted fields (`resetExtraction`); a document's last page can't be deleted (400
+  `MANDATE_DOCUMENT_LAST_PAGE`). Writes run under the mandate's lock (`saveLocked`, re-checking CLOSED/CANCELLED), and
+  every object deletion — a replaced/removed page's, or each page's of a deleted document — runs after the commit,
+  quietly (a failure is logged, never fatal); a failed save deletes the new objects no page references. A legacy page
+  with no `storageType` was written to the default storage.
   A search's `MandateSummary` has what a card shows (criteria, amenities, `movingPeriod`, `availableFrom`) and its
   `contractId` only (a client needing the contract's dates searches `/v1/contracts?id=`), not the terms nor the
   customer's comments. `GET /v1/mandates/{id}` carries `visitFee` (`Money`), read through from the mandate's signed
@@ -706,12 +728,12 @@ request-approval's step (3) (`ContractService.findByIdForUpdate`). The reverse o
 `ControllerErrorHandler` answers a lock not acquired (`PessimisticLockingFailureException`: deadlock, lock wait timeout)
 with 409 `HTTP_VERSION_CONFLICT` rather than 500.
 
-**Optimistic locking**: `MandateEntity`, `AgentEntity`, `ContractEntity`, `KycCaseEntity`, `AssignmentEntity`,
+**Optimistic locking**: `MandateEntity`, `MandateDocumentEntity`, `AgentEntity`, `ContractEntity`, `KycCaseEntity`, `AssignmentEntity`,
 `ListingEntity`, `MatchEntity` and `VisitEntity` are `@Version`-ed (`version` column, `V7_0` / `V7_1` / `V8_0` / `V10_0`; a listing's conflict is
 `LISTING_VERSION_CONFLICT`, and `UpdateListingRequest.version` is checked like the mandate's). Hibernate checks it on flush (`UPDATE ... WHERE version = ?`), so it only
 catches concurrent transactions; `ControllerErrorHandler` turns the `ObjectOptimisticLockingFailureException` into a
-409 named after the entity (`MANDATE_VERSION_CONFLICT`, `AGENT_VERSION_CONFLICT`, `CONTRACT_VERSION_CONFLICT`,
-`KYC_CASE_VERSION_CONFLICT`; `ASSIGNMENT_NOT_PENDING` for an offer, `MATCH_NOT_ACTIVE` for a match). Across requests, `Mandate` / `Agent` expose
+409 named after the entity (`MANDATE_VERSION_CONFLICT`, `MANDATE_DOCUMENT_VERSION_CONFLICT`, `AGENT_VERSION_CONFLICT`,
+`CONTRACT_VERSION_CONFLICT`, `KYC_CASE_VERSION_CONFLICT`; `ASSIGNMENT_NOT_PENDING` for an offer, `MATCH_NOT_ACTIVE` for a match). Across requests, `Mandate` / `Agent` expose
 `version`, and `UpdateMandateRequest.version` / `UpdateAgentRequest.version` (null: not checked) must still be the
 entity's, else the same 409 before anything is saved. With `@Version`, Spring Data treats an entity whose `version` is
 null as new: update with `copy()` of a loaded entity, never by building one with an existing id. Any write bumps the
@@ -796,7 +818,8 @@ Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not ha
 - Any JPA entity annotated `org.hibernate.annotations.@TenantId` is automatically filtered by Hibernate for every
   query against it — no `CriteriaBuilder` predicate, repository override, or service-level check needed. Today
   that's `PartyEntity`, `PaymentMethodEntity`, `IdentificationEntity`, `IdentificationImageEntity`, `KycCaseEntity`,
-  `AgentEntity`, `CustomerEntity`, `MandateEntity`, `AssignmentEntity`, `ContractEntity`, `ContractPartyEntity`,
+  `AgentEntity`, `CustomerEntity`, `MandateEntity`, `AssignmentEntity`, `MandateDocumentEntity`,
+  `MandateDocumentPageEntity`, `ContractEntity`, `ContractPartyEntity`,
   `MembershipEntity`, `ListingEntity`, `ListingImageEntity`, `ListingSectionEntity`, `MatchEntity` and `VisitEntity`. Leave the field `null` on construction (see the comment on any of them) so Hibernate's
   `TenantIdGeneration` populates it from `TenantContext` on insert — setting a non-null value yourself makes
   Hibernate treat it as caller-assigned and throw if it doesn't match the resolved tenant.
