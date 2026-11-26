@@ -640,4 +640,248 @@ class MandateDocumentControllerTest {
     }
 
     private fun MvcResult.flashes(): Map<String, Any?> = flashMap
+
+    // The JSON proxies of the direct upload (mandate-document.js)
+
+    private fun json(request: org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder) =
+        request.contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+
+    @Test
+    fun `presign - JSON`() {
+        doReturn(com.wutsi.ndopify.common.dto.PresignUploadResponse("https://s3/put", "mandate/301/documents/a.png"))
+            .whenever(documentClient).presign(MANDATE_ID, "image/png")
+
+        mvc.perform(
+            json(post("/mandates/$MANDATE_ID/documents/presign")).content("""{"contentType":"image/png"}"""),
+        )
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk)
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.url").value("https://s3/put"))
+            .andExpect(
+                org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.path")
+                    .value("mandate/301/documents/a.png"),
+            )
+    }
+
+    @Test
+    fun `presign - not signed in - 401, never the sign-in redirect`() {
+        doReturn(null).whenever(currentAgent).get()
+
+        val result = mvc.perform(
+            json(post("/mandates/$MANDATE_ID/documents/presign")).content("""{"contentType":"image/png"}"""),
+        ).andReturn()
+
+        assertEquals(401, result.response.status)
+        assertNull(result.modelAndView?.viewName)
+        verify(documentClient, never()).presign(any(), any())
+    }
+
+    @Test
+    fun `presign - a closed mandate - 409`() {
+        doReturn(mandate.copy(status = MandateStatus.CLOSED)).whenever(mandateClient).get(MANDATE_ID)
+
+        mvc.perform(json(post("/mandates/$MANDATE_ID/documents/presign")).content("""{"contentType":"image/png"}"""))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isConflict)
+
+        verify(documentClient, never()).presign(any(), any())
+    }
+
+    @Test
+    fun `presign - another agent's mandate - 404`() {
+        doThrow(HttpClientErrorException.Forbidden::class).whenever(mandateClient).get(MANDATE_ID)
+
+        mvc.perform(json(post("/mandates/$MANDATE_ID/documents/presign")).content("""{"contentType":"image/png"}"""))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNotFound)
+    }
+
+    @Test
+    fun `presign - the server refuses the type - its status and body`() {
+        doThrow(serverError(HttpStatus.BAD_REQUEST, ErrorCode.HTTP_INVALID_PARAMETER, "contentType"))
+            .whenever(documentClient).presign(any(), any())
+
+        val result = mvc.perform(
+            json(post("/mandates/$MANDATE_ID/documents/presign")).content("""{"contentType":"application/pdf"}"""),
+        ).andReturn()
+
+        assertEquals(400, result.response.status)
+        assertTrue(result.response.contentAsString.contains(ErrorCode.HTTP_INVALID_PARAMETER))
+    }
+
+    @Test
+    fun `presign - the server is unreachable - 502`() {
+        doThrow(ResourceAccessException("down")).whenever(documentClient).presign(any(), any())
+
+        mvc.perform(json(post("/mandates/$MANDATE_ID/documents/presign")).content("""{"contentType":"image/png"}"""))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isBadGateway)
+    }
+
+    @Test
+    fun `create - JSON`() {
+        doReturn(42L).whenever(documentClient).create(any(), any())
+
+        mvc.perform(
+            json(post("/mandates/$MANDATE_ID/documents/create"))
+                .content("""{"type":"LAND_TITLE","title":"  Titre foncier lot 12  ","paths":["a","b"]}"""),
+        )
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk)
+            .andExpect(
+                org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.documentId").value(42),
+            )
+
+        val request = argumentCaptor<com.wutsi.ndopify.mandate.dto.CreateMandateDocumentRequest>()
+        verify(documentClient).create(any(), request.capture())
+        assertEquals("Titre foncier lot 12", request.firstValue.title)
+    }
+
+    @Test
+    fun `create - eleven paths - 400, no call`() {
+        val paths = (1..11).joinToString(",") { "\"p$it\"" }
+
+        mvc.perform(
+            json(post("/mandates/$MANDATE_ID/documents/create"))
+                .content("""{"type":"PASSPORT","paths":[$paths]}"""),
+        )
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isBadRequest)
+
+        verify(documentClient, never()).create(any(), any())
+    }
+
+    @Test
+    fun `create - a duplicate path - 400, no call`() {
+        mvc.perform(
+            json(post("/mandates/$MANDATE_ID/documents/create"))
+                .content("""{"type":"PASSPORT","paths":["a","a"]}"""),
+        )
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isBadRequest)
+
+        verify(documentClient, never()).create(any(), any())
+    }
+
+    @Test
+    fun `create - no path or no type - 400, no call`() {
+        mvc.perform(json(post("/mandates/$MANDATE_ID/documents/create")).content("""{"type":"PASSPORT","paths":[]}"""))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isBadRequest)
+        mvc.perform(
+            json(post("/mandates/$MANDATE_ID/documents/create")).content("""{"type":"UNKNOWN","paths":["a"]}"""),
+        ).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isBadRequest)
+
+        verify(documentClient, never()).create(any(), any())
+    }
+
+    @Test
+    fun `create - a title over 100 characters - 400, no call`() {
+        mvc.perform(
+            json(post("/mandates/$MANDATE_ID/documents/create"))
+                .content("""{"type":"PASSPORT","title":"${"a".repeat(101)}","paths":["a"]}"""),
+        )
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isBadRequest)
+
+        verify(documentClient, never()).create(any(), any())
+    }
+
+    @Test
+    fun `saved - back to the mandate page with the new document's title`() {
+        val result = mvc.perform(get("/mandates/$MANDATE_ID/documents/saved").param("documentId", DOCUMENT_ID.toString()))
+            .andReturn()
+
+        assertEquals("redirect:/mandates/$MANDATE_ID#documents-title", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.ADDED, result.flashes()["documentOutcome"])
+        assertEquals("Titre foncier n° 4521", result.flashes()["documentTitle"])
+    }
+
+    @Test
+    fun `saved - an unknown document - changed`() {
+        doThrow(serverError(HttpStatus.NOT_FOUND, ErrorCode.MANDATE_DOCUMENT_NOT_FOUND))
+            .whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val result = mvc.perform(get("/mandates/$MANDATE_ID/documents/saved").param("documentId", DOCUMENT_ID.toString()))
+            .andReturn()
+
+        assertEquals("redirect:/mandates/$MANDATE_ID", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.CHANGED, result.flashes()["documentOutcome"])
+    }
+
+    @Test
+    fun `presign a replacement page - JSON`() {
+        doReturn(com.wutsi.ndopify.common.dto.PresignUploadResponse("https://s3/put", "mandate/301/documents/b.png"))
+            .whenever(documentClient).presign(MANDATE_ID, "image/jpeg")
+
+        mvc.perform(
+            json(post("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page2.id}/presign"))
+                .content("""{"contentType":"image/jpeg"}"""),
+        )
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk)
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.path").exists())
+    }
+
+    @Test
+    fun `attach a replacement page - JSON`() {
+        doReturn(page2.id).whenever(documentClient).replacePage(any(), any(), any(), any())
+
+        mvc.perform(
+            json(post("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page2.id}/attach"))
+                .content("""{"path":"mandate/301/documents/b.png"}"""),
+        )
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk)
+            .andExpect(
+                org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.pageId").value(page2.id),
+            )
+
+        verify(documentClient).replacePage(MANDATE_ID, DOCUMENT_ID, page2.id, "mandate/301/documents/b.png")
+    }
+
+    @Test
+    fun `attach - another document's page - 404`() {
+        mvc.perform(
+            json(post("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/9999/attach"))
+                .content("""{"path":"mandate/301/documents/b.png"}"""),
+        )
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNotFound)
+
+        verify(documentClient, never()).replacePage(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `attach - not signed in - 401`() {
+        doReturn(null).whenever(currentAgent).get()
+
+        mvc.perform(
+            json(post("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page2.id}/attach"))
+                .content("""{"path":"mandate/301/documents/b.png"}"""),
+        ).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isUnauthorized)
+    }
+
+    @Test
+    fun `attach - the server refuses the page - its status and body`() {
+        doThrow(serverError(HttpStatus.BAD_REQUEST, ErrorCode.HTTP_INVALID_PARAMETER, "file"))
+            .whenever(documentClient).replacePage(any(), any(), any(), any())
+
+        val result = mvc.perform(
+            json(post("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page2.id}/attach"))
+                .content("""{"path":"mandate/301/documents/b.png"}"""),
+        ).andReturn()
+
+        assertEquals(400, result.response.status)
+        assertTrue(result.response.contentAsString.contains(ErrorCode.HTTP_INVALID_PARAMETER))
+    }
+
+    @Test
+    fun `saved page - back to the document with its number`() {
+        val result = mvc.perform(
+            get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page2.id}/saved"),
+        ).andReturn()
+
+        assertEquals("redirect:/mandates/$MANDATE_ID/documents/$DOCUMENT_ID", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.REPLACED, result.flashes()["outcome"])
+        assertEquals(2, result.flashes()["page"])
+    }
+
+    @Test
+    fun `saved page - a page that isn't the document's - changed`() {
+        val result = mvc.perform(
+            get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/9999/saved"),
+        ).andReturn()
+
+        assertEquals("redirect:/mandates/$MANDATE_ID", result.modelAndView?.viewName)
+        assertEquals(MandateDocumentController.CHANGED, result.flashes()["documentOutcome"])
+    }
 }

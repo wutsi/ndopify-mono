@@ -1,7 +1,13 @@
 package com.wutsi.ndopify.npc.ui.document
 
+import com.wutsi.ndopify.common.dto.AttachUploadRequest
+import com.wutsi.ndopify.common.dto.PresignUploadRequest
+import com.wutsi.ndopify.common.dto.PresignUploadResponse
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.mandate.dto.AttachMandateDocumentPageResponse
+import com.wutsi.ndopify.mandate.dto.CreateMandateDocumentRequest
+import com.wutsi.ndopify.mandate.dto.CreateMandateDocumentResponse
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateDocument
 import com.wutsi.ndopify.mandate.dto.UpdateMandateDocumentRequest
@@ -17,14 +23,19 @@ import com.wutsi.ndopify.web.core.service.TenantContext
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import org.apache.tika.Tika
 import org.slf4j.LoggerFactory
+import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClientException
 import org.springframework.web.multipart.MultipartFile
@@ -336,6 +347,167 @@ class MandateDocumentController(
             failed(mandate.id, redirect)
         }
     }
+
+    /**
+     * A short-lived URL to upload a page straight to the storage, for `mandate-document.js`. JSON: 401 without a
+     * signed-in agent (never the sign-in redirect, which `fetch` would follow to a 200), 404 for an unknown or another
+     * agent's mandate, 409 once it isn't ACTIVE any more; else the storage's answer (no URL with local storage), or
+     * ndopify-server's status and error body when it refuses.
+     */
+    @PostMapping("/presign", produces = [MediaType.APPLICATION_JSON_VALUE])
+    @ResponseBody
+    fun presign(
+        @PathVariable id: String,
+        @RequestBody request: PresignUploadRequest,
+    ): ResponseEntity<*> = json(id) { mandate ->
+        ResponseEntity.ok(documentClient.presign(mandate.id, request.contentType.orEmpty()))
+    }
+
+    /**
+     * Records a document from the pages `mandate-document.js` uploaded, then the script opens [saved] as the without-JS
+     * add does. A type, 1 to [MandateDocumentRules.MAX_PAGES] unique paths and a title of
+     * [MandateDocumentRules.MAX_TITLE] characters at most are checked here first: 400 without calling ndopify-server.
+     */
+    @PostMapping("/create", produces = [MediaType.APPLICATION_JSON_VALUE])
+    @ResponseBody
+    fun create(
+        @PathVariable id: String,
+        @RequestBody request: CreateMandateDocumentRequest,
+    ): ResponseEntity<*> = json(id) { mandate ->
+        if (
+            request.type == com.wutsi.ndopify.mandate.dto.DocumentType.UNKNOWN ||
+            request.paths.isEmpty() ||
+            request.paths.size > MandateDocumentRules.MAX_PAGES ||
+            request.paths.distinct().size != request.paths.size ||
+            (request.title ?: "").trim().length > MandateDocumentRules.MAX_TITLE
+        ) {
+            return@json ResponseEntity.badRequest().build<Any>()
+        }
+        ResponseEntity.ok(
+            CreateMandateDocumentResponse(documentClient.create(mandate.id, request.copy(title = request.title?.trim()?.ifEmpty { null }))),
+        )
+    }
+
+    /** After a direct add: the mandate page with the new document's title, as the without-JS add comes back. */
+    @GetMapping("/saved")
+    fun saved(
+        @PathVariable id: String,
+        @RequestParam(name = "documentId", required = false) documentId: String?,
+        redirect: RedirectAttributes,
+    ): String {
+        currentAgent.get() ?: throw SignInRequiredException()
+        val mandate = writableMandate(id) ?: return changed(id, redirect)
+        val document = documentId?.let { load(mandate.id, it) } ?: return changed(mandate.id, redirect)
+        redirect.addFlashAttribute(OUTCOME, ADDED)
+        redirect.addFlashAttribute(TITLE, document.title.trim().ifEmpty { MandateDocumentLabels.type(document.type) })
+        return back(mandate.id)
+    }
+
+    /** A short-lived URL to replace a page by a direct upload, for `mandate-document.js`; same JSON answers as [presign]. */
+    @PostMapping("/{documentId}/pages/{pageId}/presign", produces = [MediaType.APPLICATION_JSON_VALUE])
+    @ResponseBody
+    fun presignPage(
+        @PathVariable id: String,
+        @PathVariable documentId: String,
+        @PathVariable pageId: String,
+        @RequestBody request: PresignUploadRequest,
+    ): ResponseEntity<*> = json(id) { mandate ->
+        ResponseEntity.ok(documentClient.presign(mandate.id, request.contentType.orEmpty()))
+    }
+
+    /**
+     * Replaces a page by the file uploaded at [AttachUploadRequest.path], for `mandate-document.js`. 404 for a document
+     * or page that isn't the mandate's, else the page's id (ndopify-server's status and error body when it refuses).
+     */
+    @PostMapping("/{documentId}/pages/{pageId}/attach", produces = [MediaType.APPLICATION_JSON_VALUE])
+    @ResponseBody
+    fun attach(
+        @PathVariable id: String,
+        @PathVariable documentId: String,
+        @PathVariable pageId: String,
+        @RequestBody request: AttachUploadRequest,
+    ): ResponseEntity<*> {
+        currentAgent.get() ?: return unauthorized()
+        val mandateId = id.toLongOrNull() ?: return notFound()
+        val document = load(mandateId, documentId) ?: return notFound()
+        val page = pageId.toLongOrNull()?.let { pageId -> document.pages.firstOrNull { it.id == pageId } }
+            ?: return notFound()
+        return try {
+            ResponseEntity.ok(
+                AttachMandateDocumentPageResponse(documentClient.replacePage(mandateId, document.id, page.id, request.path)),
+            )
+        } catch (ex: HttpClientErrorException) {
+            LOGGER.warn("Page ${page.id} of document ${document.id} not attached: ${ex.statusCode}")
+            relayed(ex)
+        } catch (ex: RestClientException) {
+            LOGGER.error("Page ${page.id} of document ${document.id} not attached", ex)
+            gateway()
+        }
+    }
+
+    /** After a direct replacement: back to the document with the page it replaced, as the multipart form comes back. */
+    @GetMapping("/{documentId}/pages/{pageId}/saved")
+    fun savedPage(
+        @PathVariable id: String,
+        @PathVariable documentId: String,
+        @PathVariable pageId: String,
+        redirect: RedirectAttributes,
+    ): String {
+        currentAgent.get() ?: throw SignInRequiredException()
+        val mandate = writableMandate(id) ?: return changed(id, redirect)
+        val document = load(mandate.id, documentId) ?: return changed(mandate.id, redirect)
+        val page = pageId.toLongOrNull()?.let { pageId -> document.pages.firstOrNull { it.id == pageId } }
+            ?: return changed(mandate.id, redirect)
+        redirect.addFlashAttribute(RENAME_OUTCOME, REPLACED)
+        redirect.addFlashAttribute(PAGE, document.pages.sortedBy { it.index }.indexOfFirst { it.id == page.id } + 1)
+        return documentPage(mandate.id, document.id)
+    }
+
+    /**
+     * The JSON proxies' frame: the signed-in agent's ACTIVE mandate, else 401 / 404 / 409, and a call that always
+     * answers JSON — ndopify-server's status and body when it refuses, 502 when it fails or can't be reached, so
+     * `fetch` never gets an HTML page.
+     */
+    private fun json(id: String, call: (Mandate) -> ResponseEntity<*>): ResponseEntity<*> {
+        currentAgent.get() ?: return unauthorized()
+        val mandateId = id.toLongOrNull() ?: return notFound()
+        val mandate = try {
+            mandateClient.get(mandateId)
+        } catch (ex: HttpClientErrorException) {
+            LOGGER.warn("No mandate $mandateId: ${ex.statusCode}")
+            return notFound()
+        } catch (ex: RestClientException) {
+            LOGGER.error("No mandate $mandateId", ex)
+            return gateway()
+        }
+        if (mandate.status !in MandateRules.SHOWN) return notFound()
+        if (!MandateDocumentRules.writable(mandate)) return ResponseEntity.status(HttpStatus.CONFLICT).build<Any>()
+        return try {
+            call(mandate)
+        } catch (ex: HttpClientErrorException) {
+            LOGGER.warn("Documents of mandate $mandateId refused: ${ex.statusCode}")
+            relayed(ex)
+        } catch (ex: RestClientException) {
+            LOGGER.error("Documents of mandate $mandateId failed", ex)
+            gateway()
+        }
+    }
+
+    /** ndopify-server's refusal, status and error body, as `mandate-document.js` reads it. */
+    private fun relayed(ex: HttpClientErrorException): ResponseEntity<Any> =
+        ResponseEntity.status(ex.statusCode)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(
+                ex.responseBodyAsString.ifBlank {
+                    """{"error":{"code":"${errorCode(ex).orEmpty()}"}}"""
+                },
+            )
+
+    private fun unauthorized(): ResponseEntity<Any> = ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+
+    private fun notFound(): ResponseEntity<Any> = ResponseEntity.notFound().build()
+
+    private fun gateway(): ResponseEntity<Any> = ResponseEntity.status(HttpStatus.BAD_GATEWAY).build()
 
     private fun addPage(
         mandate: Mandate,

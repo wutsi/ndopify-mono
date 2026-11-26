@@ -32,6 +32,22 @@ class KycUploadErrorHandlerTest {
     }
 
     @Test
+    fun `mandate documents add - back to the form with the size error`() {
+        assertEquals(
+            "redirect:/mandates/301/documents/new?error=too-large",
+            handler.tooLarge(MockHttpServletRequest("POST", "/mandates/301/documents"), ex),
+        )
+    }
+
+    @Test
+    fun `mandate document page replacement - back to the document with its page's error`() {
+        assertEquals(
+            "redirect:/mandates/301/documents/3103?replaceError=size&page=2002",
+            handler.tooLarge(MockHttpServletRequest("POST", "/mandates/301/documents/3103/pages/2002"), ex),
+        )
+    }
+
+    @Test
     fun `listing photos - hand-edited path not handled here`() {
         assertFailsWith<MaxUploadSizeExceededException> {
             handler.tooLarge(MockHttpServletRequest("POST", "/listings/abc/photos"), ex)

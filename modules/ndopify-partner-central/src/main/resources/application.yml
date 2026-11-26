@@ -19,10 +19,11 @@ spring:
 
     servlet:
         multipart:
-            # Same as ndopify-server. Photos over 5 MB are refused by KycController with a proper message;
-            # beyond this limit KycUploadErrorHandler does.
+            # Same as ndopify-server per file. Photos over 5 MB are refused by KycController with a proper message;
+            # beyond these limits KycUploadErrorHandler does. A request holds a document's 10 pages of 5 Mo (55 MB),
+            # plus the form.
             max-file-size: 10MB
-            max-request-size: 10MB
+            max-request-size: 55MB
 
     web:
         resources:
