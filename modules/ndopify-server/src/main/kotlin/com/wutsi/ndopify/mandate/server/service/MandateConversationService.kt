@@ -6,6 +6,8 @@ import com.wutsi.ndopify.mandate.server.mail.MandateMailLabels
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Propagation
+import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
 /** One customer conversation per mandate: its fixed subject and this message's threading ids (without angle brackets). */
@@ -23,6 +25,10 @@ data class MandateConversation(
  * conversation subject (`MandateEntity.conversationSubject`) and carries the conversation's root id,
  * `mandate-<tenant>-<id>@<domain>`; every later one keeps that subject and answers the root, whatever its event. The
  * subject is never rebuilt once stored: a later edit of the mandate's place or type must not split the conversation.
+ *
+ * Runs in its own transaction: the e-mail is handed to SMTP from inside the caller's transaction, and the SMTP server
+ * delivers it before that transaction commits. Joining the caller would leave the stored subject invisible to a client
+ * reading the mandate once it has the message (`AcceptAssignmentEndpointTest`); the subject must be durable first.
  */
 @Service
 class MandateConversationService(
@@ -30,6 +36,7 @@ class MandateConversationService(
     private val locationService: LocationService,
     private val mailService: MailService,
 ) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun of(mandateId: Long): MandateConversation {
         val mandate = dao.findById(mandateId).orElse(null)
             ?: throw IllegalStateException("Mandate#$mandateId not found")
