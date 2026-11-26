@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Document — Ndopify Partner Central</title>
-    <meta name="description" content="Un document du mandat : ce que l'IA y a lu, ses problèmes, ses pages.">
+    <meta name="description" content="Un document du mandat : ce qui en a été lu, ses problèmes, ses pages.">
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#ffffff">
     <link rel="apple-touch-icon" href="../assets/images/icon.png">
@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="../assets/css/listing.css">
     <link rel="stylesheet" href="../assets/css/documents.css?v=20261126b">
     <script src="../assets/js/partner-central.js?v=20261125a" defer></script>
-    <script src="../assets/js/mandate-documents.js?v=20261126c" defer></script>
+    <script src="../assets/js/mandate-documents.js?v=20261126d" defer></script>
 </head>
 <!--
     PROTOTYPE (#329, #331, #366, #369): one document of a mandate (GET /mandates/{id}/documents/{documentId}),
@@ -26,8 +26,8 @@
     one), the type (when the title differs from it) and ONE upload date for the whole document ("Ajouté le
     25/11/2026", the tenant's dateFormat with the year). No image, no preview, no thumbnail, no size anywhere on the
     page.
-    #331 adds, between the header and the pages, what the AI read (see the section's comment below): the fields it
-    read, the hint while it reads, the instructions of a FAILED document and the notice of an expired one.
+    #331 adds, between the header and the pages, what was read on it (see the section's comment below): the fields,
+    the hint while the reading runs, the instructions of a FAILED document and the notice of an expired one.
     Then the pages in order, one plain row each: "Page 1", "Voir" and the folded "Remplacer". A page rendered from a
     PDF is one of them, exactly like a photo page (#366): its rank, "Voir" and "Remplacer", nothing saying it came from
     a PDF.
@@ -60,12 +60,14 @@
     action on the extracted data (no re-analysis, no field correction: replacing a page restarts the reading).
     PROTOTYPE: ?id=301&document=3103 (Titre foncier, a 2-page PDF, EXTRACTED + its fields — the static markup), 3105
     (Facture, photos, EXTRACTING), 3102 (CNI, photos, EXTRACTED + expired), 3104 (Procuration, PDF, EXTRACTED without
-    fields), 3101 (Plan de bornage, PDF, FAILED: missing page + unreadable); ?id=303&document=3305 (Procuration, PDF,
-    EXTRACTED without fields), 3304 (Relevé de compte, PDF, EXTRACTED: amounts, "•••• 0123", "Solde"), 3302 (Bulletin
-    de paie, photos: an unknown key), 3301 (CNI, photos, valid), 3303 (Accord de principe, PDF, EXTRACTED, expired
-    since the reading); ?id=311&document=3113 (read-only fields), 3112 (read-only, expired) and 3111 (read-only, FAILED
-    with an unknown code). #369's wrong-kind replace: ?replaceError=mixed&page=2 on a PDF document (3103: a photo is
-    refused) and on an image document (3102: a PDF is refused).
+    fields), 3101 (Plan de bornage, PDF, FAILED: missing page + doubtful required field); ?id=303&document=3305
+    (Procuration, PDF, EXTRACTED without fields), 3304 (Relevé de compte, PDF, EXTRACTED: amounts, "•••• 0123",
+    "Solde"), 3302 (Bulletin de paie, photos: an unknown key), 3301 (CNI, photos, valid), 3303 (Accord de principe,
+    PDF, EXTRACTED, expired since the reading); ?id=311&document=3113 (read-only fields), 3112 (read-only, expired)
+    and 3111 (read-only, FAILED with an unknown code). The DOCUMENT_UNREADABLE instruction has no sample of its own:
+    ?codes=DOCUMENT_UNREADABLE on 3101 replaces the sample's codes (comma-separated, in the order given), so every
+    instruction is one URL away. #369's wrong-kind replace: ?replaceError=mixed&page=2 on a PDF document (3103: a
+    photo is refused) and on an image document (3102: a PDF is refused).
 -->
 <body data-page="mandate-document" data-assets="../assets/images/" data-currency="FCFA">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -134,7 +136,7 @@
                 </div>
 
                 <!--
-                    #331: what the AI read on this document, before its pages. One real state here (301/3103, EXTRACTED
+                    #331: what was read on this document, before its pages. One real state here (301/3103, EXTRACTED
                     with its fields); mandate-documents.js renders the others from the samples:
                       - EXTRACTED with fields: one row per field, in the server's order, its French label from
                         FIELD_LABELS (an unknown key: "Autre donnée") and its value by kind (dates in the tenant's
@@ -147,7 +149,7 @@
                         EXPIRY_DATE_UNREADABLE, EXTRACTION_FAILED); an unknown code reads the generic instruction. No
                         field row.
                       - expiresAt before today (tenant clock): the notice "Pièce expirée le …", saying whether it was
-                        already expired when the AI read it (the DOCUMENT_EXPIRED warning) or has expired since, and the
+                        already expired when it was read (the DOCUMENT_EXPIRED warning) or has expired since, and the
                         way out (replace its pages, or delete it and add the valid one). DOCUMENT_EXPIRED is a warning,
                         never an instruction.
                     The whole section is server-rendered (it works without JavaScript); on a CLOSED / CANCELLED mandate
@@ -161,7 +163,7 @@
                         <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
                         <div>
                             <p class="alert__title" data-expired-title>Pièce expirée le 12/01/2025</p>
-                            <p data-expired-when>Elle était déjà expirée quand l'IA l'a lue.</p>
+                            <p data-expired-when>Elle était déjà expirée lors de sa lecture.</p>
                             <p data-expired-action>Ajoutez une pièce en cours de validité&nbsp;: remplacez ses pages par
                                 celles de la nouvelle pièce, ou supprimez-la et ajoutez la nouvelle.</p>
                         </div>
@@ -170,8 +172,8 @@
                     <!-- UPLOADED / EXTRACTING: the reading is automatic, there is nothing to do but wait. -->
                     <div class="hint" data-reading-waiting hidden>
                         <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 5.5V10l3 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        <p data-waiting-text>L'IA lit le document. Ses données apparaîtront ici dès qu'elle aura
-                            terminé&nbsp;: rien à faire.</p>
+                        <p data-waiting-text>La lecture du document est en cours. Ses données apparaîtront ici dès
+                            qu'elle sera terminée&nbsp;: rien à faire.</p>
                     </div>
 
                     <!-- EXTRACTED without fields (an older payload): no empty list. -->

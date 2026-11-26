@@ -2,12 +2,12 @@
  * Ndopify Partner Central — a mandate's documents (#329, #331), static prototype.
  *   - mandate.html (data-page="mandate"): the *Documents* section, after partner-central.js has rendered the page;
  *   - mandate/document-new.html (data-page="mandate-document-new"): *Ajouter un document*;
- *   - mandate/document.html (data-page="mandate-document"): one document, what the AI read on it, its pages,
+ *   - mandate/document.html (data-page="mandate-document"): one document, what was read on it, its pages,
  *     Remplacer / Renommer / Supprimer.
  * Every page is written to work without JavaScript (multipart forms, ?delete=1 confirmation): this script only
  * renders the prototype's sample data and enhances (the chosen files listed by name and size, shrink, upload
  * progress, the delete confirmation in place). No page image is ever shown inline: a page opens through "Voir". Server calls are simulated; every simulation is marked "PROTOTYPE".
- * #331: the document page shows what the AI read (MandateDocument.fields, in the server's order, its French label
+ * #331: the document page shows what was read (MandateDocument.fields, in the server's order, its French label
  * from FIELD_LABELS and its value formatted by kind), the hint while it reads, one instruction per problem code of a
  * FAILED document, and the notice of a piece whose expiresAt is before today; the mandate page's row adds the
  * "Expirée" marker. Confidence, the page paths and any JSON stay out of the HTML.
@@ -26,7 +26,8 @@
  * Query switches: mandate.html ?docs=none|error, ?documentOutcome=added|deleted|changed; document-new.html
  * ?errors=missing|file|size|server|pdf-size|pdf-protected|pdf-unreadable|pdf-pages|mixed|pages|limit
  * (?errors=1 = missing); document.html ?delete=1, ?outcome=renamed|replaced&page=N, ?errors=blank|long, ?conflict=1,
- * ?replaceError=type|size|empty|mixed|pdf-size|pdf-protected|pdf-unreadable|pdf-pages&page=N; the reading states come
+ * ?replaceError=type|size|empty|mixed|pdf-size|pdf-protected|pdf-unreadable|pdf-pages&page=N,
+ * ?codes=DOCUMENT_UNREADABLE[,CODE…] (a FAILED sample's codes replaced, in the order given); the reading states come
  * from the samples (?id=&document=, see DOCUMENTS). ?docs=reset (any page) forgets the session.
  */
 (function () {
@@ -170,12 +171,13 @@
     var PROBLEM_INSTRUCTIONS = {
         DOCUMENT_TYPE_MISMATCH: "Le document ne correspond pas au type choisi. Supprimez-le, puis ajoutez-le avec " +
             "le bon type.",
-        DOCUMENT_UNREADABLE: "L'IA n'a pas pu lire le document. Remplacez ses pages par des photos plus nettes, " +
+        DOCUMENT_UNREADABLE: "Le document n'a pas pu être lu. Remplacez ses pages par des photos plus nettes, " +
             "droites et sans reflet, ou supprimez-le et ajoutez-le de nouveau.",
         DOCUMENT_PAGE_MISSING: "Il manque une page du document, son verso par exemple. Remplacez la page manquante " +
             "par une photo, ou supprimez le document et ajoutez-le avec toutes ses pages.",
-        DOCUMENT_FIELD_LOW_CONFIDENCE: "L'IA n'est pas sûre d'un champ obligatoire. Vérifiez-le sur la pièce : si " +
-            "la photo est floue, remplacez la page ; sinon, supprimez le document et ajoutez-le de nouveau.",
+        DOCUMENT_FIELD_LOW_CONFIDENCE: "Un champ obligatoire n'a pas pu être lu avec certitude. Vérifiez-le " +
+            "sur la pièce : si la photo est floue, remplacez la page ; sinon, supprimez le document et " +
+            "ajoutez-le de nouveau.",
         EXPIRY_DATE_UNREADABLE: "La date d'expiration de la pièce n'a pas pu être lue. Remplacez la page où elle " +
             "figure par une photo plus nette, ou supprimez le document et ajoutez-le de nouveau.",
         EXTRACTION_FAILED: "La lecture du document a échoué. Remplacez ses pages, ou supprimez le document et " +
@@ -433,7 +435,7 @@
             String(d.getDate()).padStart(2, "0");
     }
 
-    /* ---------- #331: what the AI read ---------- */
+    /* ---------- #331: what was read ---------- */
 
     // An expiry before today, on the tenant's clock: `expiresAt` is a LocalDate on both sides, so ISO strings compare
     // as dates. A document without one never expires.
@@ -1205,7 +1207,7 @@
     }
 
     /*
-     * #331: what the AI read on the document, above its pages — the expiry notice, the hint while it reads, one
+     * #331: what was read on the document, above its pages — the expiry notice, the hint while it reads, one
      * instruction per problem code, then the field rows (no confidence, no JSON). Production renders all of it
      * server-side, so the page works without JavaScript; here the section's blocks are switched and its rows built
      * from the sample. A CLOSED / CANCELLED mandate keeps the whole section readable, with no action of its own.
@@ -1215,18 +1217,27 @@
         if (!section) return;
         var fields = readingFields(doc);
         var codes = doc.problemCodes || [];
+        // PROTOTYPE: ?codes=DOCUMENT_UNREADABLE replaces a FAILED sample's codes (comma-separated, in the order
+        // given), so an instruction no sample carries is one URL away. Production's codes come from the server only.
+        if (params.get("codes")) {
+            codes = params.get("codes").split(",").map(function (code) {
+                return code.trim();
+            }).filter(function (code) {
+                return code !== "";
+            });
+        }
         var waiting = doc.status === "UPLOADED" || doc.status === "EXTRACTING";
         var failed = doc.status === "FAILED";
         var hasFields = doc.status === "EXTRACTED" && fields.length > 0;
 
         // The notice: expiresAt before today. DOCUMENT_EXPIRED (the server's warning at reading time) tells a piece
-        // already expired when the AI read it from one that has expired since.
+        // already expired when it was read from one that has expired since.
         var expired = isExpired(doc);
         $("[data-reading-expired]", section).hidden = !expired;
         if (expired) {
             $("[data-expired-title]", section).textContent = "Pièce expirée le " + formatDate(doc.expiresAt);
             $("[data-expired-when]", section).textContent = codes.indexOf("DOCUMENT_EXPIRED") !== -1
-                ? "Elle était déjà expirée quand l'IA l'a lue."
+                ? "Elle était déjà expirée lors de sa lecture."
                 : "Elle a expiré depuis sa lecture.";
             // Read-only: no action of this story's own, and none of replacing on a closed or cancelled mandate.
             $("[data-expired-action]", section).textContent = readOnly
@@ -1242,7 +1253,8 @@
             $("[data-waiting-text]", section).textContent = doc.status === "UPLOADED"
                 ? "Le document est reçu : sa lecture va commencer. Rien à faire, elle se lance d'elle-même ; ses " +
                     "données apparaîtront ici."
-                : "L'IA lit le document. Ses données apparaîtront ici dès qu'elle aura terminé : rien à faire.";
+                : "La lecture du document est en cours. Ses données apparaîtront ici dès qu'elle sera terminée : " +
+                    "rien à faire.";
         }
 
         $("[data-reading-empty]", section).hidden = !(doc.status === "EXTRACTED" && !fields.length);
