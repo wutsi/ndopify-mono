@@ -67,6 +67,7 @@ class KycService(
     private val logger: KVLogger,
     private val eventPublisher: ApplicationEventPublisher,
     private val callerService: CallerService,
+    private val accessService: KycAccessService,
     private val directUpload: DirectUploadService,
 ) {
     companion object {
@@ -319,12 +320,15 @@ class KycService(
 
     /**
      * Sends a case for review: PENDING_VERIFICATION → SUBMITTED. Its documents are frozen from then on, and the offline
-     * verification (see [verify]) picks it up. Requires the document's front, and its back for two-sided
-     * documents (see [requiredImages]). The selfie is optional.
+     * verification (see [verify]) picks it up. Only the case's own party or an admin may submit it. Requires the
+     * document's front, and its back for two-sided documents (see [requiredImages]). The selfie is optional.
+     * Errors, in order: 404 KYC_CASE_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for the case's own party or an admin, 400
+     * KYC_CASE_NOT_PENDING, 400 KYC_CASE_MISSING_IDENTIFICATION_IMAGE.
      */
     @Transactional
     fun submit(id: String): KycCaseEntity {
         val case = findById(id)
+        accessService.ensureIsPartyOrAdmin(case.party.id)
         ensureStatusIsPending(case)
         ensureIdentificationImages(case)
 

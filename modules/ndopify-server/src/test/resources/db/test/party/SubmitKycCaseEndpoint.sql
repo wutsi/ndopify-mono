@@ -12,6 +12,13 @@ INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name, kyc_status, cre
     (600, 1, 'passport.no.front@gmail.com', 'PassportNoFront', 'Party', 'PENDING_VERIFICATION', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (900, 2, 'other.tenant@gmail.com', 'Other', 'Tenant', 'PENDING_VERIFICATION', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
+-- The caller is user 11, member of party 100; user 12 has no membership.
+INSERT INTO T_USER(id, email, deleted, created_at) VALUES
+    (11, 'complete@gmail.com', false, '2024-06-10 00:00:00'),
+    (12, 'no.party@gmail.com', false, '2024-06-10 00:00:00');
+INSERT INTO T_MEMBERSHIP(id, tenant_id, user_id, party_id, deleted) VALUES
+    (11, 1, 11, 100, false);
+
 INSERT INTO T_KYC_CASE(id, tenant_id, party_id, identification_type, score, status, error_code, created_at, modified_at) VALUES
     ('kyc-case-complete', 1, 100, 'NATIONAL_ID', NULL, 'PENDING_VERIFICATION', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     ('kyc-case-no-selfie', 1, 200, 'NATIONAL_ID', NULL, 'PENDING_VERIFICATION', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
