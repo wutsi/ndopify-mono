@@ -427,4 +427,3 @@ download (261 KB against 2.8 MB).
 width and height must each be at most 8192 pixels` (HTTP 400) — which fails the attempt and, after `MAX_RETRIES`,
 sends the listing back with `INTERNAL_ERROR`. Its 283 KB rendition gets a valid `PHOTO` verdict. The change fixes
 oversized uploads, not only their cost.
-
