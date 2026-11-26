@@ -53,6 +53,7 @@ class UploadMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
     @BeforeEach
     fun setUpStorage() {
         doReturn(storage).whenever(storageProvider).get()
+        doReturn(storage).whenever(storageProvider).get(StorageType.S3)
         doReturn(StorageType.S3).whenever(storage).type()
     }
 
@@ -124,6 +125,26 @@ class UploadMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
         verify(storage, never()).store(any(), any(), any())
+        assertTrue(documentDao.findByMandateIdOrderByIdDesc(100L).isEmpty())
+    }
+
+    @Test
+    fun `upload - a later file refused deletes the files already stored`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/100/documents/upload",
+            request(
+                DocumentType.LAND_TITLE,
+                "page1.png" to png(),
+                "page2.png" to png(),
+                "note.txt" to "not an image".toByteArray(),
+            ),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
+        verify(storage, times(2)).store(argThat { startsWith("mandate/100/documents/") }, any(), eq("image/png"))
+        verify(storage, times(2)).delete(argThat { startsWith("mandate/100/documents/") })
         assertTrue(documentDao.findByMandateIdOrderByIdDesc(100L).isEmpty())
     }
 

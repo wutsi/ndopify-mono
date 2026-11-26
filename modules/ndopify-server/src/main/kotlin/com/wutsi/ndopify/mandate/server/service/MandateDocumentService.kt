@@ -202,7 +202,8 @@ class MandateDocumentService(
     /**
      * Creates a document from files posted as multipart, storing each one at a new path under the mandate's folder.
      * Same checks as [create], plus `files` empty → 400 (`files`), and each file checked by [DirectUploadService.check]
-     * before it's stored (outside any transaction).
+     * before it's stored (outside any transaction). A file refused, or a store that throws, deletes the files stored
+     * before it: they are fresh UUIDs no page references, so no reference check is needed.
      */
     fun upload(mandateId: Long, type: DocumentType, title: String?, files: List<MultipartFile>): MandateDocumentEntity {
         ensureWritable(mandateId)
@@ -218,22 +219,30 @@ class MandateDocumentService(
             throw invalid("files", "")
         }
 
-        // Storage I/O outside any transaction
+        // Storage I/O outside any transaction. A later file refused (or a store that throws) deletes the files already
+        // stored: fresh UUIDs, so no page can reference them.
         val storage = storageProvider.get()
         val prefix = prefix(mandateId)
         val now = Date(clock.millis())
-        val pages = files.mapIndexed { index, file ->
-            val mimeType = directUpload.check(file)
-            val path = "$prefix/${UUID.randomUUID()}.${MimeUtils.getExtensionFromMimeType(mimeType)}"
-            storage.store(path, file.inputStream, mimeType)
-            MandateDocumentPageEntity(
-                pageIndex = index,
-                path = path,
-                storageType = storage.type(),
-                mimeType = mimeType,
-                createdAt = now,
-                modifiedAt = now,
-            )
+        val storedPaths = mutableListOf<String>()
+        val pages = try {
+            files.mapIndexed { index, file ->
+                val mimeType = directUpload.check(file)
+                val path = "$prefix/${UUID.randomUUID()}.${MimeUtils.getExtensionFromMimeType(mimeType)}"
+                storage.store(path, file.inputStream, mimeType)
+                storedPaths.add(path)
+                MandateDocumentPageEntity(
+                    pageIndex = index,
+                    path = path,
+                    storageType = storage.type(),
+                    mimeType = mimeType,
+                    createdAt = now,
+                    modifiedAt = now,
+                )
+            }
+        } catch (ex: Exception) {
+            storedPaths.forEach { path -> deleteQuietly(mandateId, path, storage.type()) }
+            throw ex
         }
 
         val document = MandateDocumentEntity(
@@ -553,7 +562,7 @@ class MandateDocumentService(
 
     /**
      * Runs [block] in a transaction holding the mandate's lock, re-checking that it isn't closed or cancelled (a close
-     * committed during the storage I/O wins). Shared with Task 4.
+     * committed during the storage I/O wins).
      */
     private fun <T> saveLocked(mandateId: Long, block: () -> T): T = tx.execute {
         val mandate = mandateDao.findByIdForUpdate(mandateId)
