@@ -12,6 +12,7 @@ import com.wutsi.ndopify.party.dto.KycImageType
 import com.wutsi.ndopify.party.dto.SearchKycCaseRequest
 import com.wutsi.ndopify.party.dto.SearchKycCaseResponse
 import com.wutsi.ndopify.party.server.mapper.KycCaseMapper
+import com.wutsi.ndopify.party.server.service.KycAccessService
 import com.wutsi.ndopify.party.server.service.KycService
 import com.wutsi.ndopify.platform.endpoint.OpsEndpoint
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
@@ -30,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile
 @RequestMapping("/v1/kyc/cases")
 class KycEndpoints(
     private val service: KycService,
+    private val accessService: KycAccessService,
     private val mapper: KycCaseMapper,
 ) {
     @PostMapping
@@ -38,9 +40,11 @@ class KycEndpoints(
         return CreateKycCaseResponse(caseId = case.id)
     }
 
+    /** The case's own party or an admin only ([KycAccessService]); 404 KYC_CASE_NOT_FOUND before 403. */
     @GetMapping("/{id}")
     fun get(@PathVariable id: String): GetKycCaseResponse {
         val case = service.findById(id)
+        accessService.ensureCanRead(case)
         return GetKycCaseResponse(case = mapper.toKycCase(case))
     }
 
