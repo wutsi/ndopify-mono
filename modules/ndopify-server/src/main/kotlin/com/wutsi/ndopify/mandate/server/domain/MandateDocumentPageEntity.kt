@@ -11,8 +11,9 @@ import java.util.Date
 
 /**
  * One image page of a [MandateDocumentEntity], [pageIndex] 0-based in the document. Its [path] is the storage path,
- * never handed out: the page is read through a presigned URL. Not `@Version`-ed: pages are always written under the
- * mandate's lock.
+ * never handed out: the page is read through the authenticated preview route
+ * (`/v1/mandates/{id}/documents/{documentId}/pages/{pageId}/preview`), which serves the derived display copy. Not
+ * `@Version`-ed: pages are always written under the mandate's lock.
  */
 @Entity
 @Table(name = "T_MANDATE_DOCUMENT_PAGE")

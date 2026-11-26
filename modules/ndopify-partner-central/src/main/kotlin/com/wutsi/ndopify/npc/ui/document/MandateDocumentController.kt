@@ -176,9 +176,10 @@ class MandateDocumentController(
     }
 
     /**
-     * A document's page, with its pages in order and their presigned URLs; `?delete=1` opens the confirmation panel
-     * without JS (a GET, so a delete is never forced by a link). `?replaceError=size&page={pageId}` is the size error of
-     * a replacement over the multipart limit ([com.wutsi.ndopify.npc.ui.kyc.KycUploadErrorHandler]).
+     * A document's page, with its pages in order and each linked to this app's authenticated preview; `?delete=1`
+     * opens the confirmation panel without JS (a GET, so a delete is never forced by a link).
+     * `?replaceError=size&page={pageId}` is the size error of a replacement over the multipart limit
+     * ([com.wutsi.ndopify.npc.ui.kyc.KycUploadErrorHandler]).
      */
     @GetMapping("/{documentId}")
     fun document(
