@@ -28,6 +28,9 @@
   the refused clients only counted by its outcomes line.
   "pendingVisit" is the one visit to confirm repeated at the top of the approved panel (PendingVisitView: label and
   the card anchor it links to), null when none waits for an answer or when the visits can't be read.
+  "documentSection" is the mandate's Documents section (DocumentSectionView): its documents newest first, or its
+  "unavailable" when they can't be read; "documentOutcomeText" / "documentOutcomeStyle" the outcome of an add or a
+  delete (MandateDocumentController's flash attributes, worded here).
   "searchStats" is a signed search's one-line activity in the approved panel (SearchStatsView: its pool, the
   client's interest and its visits), null for any other mandate or when the matches can't be read.
   A visit read is secondary: failing, the cards still render without their visit block, the section says the visits
@@ -522,6 +525,14 @@
                         </div>
                     </dl>
                 </section>
+
+                <!--
+                    Documents (#329): the mandate's documents, newest first, after its matches and before its criteria.
+                    "documentSection" is a DocumentSectionView (null never: the section says when the documents can't be
+                    read, the rest of the page unchanged), "documentOutcomeText" / "documentOutcomeStyle" the outcome of
+                    an add or a delete (flash attributes "documentOutcome" / "documentTitle").
+                -->
+                <th:block th:replace="~{fragments/mandate-documents :: documents(${documentSection}, ${m.id}, ${documentOutcomeText}, ${documentOutcomeStyle})}"></th:block>
 
                 <section class="home-section" aria-labelledby="search-title">
                     <h2 id="search-title" th:text="${m.words.searchUpper}">Sa recherche</h2>

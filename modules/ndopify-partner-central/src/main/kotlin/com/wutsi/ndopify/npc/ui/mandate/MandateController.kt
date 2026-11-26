@@ -22,11 +22,14 @@ import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMandateDocumentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
 import com.wutsi.ndopify.npc.config.Parallel
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
+import com.wutsi.ndopify.npc.ui.document.MandateDocumentController
+import com.wutsi.ndopify.npc.ui.document.MandateDocumentViews
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.listing.ListingClientsView
 import com.wutsi.ndopify.npc.ui.listing.ListingStatsView
@@ -112,6 +115,7 @@ class MandateController(
     private val agentClient: NdAgentClient,
     private val matchClient: NdMatchClient,
     private val visitClient: NdVisitClient,
+    private val documentClient: NdMandateDocumentClient,
     locationClient: NdLocationClient,
     private val tenantContext: TenantContext,
     private val clock: Clock,
@@ -361,6 +365,11 @@ class MandateController(
         dismiss: String? = null,
     ): String {
         val now = clock.millis()
+        // The documents of the mandate start here, with the page's other reads, and are joined at the end: failing,
+        // only their section says so.
+        val documents = parallel.async {
+            lookup("documents of mandate ${mandate.id}") { documentClient.search(mandate.id) }
+        }
         val matched = MatchRules.matched(mandate)
         val matches = if (matched) matches(mandate) else null
         val visits = if (matched) mandateVisits(agent, mandate) else null
@@ -469,6 +478,21 @@ class MandateController(
             )
         } ?: pendingVisit
         model.addAttribute("pendingVisit", pendingVisit)
+        model.addAttribute(
+            "documentSection",
+            MandateDocumentViews.section(
+                mandate,
+                try {
+                    documents.join()
+                } catch (ex: Exception) {
+                    null
+                },
+                formatter(),
+            ),
+        )
+        (model.getAttribute(MandateDocumentController.OUTCOME) as? String)?.let { outcome ->
+            documentOutcome(outcome, model.getAttribute(MandateDocumentController.TITLE) as? String, model)
+        }
         (model.getAttribute(OUTCOME) as? String)?.let { outcome -> outcome(outcome, view, model) }
         (model.getAttribute(VISIT_OUTCOME) as? String)?.let { outcome -> visitOutcome(outcome, model) }
         (model.getAttribute(MatchController.OUTCOME) as? String)?.let { outcome ->
@@ -601,6 +625,26 @@ class MandateController(
                 VISIT_SCHEDULED -> "success"
                 FAILED -> "error"
                 else -> "warning"
+            },
+        )
+    }
+
+    /** The flash outcome of a document's add or delete ([MandateDocumentController]), shown in its section. */
+    private fun documentOutcome(outcome: String, title: String?, model: Model) {
+        val text = when (outcome) {
+            MandateDocumentController.ADDED -> if (title != null) "Document « $title » ajouté." else "Document ajouté."
+            MandateDocumentController.DELETED -> "Document supprimé."
+            MandateDocumentController.CHANGED -> "Ce document a changé ou n'existe plus."
+            MandateDocumentController.FAILED -> "Action impossible pour le moment. Réessayez dans quelques instants."
+            else -> return
+        }
+        model.addAttribute("documentOutcomeText", text)
+        model.addAttribute(
+            "documentOutcomeStyle",
+            when (outcome) {
+                MandateDocumentController.CHANGED -> "warning"
+                MandateDocumentController.FAILED -> "error"
+                else -> "success"
             },
         )
     }

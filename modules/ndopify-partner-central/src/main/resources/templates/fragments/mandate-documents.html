@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/*
+  The *Documents* section of a mandate's page (#329): the mandate's documents, newest first, above its criteria and
+  after its matches. One row per document, the whole row a link to its page: its type, the agent's title under it only
+  when it differs from the type's name, its status pill and "Ajouté le 25 nov. 2026 · 2 pages". Ajouter un document
+  sits beside the title in the WhatsApp button's style, and is absent on a CLOSED / CANCELLED mandate, which keeps the
+  list read-only. The documents failing to load only affect this section ("unavailable"); the outcome of an add or a
+  delete (MandateDocumentController's flash) shows here, the page coming back to #documents-title.
+  "section" is the DocumentSectionView, "mandateId" the mandate's id, "outcomeText" / "outcomeStyle" the last action's
+  outcome (flash "documentOutcome" / "documentTitle", worded by MandateController).
+*/-->
+<section th:fragment="documents(section, mandateId, outcomeText, outcomeStyle)" class="home-section documents"
+         aria-labelledby="documents-title" data-documents>
+    <div class="documents__head">
+        <h2 id="documents-title">Documents</h2>
+        <a class="btn btn--secondary btn--compact" th:if="${section.writable}"
+           th:href="@{/mandates/{id}/documents/new(id=${mandateId})}" data-documents-add>Ajouter un document</a>
+    </div>
+    <p class="documents__intro" th:text="${section.intro}">Les pièces d'identité et de propriété du vendeur. Privées&nbsp;:
+        jamais publiées ni montrées à un autre agent.</p>
+
+    <div th:if="${outcomeText}" th:class="|alert alert--${outcomeStyle}|" tabindex="-1"
+         th:attr="role=${outcomeStyle == 'error'} ? 'alert' : 'status'" data-documents-flash>
+        <th:block th:if="${outcomeStyle == 'success'}"><svg th:replace="~{fragments/icon :: check('icon')}"></svg></th:block>
+        <th:block th:if="${outcomeStyle == 'warning'}"><svg th:replace="~{fragments/icon :: warning}"></svg></th:block>
+        <th:block th:if="${outcomeStyle == 'error'}"><svg th:replace="~{fragments/icon :: close}"></svg></th:block>
+        <p th:text="${outcomeText}" data-documents-flash-text>Document ajouté.</p>
+    </div>
+
+    <div class="alert alert--warning" th:if="${section.unavailable}" data-documents-unavailable>
+        <svg th:replace="~{fragments/icon :: warning}"></svg>
+        <div>
+            <p class="alert__title">Documents indisponibles</p>
+            <p>Les documents de ce mandat ne peuvent pas être affichés pour le moment. Rechargez la page dans quelques
+                instants.</p>
+        </div>
+    </div>
+
+    <div class="hint" th:unless="${section.writable}" data-documents-readonly>
+        <svg th:replace="~{fragments/icon :: info}"></svg>
+        <p>Mandat fermé&nbsp;: les documents restent consultables, sans modification.</p>
+    </div>
+
+    <ul class="doc-list" th:unless="${section.unavailable or #lists.isEmpty(section.rows)}" data-documents-list>
+        <li th:each="row : ${section.rows}">
+            <a class="doc-row" th:href="@{${row.href}}" data-doc-link>
+                <span class="doc-row__icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg></span>
+                <span class="doc-row__type" th:text="${row.typeLabel}" data-doc-type>Titre foncier</span>
+                <span class="doc-row__tags">
+                    <span th:class="|status-tag ${#strings.isEmpty(row.status.style) ? '' : 'status-tag--' + row.status.style}|"
+                          data-doc-status><span class="visually-hidden">Statut&nbsp;: </span><span
+                            th:text="${row.status.label}">Analysé</span></span>
+                </span>
+                <span class="doc-row__title" th:if="${row.title}" th:text="${row.title}" data-doc-title>Titre foncier
+                    n° 4521</span>
+                <span class="doc-row__meta"
+                      th:text="|Ajouté le ${row.addedOn} · ${row.pageCount} ${row.pageCount > 1 ? 'pages' : 'page'}|"
+                      data-doc-meta>Ajouté le 25 nov. 2026 · 2 pages</span>
+            </a>
+        </li>
+    </ul>
+
+    <div class="assignments__empty" th:if="${!section.unavailable and #lists.isEmpty(section.rows)}"
+         data-documents-empty>
+        <p>Aucun document pour ce mandat.</p>
+        <p th:if="${section.writable}" th:text="${section.emptyHint}" data-documents-empty-hint>Ajoutez la pièce
+            d'identité du vendeur.</p>
+    </div>
+</section>
+</body>
+</html>

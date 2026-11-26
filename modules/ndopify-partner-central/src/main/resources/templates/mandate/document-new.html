@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(${mandate} ? |Ajouter un document au mandat ${mandate.id} — Ndopify Partner Central| : 'Ajouter un document — Ndopify Partner Central', |Ajouter un document à un mandat : son type, son titre et ses pages.|, false)}"></head>
+<!--/*
+  Ajouter un document (MandateDocumentController, GET|POST /mandates/{id}/documents/new), reached from the mandate
+  page's Documents section. One multipart form, so it works without JavaScript (POST /mandates/{id}/documents, the BFF
+  posts it to /v1/mandates/{id}/documents/upload): the type (required), an optional title (blank: the type's French
+  name, a server rule; 100 characters at most) and the pages, one image each (JPEG, PNG or WEBP, 5 Mo each, 10 at
+  most, in the order chosen).
+  The type picker lists first the types that fit the mandate ("suggested": LISTING its identity and ownership papers,
+  SEARCH its identity and financing ones) then every other type under "Autres types", in a native select with two
+  optgroups. Without JS one native file input (multiple, no capture, so a phone offers its camera and its gallery);
+  with JS (mandate-document.js) a photo per page or several images, the chosen files listed in order by name and size
+  (read in the browser, no thumbnail), shrunk to 2000 px and sent straight to the storage, falling back to this form.
+  "form" keeps the type and the title when the form comes back; "errors" are per field (type, title, files) and
+  "error" is the generic one (a 5xx). "mandate" (MandateView) gives the number and the back link.
+*/-->
+<body data-page="mandate-document-new">
+    <th:block th:replace="~{fragments/site-header :: header(@{/}, true)}"></th:block>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link"><a th:href="@{/mandates/{id}#documents-title(id=${mandate.id})}" data-back-link>← Retour
+                au mandat</a></p>
+
+            <div class="page-intro">
+                <h1>Ajouter un document</h1>
+                <p class="mandate__meta">Mandat n° <span th:text="${mandate.id}">301</span></p>
+            </div>
+
+            <div class="alert alert--error" role="alert" th:if="${error}" data-new-error>
+                <svg th:replace="~{fragments/icon :: close}"></svg>
+                <p th:text="${error}">Le document n'a pas pu être ajouté.</p>
+            </div>
+
+            <form class="form" method="post" enctype="multipart/form-data" novalidate
+                  th:action="@{/mandates/{id}/documents(id=${mandate.id})}" data-new-form>
+                <div class="field">
+                    <label class="field__label" for="documentType">Type de document</label>
+                    <select class="input select" id="documentType" name="type" required
+                            aria-describedby="documentType-error"
+                            th:attr="aria-invalid=${errors['type'] != null ? 'true' : null}">
+                        <option value="">Choisissez un type</option>
+                        <optgroup label="Conseillés pour ce mandat" data-type-group="suggested">
+                            <option th:each="type : ${suggested}" th:value="${type.name}" th:text="${labels.type(type)}"
+                                    th:selected="${type.name == form.type}">Carte nationale d'identité</option>
+                        </optgroup>
+                        <optgroup label="Autres types" data-type-group="others">
+                            <option th:each="type : ${others}" th:value="${type.name}" th:text="${labels.type(type)}"
+                                    th:selected="${type.name == form.type}">Contrat de bail</option>
+                        </optgroup>
+                    </select>
+                    <p class="field__error" id="documentType-error" th:hidden="${errors['type'] == null}">
+                        <svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text
+                            th:text="${errors['type']}">Choisissez le type de document.</span></p>
+                </div>
+
+                <div class="field">
+                    <label class="field__label" for="documentTitle">Titre <span class="field__optional">(facultatif)</span></label>
+                    <input class="input" id="documentTitle" name="title" type="text" maxlength="100" autocomplete="off"
+                           placeholder="Le nom du type" th:value="${form.title}"
+                           aria-describedby="documentTitle-hint documentTitle-counter documentTitle-error"
+                           th:attr="aria-invalid=${errors['title'] != null ? 'true' : null}">
+                    <p class="field__hint" id="documentTitle-hint">Pour reconnaître le document, par exemple
+                        «&nbsp;Titre foncier lot 12&nbsp;». Sans titre, il porte le nom de son type.</p>
+                    <p class="field__counter" id="documentTitle-counter" data-title-counter>0 / 100</p>
+                    <p class="field__error" id="documentTitle-error" th:hidden="${errors['title'] == null}">
+                        <svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text
+                            th:text="${errors['title']}">100 caractères au plus.</span></p>
+                </div>
+
+                <fieldset class="doc-pages-field" aria-describedby="pages-hint pages-error">
+                    <legend id="pages-legend">Pages</legend>
+                    <p class="field__hint" id="pages-hint">Une photo par page, dans l'ordre (recto, puis verso). JPEG,
+                        PNG ou WEBP, 5&nbsp;Mo par page, 10&nbsp;pages au plus.</p>
+
+                    <!-- Without JS: the native input (the phone offers its camera or its gallery). -->
+                    <div data-pages-native>
+                        <input class="input input--file" id="pages" name="files" type="file" multiple
+                               accept="image/jpeg,image/png,image/webp" aria-labelledby="pages-legend"
+                               aria-describedby="pages-hint pages-error">
+                    </div>
+
+                    <!-- With JS: a photo per page or several images, then the pages in order. -->
+                    <div class="doc-pages-field" hidden data-pages-enhanced>
+                        <div class="photo-actions" data-pages-actions>
+                            <label class="btn btn--primary">Prendre une photo
+                                <input class="upload__input" type="file" accept="image/jpeg,image/png,image/webp"
+                                       capture="environment" aria-describedby="pages-hint pages-error"
+                                       data-page-input></label>
+                            <label class="btn btn--outline">Choisir des images
+                                <input class="upload__input" type="file" accept="image/jpeg,image/png,image/webp"
+                                       multiple aria-describedby="pages-hint pages-error" data-page-input></label>
+                        </div>
+                        <p class="checklist__progress" data-pages-count>Aucune page choisie.</p>
+                        <p class="visually-hidden" aria-live="polite" data-pages-live></p>
+                        <ol class="doc-files" hidden data-pages-list></ol>
+                        <template data-page-template>
+                            <li class="doc-file">
+                                <span class="doc-file__index" data-page-index></span>
+                                <span class="doc-file__info"><span class="doc-file__name" data-page-name></span>
+                                    <span aria-hidden="true">·</span> <span class="doc-file__size" data-page-size></span></span>
+                                <button type="button" class="photo__delete doc-file__remove" data-page-remove><svg
+                                        class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path
+                                            d="m6 6 8 8M14 6l-8 8" fill="none" stroke="currentColor" stroke-width="1.5"
+                                            stroke-linecap="round"/></svg></button>
+                            </li>
+                        </template>
+                    </div>
+
+                    <p class="field__error" id="pages-error" th:hidden="${errors['files'] == null}">
+                        <svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text
+                            th:text="${errors['files']}">Ajoutez au moins une page.</span></p>
+
+                    <!-- While the pages are sent, one after another: which one, out of how many, and a bar. -->
+                    <div class="upload-progress" hidden data-pages-progress>
+                        <p class="upload-progress__text" aria-live="polite" data-pages-progress-text>Envoi de la page 1
+                            sur 2…</p>
+                        <progress class="upload-progress__bar" max="2" value="0" data-pages-progress-bar>0 sur 2</progress>
+                    </div>
+                </fieldset>
+
+                <div class="form__actions">
+                    <a class="btn btn--outline" th:href="@{/mandates/{id}#documents-title(id=${mandate.id})}"
+                       data-back-link>Annuler</a>
+                    <button type="submit" class="btn btn--primary" data-new-submit>Ajouter le document</button>
+                </div>
+            </form>
+        </div>
+    </main>
+</body>
+</html>

@@ -13,8 +13,12 @@ import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.mandate.dto.DocumentStatus
+import com.wutsi.ndopify.mandate.dto.DocumentType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
+import com.wutsi.ndopify.mandate.dto.MandateDocument
+import com.wutsi.ndopify.mandate.dto.MandateDocumentPage
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.match.dto.MatchStatus
@@ -25,6 +29,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMandateDocumentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
 import com.wutsi.ndopify.npc.config.Parallel
@@ -98,6 +103,7 @@ class MandateTemplateTest {
     private val agentClient = mock<NdAgentClient>()
     private val matchClient = mock<NdMatchClient>()
     private val visitClient = mock<NdVisitClient>()
+    private val documentClient = mock<NdMandateDocumentClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
@@ -142,6 +148,7 @@ class MandateTemplateTest {
                     agentClient,
                     matchClient,
                     visitClient,
+                    documentClient,
                     locationClient,
                     tenantContext,
                     clock,
@@ -1784,5 +1791,129 @@ class MandateTemplateTest {
         assertEquals("end-form-cancel", page.selectFirst("[data-end-open=cancel]")?.attr("aria-controls"))
         assertEquals("end-form-cancel", page.selectFirst("form[data-end-form=cancel]")?.id())
         assertEquals(1, page.select("[data-end-back]").size)
+    }
+
+    // The mandate's documents (#329)
+
+    private fun documents(): List<MandateDocument> = listOf(
+        MandateDocument(
+            id = 3102,
+            mandateId = 201,
+            type = DocumentType.NATIONAL_ID,
+            title = "Carte nationale d'identité",
+            status = DocumentStatus.UPLOADED,
+            pages = listOf(MandateDocumentPage(id = 2001), MandateDocumentPage(id = 2002)),
+            createdAt = date("2026-11-25T10:00:00Z"),
+        ),
+        MandateDocument(
+            id = 3103,
+            mandateId = 201,
+            type = DocumentType.LAND_TITLE,
+            title = "Titre foncier n° 4521",
+            status = DocumentStatus.EXTRACTED,
+            pages = listOf(MandateDocumentPage(id = 2003)),
+            createdAt = date("2026-11-20T10:00:00Z"),
+        ),
+    )
+
+    @Test
+    fun `documents - newest first, with their type, title, status and date`() {
+        doReturn(documents()).whenever(documentClient).search(201)
+
+        val section = render(get("/mandates/201")).selectFirst("[data-documents]")!!
+
+        assertEquals("Documents", section.selectFirst("h2")?.text())
+        val add = section.selectFirst("[data-documents-add]")!!
+        assertEquals("Ajouter un document", add.text())
+        assertEquals("btn btn--secondary btn--compact", add.className())
+        assertEquals("/mandates/201/documents/new", add.attr("href"))
+        assertEquals(
+            "Les pièces d'identité et de financement du client. Privées : jamais publiées ni montrées à un autre agent.",
+            section.selectFirst(".documents__intro")?.text()?.replace("\u00a0", " "),
+        )
+
+        val rows = section.select(".doc-row")
+        assertEquals(listOf("Carte nationale d'identité", "Titre foncier"), rows.map { it.selectFirst("[data-doc-type]")?.text() })
+        assertEquals("/mandates/201/documents/3102", rows[0].attr("href"))
+        // The title only when it differs from the type's name
+        assertNull(rows[0].selectFirst("[data-doc-title]"))
+        assertEquals("Titre foncier n° 4521", rows[1].selectFirst("[data-doc-title]")?.text())
+        assertEquals(
+            listOf("Reçu", "Analysé"),
+            rows.map { it.selectFirst("[data-doc-status]")?.text()?.replace("Statut : ", "") },
+        )
+        assertEquals(
+            listOf("status-tag", "status-tag status-tag--success"),
+            rows.map { it.selectFirst("[data-doc-status]")?.className() },
+        )
+        assertEquals("Ajouté le 25 nov. 2026 · 2 pages", rows[0].selectFirst("[data-doc-meta]")?.text())
+        assertEquals("Ajouté le 20 nov. 2026 · 1 page", rows[1].selectFirst("[data-doc-meta]")?.text())
+        assertNull(section.selectFirst("[data-documents-empty]"))
+        assertNull(section.selectFirst("[data-documents-unavailable]"))
+    }
+
+    @Test
+    fun `documents - none`() {
+        val section = render(get("/mandates/201")).selectFirst("[data-documents]")!!
+
+        val empty = section.selectFirst("[data-documents-empty]")!!
+        assertEquals("Aucun document pour ce mandat.", empty.selectFirst("p")?.text())
+        assertTrue(empty.selectFirst("[data-documents-empty-hint]")!!.text().contains("bulletin de paie"))
+        assertNull(section.selectFirst("[data-documents-list]"))
+    }
+
+    @Test
+    fun `documents - unavailable, the rest of the page still renders`() {
+        doThrow(ResourceAccessException("down")).whenever(documentClient).search(201)
+
+        val page = render(get("/mandates/201"))
+        val section = page.selectFirst("[data-documents]")!!
+
+        assertEquals("Documents indisponibles", section.selectFirst("[data-documents-unavailable] h1, [data-documents-unavailable] .alert__title")?.text())
+        assertNull(section.selectFirst("[data-documents-list]"))
+        // The mandate itself is there
+        assertEquals("Locataire · Maison", page.selectFirst("[data-mandate-title]")?.text())
+    }
+
+    @Test
+    fun `documents - read-only once closed`() {
+        doReturn(APPROVED.copy(status = MandateStatus.CLOSED)).whenever(mandateClient).get(201)
+
+        val section = render(get("/mandates/201")).selectFirst("[data-documents]")!!
+
+        assertNull(section.selectFirst("[data-documents-add]"))
+        assertNotNull(section.selectFirst("[data-documents-readonly]"))
+    }
+
+    @Test
+    fun `documents - the outcome of an add`() {
+        val section = render(
+            get("/mandates/201").flashAttr("documentOutcome", "added").flashAttr("documentTitle", "Titre foncier lot 12"),
+        ).selectFirst("[data-documents]")!!
+
+        val flash = section.selectFirst("[data-documents-flash]")!!
+        assertEquals("Document « Titre foncier lot 12 » ajouté.", flash.text())
+        assertEquals("alert alert--success", flash.className())
+    }
+
+    @Test
+    fun `documents - deleted and changed`() {
+        val deleted = render(get("/mandates/201").flashAttr("documentOutcome", "deleted"))
+            .selectFirst("[data-documents-flash]")!!
+        assertEquals("Document supprimé.", deleted.text())
+
+        val changed = render(get("/mandates/201").flashAttr("documentOutcome", "changed"))
+            .selectFirst("[data-documents-flash]")!!
+        assertEquals("Ce document a changé ou n'existe plus.", changed.text())
+        assertEquals("alert alert--warning", changed.className())
+    }
+
+    @Test
+    fun `documents - not read on a locked mandate`() {
+        doThrow(HttpClientErrorException.NotFound::class).whenever(mandateClient).get(201)
+
+        render(get("/mandates/201"))
+
+        verify(documentClient, never()).search(any())
     }
 }

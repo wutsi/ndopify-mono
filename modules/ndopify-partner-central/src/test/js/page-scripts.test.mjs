@@ -33,11 +33,16 @@ async function load(name) {
         url: "http://localhost:8081/",
         runScripts: "dangerously",
         virtualConsole,
-        // jsdom has no matchMedia, which every browser has (listing.js's viewer reads prefers-reduced-motion)
         beforeParse(window) {
+            // jsdom has no matchMedia, which every browser has (listing.js's viewer reads prefers-reduced-motion)
             window.matchMedia = (query) => ({
                 matches: false, media: query, addEventListener() {}, removeEventListener() {}
             });
+            // ... nor DataTransfer, which the documents' add form uses to carry its chosen pages into the native input
+            window.DataTransfer = function () {
+                this.items = { add() {} };
+                this.files = null;
+            };
         }
     });
     if (dom.window.document.readyState !== "complete") {
@@ -71,7 +76,7 @@ function type(page, selector, text) {
 const ALL_FIXTURES = [
     "offer-property", "offer-terms-sale", "offer-features-residential-sale", "offer-features-commercial-sale",
     "offer-features-residential-rental", "find-property-residential-sale", "find-budget-building-sale",
-    "listing-photos"
+    "listing-photos", "mandate-document-new", "mandate-document"
 ];
 
 for (const name of ALL_FIXTURES) {
@@ -207,4 +212,176 @@ test("listing photos: a photo refused before sending hides the progress again", 
     for (const label of page.document.querySelectorAll("[data-photo-actions] label")) {
         assert.equal(label.hasAttribute("aria-disabled"), false);
     }
+});
+
+/* ---------- #329: a mandate's documents ---------- */
+
+function pageFile(page, name, type = "image/jpeg", size = 2048) {
+    return new page.window.File([new Uint8Array(size)], name, { type });
+}
+
+/* The second "data-page-input" is "Choisir des images" (several); the first one takes a photo. */
+function choosePages(page, files) {
+    const input = page.document.querySelectorAll("[data-page-input]")[1];
+    Object.defineProperty(input, "files", { value: files, configurable: true });
+    input.dispatchEvent(new page.window.Event("change", { bubbles: true }));
+    return input;
+}
+
+async function eventually(predicate, label) {
+    for (let i = 0; i < 200; i++) {
+        if (predicate()) return;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    assert.fail(label);
+}
+
+test("mandate documents, add: the chosen pages are listed by name and size, with no image", async () => {
+    const page = await load("mandate-document-new");
+
+    choosePages(page, [pageFile(page, "IMG_2041.jpg"), pageFile(page, "IMG_2042.jpg", "image/png", 2 * 1024 * 1024)]);
+
+    const rows = page.document.querySelectorAll("[data-pages-list] li");
+    assert.equal(rows.length, 2);
+    assert.equal(rows[0].querySelector("[data-page-index]").textContent, "Page 1");
+    assert.equal(rows[0].querySelector("[data-page-name]").textContent, "IMG_2041.jpg");
+    assert.equal(rows[0].querySelector("[data-page-size]").textContent, "2 Ko");
+    assert.equal(rows[1].querySelector("[data-page-index]").textContent, "Page 2");
+    assert.equal(rows[1].querySelector("[data-page-size]").textContent, "2 Mo");
+    assert.equal(page.document.querySelectorAll("[data-pages-list] img").length, 0);
+    assert.equal(page.document.querySelector("[data-pages-count]").textContent, "2 pages sur 10 au plus");
+    assert.equal(page.document.querySelector("[data-new-submit]").hasAttribute("aria-disabled"), false);
+
+    // Removable before sending: the second one leaves
+    rows[1].querySelector("[data-page-remove]").dispatchEvent(new page.window.Event("click", { bubbles: true }));
+    assert.equal(page.document.querySelectorAll("[data-pages-list] li").length, 1);
+    assert.deepEqual(page.errors, []);
+});
+
+test("mandate documents, add: a 6 Mo page shows the size error and keeps Ajouter inactive", async () => {
+    const page = await load("mandate-document-new");
+
+    choosePages(page, [pageFile(page, "IMG_2041.jpg", "image/jpeg", 6 * 1024 * 1024)]);
+
+    const error = page.document.querySelector("#pages-error");
+    assert.equal(error.hidden, false);
+    assert.equal(error.querySelector("[data-error-text]").textContent,
+        "« IMG_2041.jpg » dépasse 5 Mo : reprenez la photo, ou choisissez une image plus légère.");
+    assert.equal(page.document.querySelector("[data-pages-list]").hidden, true);
+    assert.equal(page.document.querySelector("[data-new-submit]").getAttribute("aria-disabled"), "true");
+});
+
+test("mandate documents, add: a page that can't be stored posts the form, never creates a document", async () => {
+    const page = await load("mandate-document-new");
+    let created = false;
+    let submitted = false;
+    let put = 0;
+    page.window.HTMLFormElement.prototype.submit = function () {
+        submitted = true;
+    };
+    page.window.fetch = (url, options) => {
+        if (String(url).endsWith("/presign")) {
+            return Promise.resolve({
+                ok: true, redirected: false,
+                json: () => Promise.resolve({ url: "https://s3/put", path: "mandate/301/documents/page" })
+            });
+        }
+        if (String(url).endsWith("/create")) {
+            created = true;
+            return Promise.resolve({ ok: true, redirected: false, json: () => Promise.resolve({ documentId: 1 }) });
+        }
+        put += 1;
+        return Promise.resolve({ ok: put === 1, redirected: false });
+    };
+
+    choosePages(page, [pageFile(page, "IMG_2041.jpg"), pageFile(page, "IMG_2042.jpg")]);
+    page.document.querySelector("#documentType").value = "PASSPORT";
+    page.document.querySelector("[data-new-form]")
+        .dispatchEvent(new page.window.Event("submit", { bubbles: true, cancelable: true }));
+
+    await eventually(() => submitted, "the form was not posted after a failed page");
+    assert.equal(created, false, "no document is created when a page couldn't be stored");
+    assert.equal(put, 2, "the second page's PUT failed");
+});
+
+test("mandate documents, add: the pages are stored then the document created", async () => {
+    const page = await load("mandate-document-new");
+    const calls = [];
+    page.window.HTMLFormElement.prototype.submit = () => assert.fail("the form must not be posted");
+    page.window.fetch = (url, options) => {
+        calls.push(String(url));
+        if (String(url).endsWith("/presign")) {
+            return Promise.resolve({
+                ok: true, redirected: false,
+                json: () => Promise.resolve({ url: "https://s3/put", path: "mandate/301/documents/page" })
+            });
+        }
+        if (String(url).endsWith("/create")) {
+            const body = JSON.parse(options.body);
+            assert.deepEqual(body.paths, ["mandate/301/documents/page", "mandate/301/documents/page"]);
+            assert.equal(body.type, "LAND_TITLE");
+            assert.equal(body.title, null);
+            return Promise.resolve({ ok: true, redirected: false, json: () => Promise.resolve({ documentId: 42 }) });
+        }
+        return Promise.resolve({ ok: true, redirected: false });
+    };
+
+    choosePages(page, [pageFile(page, "IMG_2041.jpg"), pageFile(page, "IMG_2042.jpg")]);
+    page.document.querySelector("#documentType").value = "LAND_TITLE";
+    page.document.querySelector("[data-new-form]")
+        .dispatchEvent(new page.window.Event("submit", { bubbles: true, cancelable: true }));
+
+    await eventually(() => calls.some((url) => url.endsWith("/create")), "the document was not created");
+    assert.equal(calls.filter((url) => url.endsWith("/create")).length, 1);
+});
+
+test("mandate documents, document page: the delete confirmation opens in place", async () => {
+    const page = await load("mandate-document");
+
+    const open = page.document.querySelector("[data-delete-open]");
+    const confirm = page.document.querySelector("[data-delete-confirm]");
+    assert.equal(confirm.hidden, true);
+    open.dispatchEvent(new page.window.MouseEvent("click", { bubbles: true, cancelable: true }));
+    assert.equal(confirm.hidden, false);
+    assert.equal(open.getAttribute("aria-expanded"), "true");
+    page.document.querySelector("[data-delete-cancel]")
+        .dispatchEvent(new page.window.MouseEvent("click", { bubbles: true, cancelable: true }));
+    assert.equal(confirm.hidden, true);
+    assert.deepEqual(page.errors, []);
+});
+
+test("mandate documents, document page: a replacement goes straight to the storage", async () => {
+    const page = await load("mandate-document");
+    const calls = [];
+    page.window.HTMLFormElement.prototype.submit = () => assert.fail("the form must not be posted");
+    page.window.fetch = (url, options) => {
+        calls.push(String(url));
+        if (String(url).endsWith("/presign")) {
+            return Promise.resolve({
+                ok: true, redirected: false,
+                json: () => Promise.resolve({ url: "https://s3/put", path: "mandate/301/documents/b.png" })
+            });
+        }
+        return Promise.resolve({ ok: true, redirected: false, json: () => Promise.resolve({ pageId: 2002 }) });
+    };
+
+    const form = page.document.querySelectorAll("[data-page-replace] form")[1];
+    const input = form.querySelector("input[type=file]");
+    Object.defineProperty(input, "files", { value: [pageFile(page, "page.jpg")], configurable: true });
+    form.dispatchEvent(new page.window.Event("submit", { bubbles: true, cancelable: true }));
+
+    await eventually(() => calls.some((url) => url.endsWith("/attach")), "the page was not attached");
+    assert.ok(calls.some((url) => url.endsWith("/pages/2002/presign")), calls.join(", "));
+    assert.ok(calls.some((url) => url.endsWith("/pages/2002/attach")), calls.join(", "));
+});
+
+test("mandate documents, document page: a replacement without a file shows its error", async () => {
+    const page = await load("mandate-document");
+
+    const form = page.document.querySelectorAll("[data-page-replace] form")[0];
+    const submitted = form.dispatchEvent(new page.window.Event("submit", { bubbles: true, cancelable: true }));
+
+    assert.equal(submitted, false, "the browser must not post the form");
+    assert.equal(form.querySelector(".field__error").hidden, false);
+    assert.equal(form.querySelector("[data-error-text]").textContent, "Choisissez une image.");
 });

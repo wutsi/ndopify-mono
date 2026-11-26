@@ -10,7 +10,7 @@ JWT classes) comes from `ndopify-web-core` (package `com.wutsi.ndopify.web.core`
 Package `com.wutsi.ndopify.npc`:
 
 - `ui/<feature>/` — one package per page or wizard (`login`, `join`, `kyc`, `home`, `profile`, `mandate`,
-  `assignment`, `listing`, `match`, `visit`, `findproperty`, `offerproperty`, `location`, `logout`), shared page infrastructure in `ui/layout/`
+  `document`, `assignment`, `listing`, `match`, `visit`, `findproperty`, `offerproperty`, `location`, `logout`), shared page infrastructure in `ui/layout/`
   (`SignedInAdvice`, `HttpClientErrorHandler`). A feature package holds:
   - `<Feature>Controller` — the MVC controller. It renders one template, reads and writes the session, calls the
     clients, and redirects (post-redirect-get, with a flash attribute for the outcome).
@@ -50,9 +50,9 @@ concatenates and minifies them with esbuild into `public/assets/dist/app.min.css
 under `target/classes`, never committed), and `templates/fragments/head.html` is the only place that links them.
 `frontend-maven-plugin` runs that build in `generate-resources` (Node is installed by Maven; a clean run needs network
 for `npm ci`), so the bundles are ready before the tests read them. The order is fixed and deliberate — CSS
-`partner-central`, `join`, `find-property`, `offer-property`, `home`, `listing`, `visit`, `profile`, `agent`, `telegram`;
-JS `util`, `direct-upload`, `partner-central`, `home`, `join`, `kyc`, `listing`, `mandate`, `visit`, `find-property`,
-`offer-property` — and it preserves every "loaded after" pair the per-page head used to give (a rule later in the CSS
+`partner-central`, `join`, `find-property`, `offer-property`, `home`, `listing`, `visit`, `profile`, `agent`, `telegram`, `document`;
+JS `util`, `direct-upload`, `partner-central`, `home`, `join`, `kyc`, `listing`, `mandate`, `mandate-document`,
+`visit`, `find-property`, `offer-property` — and it preserves every "loaded after" pair the per-page head used to give (a rule later in the CSS
 wins). A page script is still an IIFE gated on `data-page`; it only ships in the shared bundle now. Images stay in
 `public/assets/images`.
 `src/main/html/` is the prototype (see below).
@@ -325,6 +325,40 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `HttpClientErrorHandler` (`ui/layout/`), which answers the same status so that Spring Boot renders
   `templates/error/403.html` / `404.html` (also used for unknown URLs). These pages have no account menu: the signed-in
   agent isn't known in Spring Boot's error controller.
+- A mandate's **documents** (`MandateDocumentController`, `ui/document/`, `templates/mandate/document-new.html` and
+  `templates/mandate/document.html`) are the *Documents* section of the mandate page and a document's own page, on a
+  LISTING and a SEARCH mandate alike, for every `MandateRules.SHOWN` status. The section (`fragments/mandate-documents.html`,
+  `documentSection` from `MandateDocumentViews.section`) sits after *Biens correspondants* and before the criteria:
+  its documents newest first, each row a link to its page — the type, the agent's title under it only when it differs
+  from the type's name, the status pill (*Reçu* `UPLOADED`, *En cours d'analyse* `EXTRACTING`, *Analysé* `EXTRACTED`,
+  *À corriger* `FAILED`) and *Ajouté le 25 nov. 2026 · 2 pages* (tenant `dateFormat` through `TenantFormatter`); with
+  none, its hint says what to add for a landlord's listing or a client's search; failing to load, only the section says
+  so. *Ajouter un document* (`btn btn--secondary btn--compact`) opens `/mandates/{id}/documents/new`
+  (`GET|POST /mandates/{id}/documents`, multipart `type`, `title`, `files`): the type picker is a native select whose
+  first optgroup is the mandate's suggested types (*MandateDocumentLabels.suggested*, LISTING identity and ownership,
+  SEARCH identity and financing) then *Autres types* (*others*, `OTHER` last), the title is optional (blank: the type's
+  French name, a server rule, 100 characters at most) and the pages are JPEG, PNG or WEBP, 5 Mo each, 10 at most —
+  `spring.servlet.multipart` keeps 10 MB per file and goes to 55 MB per request, and `KycUploadErrorHandler` sends a
+  request over them back to `?error=too-large`. A document's page is `/mandates/{id}/documents/{documentId}`: **no
+  image** of a page anywhere (no preview, thumbnail nor size, never a page `path`), its type, title, status and one
+  *Ajouté le …*, then its pages in order (*Page 1*…), each with a *Voir* link to the page's short-lived presigned `url`
+  (new tab) and a folded *Remplacer* form (multipart `file`, `?replaceError=size&page={pageId}` after a multipart
+  limit), then *Renommer* (the posted `version`; a 409 `MANDATE_DOCUMENT_VERSION_CONFLICT` shows the current title and
+  the "changed" panel) and *Supprimer le document* (`?delete=1` opens the confirmation without JS, in place with it).
+  Writes only while `MandateRules.ACTIVE`; a CLOSED / CANCELLED mandate keeps the documents and their pages read-only
+  (*Voir* only). Everything else ndopify-server refuses because the page was stale (403, 404, 409) goes back to the
+  mandate page with the `documentOutcome=changed` flash; the add and the delete flash `added` / `deleted` (+
+  `documentTitle`) there, the rename and the replacement `outcome=renamed|replaced` on the document's page
+  (`MandateController` words the mandate page's one). With JS, `mandate-document.js` lists the chosen pages by name and
+  size (read in the browser, no thumbnail), shrinks them to 2000 px as KYC, sends each straight to the storage
+  (`POST …/documents/presign` → PUT → `POST …/documents/create`, then `GET …/documents/saved?documentId=`; a page that
+  can't be stored posts the whole multipart form, so a document is never half-created), replaces a page through
+  `POST …/pages/{pageId}/presign` → PUT → `POST …/pages/{pageId}/attach` (then `GET …/pages/{pageId}/saved`) and opens
+  the delete confirmation in place. The JSON proxies answer 401 without a signed-in agent (never the sign-in redirect,
+  which `fetch` would follow), 404 for an unknown or another agent's mandate, 409 once it isn't ACTIVE, ndopify-server's
+  status and error body when it refuses, 502 when it can't be reached; `NdDirectUpload.store` is `direct-upload.js`'s
+  presign + PUT only. Prototype: `src/main/html/v2/mandate.html` (Documents), `v2/mandate/document*.html` (approved
+  2026-11-25).
 - A landlord's signed mandate (APPROVED, LISTING) has a listing: the mandate page's *Actif* panel shows its line
   (`ListingViews.forMandate` → `MandateListingView`, the listing found by `MandateController` with
   `NdListingClient.findIdByMandate`, `GET /v1/listings?mandate-id=&agent-id=`, the agent's own id or its DRAFT isn't

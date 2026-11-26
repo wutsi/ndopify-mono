@@ -19,6 +19,7 @@ import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
+import com.wutsi.ndopify.mandate.dto.MandateDocument
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.TitleDocumentType
@@ -32,6 +33,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMandateDocumentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
 import com.wutsi.ndopify.npc.config.Parallel
@@ -72,6 +74,7 @@ import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers.anyLong
 import org.springframework.http.HttpStatus
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.MvcResult
@@ -100,6 +103,7 @@ class MandateControllerTest {
     private val agentClient = mock<NdAgentClient>()
     private val matchClient = mock<NdMatchClient>()
     private val visitClient = mock<NdVisitClient>()
+    private val documentClient = mock<NdMandateDocumentClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
@@ -116,6 +120,7 @@ class MandateControllerTest {
         doReturn(CONTRACT).whenever(contractClient).get("c-201")
         doReturn(CUSTOMER).whenever(customerClient).get(555)
         doReturn(ACCEPTED).whenever(assignmentClient).accepted(201)
+        doReturn(emptyList<MandateDocument>()).whenever(documentClient).search(anyLong())
 
         val controller = MandateController(
             currentAgent,
@@ -127,6 +132,7 @@ class MandateControllerTest {
             agentClient,
             matchClient,
             visitClient,
+            documentClient,
             locationClient,
             tenantContext,
             clock,
