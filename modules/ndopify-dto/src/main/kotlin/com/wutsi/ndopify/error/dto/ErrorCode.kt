@@ -91,6 +91,11 @@ object ErrorCode {
     val MANDATE_RATE_LIMITED = "$PREFIX:mandate:rate-limited"
     val MANDATE_VERSION_CONFLICT = "$PREFIX:mandate:version-conflict"
 
+    val MANDATE_DOCUMENT_LAST_PAGE = "$PREFIX:mandate-document:last-page"
+    val MANDATE_DOCUMENT_NOT_FOUND = "$PREFIX:mandate-document:not-found"
+    val MANDATE_DOCUMENT_PAGE_NOT_FOUND = "$PREFIX:mandate-document-page:not-found"
+    val MANDATE_DOCUMENT_VERSION_CONFLICT = "$PREFIX:mandate-document:version-conflict"
+
     val MATCH_NOT_FOUND = "$PREFIX:match:not-found"
     val MATCH_NOT_ACTIVE = "$PREFIX:match:not-active"
     val MATCH_NOT_ACCEPTED = "$PREFIX:match:not-accepted"
