@@ -260,6 +260,64 @@ class AddMandateDocumentPageEndpointTest : AuthorizationAwareEndpointIntegration
         assertEquals(2, pageDao.findByDocumentIdOrderByPageIndex(1000).size)
     }
 
+    @Test
+    fun `add - an image path on a PDF document is refused`() {
+        val newPath = "mandate/100/documents/0f8fad5b-d9cb-469f-a165-70867728950e.png"
+        uploaded(newPath)
+
+        val response = addPageError(100, 1002, AttachUploadRequest(path = newPath))
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_MIXED_SOURCES, response.body?.error?.code)
+        assertEquals("path", response.body?.error?.parameter?.name)
+        assertEquals(1, pageDao.findByDocumentIdOrderByPageIndex(1002).size)
+        verify(storage, never()).store(any(), any(), any())
+    }
+
+    @Test
+    fun `add - an 11th page is refused`() {
+        val newPath = "mandate/100/documents/0f8fad5b-d9cb-469f-a165-70867728950e.png"
+        uploaded(newPath)
+
+        val response = addPageError(100, 1004, AttachUploadRequest(path = newPath))
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES, response.body?.error?.code)
+        assertEquals("path", response.body?.error?.parameter?.name)
+        assertEquals(10, pageDao.findByDocumentIdOrderByPageIndex(1004).size)
+        verify(storage, never()).store(any(), any(), any())
+    }
+
+    @Test
+    fun `add - a posted PDF on an image document is refused`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/100/documents/1003/pages/upload",
+            uploadRequest(pdf(1), "scan.pdf", MediaType.APPLICATION_PDF),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_MIXED_SOURCES, response.body?.error?.code)
+        assertEquals("file", response.body?.error?.parameter?.name)
+        assertEquals(1, pageDao.findByDocumentIdOrderByPageIndex(1003).size)
+        verify(storage, never()).store(any(), any(), any())
+    }
+
+    @Test
+    fun `add - a posted PDF that takes a document over 10 pages is refused`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/100/documents/1006/pages/upload",
+            uploadRequest(pdf(2), "scan.pdf", MediaType.APPLICATION_PDF),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES, response.body?.error?.code)
+        assertEquals("file", response.body?.error?.parameter?.name)
+        assertEquals(9, pageDao.findByDocumentIdOrderByPageIndex(1006).size)
+        verify(storage, never()).store(any(), any(), any())
+    }
+
     private fun addPage(id: Long, documentId: Long, request: AttachUploadRequest) =
         rest.postForEntity("/v1/mandates/$id/documents/$documentId/pages", request, AttachMandateDocumentPageResponse::class.java)
 

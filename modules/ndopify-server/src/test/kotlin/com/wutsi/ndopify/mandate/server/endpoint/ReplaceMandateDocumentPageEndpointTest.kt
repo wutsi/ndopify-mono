@@ -264,6 +264,46 @@ class ReplaceMandateDocumentPageEndpointTest : AuthorizationAwareEndpointIntegra
         assertEquals(DocumentStatus.FAILED, documentDao.findById(1000).orElseThrow().status)
     }
 
+    @Test
+    fun `replace - an image path on a PDF document is refused`() {
+        uploaded(newPath)
+
+        val response = replacePageError(100, 1002, 2005, AttachUploadRequest(path = newPath))
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_MIXED_SOURCES, response.body?.error?.code)
+        assertEquals("path", response.body?.error?.parameter?.name)
+        assertEquals("mandate/100/documents/page-1002-0.jpg", pageDao.findById(2005).orElseThrow().path)
+        verify(s3, never()).store(any(), any(), any())
+        verify(s3, never()).delete(any())
+    }
+
+    @Test
+    fun `replace - a posted PDF on an image document is refused`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/100/documents/1003/pages/2006/upload",
+            uploadRequest(pdf(1), "scan.pdf", MediaType.APPLICATION_PDF),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_MIXED_SOURCES, response.body?.error?.code)
+        assertEquals("file", response.body?.error?.parameter?.name)
+        assertEquals("mandate/100/documents/page-1003-0.png", pageDao.findById(2006).orElseThrow().path)
+        verify(s3, never()).store(any(), any(), any())
+        verify(s3, never()).delete(any())
+    }
+
+    @Test
+    fun `replace - a page of an 11-page document is replaced`() {
+        uploaded(newPath)
+
+        val response = replacePage(100, 1005, 2020, AttachUploadRequest(path = newPath))
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(newPath, pageDao.findById(2020).orElseThrow().path)
+    }
+
     private fun replacePage(id: Long, documentId: Long, pageId: Long, request: AttachUploadRequest) =
         rest.postForEntity(
             "/v1/mandates/$id/documents/$documentId/pages/$pageId",

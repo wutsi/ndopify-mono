@@ -372,8 +372,10 @@ class MandateDocumentService(
      * [ErrorCode.MANDATE_NOT_FOUND], 403 [ErrorCode.MANDATE_ACCESS_DENIED], 404 [ErrorCode.MANDATE_DOCUMENT_NOT_FOUND],
      * 409 [ErrorCode.MANDATE_ALREADY_CLOSED]; a page of this document already at [path] is returned as is (idempotent,
      * nothing else changes); a [path] another page has → 400 [ErrorCode.HTTP_INVALID_PARAMETER] (`path`); then
-     * `verify(path, prefix(mandateId))` (see [create]). Saved through [saveLocked] at `findMaxPageIndex + 1`, the
-     * document reset. A failed save deletes the new object unless a page references it.
+     * `verify(path, prefix(mandateId))` (see [create]); a path that isn't the document's kind → 400
+     * [ErrorCode.MANDATE_DOCUMENT_MIXED_SOURCES] on `path`; a page over [MAX_PAGES] → 400
+     * [ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES] on `path`. Saved through [saveLocked] at
+     * `findMaxPageIndex + 1`, the document reset. A failed save deletes the new object unless a page references it.
      */
     fun addPage(mandateId: Long, documentId: Long, path: String): MandateDocumentPageEntity {
         val mandate = loadWritable(mandateId)
@@ -391,6 +393,8 @@ class MandateDocumentService(
         // Storage I/O outside any transaction
         val storage = storageProvider.get()
         val mimeType = directUpload.verify(path, prefix(mandateId))
+        ensureKind(document, mimeType, "path")
+        ensureCanAddPages(document, 1, "path")
         previewOrRefuse(mandateId, storage, path, mimeType, null, "path")
         val page = MandateDocumentPageEntity(
             documentId = document.id ?: -1,
@@ -413,6 +417,7 @@ class MandateDocumentService(
                     }
                     throw invalid("path", path)
                 }
+                ensureCanAddPages(document, 1, "path")
                 val saved = pageDao.save(page.copy(pageIndex = (pageDao.findMaxPageIndex(document.id ?: -1) ?: -1) + 1))
                 documentDao.save(resetExtraction(document))
                 saved
@@ -429,10 +434,12 @@ class MandateDocumentService(
      * a PDF adds one page per PDF page, in the PDF's order, rendered to JPEGs and appended from the current last page
      * index. Returns the first added page (the only one for an image).
      *
-     * Errors, on top of [addPage]'s: a password-protected PDF → 400 [ErrorCode.MANDATE_DOCUMENT_PDF_ENCRYPTED], an
-     * empty or corrupt one → 400 [ErrorCode.MANDATE_DOCUMENT_PDF_UNREADABLE], a PDF over [MAX_PAGES] pages → 400
-     * [ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES], all on `file`. No per-document lifetime cap: it's checked per
-     * call, as for an add.
+     * Errors, on top of [addPage]'s: a file that isn't the document's kind → 400
+     * [ErrorCode.MANDATE_DOCUMENT_MIXED_SOURCES] on `file`; a password-protected PDF → 400
+     * [ErrorCode.MANDATE_DOCUMENT_PDF_ENCRYPTED], an empty or corrupt one → 400
+     * [ErrorCode.MANDATE_DOCUMENT_PDF_UNREADABLE], a PDF over [MAX_PAGES] pages → 400
+     * [ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES], all on `file`; the document's pages plus the added ones over
+     * [MAX_PAGES] → 400 [ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES] on `file`, checked under the lock too.
      */
     fun uploadPage(mandateId: Long, documentId: Long, file: MultipartFile): MandateDocumentPageEntity {
         val mandate = loadWritable(mandateId)
@@ -440,12 +447,15 @@ class MandateDocumentService(
         ensureNotClosed(mandate)
 
         // Storage I/O outside any transaction
+        val mimeType = TIKA.detect(file.bytes)
+        ensureKind(document, mimeType, "file")
         val storage = storageProvider.get()
         val sources = try {
-            pageSources(file, TIKA.detect(file.bytes), "file")
+            pageSources(file, mimeType, "file")
         } catch (ex: PdfRasterizationException) {
             throw pdfError(ex.reason, "file")
         }
+        ensureCanAddPages(document, sources.size, "file")
         val now = Date(clock.millis())
         val storedPaths = mutableListOf<String>()
         val pages = mutableListOf<MandateDocumentPageEntity>()
@@ -480,6 +490,8 @@ class MandateDocumentService(
 
         return try {
             saveLocked(mandateId) {
+                // The authoritative page-cap check: a concurrent add may have filled the document since the pre-check.
+                ensureCanAddPages(document, sources.size, "file")
                 // The base index under the lock: a concurrent add must not give two pages the same index.
                 val base = (pageDao.findMaxPageIndex(document.id ?: -1) ?: -1) + 1
                 val saved = pages.mapIndexed { index, page -> pageDao.save(page.copy(pageIndex = base + index)) }
@@ -497,7 +509,9 @@ class MandateDocumentService(
      * [ErrorCode.MANDATE_NOT_FOUND], 403 [ErrorCode.MANDATE_ACCESS_DENIED], 404 [ErrorCode.MANDATE_DOCUMENT_NOT_FOUND],
      * 404 [ErrorCode.MANDATE_DOCUMENT_PAGE_NOT_FOUND], 409 [ErrorCode.MANDATE_ALREADY_CLOSED]; the page already at
      * [path] is returned as is (idempotent); a [path] another page has → 400 [ErrorCode.HTTP_INVALID_PARAMETER]
-     * (`path`); then `verify(path, prefix(mandateId))`. Saved through [saveLocked]: the page keeps its `pageIndex` and
+     * (`path`); then `verify(path, prefix(mandateId))`; a path that isn't the document's kind → 400
+     * [ErrorCode.MANDATE_DOCUMENT_MIXED_SOURCES] on `path`. Saved through [saveLocked]: the page keeps its `pageIndex`
+     * and
      * gets `path` / `storageType` / `mimeType`, the document reset; after the commit the old object is deleted with the
      * old page's own storage type (default storage when `UNKNOWN`). A failed save deletes the new object unless a page
      * references it.
@@ -519,6 +533,7 @@ class MandateDocumentService(
         // Storage I/O outside any transaction
         val storage = storageProvider.get()
         val mimeType = directUpload.verify(path, prefix(mandateId))
+        ensureKind(document, mimeType, "path")
         previewOrRefuse(mandateId, storage, path, mimeType, null, "path")
         val oldPath = page.path
         val oldStorageType = page.storageType
@@ -557,10 +572,12 @@ class MandateDocumentService(
      * checks as [replacePage], the file checked before it's stored, outside any transaction. An image, or a PDF of
      * exactly one page rendered to a JPEG, replaces the page and keeps its `pageIndex`.
      *
-     * Errors, on top of [replacePage]'s: a password-protected PDF → 400 [ErrorCode.MANDATE_DOCUMENT_PDF_ENCRYPTED], an
-     * empty or corrupt one → 400 [ErrorCode.MANDATE_DOCUMENT_PDF_UNREADABLE], a PDF of more than one page → 400
+     * Errors, on top of [replacePage]'s: a file that isn't the document's kind → 400
+     * [ErrorCode.MANDATE_DOCUMENT_MIXED_SOURCES] on `file`; a password-protected PDF → 400
+     * [ErrorCode.MANDATE_DOCUMENT_PDF_ENCRYPTED], an empty or corrupt one → 400
+     * [ErrorCode.MANDATE_DOCUMENT_PDF_UNREADABLE], a PDF of more than one page → 400
      * [ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES], all on `file`. A refused file leaves the page, its object and
-     * its preview untouched.
+     * its preview untouched. No page-count check: an over-limit document's page is still replaceable.
      */
     fun uploadReplacementPage(
         mandateId: Long,
@@ -574,9 +591,11 @@ class MandateDocumentService(
         ensureNotClosed(mandate)
 
         // Storage I/O outside any transaction
+        val mimeType = TIKA.detect(file.bytes)
+        ensureKind(document, mimeType, "file")
         val storage = storageProvider.get()
         val source = try {
-            pageSources(file, TIKA.detect(file.bytes), "file", maxPages = 1).single()
+            pageSources(file, mimeType, "file", maxPages = 1).single()
         } catch (ex: PdfRasterizationException) {
             throw pdfError(ex.reason, "file")
         }
@@ -715,6 +734,31 @@ class MandateDocumentService(
         expiresAt = null,
         modifiedAt = Date(clock.millis()),
     )
+
+    /**
+     * Refuses a page of the other kind on [document]: an `IMAGE` document takes a photo, a `PDF` document a PDF, an
+     * `UNKNOWN` one either. A file that is neither is left to [pageSources], which refuses it as a bad parameter.
+     */
+    private fun ensureKind(document: MandateDocumentEntity, mimeType: String?, field: String) {
+        val pdf = mimeType == PDF_MIME_TYPE
+        val image = mimeType in DirectUploadService.IMAGE_MIME_TYPES
+        val accepted = when (document.source) {
+            DocumentSource.IMAGE -> !pdf
+            DocumentSource.PDF -> !image
+            DocumentSource.UNKNOWN -> true
+        }
+        if (!accepted) {
+            throw mixedSources(field)
+        }
+    }
+
+    /** Refuses [count] new pages when [document] would then hold more than [MAX_PAGES] (under the caller's lock). */
+    private fun ensureCanAddPages(document: MandateDocumentEntity, count: Int, field: String) {
+        val current = pageDao.findByDocumentIdOrderByPageIndex(document.id ?: -1).size
+        if (current + count > MAX_PAGES) {
+            throw pageCap(field)
+        }
+    }
 
     /**
      * Refuses a document when [mandateId] already holds [MAX_DOCUMENTS]: 400 [ErrorCode.MANDATE_DOCUMENT_LIMIT_REACHED],
