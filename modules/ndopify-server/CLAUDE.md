@@ -68,7 +68,8 @@ one line `{title} - {price}` (`ListingTelegramLabels`; a blank title falls back 
 message tied to a customer or a co-agent carries `Contacter sur WhatsApp` (`PhoneNumberUtils.toWhatsappUrl`, never a
 number in the text, no button without one), a mandate message `Voir le mandat`
 (`{partnerCentralUrl}/mandates/{id}`, none without a `partnerCentralUrl`), a visit message `Voir la visite`
-(`{partnerCentralUrl}/visits/{id}`, first button). A visit message reads `<object> : <date/time>`, then
+(`{partnerCentralUrl}/visits/{id}`, first button; the co-brokerage one opens the listing agent's home card
+`/#co-visit-{id}` instead, on the confirmation and the reminder only). A visit message reads `<object> : <date/time>`, then
 `{title} - {price} - Sur place|Vidéo`, then `Agent : <organizer>` on a co-brokerage visit only (`VisitTelegramLabels`):
 the visit's agent is the organizer A, the listing's agent the co-agent B; A's messages contact B on WhatsApp and B's
 contact A. The e-mails keep their own wording and full amounts (`MandateMailLabels.price`, `MatchAnsweredLabels`,
