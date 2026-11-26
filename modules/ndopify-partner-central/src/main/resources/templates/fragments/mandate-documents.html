@@ -8,15 +8,28 @@
   sits beside the title in the WhatsApp button's style, and is absent on a CLOSED / CANCELLED mandate, which keeps the
   list read-only. The documents failing to load only affect this section ("unavailable"); the outcome of an add or a
   delete (MandateDocumentController's flash) shows here, the page coming back to #documents-title.
+  #369: the head counts the stored documents against the cap as a compact "3/5" beside the title (its accessible label
+  reads "3 documents sur 5"), all types together, LISTING and SEARCH alike. At 5 the section hides *Ajouter un
+  document* and shows "Un mandat peut avoir 5 documents au plus." in its place; the count stays. An unavailable list
+  keeps the action (adding doesn't need the list) and shows no count (it isn't known); a closed or cancelled mandate
+  keeps its read-only hint and no action, whatever the count.
   "section" is the DocumentSectionView, "mandateId" the mandate's id, "outcomeText" / "outcomeStyle" the last action's
   outcome (flash "documentOutcome" / "documentTitle", worded by MandateController).
 */-->
 <section th:fragment="documents(section, mandateId, outcomeText, outcomeStyle)" class="home-section documents"
          aria-labelledby="documents-title" data-documents>
     <div class="documents__head">
-        <h2 id="documents-title">Documents</h2>
-        <a class="btn btn--secondary btn--compact" th:if="${section.writable}"
+        <div class="documents__title">
+            <h2 id="documents-title">Documents</h2>
+            <p class="documents__count" th:unless="${section.unavailable}">
+                <span class="visually-hidden"
+                      th:text="|${section.count} document${section.count > 1 ? 's' : ''} sur 5|">3 documents sur 5</span>
+                <span aria-hidden="true" th:text="|${section.count}/5|">3/5</span>
+            </p>
+        </div>
+        <a class="btn btn--secondary btn--compact" th:if="${section.writable and !section.atLimit}"
            th:href="@{/mandates/{id}/documents/new(id=${mandateId})}" data-documents-add>Ajouter un document</a>
+        <p class="documents__limit" th:if="${section.atLimit}">Un mandat peut avoir 5 documents au plus.</p>
     </div>
     <p class="documents__intro" th:text="${section.intro}">Les pièces d'identité et de propriété du vendeur. Privées&nbsp;:
         jamais publiées ni montrées à un autre agent.</p>

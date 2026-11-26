@@ -16,7 +16,41 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-3);
+    gap: var(--space-2);
+}
+
+/*
+ * #369: the title with the compact count against the cap ("3/5"), then the action — or, at the cap, the notice in its
+ * place. The count reads as a hint right after the heading (its accessible label carries "3 documents sur 5"); its
+ * small size keeps "Ajouter un document" on the same line at 390 px. A zero flex basis keeps the action on the title's
+ * line whatever the count's width: the title takes what is left, and the count wraps under it if that is too narrow.
+ * Never the action.
+ */
+.documents__title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-1);
+    flex: 1 1 0;
+    min-width: min-content;
+}
+
+.documents__count {
+    font-size: var(--step-hint);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.documents__limit {
+    font-size: var(--step-hint);
+    font-weight: 600;
+}
+
+/* On a phone the cap notice takes its own line under the title and its count (it is long and replaces no action). */
+@media (max-width: 639.98px) {
+    .documents__limit {
+        flex-basis: 100%;
+    }
 }
 
 .documents__intro,

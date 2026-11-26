@@ -1854,6 +1854,33 @@ class MandateTemplateTest {
     }
 
     @Test
+    fun `documents - the count against the cap`() {
+        doReturn(List(5) { index -> documents()[1].copy(id = 4000L + index) }).whenever(documentClient).search(201)
+
+        val section = render(get("/mandates/201")).selectFirst("[data-documents]")!!
+
+        assertEquals("5/5", section.selectFirst(".documents__count [aria-hidden=true]")?.text())
+        assertEquals("5 documents sur 5", section.selectFirst(".documents__count .visually-hidden")?.text())
+        assertNull(section.selectFirst("[data-documents-add]"))
+        assertEquals(
+            "Un mandat peut avoir 5 documents au plus.",
+            section.selectFirst(".documents__limit")?.text(),
+        )
+    }
+
+    @Test
+    fun `documents - below the cap shows the count and the action`() {
+        doReturn(documents()).whenever(documentClient).search(201)
+
+        val section = render(get("/mandates/201")).selectFirst("[data-documents]")!!
+
+        assertEquals("2/5", section.selectFirst(".documents__count [aria-hidden=true]")?.text())
+        assertEquals("2 documents sur 5", section.selectFirst(".documents__count .visually-hidden")?.text())
+        assertNotNull(section.selectFirst("[data-documents-add]"))
+        assertNull(section.selectFirst(".documents__limit"))
+    }
+
+    @Test
     fun `documents - none`() {
         val section = render(get("/mandates/201")).selectFirst("[data-documents]")!!
 
