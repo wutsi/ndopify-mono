@@ -482,7 +482,9 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `/#visits-title`); an own-inventory visit has none. The page also lists the visits other agents organize on the agent's live
   listings (*Visites d'autres agents* from `GET /v1/visits/co-brokerage`, no `listing-id`, the shared `co-visit-card`):
   they count in `todayCount` (which links to their block when no own visit is today), not `requestedCount`, never
-  show A's customer, and the block is left out when the read fails. `GET /visits/{id}` (`VisitController`,
+  show A's customer, and the block is left out when the read fails. Each card carries `id="co-visit-{id}"` — the
+  co-brokerage Telegram message and e-mail open `/#co-visit-{id}` — and its listing line links to `/listings/{id}`,
+  never the dead `#visits-title` anchor. `GET /visits/{id}` (`VisitController`,
   `templates/visit.html`, `VisitViews` → `VisitPage`, `VisitRules`, `VisitSlots`) is the prototype's page: one panel per
   status (REQUESTED, CONFIRMED, WINDOW in the check-in window, CHECKED_IN, COMPLETED, CANCELLED, EXPIRED, NO_SHOW) and
   its forms: schedule (`POST /visits/{id}/schedule`), refuse / cancel (`/cancel`), check-in with the customer's code and
