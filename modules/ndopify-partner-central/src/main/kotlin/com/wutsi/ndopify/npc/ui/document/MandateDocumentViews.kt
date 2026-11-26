@@ -45,6 +45,7 @@ object MandateDocumentViews {
         }
         val intro = "Les pièces d'identité et " + (if (listing) "de propriété " else "de financement ") +
             "${words.of}. Privées : jamais publiées ni montrées à un autre agent."
+        val count = documents?.size ?: 0
         return DocumentSectionView(
             rows = documents.orEmpty()
                 .sortedByDescending { it.createdAt.time }
@@ -65,12 +66,15 @@ object MandateDocumentViews {
             writable = MandateDocumentRules.writable(mandate),
             emptyHint = hint,
             intro = intro,
+            count = count,
+            atLimit = documents != null && MandateDocumentRules.atLimit(count),
         )
     }
 
     fun document(mandate: Mandate, document: MandateDocument, formatter: TenantFormatter): DocumentView {
         val typeLabel = MandateDocumentLabels.type(document.type)
         val title = document.title.trim().ifEmpty { typeLabel }
+        val source = document.source
         return DocumentView(
             id = document.id,
             mandateId = mandate.id,
@@ -89,6 +93,11 @@ object MandateDocumentViews {
                     )
                 },
             writable = MandateDocumentRules.writable(mandate),
+            source = source,
+            sourceLabel = MandateDocumentLabels.source(source),
+            replaceAccept = MandateDocumentRules.accept(source),
+            replaceHint = MandateDocumentRules.replaceHint(source),
+            replaceRequired = MandateDocumentRules.replaceRequired(source),
         )
     }
 }

@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.ui.document
 
 import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.mandate.dto.DocumentSource
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.DocumentType
 import com.wutsi.ndopify.mandate.dto.Mandate
@@ -92,6 +93,21 @@ class MandateDocumentViewsTest {
             "Les pièces d'identité et de propriété du vendeur. Privées : jamais publiées ni montrées à un autre agent.",
             section.intro,
         )
+    }
+
+    @Test
+    fun `section - the count against the cap`() {
+        val three = MandateDocumentViews.section(mandate, List(3) { doc(id = it.toLong()) }, FORMATTER, TODAY)
+        assertEquals(3, three.count)
+        assertFalse(three.atLimit)
+
+        val five = MandateDocumentViews.section(mandate, List(5) { doc(id = it.toLong()) }, FORMATTER, TODAY)
+        assertEquals(5, five.count)
+        assertTrue(five.atLimit)
+
+        val unavailable = MandateDocumentViews.section(mandate, null, FORMATTER, TODAY)
+        assertEquals(0, unavailable.count)
+        assertFalse(unavailable.atLimit)
     }
 
     @Test
@@ -194,6 +210,24 @@ class MandateDocumentViewsTest {
             ),
             view.pages.map { it.href },
         )
+    }
+
+    @Test
+    fun `document - its kind and the replacement it accepts`() {
+        val pdf = MandateDocumentViews.document(mandate, doc().copy(source = DocumentSource.PDF), FORMATTER)
+        assertEquals(DocumentSource.PDF, pdf.source)
+        assertEquals("PDF", pdf.sourceLabel)
+        assertEquals("application/pdf", pdf.replaceAccept)
+        assertEquals(MandateDocumentRules.replaceHint(DocumentSource.PDF), pdf.replaceHint)
+        assertEquals(MandateDocumentRules.replaceRequired(DocumentSource.PDF), pdf.replaceRequired)
+
+        val image = MandateDocumentViews.document(mandate, doc().copy(source = DocumentSource.IMAGE), FORMATTER)
+        assertEquals("Photos", image.sourceLabel)
+        assertEquals("image/jpeg,image/png,image/webp", image.replaceAccept)
+
+        val legacy = MandateDocumentViews.document(mandate, doc().copy(source = DocumentSource.UNKNOWN), FORMATTER)
+        assertEquals("Photos ou PDF", legacy.sourceLabel)
+        assertEquals("image/jpeg,image/png,image/webp,application/pdf", legacy.replaceAccept)
     }
 
     @Test

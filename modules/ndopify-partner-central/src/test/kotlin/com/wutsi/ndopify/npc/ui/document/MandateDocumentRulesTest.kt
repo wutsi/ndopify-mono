@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.document
 
+import com.wutsi.ndopify.mandate.dto.DocumentSource
 import com.wutsi.ndopify.mandate.dto.DocumentType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -181,5 +182,85 @@ class MandateDocumentRulesTest {
             val mandate = Mandate(mandateType = type, status = MandateStatus.ASSIGNED)
             assertTrue(MandateDocumentRules.writable(mandate))
         }
+    }
+
+    @Test
+    fun `at most 5 documents per mandate`() {
+        assertEquals(5, MandateDocumentRules.MAX_DOCUMENTS)
+        assertFalse(MandateDocumentRules.atLimit(4))
+        assertTrue(MandateDocumentRules.atLimit(5))
+        assertTrue(MandateDocumentRules.atLimit(6))
+    }
+
+    @Test
+    fun `a mixed selection is photos and a PDF, or two PDFs`() {
+        val photo = page("a.jpg")
+        val pdf = page("a.pdf", mimeType = "application/pdf")
+        assertTrue(MandateDocumentRules.mixed(listOf(photo, pdf)))
+        assertTrue(MandateDocumentRules.mixed(listOf(pdf, page("b.pdf", mimeType = "application/pdf"))))
+        assertFalse(MandateDocumentRules.mixed(listOf(photo, page("b.jpg"))))
+        assertFalse(MandateDocumentRules.mixed(listOf(pdf)))
+    }
+
+    @Test
+    fun `the kind of a selection`() {
+        assertEquals(DocumentSource.IMAGE, MandateDocumentRules.source(listOf(page(), page("b.png", mimeType = "image/png"))))
+        assertEquals(DocumentSource.PDF, MandateDocumentRules.source(listOf(page("a.pdf", mimeType = "application/pdf"))))
+        // Mixed lists are refused before the kind is used; the function never throws on one.
+        assertEquals(
+            DocumentSource.PDF,
+            MandateDocumentRules.source(listOf(page(), page("a.pdf", mimeType = "application/pdf"))),
+        )
+    }
+
+    @Test
+    fun `a mixed selection is refused before the file count`() {
+        val pages = List(10) { index -> page("p$index.jpg") } +
+            page("scan.pdf", mimeType = "application/pdf")
+
+        assertEquals(
+            mapOf("files" to MandateDocumentRules.MIXED_SOURCES),
+            MandateDocumentRules.validateAdd(form(), pages),
+        )
+    }
+
+    @Test
+    fun `a replacement keeps the document's kind`() {
+        val photo = page()
+        val pdf = page("scan.pdf", mimeType = "application/pdf")
+        assertNull(MandateDocumentRules.validatePage(pdf, DocumentSource.PDF))
+        assertEquals(MandateDocumentRules.mixedReplace(DocumentSource.PDF), MandateDocumentRules.validatePage(photo, DocumentSource.PDF))
+        assertNull(MandateDocumentRules.validatePage(photo, DocumentSource.IMAGE))
+        assertEquals(
+            MandateDocumentRules.mixedReplace(DocumentSource.IMAGE),
+            MandateDocumentRules.validatePage(pdf, DocumentSource.IMAGE),
+        )
+        assertNull(MandateDocumentRules.validatePage(photo, DocumentSource.UNKNOWN))
+        assertNull(MandateDocumentRules.validatePage(pdf, DocumentSource.UNKNOWN))
+    }
+
+    @Test
+    fun `the accepted file types of a document's kind`() {
+        assertEquals("application/pdf", MandateDocumentRules.accept(DocumentSource.PDF))
+        assertEquals("image/jpeg,image/png,image/webp", MandateDocumentRules.accept(DocumentSource.IMAGE))
+        assertEquals(
+            "image/jpeg,image/png,image/webp,application/pdf",
+            MandateDocumentRules.accept(DocumentSource.UNKNOWN),
+        )
+    }
+
+    @Test
+    fun `the replacement copy of a kind`() {
+        assertEquals("1", "1")
+        assertTrue(MandateDocumentRules.replaceHint(DocumentSource.PDF).startsWith("PDF d'une page"))
+        assertTrue(MandateDocumentRules.replaceHint(DocumentSource.IMAGE).startsWith("Photo JPEG"))
+        assertTrue(MandateDocumentRules.replaceHint(DocumentSource.UNKNOWN).contains("ou PDF d'une page"))
+        assertEquals("Choisissez un PDF d'une page pour cette page.", MandateDocumentRules.replaceRequired(DocumentSource.PDF))
+        assertEquals("Choisissez une photo pour cette page.", MandateDocumentRules.replaceRequired(DocumentSource.IMAGE))
+    }
+
+    @Test
+    fun `the cap notice`() {
+        assertEquals("Un mandat peut avoir 5 documents au plus.", MandateDocumentRules.DOCUMENT_LIMIT)
     }
 }

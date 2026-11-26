@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.document
 
+import com.wutsi.ndopify.mandate.dto.DocumentSource
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 
 /** One document of the mandate page's *Documents* section: the whole row links to the document's page. */
@@ -29,6 +30,10 @@ data class DocumentSectionView(
     val writable: Boolean,
     val emptyHint: String,
     val intro: String,
+    /** The documents currently stored, against [MandateDocumentRules.MAX_DOCUMENTS]; 0 when the list can't be read. */
+    val count: Int,
+    /** The cap is reached: the section hides *Ajouter un document* and shows the notice. */
+    val atLimit: Boolean,
 )
 
 /**
@@ -59,4 +64,14 @@ data class DocumentView(
     val version: Long,
     val pages: List<DocumentPageView>,
     val writable: Boolean,
+    /** The kind the document was created from; the replacement form and its pill follow it. */
+    val source: DocumentSource,
+    /** "PDF", "Photos" or "Photos ou PDF". */
+    val sourceLabel: String,
+    /** The replacement file input's `accept`. */
+    val replaceAccept: String,
+    /** The replacement form's hint, by the document's kind. */
+    val replaceHint: String,
+    /** The replacement form's no-file error, by the document's kind. */
+    val replaceRequired: String,
 )
