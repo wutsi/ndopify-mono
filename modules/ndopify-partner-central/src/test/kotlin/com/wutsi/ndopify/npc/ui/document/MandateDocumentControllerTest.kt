@@ -35,6 +35,7 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.web.servlet.MockMvc
@@ -50,6 +51,7 @@ import org.springframework.web.servlet.view.InternalResourceViewResolver
 import java.time.Clock
 import java.time.Instant
 import java.util.Date
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
@@ -75,8 +77,8 @@ class MandateDocumentControllerTest {
         mandateType = MandateType.LISTING,
         listingType = ListingType.SALE,
     )
-    private val page1 = MandateDocumentPage(id = 2001, index = 0, url = "https://s3/1")
-    private val page2 = MandateDocumentPage(id = 2002, index = 1, url = "https://s3/2")
+    private val page1 = MandateDocumentPage(id = 2001, index = 0)
+    private val page2 = MandateDocumentPage(id = 2002, index = 1)
     private val document = MandateDocument(
         id = DOCUMENT_ID,
         mandateId = MANDATE_ID,
@@ -366,7 +368,13 @@ class MandateDocumentControllerTest {
         assertEquals(MandateDocumentController.VIEW_DOCUMENT, result.modelAndView?.viewName)
         val view = model(result)["document"] as DocumentView
         assertEquals("Titre foncier n° 4521", view.title)
-        assertEquals(listOf("https://s3/1", "https://s3/2"), view.pages.map { it.url })
+        assertEquals(
+            listOf(
+                "/mandates/301/documents/3103/pages/2001/preview",
+                "/mandates/301/documents/3103/pages/2002/preview",
+            ),
+            view.pages.map { it.href },
+        )
         assertEquals(RenameDocumentForm(title = "Titre foncier n° 4521", version = 3), model(result)["renameForm"])
         assertEquals(false, model(result)["conflict"])
         assertEquals(false, model(result)["deleting"])
@@ -638,6 +646,80 @@ class MandateDocumentControllerTest {
 
         assertEquals("redirect:/", result.modelAndView?.viewName)
     }
+
+    // The authenticated preview of a page: the image bytes, never a storage URL
+
+    private val previewJpeg = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 1, 2, 3)
+
+    @Test
+    fun `preview - the page's jpeg behind the agent session`() {
+        doReturn(previewJpeg).whenever(documentClient).preview(MANDATE_ID, DOCUMENT_ID, page1.id)
+
+        val result = mvc.perform(preview(page1.id)).andReturn()
+
+        assertEquals(200, result.response.status)
+        assertEquals("image/jpeg", result.response.contentType)
+        assertEquals("inline; filename=\"mandat-301-page-1.jpg\"", result.response.getHeader("Content-Disposition"))
+        assertEquals("private, max-age=300", result.response.getHeader("Cache-Control"))
+        assertEquals("nosniff", result.response.getHeader("X-Content-Type-Options"))
+        assertContentEquals(previewJpeg, result.response.contentAsByteArray)
+        verify(documentClient).preview(MANDATE_ID, DOCUMENT_ID, page1.id)
+    }
+
+    @Test
+    fun `preview - not signed in - signed out`() {
+        doReturn(null).whenever(currentAgent).get()
+
+        val result = mvc.perform(preview(page1.id)).andReturn()
+
+        assertEquals("redirect:/login", result.modelAndView?.viewName)
+        verify(documentClient, never()).preview(any(), any(), any())
+    }
+
+    @Test
+    fun `preview - a cancelled mandate still serves its pages`() {
+        doReturn(mandate.copy(status = MandateStatus.CANCELLED)).whenever(mandateClient).get(311)
+        doReturn(document).whenever(documentClient).get(311, DOCUMENT_ID)
+        doReturn(previewJpeg).whenever(documentClient).preview(311, DOCUMENT_ID, page1.id)
+
+        val result = mvc.perform(preview(page1.id, 311)).andReturn()
+
+        assertEquals(200, result.response.status)
+        assertEquals("image/jpeg", result.response.contentType)
+    }
+
+    @Test
+    fun `preview - a page that isn't the document's - 404`() {
+        val result = mvc.perform(preview(999)).andReturn()
+
+        assertEquals(404, result.response.status)
+        verify(documentClient, never()).preview(any(), any(), any())
+    }
+
+    @Test
+    fun `preview - the server refuses it - its status`() {
+        for (status in listOf(HttpStatus.FORBIDDEN, HttpStatus.NOT_FOUND)) {
+            doThrow(HttpClientErrorException.create(status, status.reasonPhrase, HttpHeaders.EMPTY, null, null))
+                .whenever(documentClient).preview(MANDATE_ID, DOCUMENT_ID, page1.id)
+
+            val result = mvc.perform(preview(page1.id)).andReturn()
+
+            assertEquals(status.value(), result.response.status, status.name)
+        }
+    }
+
+    @Test
+    fun `preview - the server fails or is unreachable - 502`() {
+        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR))
+            .whenever(documentClient).preview(MANDATE_ID, DOCUMENT_ID, page1.id)
+        assertEquals(502, mvc.perform(preview(page1.id)).andReturn().response.status)
+
+        doThrow(ResourceAccessException("down")).whenever(documentClient).preview(MANDATE_ID, DOCUMENT_ID, page1.id)
+        assertEquals(502, mvc.perform(preview(page1.id)).andReturn().response.status)
+    }
+
+    private fun preview(pageId: Long, mandateId: Long = MANDATE_ID) =
+        get("/mandates/$mandateId/documents/$DOCUMENT_ID/pages/$pageId/preview")
 
     private fun MvcResult.flashes(): Map<String, Any?> = flashMap
 

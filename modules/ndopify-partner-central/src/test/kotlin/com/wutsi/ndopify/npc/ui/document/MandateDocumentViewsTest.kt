@@ -37,8 +37,8 @@ class MandateDocumentViewsTest {
         status: DocumentStatus = DocumentStatus.EXTRACTED,
         createdAt: String = "2026-11-25T10:00:00Z",
         pages: List<MandateDocumentPage> = listOf(
-            MandateDocumentPage(id = 1, index = 0, url = "https://s3/1"),
-            MandateDocumentPage(id = 2, index = 1, url = "https://s3/2"),
+            MandateDocumentPage(id = 1, index = 0),
+            MandateDocumentPage(id = 2, index = 1),
         ),
         version: Long = 3,
     ) = MandateDocument(
@@ -161,7 +161,13 @@ class MandateDocumentViewsTest {
         assertEquals(3, view.version)
         assertTrue(view.writable)
         assertEquals(listOf(1, 2), view.pages.map { it.number })
-        assertEquals(listOf("https://s3/1", "https://s3/2"), view.pages.map { it.url })
+        assertEquals(
+            listOf(
+                "/mandates/301/documents/3103/pages/1/preview",
+                "/mandates/301/documents/3103/pages/2/preview",
+            ),
+            view.pages.map { it.href },
+        )
     }
 
     @Test
@@ -182,8 +188,8 @@ class MandateDocumentViewsTest {
             mandate,
             doc(
                 pages = listOf(
-                    MandateDocumentPage(id = 2, index = 1, url = "https://s3/2"),
-                    MandateDocumentPage(id = 1, index = 0, url = "https://s3/1"),
+                    MandateDocumentPage(id = 2, index = 1),
+                    MandateDocumentPage(id = 1, index = 0),
                 ),
             ),
             FORMATTER,

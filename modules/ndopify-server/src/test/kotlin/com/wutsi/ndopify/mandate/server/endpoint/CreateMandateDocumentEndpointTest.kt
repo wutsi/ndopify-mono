@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
@@ -28,9 +29,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
+import java.io.OutputStream
+import java.util.zip.CRC32
 import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /** Who may add a document to a mandate, and the rules of the create itself. */
@@ -60,6 +64,7 @@ class CreateMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
     fun setUpStorage() {
         admin = false
         doReturn(storage).whenever(storageProvider).get()
+        doReturn(storage).whenever(storageProvider).get(StorageType.S3)
         doReturn(StorageType.S3).whenever(storage).type()
     }
 
@@ -72,7 +77,44 @@ class CreateMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
     private fun uploaded(path: String) {
         doReturn(StoredObject("image/png", 3)).whenever(storage).metadata(path)
         doReturn(png(1, 1)).whenever(storage).readPrefix(eq(path), any())
+        doAnswer { invocation ->
+            invocation.getArgument<OutputStream>(1).write(png(1, 1))
+            null
+        }.whenever(storage).get(eq(path), any())
     }
+
+    /** A PNG whose header claims 10000x10000 pixels: Tika reads an image, the preview pipeline refuses it. */
+    private fun pixelBomb(path: String) {
+        doReturn(StoredObject("image/png", 33)).whenever(storage).metadata(path)
+        doReturn(pngHeader(10_000, 10_000)).whenever(storage).readPrefix(eq(path), any())
+        doAnswer { invocation ->
+            invocation.getArgument<OutputStream>(1).write(pngHeader(10_000, 10_000))
+            null
+        }.whenever(storage).get(eq(path), any())
+    }
+
+    private fun pngHeader(width: Int, height: Int): ByteArray {
+        val out = ByteArrayOutputStream()
+        out.write(byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A))
+        val data = ByteArrayOutputStream().apply {
+            write(byteArrayOf(0, 0, 0, 13))
+            write("IHDR".toByteArray())
+            write(intBytes(width))
+            write(intBytes(height))
+            write(byteArrayOf(8, 2, 0, 0, 0))
+        }.toByteArray()
+        out.write(data)
+        val crc = CRC32().apply { update(data, 4, data.size - 4) }
+        out.write(intBytes(crc.value.toInt()))
+        return out.toByteArray()
+    }
+
+    private fun intBytes(value: Int) = byteArrayOf(
+        (value shr 24).toByte(),
+        (value shr 16).toByte(),
+        (value shr 8).toByte(),
+        value.toByte(),
+    )
 
     @Test
     fun `create - a listing mandate's document from two uploaded paths`() {
@@ -90,6 +132,9 @@ class CreateMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
         assertEquals(listOf(path1, path2), pages.map { it.path })
         assertEquals(StorageType.S3, pages[0].storageType)
         assertEquals(StorageType.S3, pages[1].storageType)
+        // Generated at write, next to each original
+        verify(storage).store(eq("$path1.preview-v1.jpg"), any(), eq("image/jpeg"))
+        verify(storage).store(eq("$path2.preview-v1.jpg"), any(), eq("image/jpeg"))
     }
 
     @Test
@@ -211,6 +256,20 @@ class CreateMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
         assertEquals(1, documentDao.findByMandateIdOrderByIdDesc(100L).size)
+    }
+
+    @Test
+    fun `create - an image that cannot be previewed is refused and its object deleted`() {
+        pixelBomb(path1)
+
+        val response = createError(100, CreateMandateDocumentRequest(type = DocumentType.LAND_TITLE, paths = listOf(path1)))
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
+        assertEquals("path", response.body?.error?.parameter?.name)
+        assertNull(response.body?.error?.parameter?.value)
+        verify(storage).delete(path1)
+        assertTrue(documentDao.findByMandateIdOrderByIdDesc(100L).isEmpty())
     }
 
     @Test

@@ -9,8 +9,9 @@ import com.wutsi.ndopify.web.core.service.TenantFormatter
 
 /**
  * Builds the *Documents* section of the mandate page and a document's page from ndopify-server's DTOs. The documents
- * are listed newest first (the endpoint's order, by `createdAt` to be sure); a page only ever carries its presigned
- * `url`, never its path. The text of the empty state says what to add for a landlord's listing or a client's search.
+ * are listed newest first (the endpoint's order, by `createdAt` to be sure); a page carries no URL nor path, only the
+ * Partner Central preview route built from the ids. The text of the empty state says what to add for a landlord's
+ * listing or a client's search.
  */
 object MandateDocumentViews {
     private const val RENTAL_HINT =
@@ -73,7 +74,13 @@ object MandateDocumentViews {
             version = document.version,
             pages = document.pages
                 .sortedBy { it.index }
-                .mapIndexed { index, page -> DocumentPageView(page.id, index + 1, page.url) },
+                .mapIndexed { index, page ->
+                    DocumentPageView(
+                        id = page.id,
+                        number = index + 1,
+                        href = "/mandates/${mandate.id}/documents/${document.id}/pages/${page.id}/preview",
+                    )
+                },
             writable = MandateDocumentRules.writable(mandate),
         )
     }

@@ -15,9 +15,9 @@ import org.junit.jupiter.api.BeforeEach
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
-import java.net.URL
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 /** The documents of a mandate, newest first. */
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/GetMandateDocumentEndpoint.sql"])
@@ -33,8 +33,6 @@ class SearchMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
         doReturn(s3).whenever(storageProvider).get()
         doReturn(s3).whenever(storageProvider).get(StorageType.S3)
         doReturn(local).whenever(storageProvider).get(StorageType.LOCAL)
-        doReturn(URL("https://s3.example.com/page")).whenever(s3).generatePresignedUrl(any(), any())
-        doReturn(URL("https://local.example.com/page")).whenever(local).generatePresignedUrl(any(), any())
     }
 
     @Test
@@ -43,6 +41,14 @@ class SearchMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
 
         assertEquals(listOf(11L, 10L), documents.map { it.id })
         assertEquals(listOf("Bulletin mars", "Titre foncier"), documents.map { it.title })
+    }
+
+    @Test
+    fun `search - the json body carries no path and no url`() {
+        val body = rest.getForEntity("/v1/mandates/100/documents", String::class.java).body!!
+
+        assertFalse(body.contains("\"path\""), body)
+        assertFalse(body.contains("\"url\""), body)
     }
 
     @Test

@@ -29,12 +29,16 @@ data class DocumentSectionView(
     val intro: String,
 )
 
-/** One image page of a document: its rank, and the short-lived URL *Voir* opens in a new tab. Never its path. */
+/**
+ * One image page of a document: its rank, and the authenticated preview route *Voir* opens in a new tab. Never its
+ * storage path nor a storage URL.
+ */
 data class DocumentPageView(
     val id: Long,
     /** "Page 1" for the first. */
     val number: Int,
-    val url: String,
+    /** The Partner Central route that streams the page's watermarked JPEG. */
+    val href: String,
 )
 
 /**

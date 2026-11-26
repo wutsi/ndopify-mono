@@ -5,8 +5,8 @@
   One document of a mandate (MandateDocumentController, GET /mandates/{id}/documents/{documentId}), opened from a row
   of the mandate page's Documents section. Its header: the title, the status pill, the type and ONE upload date
   ("Ajouté le 25 nov. 2026", tenant dateFormat with the year), for the whole document. No image, no preview, no
-  thumbnail, no size anywhere: a page is a plain row "*Page 1*", its *Voir* link (the page's presigned URL, a new
-  tab) and its folded *Remplacer* form. Nothing of a page's path is ever in the HTML.
+  thumbnail, no size anywhere: a page is a plain row "*Page 1*", its *Voir* link (this app's authenticated preview
+  route, a new tab) and its folded *Remplacer* form. Nothing of a page's path nor any storage URL is ever in the HTML.
   Then *Renommer* (the title and the version the page was loaded with; a blank or over-100 title is a field error,
   [conflict] is ndopify-server's 409 MANDATE_DOCUMENT_VERSION_CONFLICT with the current title) and *Supprimer le
   document* (a confirmation; without JS a link to ?delete=1 opens it on this same page, [deleting]).
@@ -55,7 +55,7 @@
                         <li class="doc-page" th:each="page : ${d.pages}">
                             <div class="doc-page__bar">
                                 <span class="doc-page__caption" th:text="|Page ${page.number}|" data-page-caption>Page 1</span>
-                                <a class="doc-page__view" th:href="${page.url}" target="_blank" rel="noopener"
+                                <a class="doc-page__view" th:href="${page.href}" target="_blank" rel="noopener"
                                    data-page-link>Voir<span class="visually-hidden"
                                         th:text="| la page ${page.number} (nouvel onglet)|"> la page 1 (nouvel onglet)</span></a>
                             </div>

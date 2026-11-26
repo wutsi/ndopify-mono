@@ -100,6 +100,8 @@ class UploadMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
         assertTrue(pages.all { it.storageType == StorageType.S3 })
         assertTrue(pages.all { it.path.startsWith("mandate/100/documents/") })
         verify(storage, times(2)).store(argThat { startsWith("mandate/100/documents/") }, any(), eq("image/png"))
+        // Two originals, and the preview generated next to each one at write
+        verify(storage, times(2)).store(argThat { endsWith(".preview-v1.jpg") }, any(), eq("image/jpeg"))
     }
 
     @Test
@@ -144,7 +146,8 @@ class UploadMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
         verify(storage, times(2)).store(argThat { startsWith("mandate/100/documents/") }, any(), eq("image/png"))
-        verify(storage, times(2)).delete(argThat { startsWith("mandate/100/documents/") })
+        // Each stored page's original and its preview
+        verify(storage, times(4)).delete(argThat { startsWith("mandate/100/documents/") })
         assertTrue(documentDao.findByMandateIdOrderByIdDesc(100L).isEmpty())
     }
 
