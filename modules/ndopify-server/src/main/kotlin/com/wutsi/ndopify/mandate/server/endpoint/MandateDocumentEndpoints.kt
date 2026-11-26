@@ -14,6 +14,9 @@ import com.wutsi.ndopify.mandate.server.mapper.MandateDocumentMapper
 import com.wutsi.ndopify.mandate.server.service.MandateAccessService
 import com.wutsi.ndopify.mandate.server.service.MandateDocumentService
 import com.wutsi.ndopify.mandate.server.service.MandateService
+import com.wutsi.ndopify.mandate.server.service.document.MandateDocumentExtractionService
+import com.wutsi.ndopify.platform.endpoint.OpsEndpoint
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
 
@@ -37,6 +41,7 @@ class MandateDocumentEndpoints(
     private val mandateService: MandateService,
     private val access: MandateAccessService,
     private val mapper: MandateDocumentMapper,
+    private val extractionService: MandateDocumentExtractionService,
 ) {
     @GetMapping
     fun search(@PathVariable id: Long): SearchMandateDocumentResponse {
@@ -106,6 +111,17 @@ class MandateDocumentEndpoints(
     ): CreateMandateDocumentResponse {
         val document = service.upload(id, type, title, files.orEmpty())
         return CreateMandateDocumentResponse(documentId = document.id ?: -1)
+    }
+
+    /**
+     * The ops re-run of one document, synchronously (off in prod): whatever its status, it's read again and the
+     * following GET shows the new fields and codes. No access check: it's operational only.
+     */
+    @OpsEndpoint
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PostMapping("/{documentId}/extract")
+    fun extract(@PathVariable id: Long, @PathVariable documentId: Long) {
+        extractionService.extract(id, documentId)
     }
 
     @PostMapping("/{documentId}")
