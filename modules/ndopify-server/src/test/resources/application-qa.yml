@@ -81,3 +81,5 @@ ndopify:
                 cron: "-" # Never on its own: a run mid-suite would expire the fixtures' offers. Tests call MandateJobs
             dispatch:
                 cron: "-"
+        document:
+            url-ttl-seconds: 3600

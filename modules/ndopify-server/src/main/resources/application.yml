@@ -326,6 +326,8 @@ ndopify:
         contract:
             duration-months: 6             # A mandate's contract is valid for 6 months from its signature
             sale-commission-rate: 5        # A sale mandate's success commission, in % of the sale price
+        document:
+            url-ttl-seconds: 3600          # A document page's presigned URL lives 1h
 
     match:
         price-tolerance: 0.10           # A listing up to 10% over the budget is still a match, scored down

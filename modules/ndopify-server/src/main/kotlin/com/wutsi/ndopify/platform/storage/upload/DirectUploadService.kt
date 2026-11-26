@@ -11,6 +11,7 @@ import com.wutsi.ndopify.platform.util.MimeUtils
 import org.apache.tika.Tika
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
+import org.springframework.web.multipart.MultipartFile
 import java.util.UUID
 
 /**
@@ -93,6 +94,33 @@ class DirectUploadService(
                 name = "path",
                 type = ParameterType.PARAMETER_TYPE_PAYLOAD,
                 value = path,
+            ),
+        )
+    )
+
+    /**
+     * Checks a file posted as multipart before it's stored and returns its MIME type, detected from its bytes. Errors,
+     * in order, both 400 `HTTP_INVALID_PARAMETER` (`file`): more than [MAX_BYTES]; bytes that aren't JPEG/PNG/WEBP.
+     */
+    fun check(file: MultipartFile): String {
+        if (file.size > MAX_BYTES) {
+            throw invalidFile(file, "The file is larger than ${MAX_BYTES / (1024 * 1024)} MB.")
+        }
+        val mimeType = TIKA.detect(file.inputStream)
+        if (mimeType !in IMAGE_MIME_TYPES) {
+            throw invalidFile(file, "The file is not a JPEG, PNG or WEBP image.")
+        }
+        return mimeType
+    }
+
+    private fun invalidFile(file: MultipartFile, message: String) = BadRequestException(
+        error = Error(
+            code = ErrorCode.HTTP_INVALID_PARAMETER,
+            message = message,
+            parameter = Parameter(
+                name = "file",
+                type = ParameterType.PARAMETER_TYPE_PAYLOAD,
+                value = file.originalFilename,
             ),
         )
     )

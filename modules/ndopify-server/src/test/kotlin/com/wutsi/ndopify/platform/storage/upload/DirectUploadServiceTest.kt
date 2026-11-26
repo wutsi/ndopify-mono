@@ -7,6 +7,7 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.platform.storage.StorageService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
@@ -14,6 +15,7 @@ import com.wutsi.ndopify.platform.storage.StoredObject
 import com.wutsi.ndopify.refdata.dto.StorageType
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.mock.web.MockMultipartFile
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.net.URL
@@ -137,5 +139,35 @@ class DirectUploadServiceTest {
 
         assertFailsWith<BadRequestException> { service.verify(path, "listings/101/images") }
         verify(storage).delete(path)
+    }
+
+    @Test
+    fun `check - returns the detected type`() {
+        assertEquals("image/png", service.check(MockMultipartFile("page.png", "page.png", "image/png", png())))
+    }
+
+    @Test
+    fun `check - too large`() {
+        val file = MockMultipartFile(
+            "page.png",
+            "page.png",
+            "image/png",
+            ByteArray((DirectUploadService.MAX_BYTES + 1).toInt()),
+        )
+
+        val exception = assertFailsWith<BadRequestException> { service.check(file) }
+
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, exception.error.code)
+        assertEquals("file", exception.error.parameter?.name)
+    }
+
+    @Test
+    fun `check - not an image`() {
+        val file = MockMultipartFile("note.txt", "note.txt", "text/plain", "not an image".toByteArray())
+
+        val exception = assertFailsWith<BadRequestException> { service.check(file) }
+
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, exception.error.code)
+        assertEquals("file", exception.error.parameter?.name)
     }
 }
