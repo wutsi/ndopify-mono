@@ -8,6 +8,7 @@ import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.mandate.dto.AttachMandateDocumentPageResponse
 import com.wutsi.ndopify.mandate.dto.CreateMandateDocumentRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateDocumentResponse
+import com.wutsi.ndopify.mandate.dto.DocumentSource
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateDocument
 import com.wutsi.ndopify.mandate.dto.UpdateMandateDocumentRequest
@@ -142,9 +143,14 @@ class MandateDocumentController(
         private const val REPLACE_INVALID_FILE =
             "Cette page n'a pas pu être remplacée : vérifiez qu'il s'agit d'une photo lisible ou d'un PDF d'une page, " +
                 "non protégé."
+        private const val REPLACE_INVALID_FILE_PDF =
+            "Cette page n'a pas pu être remplacée : vérifiez qu'il s'agit d'un PDF d'une page, non protégé."
         private const val REPLACE_PDF_ENCRYPTED =
             "Ce PDF est protégé par un mot de passe : enregistrez-le sans protection, ou envoyez une photo."
+        private const val REPLACE_PDF_ENCRYPTED_ONLY =
+            "Ce PDF est protégé par un mot de passe : enregistrez-le sans protection."
         private const val REPLACE_PDF_UNREADABLE = "Ce PDF est vide ou endommagé : envoyez une photo."
+        private const val REPLACE_PDF_UNREADABLE_ONLY = "Ce PDF est vide ou endommagé : envoyez un autre PDF."
         private const val REPLACE_PDF_TOO_MANY_PAGES = "Ce PDF fait plusieurs pages : envoyez un PDF d'une page, ou une photo."
         private const val REPLACE_PDF_TOO_MANY_PAGES_ONLY = "Ce PDF fait plusieurs pages : envoyez un PDF d'une page."
 
@@ -753,7 +759,7 @@ class MandateDocumentController(
         ex: HttpClientErrorException,
         action: PageAction,
         fallback: String,
-        source: com.wutsi.ndopify.mandate.dto.DocumentSource = com.wutsi.ndopify.mandate.dto.DocumentSource.UNKNOWN,
+        source: DocumentSource = DocumentSource.UNKNOWN,
     ): Map<String, String> {
         val error = try {
             ex.getResponseBodyAs(ErrorResponse::class.java)?.error
@@ -769,20 +775,30 @@ class MandateDocumentController(
                 } else {
                     MandateDocumentRules.mixedReplace(source)
                 }
-            ErrorCode.MANDATE_DOCUMENT_PDF_ENCRYPTED ->
-                if (action == PageAction.ADD) ADD_PDF_ENCRYPTED else REPLACE_PDF_ENCRYPTED
-            ErrorCode.MANDATE_DOCUMENT_PDF_UNREADABLE ->
-                if (action == PageAction.ADD) ADD_PDF_UNREADABLE else REPLACE_PDF_UNREADABLE
+            ErrorCode.MANDATE_DOCUMENT_PDF_ENCRYPTED -> when {
+                action == PageAction.ADD -> ADD_PDF_ENCRYPTED
+                source == DocumentSource.PDF -> REPLACE_PDF_ENCRYPTED_ONLY
+                else -> REPLACE_PDF_ENCRYPTED
+            }
+            ErrorCode.MANDATE_DOCUMENT_PDF_UNREADABLE -> when {
+                action == PageAction.ADD -> ADD_PDF_UNREADABLE
+                source == DocumentSource.PDF -> REPLACE_PDF_UNREADABLE_ONLY
+                else -> REPLACE_PDF_UNREADABLE
+            }
             ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES -> when {
                 action == PageAction.ADD && parameter == "files" -> ADD_TOO_MANY_PAGES
                 action == PageAction.ADD -> ADD_PDF_TOO_MANY_PAGES
-                source == com.wutsi.ndopify.mandate.dto.DocumentSource.PDF -> REPLACE_PDF_TOO_MANY_PAGES_ONLY
+                source == DocumentSource.PDF -> REPLACE_PDF_TOO_MANY_PAGES_ONLY
                 else -> REPLACE_PDF_TOO_MANY_PAGES
             }
             else -> when (field) {
                 "type" -> MandateDocumentRules.TYPE_REQUIRED
                 "title" -> MandateDocumentRules.TITLE_TOO_LONG
-                else -> if (action == PageAction.ADD) ADD_INVALID_FILE else REPLACE_INVALID_FILE
+                else -> when {
+                    action == PageAction.ADD -> ADD_INVALID_FILE
+                    source == DocumentSource.PDF -> REPLACE_INVALID_FILE_PDF
+                    else -> REPLACE_INVALID_FILE
+                }
             }
         }
         return mapOf(field to message)

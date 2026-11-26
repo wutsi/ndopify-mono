@@ -535,3 +535,17 @@ test("mandate documents, document page: an image document refuses a PDF replacem
             "par un PDF."
     );
 });
+
+test("mandate documents, document page: a PDF document's oversized PDF suggests no photo", async () => {
+    const page = await load("mandate-document-pdf");
+    const form = page.document.querySelectorAll("[data-page-replace] form")[0];
+    const input = form.querySelector("input[type=file]");
+    Object.defineProperty(input, "files", {
+        value: [pageFile(page, "scan.pdf", "application/pdf", 6 * 1024 * 1024)],
+        configurable: true
+    });
+
+    assert.equal(submit(form), false, "the browser must not post the form");
+    assert.equal(form.querySelector("[data-error-text]").textContent,
+        "« scan.pdf » dépasse 5 Mo : choisissez un PDF plus léger.");
+});

@@ -1210,6 +1210,25 @@ class MandateDocumentControllerTest {
     }
 
     @Test
+    fun `replace a page - a PDF document's PDF refusals offer no photo`() {
+        doReturn(document.copy(source = DocumentSource.PDF)).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+        doThrow(serverError(HttpStatus.BAD_REQUEST, ErrorCode.MANDATE_DOCUMENT_PDF_ENCRYPTED, "file"))
+            .whenever(documentClient).uploadReplacementPage(any(), any(), any(), any())
+
+        val result = mvc
+            .perform(
+                multipart("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page2.id}")
+                    .file(MockMultipartFile("file", "scan.pdf", "application/pdf", pdf())),
+            )
+            .andReturn()
+
+        assertEquals(
+            mapOf(page2.id to "Ce PDF est protégé par un mot de passe : enregistrez-le sans protection."),
+            model(result)["replaceErrors"],
+        )
+    }
+
+    @Test
     fun `replace a page - the server's mixed refusal is worded by the document's kind`() {
         doReturn(document.copy(source = DocumentSource.PDF)).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
         doThrow(serverError(HttpStatus.BAD_REQUEST, ErrorCode.MANDATE_DOCUMENT_MIXED_SOURCES, "file"))

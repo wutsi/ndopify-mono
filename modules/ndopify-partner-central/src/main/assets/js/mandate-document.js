@@ -98,15 +98,20 @@
         return "Choisissez la nouvelle page : une photo ou un PDF.";
     }
 
-    function fileError(file) {
+    function fileError(file, source) {
         if (ACCEPTED_TYPES.indexOf(file.type) === -1) {
             return "« " + file.name + " » n'est ni une photo ni un PDF : choisissez une photo JPEG, PNG ou WEBP, " +
                 "ou un PDF.";
         }
         if (file.size > MAX_FILE_BYTES) {
-            return isPdf(file)
-                ? "« " + file.name + " » dépasse 5 Mo : choisissez un PDF plus léger, ou envoyez ses pages en photos."
-                : "« " + file.name + " » dépasse 5 Mo : reprenez la photo, ou choisissez une image plus légère.";
+            if (isPdf(file)) {
+                // #369: a PDF document refuses a photo, so its PDF refusal never suggests one.
+                return source === "PDF"
+                    ? "« " + file.name + " » dépasse 5 Mo : choisissez un PDF plus léger."
+                    : "« " + file.name + " » dépasse 5 Mo : choisissez un PDF plus léger, ou envoyez ses pages en " +
+                        "photos.";
+            }
+            return "« " + file.name + " » dépasse 5 Mo : reprenez la photo, ou choisissez une image plus légère.";
         }
         return "";
     }
@@ -461,7 +466,7 @@
                     problem = mixedReplace(source);
                 }
                 if (!problem && source === "IMAGE" && isPdf(file)) problem = mixedReplace(source);
-                if (!problem && file) problem = fileError(file);
+                if (!problem && file) problem = fileError(file, source);
                 showError(error, problem);
                 setInvalid(input, !!problem);
                 if (problem) {
