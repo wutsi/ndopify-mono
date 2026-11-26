@@ -78,30 +78,36 @@ class ListingVerifierImage(
         LOGGER.info(">>> Listing#${image.listingId} - Verifying image ${image.url}")
 
         val original = UrlUtils.download(URL(image.url))
-        val dimension = getDimensions(original)
-        val file = extractFile(original, image)
-        val info = extractor.extract(file, listing)
-        val kind = ImageKind.parse(info?.kind)
-        val verified = if (info?.valid == true) {
-            image.copy(
-                status = ImageStatus.VERIFIED,
-                kind = kind,
-                title = info.title,
-                description = info.description,
-                quality = info.quality,
-                width = dimension.first,
-                height = dimension.second,
-                modifiedAt = Date(clock.millis()),
-            )
-        } else {
-            image.copy(
-                status = ImageStatus.REJECTED,
-                kind = kind,
-                errorMessage = info?.reason ?: "Unable to extract image info",
-                modifiedAt = Date(clock.millis()),
-            )
+        var rendition: File? = null
+        try {
+            val dimension = getDimensions(original)
+            val file = extractFile(original, image).also { if (it !== original) rendition = it }
+            val info = extractor.extract(file, listing)
+            val kind = ImageKind.parse(info?.kind)
+            val verified = if (info?.valid == true) {
+                image.copy(
+                    status = ImageStatus.VERIFIED,
+                    kind = kind,
+                    title = info.title,
+                    description = info.description,
+                    quality = info.quality,
+                    width = dimension.first,
+                    height = dimension.second,
+                    modifiedAt = Date(clock.millis()),
+                )
+            } else {
+                image.copy(
+                    status = ImageStatus.REJECTED,
+                    kind = kind,
+                    errorMessage = info?.reason ?: "Unable to extract image info",
+                    modifiedAt = Date(clock.millis()),
+                )
+            }
+            tx.execute { dao.save(verified) }
+        } finally {
+            original.delete()
+            rendition?.delete()
         }
-        tx.execute { dao.save(verified) }
     }
 
     /**

@@ -4,6 +4,7 @@ import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
@@ -32,8 +33,10 @@ import java.net.InetSocketAddress
 import java.time.Clock
 import java.util.Date
 import javax.imageio.ImageIO
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -294,15 +297,18 @@ class ListingVerifierImageTest {
     fun `the rendition is sent to the extractor`() {
         mockImages(pending = listOf(image(11)), verified = emptyList())
         doReturn(url("/rendition.jpg")).whenever(imageService).transform(any(), any())
-        doReturn(ListingImageInfo(title = "Salon", valid = true, quality = 4))
-            .whenever(extractor).extract(any(), any())
+        var content: ByteArray? = null
+        doAnswer {
+            content = it.getArgument<File>(0).readBytes()
+            ListingImageInfo(title = "Salon", valid = true, quality = 4)
+        }.whenever(extractor).extract(any(), any())
 
         verifier.verify(listing)
 
         val file = argumentCaptor<File>()
         verify(extractor).extract(file.capture(), eq(listing))
         assertEquals("jpg", file.firstValue.extension)
-        assertEquals(3L, file.firstValue.length())
+        assertContentEquals(byteArrayOf(9, 9, 9), content!!)
         verify(imageService).transform(image(11).url, ListingVerifierImage.VISION_TRANSFORMATION)
 
         val saved = argumentCaptor<ListingImageEntity>()
@@ -355,5 +361,34 @@ class ListingVerifierImageTest {
         val file = argumentCaptor<File>()
         verify(extractor).extract(file.capture(), eq(listing))
         assertEquals("jpg", file.firstValue.extension)
+    }
+
+    @Test
+    fun `the temporary files are deleted`() {
+        mockImages(pending = listOf(image(11)), verified = emptyList())
+        doReturn(url("/rendition.jpg")).whenever(imageService).transform(any(), any())
+        doReturn(ListingImageInfo(valid = true)).whenever(extractor).extract(any(), any())
+        val tempDir = File(System.getProperty("java.io.tmpdir"))
+        val before = tempDir.listFiles()!!.toSet()
+
+        verifier.verify(listing)
+
+        val file = argumentCaptor<File>()
+        verify(extractor).extract(file.capture(), eq(listing))
+        assertFalse(file.firstValue.exists())
+        val leaked = tempDir.listFiles()!!.toSet() - before
+        assertTrue(leaked.none { it.extension == "png" || it.extension == "jpg" }, "leaked: $leaked")
+    }
+
+    @Test
+    fun `the temporary files are deleted when the extractor fails`() {
+        mockImages(pending = listOf(image(11)), verified = emptyList())
+        doThrow(IllegalStateException("boom")).whenever(extractor).extract(any(), any())
+
+        assertFailsWith<IllegalStateException> { verifier.verify(listing) }
+
+        val file = argumentCaptor<File>()
+        verify(extractor).extract(file.capture(), eq(listing))
+        assertFalse(file.firstValue.exists())
     }
 }
