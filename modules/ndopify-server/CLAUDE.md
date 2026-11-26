@@ -217,9 +217,15 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   agent or an admin may use them — never the agent it's offered to, nor its customer — on the reads too: the search and
   get check `MandateAccessService.ensureCanUpdate` (`MandateDocumentEndpoints`), the writes through
   `MandateDocumentService.loadWritable`. The customer reads its mandate via `GET /v1/mandates/{id}` alone, which carries
-  no document. A page's file is private: read through a short-lived presigned URL (`pageUrl`, TTL
-  `ndopify.mandate.document.url-ttl-seconds`), the storage `path` (under `mandate/{id}/documents/`) never handed out nor
-  served from a public URL. Errors, in order: 404 `MANDATE_NOT_FOUND`, 403 `MANDATE_ACCESS_DENIED`, then for the URLs
+  no document. A page is read through `GET /{documentId}/pages/{pageId}/preview` (`image/jpeg`): the display copy
+  `MandateDocumentPreviewService` derives at `<path>.preview-v1.jpg` in the page's own storage (the default storage for
+  a legacy `UNKNOWN` page), generated at write by `ImagePreviewService` (longest side 2000 px, never upscaled, EXIF
+  orientation applied, transparent flattened on white, tiled watermark `<tenant name> - Mandat n° <id>`, JPEG quality
+  0.82, metadata dropped) and lazily on the first view under a per-path lock. The original, its storage `path` (under
+  `mandate/{id}/documents/`) and its metadata are never handed out: neither the page DTO nor a JSON read carries a URL.
+  An unprocessable image (not decodable, or over 40 MP) is refused at write (400 `HTTP_INVALID_PARAMETER`, the new
+  objects deleted) and fails closed at read (500 `HTTP_INTERNAL`, never the original); a page's preview is deleted with
+  the page/document and on replace. Errors, in order: 404 `MANDATE_NOT_FOUND`, 403 `MANDATE_ACCESS_DENIED`, then for the URLs
   naming a document/page 404 `MANDATE_DOCUMENT_NOT_FOUND` / `MANDATE_DOCUMENT_PAGE_NOT_FOUND`, 409
   `MANDATE_ALREADY_CLOSED` (closed or cancelled; create/presign check it right after the access), then 400
   `HTTP_INVALID_PARAMETER` (create: `type` UNKNOWN, `title` > 100 chars, `paths` empty/duplicate, a path outside the
