@@ -436,9 +436,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   send again; a failed attempt leaves it UNDER_VERIFICATION for the next run, then after `MAX_RETRIES` back to `DRAFT`
   with `INTERNAL_ERROR`. Each image is classified `PHOTO` / `FLOORPLAN` / `MAP` by the vision model, prompted with the
   listing's property type, listing type, lot area and city: a floor plan is valid on any property, a parcel map only on
-  a `LAND` (or when the property type is unset and the parcel is identifiable). The verifier answers
-  `LISTING_NOT_ENOUGH_IMAGES` below `ndopify.listing.min-images`, then `LISTING_MISSING_PHOTO` without a `VERIFIED`
-  photo, else it passes. `PENDING_VERIFICATION` isn't used for a listing (only for its photos). `VerifyListingsJobTest`
+  a `LAND` (or when the property type is unset and the parcel is identifiable). Each image is sent to the vision model
+  as an ImageKit rendition (`ListingVerifierImage.VISION_TRANSFORMATION`: at most 1600×1600, JPEG q85, never upscaled)
+  downloaded from the transformed URL; `ImageServiceLocal`, a URL outside the origin or a failed rendition download
+  falls back to the original, `width`/`height` stay the original upload's, and every temp file is deleted. The verifier
+  answers `LISTING_NOT_ENOUGH_IMAGES` below `ndopify.listing.min-images`, then `LISTING_MISSING_PHOTO` without a
+  `VERIFIED` photo, else it passes. `PENDING_VERIFICATION` isn't used for a listing (only for its photos). `VerifyListingsJobTest`
   covers the send and the job together, end to end: keep it so. There is no rejected status:
   a DRAFT with `errorCodes` is one sent back. A send-back publishes `ListingSentBackEvent`, in the transaction that
   saves DRAFT with `errorCodes` (a verifier rejection, or `INTERNAL_ERROR` after `MAX_RETRIES`):

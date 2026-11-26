@@ -375,4 +375,55 @@ passes a valid listing and sends back an invalid one).
 
 ## Validation
 
-_Filled by Task 4._
+_Criteria 8 and 9, run before opening the PR._
+
+**Method.** No ndopify listing data was reachable from the implementation machine (no TEST server, no S3 bucket
+credentials). The fixtures are real floor plans, cadastral/parcel maps and interior photos downloaded from Wikimedia
+Commons, each sent through the extractor's prompt (`ListingImageInfoExtractor.PROMPT`, with the listing context shown
+per fixture) to the vision client's model (`deepseek-flash`, OpenAI-compatible endpoint, image as a base64
+`data:` URL), once with the original bytes and once with the rendition. Renditions were produced with macOS
+`sips -Z 1600 -s format jpeg -s formatOptions 85` — ImageKit's `w-1600,h-1600,c-at_max,f-jpg,q-85` equivalent
+(`-Z` resamples the longest side to 1600, never upscaling smaller images). "Payload" is the byte length of the
+request body, the image included.
+
+### Criterion 8 — plans and maps keep their verdict
+
+| Fixture (original pixels) | Original | Rendition (1600) | Verdict |
+|---|---|---|---|
+| [3d-design-floor-plan-coloured.jpg](https://upload.wikimedia.org/wikipedia/commons/7/70/3d-design-floor-plan-coloured.jpg) (2000×1500) | valid, FLOORPLAN, 4 — séjour, chambres, salles d'eau | valid, FLOORPLAN, 4 — séjour circulaire, cuisine, chambres, salle de bain | same |
+| [Floor_plan_of_Wanstead_House.png](https://upload.wikimedia.org/wikipedia/commons/a/a6/Floor_plan_of_Wanstead_House.png) (2321×1538) | invalid, FLOORPLAN, 5 — chapelle, cours, bibliothèque, dimensions en pieds | invalid, FLOORPLAN, 4 — mêmes pièces, colonnade, échelle en pieds | same |
+| [Heathcote_Ground-floor_Plan…1913_Page239.jpg](https://upload.wikimedia.org/wikipedia/commons/3/30/Heathcote_Ground-floor_Plan_Lutyens_Houses_and_Gardens_1913_Page239.jpg) (2288×1582) | valid, FLOORPLAN, 4 — hall, salle à manger, salon, billard, cuisine, office, WC | 2 runs of 3 valid, FLOORPLAN, 4 — mêmes pièces | see below |
+| [Parcelle_Cadastrale.png](https://upload.wikimedia.org/wikipedia/commons/7/7a/Parcelle_Cadastrale.png) (2360×2365) | invalid, MAP, 4 — parcelles numérotées, rue, aucune parcelle mise en évidence | invalid, MAP, 4 — mêmes parcelles, mêmes limites | same |
+| [Mont-sur-Marchienne — cadastre primitif (extrait).jpg](https://upload.wikimedia.org/wikipedia/commons/b/bd/Mont-sur-Marchienne_-_cadastre_primitif_-_section_A_%28extrait%29.jpg) (1912×1859) | invalid, MAP, 3 — village, Champ de Foret, parcelles numérotées | invalid, MAP, 4 — mêmes parcelles, même lieu-dit | same |
+
+The rendition keeps every detail the verdict and the description are built on: room names and dimensions ("hall,
+salle à manger, salon, billard", "dimensions et échelle en pieds"), parcel outlines and numbers ("parcelles
+numérotées", "Champ de Foret"), and the quality score never drops by more than one point (it rose on one map, where
+the rendition's cleaner JPEG helped).
+
+The one verdict that moved is the Heathcote plan: valid on the original, invalid on the first rendition run. It is
+sampling variance, not legibility loss — the rejected run quotes the plan's own caption ("labelled 'Ground Floor
+Plan of Heathcote'"), so the label was read from the rendition; repeated calls gave 3/3 valid on the original and 2/3
+valid on the rendition, and a 2048-px rendition of the same plan scored 1/3 valid — raising the bound does not
+remove the flip, the caption naming another property does. The bound stays **1600×1600**.
+
+### Criterion 9 — one real call, before and after
+
+| | Original | Rendition (1600×1200) |
+|---|---|---|
+| Fixture | [Chambre à Oinville-sous-Auneau.jpg](https://upload.wikimedia.org/wikipedia/commons/d/df/Chambre_%C3%A0_Oinville-sous-Auneau.jpg) (5472×3648) | same photo |
+| Image bytes | 2,810,768 | 261,862 (**−90.7 %**) |
+| Request payload | 3,753,261 | 354,721 (**−90.5 %**) |
+| `promptTokens` | 2,261 | 2,261 (**−0 %**) |
+| `completionTokens` | 338 | 286 |
+| Verdict | valid, PHOTO, 4 — lit, tables de chevet, lampes rouges | valid, PHOTO, 4 — same objects |
+
+**The token saving is zero**: the provider already caps the image tokens, so both requests billed 2,261 prompt
+tokens. What the change buys is payload size (−90 %), upload latency, and format compatibility — exactly the risk the
+story flagged ("the provider may already downscale below 1600"). The rendition also costs the server one extra small
+download (261 KB against 2.8 MB).
+
+**Bonus finding:** an 8256×4492 listing photo (9.7 MB) is **rejected today** — `The image is too large to process: its
+width and height must each be at most 8192 pixels` (HTTP 400) — which fails the attempt and, after `MAX_RETRIES`,
+sends the listing back with `INTERNAL_ERROR`. Its 283 KB rendition gets a valid `PHOTO` verdict. The change fixes
+oversized uploads, not only their cost.
