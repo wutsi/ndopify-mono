@@ -40,7 +40,7 @@ class DocumentFieldLabelsTest {
             labels.instruction("DOCUMENT_TYPE_MISMATCH"),
         )
         assertEquals(
-            "L'IA n'a pas pu lire le document. Remplacez ses pages par des photos plus nettes, droites et sans " +
+            "Le document n'a pas pu être lu. Remplacez ses pages par des photos plus nettes, droites et sans " +
                 "reflet, ou supprimez-le et ajoutez-le de nouveau.",
             labels.instruction("DOCUMENT_UNREADABLE"),
         )
@@ -50,7 +50,7 @@ class DocumentFieldLabelsTest {
             labels.instruction("DOCUMENT_PAGE_MISSING"),
         )
         assertEquals(
-            "L'IA n'est pas sûre d'un champ obligatoire. Vérifiez-le sur la pièce : si la photo est floue, " +
+            "Un champ obligatoire n'a pas pu être lu avec certitude. Vérifiez-le sur la pièce : si la photo est floue, " +
                 "remplacez la page ; sinon, supprimez le document et ajoutez-le de nouveau.",
             labels.instruction("DOCUMENT_FIELD_LOW_CONFIDENCE"),
         )
