@@ -21,7 +21,10 @@ object DocumentProblemCodes {
     /** An identity document whose expiry date can't be read. */
     const val EXPIRY_DATE_UNREADABLE = "EXPIRY_DATE_UNREADABLE"
 
-    /** Every attempt of the run failed technically (timeout, model error); the next run tries again. */
+    /**
+     * Every attempt of the run failed technically (timeout, model error). The document stays `FAILED`: a page change
+     * resets it to `UPLOADED`, and the per-document ops re-run reads it again.
+     */
     const val EXTRACTION_FAILED = "EXTRACTION_FAILED"
 
     /** The warning of a readable document whose expiry date is past: `EXTRACTED` still. */
