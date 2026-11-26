@@ -48,9 +48,11 @@ class KycEndpoints(
         return GetKycCaseResponse(case = mapper.toKycCase(case))
     }
 
+    /** A non-admin only gets its own party's cases ([KycAccessService.restrict]). */
     @GetMapping
     fun search(@ModelAttribute request: SearchKycCaseRequest): SearchKycCaseResponse {
-        val cases = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
+        val restricted = accessService.restrict(request)
+        val cases = service.search(restricted.copy(limit = OffsetLimitPageRequest.limit(restricted.limit)))
         return SearchKycCaseResponse(
             cases = cases.map { case -> mapper.toKycCaseSummary(case) },
         )
