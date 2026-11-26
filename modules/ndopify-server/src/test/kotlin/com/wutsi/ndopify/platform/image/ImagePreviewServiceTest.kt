@@ -26,9 +26,15 @@ class ImagePreviewServiceTest {
     private fun resource(name: String): ByteArray =
         javaClass.getResourceAsStream("/files/preview/$name")!!.use { it.readBytes() }
 
-    private fun jpeg(width: Int, height: Int): ByteArray {
+    private fun jpeg(width: Int, height: Int, background: Color = Color.BLACK): ByteArray {
+        val image = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
+        image.createGraphics().apply {
+            color = background
+            fillRect(0, 0, width, height)
+            dispose()
+        }
         val out = ByteArrayOutputStream()
-        ImageIO.write(BufferedImage(width, height, BufferedImage.TYPE_INT_RGB), "jpg", out)
+        ImageIO.write(image, "jpg", out)
         return out.toByteArray()
     }
 
@@ -146,7 +152,7 @@ class ImagePreviewServiceTest {
 
     @Test
     fun `preview - the watermark is drawn on white`() {
-        val preview = service.preview(jpeg(400, 400), "image/jpeg", "Ndopify - Mandat n° 301")
+        val preview = service.preview(jpeg(400, 400, Color.WHITE), "image/jpeg", "Ndopify - Mandat n° 301")
 
         val image = decode(preview)
         val marked = (0 until image.width).any { x ->
@@ -157,17 +163,9 @@ class ImagePreviewServiceTest {
 
     @Test
     fun `preview - the watermark is readable on a dark photo`() {
-        val source = BufferedImage(400, 400, BufferedImage.TYPE_INT_RGB)
-        source.createGraphics().apply {
-            color = Color.BLACK
-            fillRect(0, 0, 400, 400)
-            dispose()
-        }
-        val out = ByteArrayOutputStream()
-        ImageIO.write(source, "jpg", out)
+        val preview = service.preview(jpeg(400, 400), "image/jpeg", "Ndopify - Mandat n° 301")
 
-        val image = decode(service.preview(out.toByteArray(), "image/jpeg", "Ndopify - Mandat n° 301"))
-
+        val image = decode(preview)
         val marked = (0 until image.width).any { x ->
             (0 until image.height).any { y -> image.getRGB(x, y).let { it.channel() > 10 } }
         }
