@@ -218,11 +218,8 @@ class MandateDocumentTemplateTest {
 
         assertEquals("3", page.selectFirst("form[data-rename-form] input[name=version]")?.attr("value"))
         assertEquals("Titre foncier n° 4521", page.selectFirst("#documentTitle")?.attr("value"))
-        assertEquals(
-            "/mandates/301/documents/3103?delete=1",
-            page.selectFirst("[data-delete-open]")?.attr("href"),
-        )
-        assertNull(page.selectFirst("[data-delete-confirm]"))
+        assertEquals("/mandates/301/documents/3103?delete=1", page.selectFirst("[data-delete-open]")?.attr("href"))
+        assertTrue(page.selectFirst("[data-delete-confirm]")!!.hasAttr("hidden"))
         assertNull(page.selectFirst("[data-rename-conflict]"))
     }
 

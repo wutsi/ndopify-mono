@@ -136,7 +136,7 @@
                            th:attr="aria-expanded=${deleting},aria-controls=delete-confirm" data-delete-open>Supprimer le
                             document</a>
                         <!-- Without JS: ?delete=1 renders this page with the panel open. -->
-                        <div id="delete-confirm" class="alert alert--warning" th:if="${deleting}" data-delete-confirm>
+                        <div id="delete-confirm" class="alert alert--warning" th:hidden="${!deleting}" data-delete-confirm>
                             <svg th:replace="~{fragments/icon :: warning}"></svg>
                             <div>
                                 <p class="alert__title" tabindex="-1">Supprimer ce document&nbsp;?</p>
