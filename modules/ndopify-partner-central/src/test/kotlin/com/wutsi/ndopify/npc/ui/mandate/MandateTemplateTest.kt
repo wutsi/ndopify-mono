@@ -83,6 +83,7 @@ import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import java.time.Clock
+import java.time.LocalDate
 import java.util.Date
 import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.TimeUnit
@@ -1894,6 +1895,31 @@ class MandateTemplateTest {
         val flash = section.selectFirst("[data-documents-flash]")!!
         assertEquals("Document « Titre foncier lot 12 » ajouté.", flash.text())
         assertEquals("alert alert--success", flash.className())
+    }
+
+    @Test
+    fun `documents - an expired document carries the Expirée marker`() {
+        doReturn(
+            listOf(
+                MandateDocument(
+                    id = 3104,
+                    mandateId = 201,
+                    type = DocumentType.NATIONAL_ID,
+                    title = "Carte nationale d'identité",
+                    status = DocumentStatus.EXTRACTED,
+                    expiresAt = LocalDate.of(2025, 1, 12),
+                    pages = listOf(MandateDocumentPage(id = 2004)),
+                    createdAt = date("2026-11-26T10:00:00Z"),
+                ),
+                documents()[1],
+            ),
+        ).whenever(documentClient).search(201)
+
+        val rows = render(get("/mandates/201")).select(".doc-row")
+
+        assertEquals(listOf("Expirée"), rows[0].select(".doc-row__tags .status-tag--error").map { it.text() })
+        assertEquals("Analysé", rows[0].selectFirst("[data-doc-status]")?.text()?.replace("Statut : ", ""))
+        assertTrue(rows[1].select(".doc-row__tags .status-tag--error").isEmpty())
     }
 
     @Test

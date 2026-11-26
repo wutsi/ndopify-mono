@@ -16,6 +16,7 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.error.dto.Parameter
 import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.mandate.dto.DocumentField
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.DocumentType
 import com.wutsi.ndopify.mandate.dto.Mandate
@@ -35,6 +36,7 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.context.support.ResourceBundleMessageSource
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.mock.web.MockMultipartFile
@@ -69,6 +71,12 @@ class MandateDocumentControllerTest {
     private val documentClient = mock<NdMandateDocumentClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
+    private val labels = DocumentFieldLabels(
+        ResourceBundleMessageSource().apply {
+            setBasename("messages")
+            setDefaultEncoding("UTF-8")
+        },
+    )
     private lateinit var mvc: MockMvc
 
     private val mandate = Mandate(
@@ -104,7 +112,7 @@ class MandateDocumentControllerTest {
         doReturn(document).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
 
         mvc = MockMvcBuilders.standaloneSetup(
-            MandateDocumentController(currentAgent, mandateClient, documentClient, tenantContext, clock),
+            MandateDocumentController(currentAgent, mandateClient, documentClient, labels, tenantContext, clock),
         )
             .setControllerAdvice(HttpClientErrorHandler(mock()))
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
@@ -378,6 +386,17 @@ class MandateDocumentControllerTest {
         assertEquals(RenameDocumentForm(title = "Titre foncier n° 4521", version = 3), model(result)["renameForm"])
         assertEquals(false, model(result)["conflict"])
         assertEquals(false, model(result)["deleting"])
+    }
+
+    @Test
+    fun `document page - the reading of the document`() {
+        doReturn(document.copy(fields = listOf(DocumentField("titleNumber", "4521"))))
+            .whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val result = mvc.perform(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID")).andReturn()
+
+        val reading = model(result)["reading"] as DocumentReadingView
+        assertEquals(listOf(DocumentFieldRowView("Numéro du titre", "4521")), reading.rows)
     }
 
     @Test

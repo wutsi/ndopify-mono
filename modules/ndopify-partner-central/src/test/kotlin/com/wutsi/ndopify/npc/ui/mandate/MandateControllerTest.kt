@@ -18,6 +18,8 @@ import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
+import com.wutsi.ndopify.mandate.dto.DocumentStatus
+import com.wutsi.ndopify.mandate.dto.DocumentType
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateDocument
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -38,6 +40,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
 import com.wutsi.ndopify.npc.config.Parallel
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
+import com.wutsi.ndopify.npc.ui.document.DocumentSectionView
 import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest
 import com.wutsi.ndopify.npc.ui.listing.ListingVisitView
@@ -87,6 +90,7 @@ import org.springframework.web.client.HttpServerErrorException
 import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.servlet.view.InternalResourceViewResolver
 import java.time.Clock
+import java.time.LocalDate
 import java.util.Date
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -163,6 +167,26 @@ class MandateControllerTest {
         assertEquals("SN", model(result)["initials"])
         assertNull(model(result)["locked"])
         assertNull(model(result)["end"])
+    }
+
+    @Test
+    fun `an expired document is marked in the Documents section`() {
+        doReturn(
+            listOf(
+                MandateDocument(
+                    id = 3103,
+                    mandateId = 201,
+                    type = DocumentType.NATIONAL_ID,
+                    status = DocumentStatus.EXTRACTED,
+                    expiresAt = LocalDate.of(2025, 1, 12),
+                ),
+            ),
+        ).whenever(documentClient).search(201)
+
+        val result = mvc.perform(get("/mandates/201")).andReturn()
+        val section = model(result)["documentSection"] as DocumentSectionView
+
+        assertTrue(section.rows.single().expired)
     }
 
     @Test
