@@ -6,7 +6,6 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
 import com.wutsi.ndopify.error.dto.ParameterType
 import com.wutsi.ndopify.error.server.exception.BadRequestException
-import com.wutsi.ndopify.error.server.exception.ForbiddenException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.party.dto.CreateKycCaseRequest
 import com.wutsi.ndopify.party.dto.IdentificationType
@@ -31,7 +30,6 @@ import com.wutsi.ndopify.platform.storage.upload.DirectUploadService
 import com.wutsi.ndopify.platform.util.MimeUtils
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
 import com.wutsi.ndopify.refdata.dto.StorageType
-import com.wutsi.ndopify.security.server.service.CallerService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
@@ -66,7 +64,6 @@ class KycService(
     private val clock: Clock,
     private val logger: KVLogger,
     private val eventPublisher: ApplicationEventPublisher,
-    private val callerService: CallerService,
     private val accessService: KycAccessService,
     private val directUpload: DirectUploadService,
 ) {
@@ -165,7 +162,7 @@ class KycService(
         file: MultipartFile
     ): KycImageEntity {
         val case = findById(id)
-        ensureOwnCase(case)
+        accessService.ensureIsParty(case.party.id)
         ensureStatusIsPending(case)
         ensureImage(file)
 
@@ -210,7 +207,7 @@ class KycService(
         contentType: String?,
     ): PresignUploadResponse {
         val case = findById(id)
-        ensureOwnCase(case)
+        accessService.ensureIsParty(case.party.id)
         ensureStatusIsPending(case)
         return directUpload.presign(prefix(case.id), contentType)
     }
@@ -231,7 +228,7 @@ class KycService(
         path: String,
     ): KycImageEntity {
         val case = findById(id)
-        ensureOwnCase(case)
+        accessService.ensureIsParty(case.party.id)
         ensureStatusIsPending(case)
 
         val existing = kycImageDao.findByKycCaseAndIdentificationTypeAndImageType(case, identificationType, imageType)
@@ -544,14 +541,6 @@ class KycService(
 
         val verifier = verifierProvider.get(verificationType)
         return verifier?.verify(case) ?: emptyList()
-    }
-
-    /** The case's own party only: no admin bypass, a KYC document is personal. */
-    private fun ensureOwnCase(case: KycCaseEntity) {
-        val partyId = callerService.findPartyIdOrNull(callerService.getPrincipal())
-        if (partyId == null || partyId != case.party.id) {
-            throw ForbiddenException(error = Error(code = ErrorCode.HTTP_ACCESS_DENIED))
-        }
     }
 
     private fun ensureStatusIsPending(case: KycCaseEntity) {
