@@ -19,12 +19,13 @@ import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.MandateDocumentEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateDocumentPageEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.platform.image.UnprocessableImageException
+import com.wutsi.ndopify.platform.storage.StorageService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.platform.storage.upload.DirectUploadService
 import com.wutsi.ndopify.platform.util.MimeUtils
 import com.wutsi.ndopify.refdata.dto.StorageType
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.multipart.MultipartFile
@@ -34,8 +35,8 @@ import java.util.UUID
 
 /**
  * The documents a mandate's agent attaches to it: identity cards, payslips, land titles... A document's files are
- * private, never served from a public URL: each page is read through a short-lived presigned URL ([pageUrl]), and its
- * storage path is never handed out.
+ * private: every page has a watermarked display copy ([MandateDocumentPreviewService]), generated when the page is
+ * written and read through the preview endpoint; neither the original nor its storage path is ever handed out.
  */
 @Service
 class MandateDocumentService(
@@ -46,10 +47,9 @@ class MandateDocumentService(
     private val pageDao: MandateDocumentPageRepository,
     private val storageProvider: StorageServiceProvider,
     private val directUpload: DirectUploadService,
+    private val previewService: MandateDocumentPreviewService,
     private val tx: TransactionTemplate,
     private val clock: Clock,
-
-    @param:Value("\${ndopify.mandate.document.url-ttl-seconds}") private val urlTTL: Int,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(MandateDocumentService::class.java)
@@ -96,18 +96,6 @@ class MandateDocumentService(
         }
         return pageDao.findByDocumentIdInOrderByPageIndex(documentIds)
             .groupBy { page -> page.documentId }
-    }
-
-    /**
-     * A short-lived URL to read [page]. A legacy page with no storage type was written to the default storage.
-     */
-    fun pageUrl(page: MandateDocumentPageEntity): String {
-        val storage = if (page.storageType == StorageType.UNKNOWN) {
-            storageProvider.get()
-        } else {
-            storageProvider.get(page.storageType)
-        }
-        return storage.generatePresignedUrl(page.path, urlTTL).toString()
     }
 
     /**
@@ -181,6 +169,9 @@ class MandateDocumentService(
         }
 
         return try {
+            // The display copy of every page, before any row references it: an image that can't be previewed refuses
+            // the whole document (fail closed, never an unviewable page)
+            paths.forEachIndexed { index, path -> previewService.generate(mandateId, storage, path, mimeTypes[index]) }
             saveLocked(mandateId) {
                 // The authoritative path check, under the mandate's lock: a concurrent create may have committed the
                 // same path since the pre-lock check above (a UNIQUE(path) violation would otherwise surface as a 500).
@@ -193,6 +184,9 @@ class MandateDocumentService(
                 pages.forEach { page -> pageDao.save(page.copy(documentId = saved.id!!)) }
                 saved
             }
+        } catch (ex: UnprocessableImageException) {
+            deleteUnreferenced(mandateId, paths, storage.type())
+            throw invalidImage("path")
         } catch (ex: Exception) {
             deleteUnreferenced(mandateId, paths, storage.type())
             throw ex
@@ -231,6 +225,7 @@ class MandateDocumentService(
                 val path = "$prefix/${UUID.randomUUID()}.${MimeUtils.getExtensionFromMimeType(mimeType)}"
                 storage.store(path, file.inputStream, mimeType)
                 storedPaths.add(path)
+                previewService.generate(mandateId, storage, path, mimeType, original = file.bytes)
                 MandateDocumentPageEntity(
                     pageIndex = index,
                     path = path,
@@ -240,8 +235,11 @@ class MandateDocumentService(
                     modifiedAt = now,
                 )
             }
+        } catch (ex: UnprocessableImageException) {
+            cleanup(mandateId, storedPaths, storage.type())
+            throw invalidImage("file")
         } catch (ex: Exception) {
-            storedPaths.forEach { path -> deleteQuietly(mandateId, path, storage.type()) }
+            cleanup(mandateId, storedPaths, storage.type())
             throw ex
         }
 
@@ -317,6 +315,7 @@ class MandateDocumentService(
         // Storage I/O outside any transaction
         val storage = storageProvider.get()
         val mimeType = directUpload.verify(path, prefix(mandateId))
+        previewOrRefuse(mandateId, storage, path, mimeType, null, "path")
         val page = MandateDocumentPageEntity(
             documentId = document.id ?: -1,
             pageIndex = 0,
@@ -361,7 +360,16 @@ class MandateDocumentService(
         val storage = storageProvider.get()
         val mimeType = directUpload.check(file)
         val path = "${prefix(mandateId)}/${UUID.randomUUID()}.${MimeUtils.getExtensionFromMimeType(mimeType)}"
-        storage.store(path, file.inputStream, mimeType)
+        try {
+            storage.store(path, file.inputStream, mimeType)
+            previewService.generate(mandateId, storage, path, mimeType, original = file.bytes)
+        } catch (ex: UnprocessableImageException) {
+            cleanup(mandateId, listOf(path), storage.type())
+            throw invalidImage("file")
+        } catch (ex: Exception) {
+            cleanup(mandateId, listOf(path), storage.type())
+            throw ex
+        }
         val page = MandateDocumentPageEntity(
             documentId = document.id ?: -1,
             pageIndex = 0,
@@ -411,6 +419,7 @@ class MandateDocumentService(
         // Storage I/O outside any transaction
         val storage = storageProvider.get()
         val mimeType = directUpload.verify(path, prefix(mandateId))
+        previewOrRefuse(mandateId, storage, path, mimeType, null, "path")
         val oldPath = page.path
         val oldStorageType = page.storageType
         val replaced = page.copy(
@@ -439,7 +448,7 @@ class MandateDocumentService(
             deleteUnreferenced(mandateId, listOf(path), storage.type())
             throw ex
         }
-        deleteQuietly(mandateId, oldPath, oldStorageType)
+        deletePageObjects(mandateId, oldPath, oldStorageType)
         return saved
     }
 
@@ -462,7 +471,16 @@ class MandateDocumentService(
         val storage = storageProvider.get()
         val mimeType = directUpload.check(file)
         val path = "${prefix(mandateId)}/${UUID.randomUUID()}.${MimeUtils.getExtensionFromMimeType(mimeType)}"
-        storage.store(path, file.inputStream, mimeType)
+        try {
+            storage.store(path, file.inputStream, mimeType)
+            previewService.generate(mandateId, storage, path, mimeType, original = file.bytes)
+        } catch (ex: UnprocessableImageException) {
+            cleanup(mandateId, listOf(path), storage.type())
+            throw invalidImage("file")
+        } catch (ex: Exception) {
+            cleanup(mandateId, listOf(path), storage.type())
+            throw ex
+        }
         val oldPath = page.path
         val oldStorageType = page.storageType
         val replaced = page.copy(
@@ -482,7 +500,7 @@ class MandateDocumentService(
             deleteUnreferenced(mandateId, listOf(path), storage.type())
             throw ex
         }
-        deleteQuietly(mandateId, oldPath, oldStorageType)
+        deletePageObjects(mandateId, oldPath, oldStorageType)
         return saved
     }
 
@@ -512,7 +530,7 @@ class MandateDocumentService(
             pageDao.delete(page)
             documentDao.save(resetExtraction(document))
         }
-        deleteQuietly(mandateId, oldPath, oldStorageType)
+        deletePageObjects(mandateId, oldPath, oldStorageType)
     }
 
     /**
@@ -535,7 +553,7 @@ class MandateDocumentService(
             documentDao.delete(document)
             pages
         }
-        pages.forEach { page -> deleteQuietly(mandateId, page.path, page.storageType) }
+        pages.forEach { page -> deletePageObjects(mandateId, page.path, page.storageType) }
     }
 
     /**
@@ -595,13 +613,59 @@ class MandateDocumentService(
         ),
     )
 
-    /** After a failed save: deletes each new object no page references (a concurrent save of the same path). */
+    /**
+     * An image that can't be previewed: 400 [ErrorCode.HTTP_INVALID_PARAMETER] on [name], with no path (or file name)
+     * in the value or the message, so nothing of the page leaks into the error body or the logs.
+     */
+    private fun invalidImage(name: String) = BadRequestException(
+        Error(
+            code = ErrorCode.HTTP_INVALID_PARAMETER,
+            message = "The image cannot be previewed.",
+            parameter = Parameter(name = name, type = ParameterType.PARAMETER_TYPE_PAYLOAD),
+        ),
+    )
+
+    /** After a failed save: deletes each new object (and its preview) no page references. */
     private fun deleteUnreferenced(mandateId: Long, paths: List<String>, storageType: StorageType) {
         paths.forEach { path ->
             if (pageDao.findByPath(path) == null) {
-                deleteQuietly(mandateId, path, storageType)
+                deletePageObjects(mandateId, path, storageType)
             }
         }
+    }
+
+    /** After a refused file, before any page references it: deletes the stored original and its preview. */
+    private fun cleanup(mandateId: Long, paths: List<String>, storageType: StorageType) {
+        paths.forEach { path -> deletePageObjects(mandateId, path, storageType) }
+    }
+
+    /**
+     * Generates the preview of a page's new file, or refuses the page: an image that can't be previewed is deleted
+     * (with its original) and is a 400 [ErrorCode.HTTP_INVALID_PARAMETER] on [fieldname].
+     */
+    private fun previewOrRefuse(
+        mandateId: Long,
+        storage: StorageService,
+        path: String,
+        mimeType: String?,
+        original: ByteArray?,
+        fieldname: String,
+    ) {
+        try {
+            previewService.generate(mandateId, storage, path, mimeType, original)
+        } catch (ex: UnprocessableImageException) {
+            cleanup(mandateId, listOf(path), storage.type())
+            throw invalidImage(fieldname)
+        } catch (ex: Exception) {
+            cleanup(mandateId, listOf(path), storage.type())
+            throw ex
+        }
+    }
+
+    /** Deletes a page's original and its preview; the preview's failure doesn't make the object deletion fail. */
+    private fun deletePageObjects(mandateId: Long, path: String, storageType: StorageType) {
+        deleteQuietly(mandateId, path, storageType)
+        previewService.deleteQuietly(mandateId, path, storageType)
     }
 
     /**

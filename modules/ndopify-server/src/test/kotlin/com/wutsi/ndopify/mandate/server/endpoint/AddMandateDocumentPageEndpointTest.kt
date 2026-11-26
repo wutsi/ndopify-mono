@@ -2,6 +2,7 @@ package com.wutsi.ndopify.mandate.server.endpoint
 
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.argThat
+import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
@@ -32,6 +33,8 @@ import org.springframework.test.context.jdbc.Sql
 import org.springframework.util.LinkedMultiValueMap
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
+import java.io.OutputStream
+import java.util.zip.CRC32
 import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -55,6 +58,7 @@ class AddMandateDocumentPageEndpointTest : AuthorizationAwareEndpointIntegration
     @BeforeEach
     fun setUpStorage() {
         doReturn(storage).whenever(storageProvider).get()
+        doReturn(storage).whenever(storageProvider).get(StorageType.S3)
         doReturn(StorageType.S3).whenever(storage).type()
     }
 
@@ -67,7 +71,44 @@ class AddMandateDocumentPageEndpointTest : AuthorizationAwareEndpointIntegration
     private fun uploaded(path: String) {
         doReturn(StoredObject("image/png", 3)).whenever(storage).metadata(path)
         doReturn(png(1, 1)).whenever(storage).readPrefix(eq(path), any())
+        doAnswer { invocation ->
+            invocation.getArgument<OutputStream>(1).write(png(1, 1))
+            null
+        }.whenever(storage).get(eq(path), any())
     }
+
+    /** A PNG whose header claims 10000x10000 pixels: Tika reads an image, the preview pipeline refuses it. */
+    private fun pixelBomb(path: String) {
+        doReturn(StoredObject("image/png", 33)).whenever(storage).metadata(path)
+        doReturn(pngHeader(10_000, 10_000)).whenever(storage).readPrefix(eq(path), any())
+        doAnswer { invocation ->
+            invocation.getArgument<OutputStream>(1).write(pngHeader(10_000, 10_000))
+            null
+        }.whenever(storage).get(eq(path), any())
+    }
+
+    private fun pngHeader(width: Int, height: Int): ByteArray {
+        val out = ByteArrayOutputStream()
+        out.write(byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A))
+        val data = ByteArrayOutputStream().apply {
+            write(byteArrayOf(0, 0, 0, 13))
+            write("IHDR".toByteArray())
+            write(intBytes(width))
+            write(intBytes(height))
+            write(byteArrayOf(8, 2, 0, 0, 0))
+        }.toByteArray()
+        out.write(data)
+        val crc = CRC32().apply { update(data, 4, data.size - 4) }
+        out.write(intBytes(crc.value.toInt()))
+        return out.toByteArray()
+    }
+
+    private fun intBytes(value: Int) = byteArrayOf(
+        (value shr 24).toByte(),
+        (value shr 16).toByte(),
+        (value shr 8).toByte(),
+        value.toByte(),
+    )
 
     private fun uploadRequest(content: ByteArray): HttpEntity<LinkedMultiValueMap<String, Any>> {
         val body = LinkedMultiValueMap<String, Any>()
@@ -139,6 +180,20 @@ class AddMandateDocumentPageEndpointTest : AuthorizationAwareEndpointIntegration
         assertEquals(2, page.pageIndex)
         assertTrue(page.path.startsWith("mandate/100/documents/"), page.path)
         verify(storage).store(argThat { startsWith("mandate/100/documents/") }, any(), eq("image/png"))
+    }
+
+    @Test
+    fun `add - an image that cannot be previewed is refused and its object deleted`() {
+        val newPath = "mandate/100/documents/0f8fad5b-d9cb-469f-a165-70867728950e.png"
+        pixelBomb(newPath)
+
+        val response = addPageError(100, 1000, AttachUploadRequest(path = newPath))
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
+        assertEquals("path", response.body?.error?.parameter?.name)
+        verify(storage).delete(newPath)
+        assertEquals(2, pageDao.findByDocumentIdOrderByPageIndex(1000).size)
     }
 
     private fun addPage(id: Long, documentId: Long, request: AttachUploadRequest) =

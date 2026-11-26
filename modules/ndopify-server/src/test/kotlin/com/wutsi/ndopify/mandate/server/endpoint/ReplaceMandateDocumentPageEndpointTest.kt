@@ -1,9 +1,12 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.argThat
+import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
@@ -21,11 +24,18 @@ import com.wutsi.ndopify.platform.storage.StoredObject
 import com.wutsi.ndopify.refdata.dto.StorageType
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.core.io.ByteArrayResource
+import org.springframework.http.HttpEntity
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
+import org.springframework.util.LinkedMultiValueMap
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
+import java.io.OutputStream
+import java.util.zip.CRC32
 import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -52,6 +62,7 @@ class ReplaceMandateDocumentPageEndpointTest : AuthorizationAwareEndpointIntegra
     @BeforeEach
     fun setUpStorage() {
         doReturn(s3).whenever(storageProvider).get()
+        doReturn(s3).whenever(storageProvider).get(StorageType.S3)
         doReturn(StorageType.S3).whenever(s3).type()
         doReturn(local).whenever(storageProvider).get(StorageType.LOCAL)
     }
@@ -65,7 +76,44 @@ class ReplaceMandateDocumentPageEndpointTest : AuthorizationAwareEndpointIntegra
     private fun uploaded(path: String) {
         doReturn(StoredObject("image/png", 3)).whenever(s3).metadata(path)
         doReturn(png(1, 1)).whenever(s3).readPrefix(eq(path), any())
+        doAnswer { invocation ->
+            invocation.getArgument<OutputStream>(1).write(png(1, 1))
+            null
+        }.whenever(s3).get(eq(path), any())
     }
+
+    /** A PNG whose header claims 10000x10000 pixels: Tika reads an image, the preview pipeline refuses it. */
+    private fun pixelBomb(path: String) {
+        doReturn(StoredObject("image/png", 33)).whenever(s3).metadata(path)
+        doReturn(pngHeader(10_000, 10_000)).whenever(s3).readPrefix(eq(path), any())
+        doAnswer { invocation ->
+            invocation.getArgument<OutputStream>(1).write(pngHeader(10_000, 10_000))
+            null
+        }.whenever(s3).get(eq(path), any())
+    }
+
+    private fun pngHeader(width: Int, height: Int): ByteArray {
+        val out = ByteArrayOutputStream()
+        out.write(byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A))
+        val data = ByteArrayOutputStream().apply {
+            write(byteArrayOf(0, 0, 0, 13))
+            write("IHDR".toByteArray())
+            write(intBytes(width))
+            write(intBytes(height))
+            write(byteArrayOf(8, 2, 0, 0, 0))
+        }.toByteArray()
+        out.write(data)
+        val crc = CRC32().apply { update(data, 4, data.size - 4) }
+        out.write(intBytes(crc.value.toInt()))
+        return out.toByteArray()
+    }
+
+    private fun intBytes(value: Int) = byteArrayOf(
+        (value shr 24).toByte(),
+        (value shr 16).toByte(),
+        (value shr 8).toByte(),
+        value.toByte(),
+    )
 
     @Test
     fun `replace - the page keeps its id and index, gets the new path, and the document reset`() {
@@ -105,6 +153,43 @@ class ReplaceMandateDocumentPageEndpointTest : AuthorizationAwareEndpointIntegra
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.MANDATE_DOCUMENT_PAGE_NOT_FOUND, response.body?.error?.code)
+    }
+
+    @Test
+    fun `replace - an image that cannot be previewed is refused, the new object deleted, the old one kept`() {
+        pixelBomb(newPath)
+
+        val response = replacePageError(100, 1000, 2001, AttachUploadRequest(path = newPath))
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
+        assertEquals("path", response.body?.error?.parameter?.name)
+        verify(s3).delete(newPath)
+        verify(local, never()).delete(any())
+        assertEquals(oldPath, pageDao.findById(2001).orElseThrow().path)
+    }
+
+    @Test
+    fun `replace - a posted file that cannot be previewed is refused and deleted`() {
+        val body = LinkedMultiValueMap<String, Any>()
+        val resource = object : ByteArrayResource(pngHeader(10_000, 10_000)) {
+            override fun getFilename(): String = "page.png"
+        }
+        body.add("file", HttpEntity(resource, HttpHeaders().apply { contentType = MediaType.IMAGE_PNG }))
+        val headers = HttpHeaders().apply { contentType = MediaType.MULTIPART_FORM_DATA }
+
+        val response = rest.postForEntity(
+            "/v1/mandates/100/documents/1000/pages/2001/upload",
+            HttpEntity(body, headers),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
+        assertEquals("file", response.body?.error?.parameter?.name)
+        verify(s3).delete(argThat { startsWith("mandate/100/documents/") && endsWith(".png") })
+        verify(local, never()).delete(any())
+        assertEquals(oldPath, pageDao.findById(2001).orElseThrow().path)
     }
 
     private fun replacePage(id: Long, documentId: Long, pageId: Long, request: AttachUploadRequest) =
