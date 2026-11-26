@@ -148,6 +148,32 @@ class UploadMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
     }
 
     @Test
+    fun `upload - a 6th document is refused`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/102/documents/upload",
+            request(DocumentType.LAND_TITLE, image("page1.png")),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_LIMIT_REACHED, response.body?.error?.code)
+        assertEquals(5, documentDao.findByMandateIdOrderByIdDesc(102L).size)
+        verify(storage, never()).store(any(), any(), any())
+    }
+
+    @Test
+    fun `upload - the 5th document is created`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/103/documents/upload",
+            request(DocumentType.LAND_TITLE, image("page1.png")),
+            Void::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(5, documentDao.findByMandateIdOrderByIdDesc(103L).size)
+    }
+
+    @Test
     fun `upload - a text file is refused and nothing is stored`() {
         val body = LinkedMultiValueMap<String, Any>()
         body.add("type", DocumentType.LAND_TITLE.name)

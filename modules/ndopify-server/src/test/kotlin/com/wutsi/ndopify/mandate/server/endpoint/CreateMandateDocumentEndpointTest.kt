@@ -152,6 +152,31 @@ class CreateMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
     }
 
     @Test
+    fun `create - a 6th document is refused`() {
+        val path = "mandate/102/documents/0f8fad5b-d9cb-469f-a165-70867728950e.png"
+        uploaded(path)
+
+        val response = createError(102, CreateMandateDocumentRequest(type = DocumentType.LAND_TITLE, paths = listOf(path)))
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_LIMIT_REACHED, response.body?.error?.code)
+        assertNull(response.body?.error?.parameter)
+        assertEquals(5, documentDao.findByMandateIdOrderByIdDesc(102L).size)
+        verify(storage, never()).store(any(), any(), any())
+    }
+
+    @Test
+    fun `create - the 5th document is created`() {
+        val path = "mandate/103/documents/0f8fad5b-d9cb-469f-a165-70867728950e.png"
+        uploaded(path)
+
+        val response = create(103, CreateMandateDocumentRequest(type = DocumentType.LAND_TITLE, paths = listOf(path)))
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(5, documentDao.findByMandateIdOrderByIdDesc(103L).size)
+    }
+
+    @Test
     fun `create - unknown mandate`() {
         val response = createError(999, CreateMandateDocumentRequest(type = DocumentType.LAND_TITLE, paths = listOf(path1)))
 

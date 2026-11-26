@@ -36,6 +36,7 @@ import com.wutsi.ndopify.refdata.dto.StorageType
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.pdmodel.common.PDRectangle
+import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.mock.web.MockMultipartFile
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionStatus
@@ -571,5 +572,76 @@ class MandateDocumentServiceTest {
         verify(previewService, never()).deleteQuietly(any(), any(), any())
         verify(pageDao, never()).save(any<MandateDocumentPageEntity>())
         verify(documentDao, never()).save(any<MandateDocumentEntity>())
+    }
+
+    @Test
+    fun `create - a 6th document is refused and nothing is stored`() {
+        writable()
+        doReturn(5L).whenever(documentDao).countByMandateId(100L)
+
+        val exception = assertFailsWith<BadRequestException> {
+            service.create(100, CreateMandateDocumentRequest(type = DocumentType.LAND_TITLE, paths = listOf(path1)))
+        }
+
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_LIMIT_REACHED, exception.error.code)
+        assertNull(exception.error.parameter)
+        verify(documentDao, never()).save(any<MandateDocumentEntity>())
+        verify(storage, never()).store(any(), any(), any())
+        verify(previewService, never()).generate(any(), any(), any(), anyOrNull(), anyOrNull())
+    }
+
+    @Test
+    fun `create - the 5th document is created`() {
+        writable()
+        doReturn(4L).whenever(documentDao).countByMandateId(100L)
+        doReturn("image/png").whenever(directUpload).verify(any(), any())
+        doReturn(null).whenever(pageDao).findByPath(any())
+        doReturn(MandateDocumentEntity(id = 2000L, mandateId = 100L)).whenever(documentDao).save(any())
+        doAnswer { it.getArgument<MandateDocumentPageEntity>(0) }.whenever(pageDao).save(any())
+        doReturn(preview).whenever(previewService).generate(any(), any(), any(), anyOrNull(), anyOrNull())
+
+        val created = service.create(
+            100,
+            CreateMandateDocumentRequest(type = DocumentType.LAND_TITLE, paths = listOf(path1)),
+        )
+
+        assertEquals(2000L, created.id)
+        verify(documentDao).save(any<MandateDocumentEntity>())
+        verify(pageDao).save(any<MandateDocumentPageEntity>())
+    }
+
+    @Test
+    fun `upload - a 6th document is refused before a file is stored`() {
+        writable()
+        doReturn(5L).whenever(documentDao).countByMandateId(100L)
+
+        val exception = assertFailsWith<BadRequestException> {
+            service.upload(100, DocumentType.LAND_TITLE, null, listOf(imageFile()))
+        }
+
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_LIMIT_REACHED, exception.error.code)
+        assertNull(exception.error.parameter)
+        verifyNoInteractions(pdfRasterizer)
+        verify(storage, never()).store(any(), any(), any())
+        verify(documentDao, never()).save(any<MandateDocumentEntity>())
+    }
+
+    @Test
+    fun `create - the count is re-checked under the mandate lock`() {
+        writable()
+        doReturn(4L, 5L).whenever(documentDao).countByMandateId(100L)
+        doReturn("image/png").whenever(directUpload).verify(any(), any())
+        doReturn(null).whenever(pageDao).findByPath(any())
+        doReturn(preview).whenever(previewService).generate(any(), any(), any(), anyOrNull(), anyOrNull())
+
+        val exception = assertFailsWith<BadRequestException> {
+            service.create(100, CreateMandateDocumentRequest(type = DocumentType.LAND_TITLE, paths = listOf(path1)))
+        }
+
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_LIMIT_REACHED, exception.error.code)
+        verify(documentDao, never()).save(any<MandateDocumentEntity>())
+        verify(pageDao, never()).save(any<MandateDocumentPageEntity>())
+        // The preview generated before the lock is removed again: no row references it.
+        verify(storage).delete(path1)
     }
 }
