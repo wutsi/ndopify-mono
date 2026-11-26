@@ -27,3 +27,16 @@ INSERT INTO T_AGENT(id, party_id, created_at, modified_at) VALUES
 INSERT INTO T_AGENT_NEIGHBORHOOD(agent_id, neighborhood_id) VALUES
     (102, 555),
     (102, 666);
+
+-- The callers: 11 → party 100 (agent 100), 12 → party 101 (agent 101), 13 → party 102 (agent 102);
+-- 14 has no membership, hence no party.
+INSERT INTO T_USER(id, email, deleted, created_at) VALUES
+    (11, 'ray.sponsible@gmail.com', false, '2024-06-10 00:00:00'),
+    (12, 'james.bond@gmail.com', false, '2024-06-10 00:00:00'),
+    (13, 'samuel.eto.caller@gmail.com', false, '2024-06-10 00:00:00'),
+    (14, 'no.party@gmail.com', false, '2024-06-10 00:00:00');
+
+INSERT INTO T_MEMBERSHIP(id, tenant_id, user_id, party_id, deleted) VALUES
+    (11, 1, 11, 100, false),
+    (12, 1, 12, 101, false),
+    (13, 1, 13, 102, false);

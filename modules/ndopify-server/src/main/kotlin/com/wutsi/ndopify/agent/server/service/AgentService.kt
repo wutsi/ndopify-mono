@@ -39,6 +39,7 @@ import java.util.Date
 @Service
 class AgentService(
     private val dao: AgentRepository,
+    private val access: AgentAccessService,
     private val clock: Clock,
     private val partyService: PartyService,
     private val kycService: KycService,
@@ -157,9 +158,15 @@ class AgentService(
         return agent
     }
 
+    /**
+     * Updates an agent's profile. Errors, in order: 404 `AGENT_NOT_FOUND`, 403 `HTTP_ACCESS_DENIED` unless the caller
+     * is the agent itself or an admin (see [AgentAccessService]), then 409 `AGENT_VERSION_CONFLICT` for a stale
+     * [UpdateAgentRequest.version].
+     */
     @Transactional
     fun update(id: Long, request: UpdateAgentRequest): AgentEntity {
         val agent = findById(id)
+        access.ensureCanUpdate(agent)
         // The caller's copy is stale: saving it would overwrite the change made since (ex: in another tab)
         if (request.version != null && request.version != agent.version) {
             throw ConflictException(Error(ErrorCode.AGENT_VERSION_CONFLICT))

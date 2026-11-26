@@ -68,6 +68,7 @@ class AgentEndpoints(
         return CreateAgentResponse(agentId = agent.id ?: -1)
     }
 
+    /** The agent's profile: only the agent itself or an admin (AgentService, through AgentAccessService). */
     @PostMapping("/{id}")
     fun update(
         @PathVariable id: Long,

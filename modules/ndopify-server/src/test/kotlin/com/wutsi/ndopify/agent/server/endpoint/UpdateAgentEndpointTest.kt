@@ -11,6 +11,7 @@ import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.server.service.PartyService
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -36,6 +37,11 @@ class UpdateAgentEndpointTest : AbstractAgentEndpointTest() {
     private lateinit var clock: Clock
 
     private val now = System.currentTimeMillis()
+
+    private var admin = false
+
+    override val roles: Array<String>
+        get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
 
     @BeforeEach
     override fun setUp() {
@@ -80,6 +86,7 @@ class UpdateAgentEndpointTest : AbstractAgentEndpointTest() {
 
     @Test
     fun `current version - saved, and the next update needs the new one`() {
+        userId = 12L
         val request = UpdateAgentRequest(biography = "Updated bio", version = 0)
 
         val response = rest.postForEntity("/v1/agents/101", request, Void::class.java)
@@ -92,6 +99,7 @@ class UpdateAgentEndpointTest : AbstractAgentEndpointTest() {
 
     @Test
     fun `stale version - 409, nothing saved`() {
+        userId = 12L
         val request = UpdateAgentRequest(biography = "Updated bio", version = 7)
 
         val response = rest.postForEntity("/v1/agents/101", request, ErrorResponse::class.java)
@@ -118,6 +126,7 @@ class UpdateAgentEndpointTest : AbstractAgentEndpointTest() {
 
     @Test
     fun `partial update of a single field`() {
+        userId = 12L
         val request = UpdateAgentRequest(
             whatsappNumber = "+237600000555",
         )
@@ -137,6 +146,7 @@ class UpdateAgentEndpointTest : AbstractAgentEndpointTest() {
 
     @Test
     fun `no neighborhoodIds keeps existing neighborhoods`() {
+        userId = 13L
         val request = UpdateAgentRequest(
             whatsappNumber = "+237600000555",
             neighborhoodIds = null,
@@ -148,5 +158,63 @@ class UpdateAgentEndpointTest : AbstractAgentEndpointTest() {
 
         val agent = dao.findById(102L).get()
         assertNeighborhoods(agent.id!!, listOf(555L, 666L))
+    }
+
+    @Test
+    fun `another agent's profile - forbidden, nothing saved`() {
+        val response = rest.postForEntity(
+            "/v1/agents/101",
+            UpdateAgentRequest(whatsappNumber = "+237600000888", biography = "Hijacked"),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
+
+        val agent = dao.findById(101L).get()
+        assertNull(agent.whatsappNumber)
+        assertNull(agent.biography)
+        assertEquals(AgentType.UNKNOWN, agent.agentType)
+        assertEquals(Date.from(Instant.parse("2024-06-10T00:00:00Z")), agent.modifiedAt)
+    }
+
+    @Test
+    fun `caller without a party - forbidden, nothing saved`() {
+        userId = 14L
+        val response = rest.postForEntity(
+            "/v1/agents/100",
+            UpdateAgentRequest(biography = "Hijacked"),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
+        assertNull(dao.findById(100L).get().biography)
+    }
+
+    @Test
+    fun `admin updates another agent`() {
+        admin = true
+        val response = rest.postForEntity(
+            "/v1/agents/101",
+            UpdateAgentRequest(biography = "Admin edit"),
+            Void::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals("Admin edit", dao.findById(101L).get().biography)
+    }
+
+    @Test
+    fun `anonymous caller - unauthorized`() {
+        anonymousUser = true
+        val response = rest.postForEntity(
+            "/v1/agents/100",
+            UpdateAgentRequest(biography = "Hijacked"),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.statusCode)
+        assertNull(dao.findById(100L).get().biography)
     }
 }
