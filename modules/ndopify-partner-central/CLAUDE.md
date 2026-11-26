@@ -38,7 +38,10 @@ another agent — photo or initials, name linked to `/agent?id=&back=…`, Whats
 `ui/agent/AgentCardViews.of`, used as a card footer on the visit, proposal and match cards and boxed (`standalone`) on
 the visit and the read-only listing pages; a null `AgentCardView` renders "un autre agent"), and page scripts in
 `src/main/assets/js/`, one per page (`<page>.js`, picked by the body's `data-page`) plus `partner-central.js` /
-`util.js`. `direct-upload.js` is the
+`util.js`. `src/main/resources/messages.properties` is the module's only message bundle (Spring Boot's default
+`MessageSource`, basename `messages`): the words keyed by data ndopify-server sends — `document.field.<key>` and
+`document.problem.<code>`, with `document.field.unknown` / `document.problem.unknown` as the fallbacks
+(`DocumentFieldLabels`) —, never the fixed page wording, which stays in the templates and views. `direct-upload.js` is the
 shared browser half of a direct upload: `NdDirectUpload.upload(action, file, options)` runs presign → PUT → attach
 against `<action>/presign` and `<action>/attach` and resolves false on any failure, for the page to fall back to its
 form post (the KYC and profile photo stories reuse it). Only a caller whose attach replaces an object (KYC, profile
@@ -331,7 +334,9 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `documentSection` from `MandateDocumentViews.section`) sits after *Biens correspondants* and before the criteria:
   its documents newest first, each row a link to its page — the type, the agent's title under it only when it differs
   from the type's name, the status pill (*Reçu* `UPLOADED`, *En cours d'analyse* `EXTRACTING`, *Analysé* `EXTRACTED`,
-  *À corriger* `FAILED`) and *Ajouté le 25 nov. 2026 · 2 pages* (tenant `dateFormat` through `TenantFormatter`); with
+  *À corriger* `FAILED`) and *Ajouté le 25 nov. 2026 · 2 pages* (tenant `dateFormat` through `TenantFormatter`); an
+  `expiresAt` before the tenant's today adds the *Expirée* pill beside the status, since the status doesn't say it
+  (`MandateDocumentViews.section` takes the page's `today`); with
   none, its hint says what to add for a landlord's listing or a client's search; failing to load, only the section says
   so. *Ajouter un document* (`btn btn--secondary btn--compact`) opens `/mandates/{id}/documents/new`
   (`GET|POST /mandates/{id}/documents`, multipart `type`, `title`, `files`): the type picker is a native select whose
@@ -346,7 +351,21 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   token to ndopify-server and streams the watermarked JPEG (`image/jpeg`, `Content-Disposition: inline;
   filename="mandat-<id>-page-<n>.jpg"`, `Cache-Control: private, max-age=300`, `X-Content-Type-Options: nosniff`); a
   copied URL opens nothing without the agent's session (sign-in redirect), ndopify-server's 403/404 keep their status,
-  and its 5xx or an unreachable server is a 502. Then a folded *Remplacer* form (multipart `file`,
+  and its 5xx or an unreachable server is a 502. Above the pages, *Données lues* (`reading`, built by
+  `MandateDocumentReadingViews.of` and rendered by the server) shows what the AI read (#331): one row per `fields`
+  value in the server's order, its French label from `messages.properties` by key (`document.field.<key>`; an unknown
+  key reads *Autre donnée*, so a new server field needs one line there and no Kotlin change) and its value by kind
+  (`DocumentFieldValues`: dates in the tenant's `dateFormat`, `payMonth` as "Octobre 2026", amounts short with the
+  document's currency — `currency` is the amounts' unit, never a row —, `•••• 0123`, "1 200 m²", `Solde` / `Attesté`);
+  a value it can't parse reads as sent, a null or blank one has no row, and no confidence nor JSON is shown. An
+  `UPLOADED` / `EXTRACTING` document shows a hint that the reading happens on its own, an `EXTRACTED` one without a
+  field says no data was read, and a `FAILED` one shows one instruction per `problemCodes` code in the server's order
+  (`document.problem.<code>`, an unknown code the generic one). An `expiresAt` before the tenant's today (computed on
+  every read with `TenantFormatter.today`; a piece expiring today is still valid) adds the notice *Pièce expirée le …*,
+  saying whether it was already expired when the AI read it (`DOCUMENT_EXPIRED` is that warning, never an instruction)
+  or has expired since, with its way out — replace its pages, or delete it and add the valid one — and none on a
+  CLOSED / CANCELLED mandate, which keeps the whole section readable. No re-analysis and no field correction: replacing
+  a page is what sends the document back through the reading. Then a folded *Remplacer* form (multipart `file`,
   `?replaceError=size&page={pageId}` after a multipart
   limit), then *Renommer* (the posted `version`; a 409 `MANDATE_DOCUMENT_VERSION_CONFLICT` shows the current title and
   the "changed" panel) and *Supprimer le document* (`?delete=1` opens the confirmation without JS, in place with it).
