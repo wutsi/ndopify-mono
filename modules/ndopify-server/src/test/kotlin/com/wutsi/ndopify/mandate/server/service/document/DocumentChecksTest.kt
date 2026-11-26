@@ -77,6 +77,14 @@ class DocumentChecksTest {
     }
 
     @Test
+    fun `an unreadable document missing a side is a missing page, not unreadable`() {
+        assertEquals(
+            listOf(DocumentProblemCodes.DOCUMENT_PAGE_MISSING),
+            checks.check(DocumentType.NATIONAL_ID, nationalId(sidesPresent = listOf("FRONT")).copy(valid = false)),
+        )
+    }
+
+    @Test
     fun `a national id needs both sides`() {
         assertEquals(
             listOf(DocumentProblemCodes.DOCUMENT_PAGE_MISSING),
@@ -209,8 +217,8 @@ class DocumentChecksTest {
             listOf(
                 DocumentProblemCodes.DOCUMENT_TYPE_MISMATCH,
                 DocumentProblemCodes.DOCUMENT_PAGE_MISSING,
-                DocumentProblemCodes.EXPIRY_DATE_UNREADABLE,
                 DocumentProblemCodes.DOCUMENT_FIELD_LOW_CONFIDENCE,
+                DocumentProblemCodes.EXPIRY_DATE_UNREADABLE,
             ),
             checks.check(DocumentType.NATIONAL_ID, data),
         )

@@ -5,11 +5,11 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 
 /**
- * The problem codes of an extracted document, in the order they're reported: a mismatch, a missing page, an unreadable
- * required expiry, then the required fields a low confidence or a blank value makes unusable.
+ * The problem codes of an extracted document, in the order they're reported: a mismatch, a missing page, the required
+ * fields a low confidence or a blank value makes unusable, then an unreadable required expiry.
  *
- * An answer the model marked invalid stops here: `DOCUMENT_UNREADABLE` alone, since its detection and fields aren't
- * trusted. A missing per-field confidence counts as 0; only the required fields and the [DocumentRequirements.oneOf]
+ * An answer the model marked invalid stops here: `DOCUMENT_UNREADABLE` alone, unless a side the type needs is missing
+ * (a fact the model still reports): `DOCUMENT_PAGE_MISSING` alone then, since the agent must fix the page first. A missing per-field confidence counts as 0; only the required fields and the [DocumentRequirements.oneOf]
  * groups are checked, an optional field keeps whatever confidence it got. The expiry is the expiry rule's, never the
  * generic field rule. The `DOCUMENT_EXPIRED` warning is not added here.
  */
@@ -19,30 +19,38 @@ class DocumentChecks(
 ) {
     /** The codes of [data] for a document declared as [type]; empty when it's usable. */
     fun check(type: DocumentType, data: DocumentData): List<String> {
-        if (!data.valid) {
-            return listOf(DocumentProblemCodes.DOCUMENT_UNREADABLE)
-        }
         val requirements = DocumentRequirements.of(type) ?: return emptyList()
-        val codes = mutableListOf<String>()
+        val sidesPresent = sides(data)
 
-        if (data.detectedType != null && !data.detectedType.equals(type.name, ignoreCase = true)) {
+        // An answer the model couldn't read is alone, but a missing side is a fact it still reports: the agent must
+        // fix the page before a new read can say anything
+        if (!data.valid) {
+            return if (sidesPresent.containsAll(requirements.sides)) {
+                listOf(DocumentProblemCodes.DOCUMENT_UNREADABLE)
+            } else {
+                listOf(DocumentProblemCodes.DOCUMENT_PAGE_MISSING)
+            }
+        }
+
+        val codes = mutableListOf<String>()
+        val detectedType = data.detectedType
+        if (detectedType != null && !detectedType.trim().equals(type.name, ignoreCase = true)) {
             codes.add(DocumentProblemCodes.DOCUMENT_TYPE_MISMATCH)
         }
-
-        val sides = data.sidesPresent.orEmpty().map { side -> side.uppercase() }.toSet()
-        if (!sides.containsAll(requirements.sides)) {
+        if (!sidesPresent.containsAll(requirements.sides)) {
             codes.add(DocumentProblemCodes.DOCUMENT_PAGE_MISSING)
         }
-
-        if (requirements.requiresExpiry && data.expiresAt() == null) {
-            codes.add(DocumentProblemCodes.EXPIRY_DATE_UNREADABLE)
-        }
-
         if (hasLowConfidenceField(requirements, data)) {
             codes.add(DocumentProblemCodes.DOCUMENT_FIELD_LOW_CONFIDENCE)
         }
+        if (requirements.requiresExpiry && data.expiresAt() == null) {
+            codes.add(DocumentProblemCodes.EXPIRY_DATE_UNREADABLE)
+        }
         return codes
     }
+
+    private fun sides(data: DocumentData): Set<String> =
+        data.sidesPresent.orEmpty().map { side -> side.trim().uppercase() }.toSet()
 
     private fun hasLowConfidenceField(requirements: DocumentRequirements.Requirements, data: DocumentData): Boolean {
         val fields = data.toFields()
