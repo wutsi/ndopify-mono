@@ -706,12 +706,12 @@ request-approval's step (3) (`ContractService.findByIdForUpdate`). The reverse o
 `ControllerErrorHandler` answers a lock not acquired (`PessimisticLockingFailureException`: deadlock, lock wait timeout)
 with 409 `HTTP_VERSION_CONFLICT` rather than 500.
 
-**Optimistic locking**: `MandateEntity`, `AgentEntity`, `ContractEntity`, `KycCaseEntity`, `AssignmentEntity`,
+**Optimistic locking**: `MandateEntity`, `MandateDocumentEntity`, `AgentEntity`, `ContractEntity`, `KycCaseEntity`, `AssignmentEntity`,
 `ListingEntity`, `MatchEntity` and `VisitEntity` are `@Version`-ed (`version` column, `V7_0` / `V7_1` / `V8_0` / `V10_0`; a listing's conflict is
 `LISTING_VERSION_CONFLICT`, and `UpdateListingRequest.version` is checked like the mandate's). Hibernate checks it on flush (`UPDATE ... WHERE version = ?`), so it only
 catches concurrent transactions; `ControllerErrorHandler` turns the `ObjectOptimisticLockingFailureException` into a
-409 named after the entity (`MANDATE_VERSION_CONFLICT`, `AGENT_VERSION_CONFLICT`, `CONTRACT_VERSION_CONFLICT`,
-`KYC_CASE_VERSION_CONFLICT`; `ASSIGNMENT_NOT_PENDING` for an offer, `MATCH_NOT_ACTIVE` for a match). Across requests, `Mandate` / `Agent` expose
+409 named after the entity (`MANDATE_VERSION_CONFLICT`, `MANDATE_DOCUMENT_VERSION_CONFLICT`, `AGENT_VERSION_CONFLICT`,
+`CONTRACT_VERSION_CONFLICT`, `KYC_CASE_VERSION_CONFLICT`; `ASSIGNMENT_NOT_PENDING` for an offer, `MATCH_NOT_ACTIVE` for a match). Across requests, `Mandate` / `Agent` expose
 `version`, and `UpdateMandateRequest.version` / `UpdateAgentRequest.version` (null: not checked) must still be the
 entity's, else the same 409 before anything is saved. With `@Version`, Spring Data treats an entity whose `version` is
 null as new: update with `copy()` of a loaded entity, never by building one with an existing id. Any write bumps the
@@ -796,7 +796,8 @@ Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not ha
 - Any JPA entity annotated `org.hibernate.annotations.@TenantId` is automatically filtered by Hibernate for every
   query against it — no `CriteriaBuilder` predicate, repository override, or service-level check needed. Today
   that's `PartyEntity`, `PaymentMethodEntity`, `IdentificationEntity`, `IdentificationImageEntity`, `KycCaseEntity`,
-  `AgentEntity`, `CustomerEntity`, `MandateEntity`, `AssignmentEntity`, `ContractEntity`, `ContractPartyEntity`,
+  `AgentEntity`, `CustomerEntity`, `MandateEntity`, `AssignmentEntity`, `MandateDocumentEntity`,
+  `MandateDocumentPageEntity`, `ContractEntity`, `ContractPartyEntity`,
   `MembershipEntity`, `ListingEntity`, `ListingImageEntity`, `ListingSectionEntity`, `MatchEntity` and `VisitEntity`. Leave the field `null` on construction (see the comment on any of them) so Hibernate's
   `TenantIdGeneration` populates it from `TenantContext` on insert — setting a non-null value yourself makes
   Hibernate treat it as caller-assigned and throw if it doesn't match the resolved tenant.
