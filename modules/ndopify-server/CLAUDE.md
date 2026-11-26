@@ -158,7 +158,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   write overwrites another's object. KYC files are private: only read through presigned GETs (`GET /v1/kyc/cases/images/{id}/url`), never `publicUrl`.
 - **agent** — mobile-money agents (`AgentEntity`; `/v1/agents`: get, search, me, create, update). `GET /v1/agents/me`
   resolves the caller's agent from its token (`CallerService`): 404 `AGENT_NOT_FOUND` when the caller has no party or
-  isn't an agent. `WelcomeMailet` sends
+  isn't an agent. `POST /v1/agents/{id}` is the agent's own (its party, through the token's membership) or an admin's
+  (`AgentAccessService`): 404 `AGENT_NOT_FOUND` → 403 `HTTP_ACCESS_DENIED` → 409 `AGENT_VERSION_CONFLICT`. The reads
+  and `create` stay open to any token as they are. `WelcomeMailet` sends
   a welcome e-mail on registration when the tenant has a `partnerCentralUrl`, asynchronously (see *Asynchronous
   e-mails* below). `AgentTelegramService.findByChatId` reads the bot link of a chat (#135's global `T_AGENT_TELEGRAM`):
   its row names the tenant and the agent, which is how a Telegram update — no JWT, no `X-Tenant-ID` — acts in them. `joinedAt` is set on the agent's first VERIFIED case by `AgentKycEventListener`, a
