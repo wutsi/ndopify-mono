@@ -55,8 +55,11 @@ class DocumentChecks(
     private fun hasLowConfidenceField(requirements: DocumentRequirements.Requirements, data: DocumentData): Boolean {
         val fields = data.toFields()
         val confidences = data.fieldConfidences.orEmpty()
-        // An identity's expiry is read as a date: it's checked by the expiry rule, never as a generic field
-        if (requirements.required.any { key -> key != "expiryDate" && !isConfident(fields[key], confidences[key]) }) {
+        // An expiry is read as a date: it's checked by the expiry rule, never as a generic field
+        if (requirements.required.any { key ->
+                key != requirements.expiryField && !isConfident(fields[key], confidences[key])
+            }
+        ) {
             return true
         }
         return requirements.oneOf.any { group ->

@@ -68,12 +68,35 @@ class DocumentRequirementsTest {
     }
 
     @Test
-    fun `the financial and unknown types have no requirements`() {
-        listOf(
-            DocumentType.UNKNOWN,
-            DocumentType.PAY_SLIP,
-            DocumentType.BANK_PRE_APPROVAL,
-            DocumentType.PROOF_OF_FUNDS,
-        ).forEach { type -> assertNull(DocumentRequirements.of(type), type.name) }
+    fun `pay slip`() {
+        val requirements = DocumentRequirements.of(DocumentType.PAY_SLIP)!!
+
+        assertEquals(setOf("employeeName", "payMonth", "netSalary", "currency"), requirements.required)
+        assertEquals(false, requirements.requiresExpiry)
+        assertEquals(emptySet(), requirements.sides)
+        assertEquals(emptyList(), requirements.oneOf)
+    }
+
+    @Test
+    fun `bank pre-approval`() {
+        val requirements = DocumentRequirements.of(DocumentType.BANK_PRE_APPROVAL)!!
+
+        assertEquals(setOf("bankName", "beneficiaries", "amount", "currency", "validityDate"), requirements.required)
+        assertEquals(true, requirements.requiresExpiry)
+        assertEquals(emptySet(), requirements.sides)
+    }
+
+    @Test
+    fun `proof of funds`() {
+        val requirements = DocumentRequirements.of(DocumentType.PROOF_OF_FUNDS)!!
+
+        assertEquals(setOf("accountHolder", "amount", "currency", "statementDate"), requirements.required)
+        assertEquals(false, requirements.requiresExpiry)
+        assertEquals(emptySet(), requirements.sides)
+    }
+
+    @Test
+    fun `the unknown type has no requirements`() {
+        assertNull(DocumentRequirements.of(DocumentType.UNKNOWN))
     }
 }

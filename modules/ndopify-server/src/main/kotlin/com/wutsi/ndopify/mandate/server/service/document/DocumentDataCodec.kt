@@ -6,9 +6,9 @@ import org.springframework.stereotype.Service
 
 /**
  * The typed [DocumentData] of a mandate document, as stored in its `data` JSON column. The subclass comes from the
- * document's [DocumentType] column, never from the payload; a type without a data class (the financial documents #333
- * adds, [DocumentType.UNKNOWN]) has none. Reading is additive and versioned ([DocumentData.VERSION]): an older or
- * partial payload reads with null fields, an unknown one is ignored, and a malformed payload is null — never an error.
+ * document's [DocumentType] column, never from the payload; [DocumentType.UNKNOWN] has none. Reading is additive and
+ * versioned ([DocumentData.VERSION]): an older or partial payload reads with null fields, an unknown one is ignored,
+ * and a malformed payload is null — never an error.
  */
 @Service
 class DocumentDataCodec(private val json: JsonHelper) {
@@ -43,10 +43,10 @@ class DocumentDataCodec(private val json: JsonHelper) {
         DocumentType.LEASE_CONTRACT -> LeaseContract::class.java
         DocumentType.UTILITY_BILL -> UtilityBill::class.java
         DocumentType.TAX_RECEIPT -> TaxReceipt::class.java
+        DocumentType.PAY_SLIP -> PaySlipData::class.java
+        DocumentType.BANK_PRE_APPROVAL -> BankPreApprovalData::class.java
+        DocumentType.PROOF_OF_FUNDS -> ProofOfFundsData::class.java
         DocumentType.OTHER -> Other::class.java
-        DocumentType.UNKNOWN,
-        DocumentType.PAY_SLIP,
-        DocumentType.BANK_PRE_APPROVAL,
-        DocumentType.PROOF_OF_FUNDS -> null
+        DocumentType.UNKNOWN -> null
     }
 }

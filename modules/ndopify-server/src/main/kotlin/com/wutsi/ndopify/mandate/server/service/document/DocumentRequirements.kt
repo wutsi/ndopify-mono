@@ -4,18 +4,21 @@ import com.wutsi.ndopify.mandate.dto.DocumentType
 
 /**
  * What a document of each [DocumentType] must say to be usable, read by [DocumentChecks]. A type without an extractor
- * ([DocumentType.UNKNOWN] and the financial documents #333 adds) has no requirements: it's never extracted.
+ * ([DocumentType.UNKNOWN]) has no requirements: it's never extracted.
  */
 object DocumentRequirements {
     /**
      * [required] fields must be read with at least the minimum confidence; one of each [oneOf] group too;
      * [requiresExpiry] makes an unreadable expiry its own problem; [sides] must all be present among the pages.
+     * [expiryField] is the required field that holds the expiry date, when there is one: it's checked by the expiry
+     * rule alone, never as a generic field too.
      */
     data class Requirements(
         val required: Set<String> = emptySet(),
         val oneOf: List<Set<String>> = emptyList(),
         val requiresExpiry: Boolean = false,
         val sides: Set<String> = emptySet(),
+        val expiryField: String? = null,
     )
 
     /** What [type] must show; null for a type no extractor handles. */
@@ -24,11 +27,13 @@ object DocumentRequirements {
             required = setOf("number", "firstName", "lastName"),
             requiresExpiry = true,
             sides = setOf("FRONT", "BACK"),
+            expiryField = "expiryDate",
         )
         DocumentType.PASSPORT -> Requirements(
             required = setOf("number", "firstName", "lastName"),
             requiresExpiry = true,
             sides = setOf("FRONT"),
+            expiryField = "expiryDate",
         )
         DocumentType.LAND_TITLE,
         DocumentType.CERTIFICATE_OF_OWNERSHIP -> Requirements(required = setOf("titleNumber", "owners", "locality"))
@@ -40,10 +45,16 @@ object DocumentRequirements {
             required = setOf("holderName", "issueDate"),
             oneOf = listOf(setOf("address", "locality")),
         )
+        DocumentType.PAY_SLIP -> Requirements(required = setOf("employeeName", "payMonth", "netSalary", "currency"))
+        DocumentType.BANK_PRE_APPROVAL -> Requirements(
+            required = setOf("bankName", "beneficiaries", "amount", "currency", "validityDate"),
+            requiresExpiry = true,
+            expiryField = "validityDate",
+        )
+        DocumentType.PROOF_OF_FUNDS -> Requirements(
+            required = setOf("accountHolder", "amount", "currency", "statementDate"),
+        )
         DocumentType.OTHER -> Requirements(required = setOf("summary"))
-        DocumentType.UNKNOWN,
-        DocumentType.PAY_SLIP,
-        DocumentType.BANK_PRE_APPROVAL,
-        DocumentType.PROOF_OF_FUNDS -> null
+        DocumentType.UNKNOWN -> null
     }
 }
