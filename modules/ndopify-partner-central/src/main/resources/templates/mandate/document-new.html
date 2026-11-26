@@ -48,7 +48,8 @@
             <div th:unless="${atLimit}">
                 <!-- The 6th document refused by ndopify-server (400 MANDATE_DOCUMENT_LIMIT_REACHED): the form again,
                      the type and title kept. -->
-                <div class="alert alert--error" role="alert" tabindex="-1" th:if="${limitError}" data-new-limit-error>
+                <div class="alert alert--error" role="alert" tabindex="-1" th:hidden="${!limitError}"
+                     data-new-limit-error>
                     <svg th:replace="~{fragments/icon :: close}"></svg>
                     <div>
                         <p class="alert__title">Un mandat peut avoir 5 documents au plus.</p>

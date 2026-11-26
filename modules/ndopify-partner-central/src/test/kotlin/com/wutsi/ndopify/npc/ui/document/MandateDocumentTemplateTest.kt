@@ -358,6 +358,48 @@ class MandateDocumentTemplateTest {
     }
 
     @Test
+    fun `document - a PDF document shows the PDF pill and takes a PDF`() {
+        doReturn(document.copy(source = DocumentSource.PDF)).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val page = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID"))
+        ScriptFixtures.write("mandate-document-pdf", page)
+
+        val pill = page.selectFirst("[data-document-source]")!!
+        assertEquals("PDF", pill.text().replace("Créé à partir de : ", ""))
+        assertEquals("PDF", pill.attr("data-source"))
+        assertEquals("application/pdf", page.selectFirst(".doc-page input[type=file]")?.attr("accept"))
+        assertTrue(
+            page.selectFirst(".doc-page .field__hint")!!.text().contains("seul un PDF d'une page remplace cette page"),
+        )
+    }
+
+    @Test
+    fun `document - an image document shows the Photos pill and takes a photo`() {
+        doReturn(document.copy(source = DocumentSource.IMAGE)).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val page = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID"))
+        ScriptFixtures.write("mandate-document-image", page)
+
+        val pill = page.selectFirst("[data-document-source]")!!
+        assertEquals("Photos", pill.text().replace("Créé à partir de : ", ""))
+        assertEquals("image/jpeg,image/png,image/webp", page.selectFirst(".doc-page input[type=file]")?.attr("accept"))
+        assertTrue(page.selectFirst(".doc-page .field__hint")!!.text().contains("une photo remplace cette page"))
+    }
+
+    @Test
+    fun `document - a grandfathered document accepts either kind`() {
+        val page = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID"))
+
+        val pill = page.selectFirst("[data-document-source]")!!
+        assertEquals("Photos ou PDF", pill.text().replace("Créé à partir de : ", ""))
+        assertEquals("UNKNOWN", pill.attr("data-source"))
+        assertEquals(
+            "image/jpeg,image/png,image/webp,application/pdf",
+            page.selectFirst(".doc-page input[type=file]")?.attr("accept"),
+        )
+    }
+
+    @Test
     fun `document - no image, one upload date, no size`() {
         val page = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID"))
 

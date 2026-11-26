@@ -35,7 +35,8 @@
                         <span th:class="|status-tag ${#strings.isEmpty(d.status.style) ? '' : 'status-tag--' + d.status.style}|"
                               data-document-status><span class="visually-hidden">Statut&nbsp;: </span><span
                                 th:text="${d.status.label}">Analysé</span></span>
-                        <span class="status-tag status-tag--neutral" data-document-source><span
+                        <span class="status-tag status-tag--neutral" data-document-source
+                              th:attr="data-source=${d.source}"><span
                                 class="visually-hidden">Créé à partir de&nbsp;: </span><span
                                 th:text="${d.sourceLabel}">PDF</span></span>
                     </div>

@@ -76,7 +76,7 @@ function type(page, selector, text) {
 const ALL_FIXTURES = [
     "offer-property", "offer-terms-sale", "offer-features-residential-sale", "offer-features-commercial-sale",
     "offer-features-residential-rental", "find-property-residential-sale", "find-budget-building-sale",
-    "listing-photos", "mandate-document-new", "mandate-document"
+    "listing-photos", "mandate-document-new", "mandate-document", "mandate-document-pdf", "mandate-document-image"
 ];
 
 for (const name of ALL_FIXTURES) {
@@ -392,18 +392,14 @@ test("mandate documents, document page: a replacement without a file shows its e
 test("mandate documents, add: a PDF is a PDF row and the count says its pages count on send", async () => {
     const page = await load("mandate-document-new");
 
-    choosePages(page, [
-        pageFile(page, "IMG_2041.jpg"),
-        pageFile(page, "scan.pdf", "application/pdf", 512 * 1024)
-    ]);
+    choosePages(page, [pageFile(page, "scan.pdf", "application/pdf", 512 * 1024)]);
 
     const rows = page.document.querySelectorAll("[data-pages-list] li");
-    assert.equal(rows.length, 2);
-    assert.equal(rows[0].querySelector("[data-page-index]").textContent, "Page 1");
-    assert.equal(rows[1].querySelector("[data-page-index]").textContent, "PDF");
-    assert.equal(rows[1].querySelector("[data-page-name]").textContent, "scan.pdf");
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].querySelector("[data-page-index]").textContent, "PDF");
+    assert.equal(rows[0].querySelector("[data-page-name]").textContent, "scan.pdf");
     assert.equal(page.document.querySelector("[data-pages-count]").textContent,
-        "2 fichiers choisis · 10 pages au plus. Les pages d'un PDF comptent à l'envoi.");
+        "1 fichier choisi · 10 pages au plus. Les pages d'un PDF comptent à l'envoi.");
     assert.deepEqual(page.errors, []);
 });
 
@@ -430,7 +426,7 @@ test("mandate documents, add: an add holding a PDF posts the whole form, never a
         return Promise.resolve({ ok: true, redirected: false, json: () => Promise.resolve({}) });
     };
 
-    choosePages(page, [pageFile(page, "IMG_2041.jpg"), pageFile(page, "scan.pdf", "application/pdf")]);
+    choosePages(page, [pageFile(page, "scan.pdf", "application/pdf")]);
     page.document.querySelector("#documentType").value = "LAND_TITLE";
     page.document.querySelector("[data-new-form]")
         .dispatchEvent(new page.window.Event("submit", { bubbles: true, cancelable: true }));
@@ -459,4 +455,83 @@ test("mandate documents, document page: a PDF replacement posts the form, never 
     assert.equal(calls.filter((call) => call.endsWith("/presign")).length, 0, "a PDF is never presigned");
     assert.equal(calls.filter((call) => call.endsWith("/attach")).length, 0, "a PDF is never attached");
     assert.equal(form.querySelector(".field__error").hidden, true);
+});
+
+/* ---------- #369: the mandate's caps and a document's kind ---------- */
+
+const MIXED_SOURCES = "Un document contient soit des photos, soit un PDF, jamais les deux : choisissez de nouveau " +
+    "les pages.";
+
+function submit(form) {
+    return form.dispatchEvent(new form.ownerDocument.defaultView.Event("submit", { bubbles: true, cancelable: true }));
+}
+
+test("mandate documents, add: photos and a PDF are refused before sending", async () => {
+    const page = await load("mandate-document-new");
+    page.window.HTMLFormElement.prototype.submit = () => assert.fail("a mixed selection must not be posted");
+
+    choosePages(page, [pageFile(page, "IMG_2041.jpg"), pageFile(page, "scan.pdf", "application/pdf")]);
+    page.document.querySelector("#documentType").value = "LAND_TITLE";
+
+    assert.equal(page.document.querySelector("#pages-error [data-error-text]").textContent, MIXED_SOURCES);
+    assert.equal(submit(page.document.querySelector("[data-new-form]")), false, "the browser must not post the form");
+});
+
+test("mandate documents, add: two PDFs are refused before sending", async () => {
+    const page = await load("mandate-document-new");
+    page.window.HTMLFormElement.prototype.submit = () => assert.fail("a mixed selection must not be posted");
+
+    choosePages(page, [
+        pageFile(page, "a.pdf", "application/pdf"),
+        pageFile(page, "b.pdf", "application/pdf")
+    ]);
+    page.document.querySelector("#documentType").value = "LAND_TITLE";
+
+    assert.equal(page.document.querySelector("#pages-error [data-error-text]").textContent, MIXED_SOURCES);
+    assert.equal(submit(page.document.querySelector("[data-new-form]")), false, "the browser must not post the form");
+});
+
+test("mandate documents, add: a stale tab at the cap refuses the 6th document", async () => {
+    const page = await load("mandate-document-new");
+    page.window.HTMLFormElement.prototype.submit = () => assert.fail("the 6th document must not be posted");
+
+    const form = page.document.querySelector("[data-new-form]");
+    form.setAttribute("data-documents-count", "5");
+    choosePages(page, [pageFile(page, "IMG_2041.jpg")]);
+    page.document.querySelector("#documentType").value = "LAND_TITLE";
+
+    assert.equal(submit(form), false, "the browser must not post the form");
+    const limit = page.document.querySelector("[data-new-limit-error]");
+    assert.equal(limit.hidden, false);
+    assert.match(limit.textContent, /Un mandat peut avoir 5 documents au plus\./);
+});
+
+test("mandate documents, document page: a PDF document refuses a photo replacement", async () => {
+    const page = await load("mandate-document-pdf");
+    const form = page.document.querySelectorAll("[data-page-replace] form")[0];
+    const input = form.querySelector("input[type=file]");
+    Object.defineProperty(input, "files", { value: [pageFile(page, "page.jpg")], configurable: true });
+
+    assert.equal(submit(form), false, "the browser must not post the form");
+    assert.equal(
+        form.querySelector("[data-error-text]").textContent,
+        "Ce document a été créé à partir d'un PDF : remplacez cette page par un PDF d'une page, pas par une photo."
+    );
+});
+
+test("mandate documents, document page: an image document refuses a PDF replacement", async () => {
+    const page = await load("mandate-document-image");
+    const form = page.document.querySelectorAll("[data-page-replace] form")[0];
+    const input = form.querySelector("input[type=file]");
+    Object.defineProperty(input, "files", {
+        value: [pageFile(page, "scan.pdf", "application/pdf")],
+        configurable: true
+    });
+
+    assert.equal(submit(form), false, "the browser must not post the form");
+    assert.equal(
+        form.querySelector("[data-error-text]").textContent,
+        "Ce document a été créé à partir de photos : remplacez cette page par une photo JPEG, PNG ou WEBP, pas " +
+            "par un PDF."
+    );
 });
