@@ -220,7 +220,7 @@ function pageFile(page, name, type = "image/jpeg", size = 2048) {
     return new page.window.File([new Uint8Array(size)], name, { type });
 }
 
-/* The second "data-page-input" is "Choisir des images" (several); the first one takes a photo. */
+/* The second "data-page-input" is "Choisir des fichiers" (several); the first one takes a photo. */
 function choosePages(page, files) {
     const input = page.document.querySelectorAll("[data-page-input]")[1];
     Object.defineProperty(input, "files", { value: files, configurable: true });
@@ -383,5 +383,80 @@ test("mandate documents, document page: a replacement without a file shows its e
 
     assert.equal(submitted, false, "the browser must not post the form");
     assert.equal(form.querySelector(".field__error").hidden, false);
-    assert.equal(form.querySelector("[data-error-text]").textContent, "Choisissez une image.");
+    assert.equal(form.querySelector("[data-error-text]").textContent,
+        "Choisissez la nouvelle page : une photo ou un PDF.");
+});
+
+/* ---------- #366: a PDF next to the photos ---------- */
+
+test("mandate documents, add: a PDF is a PDF row and the count says its pages count on send", async () => {
+    const page = await load("mandate-document-new");
+
+    choosePages(page, [
+        pageFile(page, "IMG_2041.jpg"),
+        pageFile(page, "scan.pdf", "application/pdf", 512 * 1024)
+    ]);
+
+    const rows = page.document.querySelectorAll("[data-pages-list] li");
+    assert.equal(rows.length, 2);
+    assert.equal(rows[0].querySelector("[data-page-index]").textContent, "Page 1");
+    assert.equal(rows[1].querySelector("[data-page-index]").textContent, "PDF");
+    assert.equal(rows[1].querySelector("[data-page-name]").textContent, "scan.pdf");
+    assert.equal(page.document.querySelector("[data-pages-count]").textContent,
+        "2 fichiers choisis · 10 pages au plus. Les pages d'un PDF comptent à l'envoi.");
+    assert.deepEqual(page.errors, []);
+});
+
+test("mandate documents, add: a PDF over 5 Mo shows the PDF size error and keeps Ajouter inactive", async () => {
+    const page = await load("mandate-document-new");
+
+    choosePages(page, [pageFile(page, "scan.pdf", "application/pdf", 6 * 1024 * 1024)]);
+
+    const error = page.document.querySelector("#pages-error");
+    assert.equal(error.hidden, false);
+    assert.equal(error.querySelector("[data-error-text]").textContent,
+        "« scan.pdf » dépasse 5 Mo : choisissez un PDF plus léger, ou envoyez ses pages en photos.");
+    assert.equal(page.document.querySelector("[data-new-submit]").getAttribute("aria-disabled"), "true");
+});
+
+test("mandate documents, add: an add holding a PDF posts the whole form, never a presign", async () => {
+    const page = await load("mandate-document-new");
+    const calls = [];
+    page.window.HTMLFormElement.prototype.submit = function () {
+        calls.push("submit");
+    };
+    page.window.fetch = (url) => {
+        calls.push(String(url));
+        return Promise.resolve({ ok: true, redirected: false, json: () => Promise.resolve({}) });
+    };
+
+    choosePages(page, [pageFile(page, "IMG_2041.jpg"), pageFile(page, "scan.pdf", "application/pdf")]);
+    page.document.querySelector("#documentType").value = "LAND_TITLE";
+    page.document.querySelector("[data-new-form]")
+        .dispatchEvent(new page.window.Event("submit", { bubbles: true, cancelable: true }));
+
+    await eventually(() => calls.includes("submit"), "the form was not posted");
+    assert.equal(calls.filter((call) => call.endsWith("/presign")).length, 0, "a PDF is never presigned");
+    assert.equal(calls.filter((call) => call.endsWith("/create")).length, 0, "the form creates the document");
+    assert.equal(page.document.querySelector("[data-new-submit]").textContent, "Envoi du document…");
+});
+
+test("mandate documents, document page: a PDF replacement posts the form, never a presign", async () => {
+    const page = await load("mandate-document");
+    const calls = [];
+    page.window.fetch = (url) => {
+        calls.push(String(url));
+        return Promise.resolve({ ok: true, redirected: false, json: () => Promise.resolve({ pageId: 2002 }) });
+    };
+
+    const form = page.document.querySelectorAll("[data-page-replace] form")[1];
+    const input = form.querySelector("input[type=file]");
+    Object.defineProperty(input, "files", { value: [pageFile(page, "scan.pdf", "application/pdf")], configurable: true });
+    // Not cancelled: the browser posts the multipart form, the server rendering the PDF's one page
+    const posted = form.dispatchEvent(new page.window.Event("submit", { bubbles: true, cancelable: true }));
+
+    assert.equal(posted, true, "the browser must post the form");
+    assert.equal(calls.filter((call) => call.endsWith("/presign")).length, 0, "a PDF is never presigned");
+    assert.equal(calls.filter((call) => call.endsWith("/attach")).length, 0, "a PDF is never attached");
+    assert.equal(form.querySelector(".field__error").hidden, true);
 });

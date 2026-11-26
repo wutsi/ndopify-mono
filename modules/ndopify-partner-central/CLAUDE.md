@@ -342,7 +342,9 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   (`GET|POST /mandates/{id}/documents`, multipart `type`, `title`, `files`): the type picker is a native select whose
   first optgroup is the mandate's suggested types (*MandateDocumentLabels.suggested*, LISTING identity and ownership,
   SEARCH identity and financing) then *Autres types* (*others*, `OTHER` last), the title is optional (blank: the type's
-  French name, a server rule, 100 characters at most) and the pages are JPEG, PNG or WEBP, 5 Mo each, 10 at most —
+  French name, a server rule, 100 characters at most) and the pages are JPEG, PNG, WEBP or PDF, 5 Mo per file, 10 files
+  at most — a PDF is never presigned: ndopify-server renders each of its pages to a JPEG at the PDF's place in the
+  order and keeps no PDF (see ndopify-server's *Documents*), so an add holding one posts the whole multipart form.
   `spring.servlet.multipart` keeps 10 MB per file and goes to 55 MB per request, and `KycUploadErrorHandler` sends a
   request over them back to `?error=too-large`. A document's page is `/mandates/{id}/documents/{documentId}`: **no
   image** of a page anywhere (no gallery, thumbnail nor size, never a page `path` nor a storage URL), its type, title,
@@ -373,16 +375,20 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   (*Voir* only). Everything else ndopify-server refuses because the page was stale (403, 404, 409) goes back to the
   mandate page with the `documentOutcome=changed` flash; the add and the delete flash `added` / `deleted` (+
   `documentTitle`) there, the rename and the replacement `outcome=renamed|replaced` on the document's page
-  (`MandateController` words the mandate page's one). With JS, `mandate-document.js` lists the chosen pages by name and
-  size (read in the browser, no thumbnail), shrinks them to 2000 px as KYC, sends each straight to the storage
-  (`POST …/documents/presign` → PUT → `POST …/documents/create`, then `GET …/documents/saved?documentId=`; a page that
-  can't be stored posts the whole multipart form, so a document is never half-created), replaces a page through
-  `POST …/pages/{pageId}/presign` → PUT → `POST …/pages/{pageId}/attach` (then `GET …/pages/{pageId}/saved`) and opens
-  the delete confirmation in place. The JSON proxies answer 401 without a signed-in agent (never the sign-in redirect,
-  which `fetch` would follow), 404 for an unknown or another agent's mandate, 409 once it isn't ACTIVE, ndopify-server's
-  status and error body when it refuses, 502 when it can't be reached; `NdDirectUpload.store` is `direct-upload.js`'s
-  presign + PUT only. Prototype: `src/main/html/v2/mandate.html` (Documents), `v2/mandate/document*.html` (approved
-  2026-11-25).
+  (`MandateController` words the mandate page's one). With JS, `mandate-document.js` lists the chosen files by name and
+  size (read in the browser, no thumbnail; a PDF is a *PDF* row, the browser can't count its pages), shrinks the images
+  to 2000 px as KYC, sends each straight to the storage (`POST …/documents/presign` → PUT → `POST …/documents/create`,
+  then `GET …/documents/saved?documentId=`; a file that can't be stored posts the whole multipart form, so a document
+  is never half-created), replaces an image page through `POST …/pages/{pageId}/presign` → PUT →
+  `POST …/pages/{pageId}/attach` (then `GET …/pages/{pageId}/saved`) and opens the delete confirmation in place. A PDF
+  is never presigned nor attached: an add holding one shrinks its images then posts the form, a PDF replacement posts
+  its form, and `MandateDocumentRules`'s checks mirror the server's three PDF codes as this page's French field errors
+  (*Un PDF est protégé par un mot de passe…*, *… est vide ou endommagé…*, *… fait plus de 10 pages…* on an add, *Ce PDF
+  fait plusieurs pages…* on a replacement). The JSON proxies answer 401 without a signed-in agent (never the sign-in
+  redirect, which `fetch` would follow), 404 for an unknown or another agent's mandate, 409 once it isn't ACTIVE,
+  ndopify-server's status and error body when it refuses, 502 when it can't be reached; `NdDirectUpload.store` is
+  `direct-upload.js`'s presign + PUT only. Prototype: `src/main/html/v2/mandate.html` (Documents),
+  `v2/mandate/document*.html` (approved 2026-11-25, PDF 2026-11-26).
 - A landlord's signed mandate (APPROVED, LISTING) has a listing: the mandate page's *Actif* panel shows its line
   (`ListingViews.forMandate` → `MandateListingView`, the listing found by `MandateController` with
   `NdListingClient.findIdByMandate`, `GET /v1/listings?mandate-id=&agent-id=`, the agent's own id or its DRAFT isn't

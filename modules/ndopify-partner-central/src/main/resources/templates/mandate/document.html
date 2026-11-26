@@ -11,6 +11,8 @@
   server's order), the hint while it reads, one instruction per problem code of a FAILED document and the notice of an
   expired piece (MandateDocumentReadingViews, the "reading" model attribute). No confidence is shown, and a
   DOCUMENT_EXPIRED warning is the notice's, never an instruction.
+  A page is replaced by an image or a PDF of one page (a multi-page, protected or unreadable PDF comes back as the
+  field's error): an image is sent straight to the storage, a PDF posts this form, ndopify-server rendering its page.
   Then *Renommer* (the title and the version the page was loaded with; a blank or over-100 title is a field error,
   [conflict] is ndopify-server's 409 MANDATE_DOCUMENT_VERSION_CONFLICT with the current title) and *Supprimer le
   document* (a confirmation; without JS a link to ?delete=1 opens it on this same page, [deleting]).
@@ -134,18 +136,19 @@
                                       th:action="@{/mandates/{id}/documents/{documentId}/pages/{pageId}(id=${d.mandateId},documentId=${d.id},pageId=${page.id})}">
                                     <div class="field">
                                         <label class="field__label"
-                                               th:for="|page-${page.id}-file|">Nouvelle image de la page <span
+                                               th:for="|page-${page.id}-file|">Nouveau fichier de la page <span
                                                 th:text="${page.number}">1</span></label>
                                         <input class="input input--file" th:id="|page-${page.id}-file|" name="file"
-                                               type="file" accept="image/jpeg,image/png,image/webp"
+                                               type="file" accept="image/jpeg,image/png,image/webp,application/pdf"
                                                th:aria-describedby="|page-${page.id}-file-hint page-${page.id}-file-error|"
                                                th:aria-invalid="${replaceErrors[page.id] != null ? 'true' : null}">
-                                        <p class="field__hint" th:id="|page-${page.id}-file-hint|">JPEG, PNG ou WEBP,
-                                            5&nbsp;Mo au plus. Elle prend la place de cette page.</p>
+                                        <p class="field__hint" th:id="|page-${page.id}-file-hint|">Photo JPEG, PNG ou
+                                            WEBP, ou PDF d'une page, 5&nbsp;Mo au plus. Le fichier prend la place de
+                                            cette page.</p>
                                         <p class="field__error" th:id="|page-${page.id}-file-error|"
                                            th:hidden="${replaceErrors[page.id] == null}">
                                             <svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text
-                                                th:text="${replaceErrors[page.id]}">Cette image dépasse 5 Mo.</span></p>
+                                                th:text="${replaceErrors[page.id]}">Ce fichier dépasse 5 Mo.</span></p>
                                     </div>
                                     <button type="submit" class="btn btn--primary btn--compact">Remplacer la page</button>
                                 </form>

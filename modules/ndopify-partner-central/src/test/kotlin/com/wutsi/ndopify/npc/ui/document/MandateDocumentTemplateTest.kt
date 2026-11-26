@@ -161,10 +161,26 @@ class MandateDocumentTemplateTest {
 
         val files = page.selectFirst("input[name=files]")!!
         assertTrue(files.hasAttr("multiple"))
-        assertEquals("image/jpeg,image/png,image/webp", files.attr("accept"))
-        assertTrue(page.text().contains("JPEG, PNG ou WEBP, 5 Mo par page, 10 pages au plus."))
+        assertEquals("image/jpeg,image/png,image/webp,application/pdf", files.attr("accept"))
+        val hint = page.selectFirst("#pages-hint")!!.text()
+        assertTrue(hint.contains("JPEG, PNG, WEBP ou PDF"), hint)
+        assertTrue(hint.contains("5 Mo par fichier"), hint)
+        assertTrue(hint.contains("Les pages d'un PDF"), hint)
         assertEquals("0 / 100", page.selectFirst("[data-title-counter]")?.text())
         assertEquals("/mandates/301/documents", page.selectFirst("form[data-new-form]")?.attr("action"))
+
+        // With JS: "Prendre une photo" stays images-only, "Choisir des fichiers" takes the PDFs too
+        val pickers = page.select("[data-page-input]")
+        assertEquals(2, pickers.size)
+        assertEquals(
+            "image/jpeg,image/png,image/webp",
+            page.selectFirst("label:contains(Prendre une photo) input")?.attr("accept"),
+        )
+        assertEquals(
+            "image/jpeg,image/png,image/webp,application/pdf",
+            page.selectFirst("label:contains(Choisir des fichiers) input")?.attr("accept"),
+        )
+        assertEquals("Aucun fichier choisi.", page.selectFirst("[data-pages-count]")?.text())
     }
 
     @Test
@@ -173,7 +189,10 @@ class MandateDocumentTemplateTest {
 
         val error = page.selectFirst("#pages-error")!!
         assertFalse(error.hasAttr("hidden"))
-        assertEquals(MandateDocumentController.TOO_LARGE, error.selectFirst("[data-error-text]")?.text())
+        assertEquals(
+            "Ce fichier dépasse 5 Mo : choisissez un fichier plus léger.",
+            error.selectFirst("[data-error-text]")?.text(),
+        )
     }
 
     @Test
@@ -238,7 +257,15 @@ class MandateDocumentTemplateTest {
             "/mandates/301/documents/3103/pages/2001",
             forms[0].attr("action"),
         )
-        assertTrue(forms[0].text().contains("JPEG, PNG ou WEBP, 5 Mo au plus."))
+        assertEquals(
+            "Photo JPEG, PNG ou WEBP, ou PDF d'une page, 5 Mo au plus. Le fichier prend la place de cette page.",
+            forms[0].selectFirst(".field__hint")?.text(),
+        )
+        assertEquals(
+            "Nouveau fichier de la page 1",
+            forms[0].selectFirst("label.field__label")?.text(),
+        )
+        assertEquals("image/jpeg,image/png,image/webp,application/pdf", forms[0].selectFirst("input[type=file]")?.attr("accept"))
         assertEquals("file", forms[0].selectFirst("input[type=file]")?.attr("name"))
 
         assertEquals("3", page.selectFirst("form[data-rename-form] input[name=version]")?.attr("value"))
@@ -329,7 +356,7 @@ class MandateDocumentTemplateTest {
 
         val row = page.select(".doc-page")[1]
         assertEquals("open", row.selectFirst("details")?.attr("open"))
-        assertEquals("Choisissez une image.", row.selectFirst("[data-error-text]")?.text())
+        assertEquals("Choisissez la nouvelle page : une photo ou un PDF.", row.selectFirst("[data-error-text]")?.text())
         assertFalse(page.select(".doc-page")[0].selectFirst("details")!!.hasAttr("open"))
     }
 

@@ -5,13 +5,16 @@
   Ajouter un document (MandateDocumentController, GET|POST /mandates/{id}/documents/new), reached from the mandate
   page's Documents section. One multipart form, so it works without JavaScript (POST /mandates/{id}/documents, the BFF
   posts it to /v1/mandates/{id}/documents/upload): the type (required), an optional title (blank: the type's French
-  name, a server rule; 100 characters at most) and the pages, one image each (JPEG, PNG or WEBP, 5 Mo each, 10 at
-  most, in the order chosen).
+  name, a server rule; 100 characters at most) and the pages, one image or PDF each (JPEG, PNG, WEBP or PDF, 5 Mo per
+  file, 10 files at most, in the order chosen).
+  A PDF is never presigned: its pages are rendered to JPEGs by ndopify-server, at the PDF's place in the order, so a
+  list holding one posts this whole form with its images shrunk first. Without JS the native input takes them all.
   The type picker lists first the types that fit the mandate ("suggested": LISTING its identity and ownership papers,
   SEARCH its identity and financing ones) then every other type under "Autres types", in a native select with two
   optgroups. Without JS one native file input (multiple, no capture, so a phone offers its camera and its gallery);
-  with JS (mandate-document.js) a photo per page or several images, the chosen files listed in order by name and size
-  (read in the browser, no thumbnail), shrunk to 2000 px and sent straight to the storage, falling back to this form.
+  with JS (mandate-document.js) "Prendre une photo" (images only) or "Choisir des fichiers" (images and PDFs), the
+  chosen files listed in order by name and size (read in the browser, no thumbnail; a PDF shows "PDF" without a page
+  count), the images shrunk to 2000 px and sent straight to the storage, falling back to this form.
   "form" keeps the type and the title when the form comes back; "errors" are per field (type, title, files) and
   "error" is the generic one (a 5xx). "mandate" (MandateView) gives the number and the back link.
 */-->
@@ -71,27 +74,29 @@
                 <fieldset class="doc-pages-field" aria-describedby="pages-hint pages-error">
                     <legend id="pages-legend">Pages</legend>
                     <p class="field__hint" id="pages-hint">Une photo par page, dans l'ordre (recto, puis verso). JPEG,
-                        PNG ou WEBP, 5&nbsp;Mo par page, 10&nbsp;pages au plus.</p>
+                        PNG, WEBP ou PDF, 5&nbsp;Mo par fichier, 10&nbsp;pages au plus. Les pages d'un PDF sont ajoutées
+                        à sa place, dans son ordre.</p>
 
-                    <!-- Without JS: the native input (the phone offers its camera or its gallery). -->
+                    <!-- Without JS: the native input (the phone offers its camera or its gallery), PDFs included. -->
                     <div data-pages-native>
                         <input class="input input--file" id="pages" name="files" type="file" multiple
-                               accept="image/jpeg,image/png,image/webp" aria-labelledby="pages-legend"
+                               accept="image/jpeg,image/png,image/webp,application/pdf" aria-labelledby="pages-legend"
                                aria-describedby="pages-hint pages-error">
                     </div>
 
-                    <!-- With JS: a photo per page or several images, then the pages in order. -->
+                    <!-- With JS: a photo per page, or several images and PDFs, then the pages in order. -->
                     <div class="doc-pages-field" hidden data-pages-enhanced>
                         <div class="photo-actions" data-pages-actions>
                             <label class="btn btn--primary">Prendre une photo
                                 <input class="upload__input" type="file" accept="image/jpeg,image/png,image/webp"
                                        capture="environment" aria-describedby="pages-hint pages-error"
                                        data-page-input></label>
-                            <label class="btn btn--outline">Choisir des images
-                                <input class="upload__input" type="file" accept="image/jpeg,image/png,image/webp"
+                            <label class="btn btn--outline">Choisir des fichiers
+                                <input class="upload__input" type="file"
+                                       accept="image/jpeg,image/png,image/webp,application/pdf"
                                        multiple aria-describedby="pages-hint pages-error" data-page-input></label>
                         </div>
-                        <p class="checklist__progress" data-pages-count>Aucune page choisie.</p>
+                        <p class="checklist__progress" data-pages-count>Aucun fichier choisi.</p>
                         <p class="visually-hidden" aria-live="polite" data-pages-live></p>
                         <ol class="doc-files" hidden data-pages-list></ol>
                         <template data-page-template>
