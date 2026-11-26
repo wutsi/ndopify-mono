@@ -14,6 +14,12 @@ INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name, kyc_status, cre
     (500, 1, 'not.an.agent@gmail.com', 'Not', 'Agent', 'SUBMITTED', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (900, 2, 'other.tenant@gmail.com', 'Other', 'Tenant', 'PENDING_VERIFICATION', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
+-- The caller is user 11, member of party 100: it reads its own cases (the verify endpoint itself has no access check).
+INSERT INTO T_USER(id, email, deleted, created_at) VALUES
+    (11, 'pending@gmail.com', false, '2024-06-10 00:00:00');
+INSERT INTO T_MEMBERSHIP(id, tenant_id, user_id, party_id, deleted) VALUES
+    (11, 1, 11, 100, false);
+
 INSERT INTO T_KYC_CASE(id, tenant_id, party_id, identification_type, score, status, retries, error_code, error_message, created_at, modified_at) VALUES
     ('kyc-case-submitted', 1, 100, 'NATIONAL_ID', NULL, 'SUBMITTED', NULL, NULL, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     ('kyc-case-retried', 1, 100, 'NATIONAL_ID', NULL, 'SUBMITTED', 1, 'GATEWAY_ERROR', 'Previous failure', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
