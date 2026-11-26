@@ -806,6 +806,10 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
   white, metadata dropped, never upscaled. Its dimensions come from the header, the decode is subsampled to 7 MP, at
   most 2 images decode at once (a 24 MP page is ~70–96 MB fully decoded, for a `-Xmx300m` standard-1x dyno) and a page
   over 40 MP is refused before decoding. It has no mandate nor KYC rule, so KYC validation can inject it later.
+  `PdfRasterizer` turns a PDF into one JPEG per page, in the PDF's order: 200 DPI at most, 2000 px on the longest side,
+  so a page stays under 4 MP — below the preview's cap. It reads the bytes only, never stores them, and refuses a
+  password-protected PDF, one it can't read or that has no page, and one with more pages than the caller allows
+  (`PdfRasterizationException.Reason`).
 - `platform/mail` — e-mail sending (`MailService`, `MailBodyResolver`, `MailFilter`); MJML templates under
   `src/main/resources/mail/`. E-mail listing images always go through `MailImages` (`COVER` 1200×800, `THUMBNAIL`
   160×120, JPEG quality 75), never the cover's original URL; a missing cover still sends no image.
