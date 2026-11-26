@@ -367,4 +367,24 @@ class UploadMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
         verify(storage, never()).store(any(), any(), any())
         assertTrue(documentDao.findByMandateIdOrderByIdDesc(100L).isEmpty())
     }
+
+    @Test
+    fun `upload - a refused pdf after an image deletes the image and its preview`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/100/documents/upload",
+            request(DocumentType.LAND_TITLE, image("page.png"), document("scan.pdf", encryptedPdf())),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_PDF_ENCRYPTED, response.body?.error?.code)
+        assertEquals("file", response.body?.error?.parameter?.name)
+        // The image was stored, and its preview generated, before the PDF was refused: both go with the refusal
+        val original = argumentCaptor<String>()
+        verify(storage).store(original.capture(), any(), eq("image/png"))
+        verify(storage).delete(original.firstValue)
+        verify(storage).delete("${original.firstValue}.preview-v1.jpg")
+        verify(storage, never()).store(argThat { endsWith(".pdf") }, any(), any())
+        assertTrue(documentDao.findByMandateIdOrderByIdDesc(100L).isEmpty())
+    }
 }
