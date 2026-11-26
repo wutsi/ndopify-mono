@@ -11,10 +11,16 @@
  * from FIELD_LABELS and its value formatted by kind), the hint while it reads, one instruction per problem code of a
  * FAILED document, and the notice of a piece whose expiresAt is before today; the mandate page's row adds the
  * "Expirée" marker. Confidence, the page paths and any JSON stay out of the HTML.
+ * #366: a page may be a PDF next to the photos (JPEG, PNG, WEBP). A PDF is never presigned: a list with one posts the
+ * whole multipart form (the images shrunk first) and the server renders its pages; the browser can't count a PDF's
+ * pages, so the chosen list shows it as "PDF" (name and size, no thumbnail) and the count line counts files. An image
+ * keeps its shrink and direct upload. A PDF over 5 Mo is refused here; a password-protected, empty or damaged PDF,
+ * more than 10 pages on add and a multi-page PDF on replace are the server's errors, shown as the field's error.
  * Query switches: mandate.html ?docs=none|error, ?documentOutcome=added|deleted|changed; document-new.html
- * ?errors=missing|file|size|server (?errors=1 = missing); document.html ?delete=1, ?outcome=renamed|replaced&page=N,
- * ?errors=blank|long, ?conflict=1, ?replaceError=type|size|empty&page=N; the reading states come from the samples
- * (?id=&document=, see DOCUMENTS). ?docs=reset (any page) forgets the session.
+ * ?errors=missing|file|size|server|pdf-size|pdf-protected|pdf-unreadable|pdf-pages (?errors=1 = missing);
+ * document.html ?delete=1, ?outcome=renamed|replaced&page=N, ?errors=blank|long, ?conflict=1,
+ * ?replaceError=type|size|empty|pdf-size|pdf-protected|pdf-unreadable|pdf-pages&page=N; the reading states come from
+ * the samples (?id=&document=, see DOCUMENTS). ?docs=reset (any page) forgets the session.
  */
 (function () {
     "use strict";
@@ -24,7 +30,11 @@
     var MAX_TITLE = 100;
     // As KYC: a page is shrunk to 2000 px on its longest side before it is sent (production: direct-upload.js).
     var MAX_SIDE = 2000;
-    var ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+    var IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+    var PDF_TYPE = "application/pdf";
+    var ACCEPTED_TYPES = IMAGE_TYPES.concat([PDF_TYPE]);
+    // PROTOTYPE: a PDF isn't read in the browser; the simulated server renders it to this many pages (#366).
+    var PDF_SAMPLE_PAGES = 2;
     var KEY = "npc.documents";
 
     // The French names of #328's MandateDocumentLabels, in DocumentType order (UNKNOWN never shown).
@@ -562,13 +572,25 @@
         reader.readAsDataURL(file);
     }
 
-    // The check the BFF repeats server-side (Tika, 5 Mo): the error of one file, or "".
+    // The check the BFF repeats server-side (Tika, 5 Mo): the error of one file, or "". A PDF is accepted since
+    // #366; its password, pages and readability are the server's to check, not the browser's.
+    function isPdf(file) {
+        return file.type === PDF_TYPE;
+    }
+
+    function isPdfItem(item) {
+        return isPdf(item.file);
+    }
+
     function fileError(file) {
         if (ACCEPTED_TYPES.indexOf(file.type) === -1) {
-            return "« " + file.name + " » n'est pas une image : choisissez une photo JPEG, PNG ou WEBP.";
+            return "« " + file.name + " » n'est ni une photo ni un PDF : choisissez une photo JPEG, PNG ou WEBP, " +
+                "ou un PDF.";
         }
         if (file.size > MAX_FILE_BYTES) {
-            return "« " + file.name + " » dépasse 5 Mo : reprenez la photo, ou choisissez une image plus légère.";
+            return isPdf(file)
+                ? "« " + file.name + " » dépasse 5 Mo : choisissez un PDF plus léger, ou envoyez ses pages en photos."
+                : "« " + file.name + " » dépasse 5 Mo : reprenez la photo, ou choisissez une image plus légère.";
         }
         return "";
     }
@@ -756,28 +778,39 @@
         title.addEventListener("input", count);
 
         // The error states of the form as the server renders them again: the type and title kept, pages to choose
-        // again (a browser never re-fills a file input).
+        // again (a browser never re-fills a file input). The pdf-* ones are ndopify-server's refusals of a PDF (#366):
+        // over 5 Mo, password-protected, empty or unreadable, more than 10 pages.
         var errors = params.get("errors");
         if (errors === "1") errors = "missing";
         var keptType = listing ? "LAND_TITLE" : "PAY_SLIP";
         var keptTitle = listing ? "Titre foncier lot 12" : "Bulletin de paie — octobre 2026";
+        var pageErrors = {
+            "file": "« titre-foncier.docx » n'est ni une photo ni un PDF : choisissez une photo JPEG, PNG ou WEBP, " +
+                "ou un PDF. Choisissez de nouveau les pages.",
+            "size": "« IMG_2041.jpg » dépasse 5 Mo : reprenez la photo, ou choisissez une image plus légère. " +
+                "Choisissez de nouveau les pages.",
+            "pdf-size": "« titre-foncier.pdf » dépasse 5 Mo : choisissez un PDF plus léger, ou envoyez ses pages en " +
+                "photos. Choisissez de nouveau les pages.",
+            "pdf-protected": "« acte-de-vente.pdf » est protégé par un mot de passe : enregistrez-le sans " +
+                "protection, ou envoyez ses pages en photos. Choisissez de nouveau les pages.",
+            "pdf-unreadable": "« scan-2026.pdf » est vide ou endommagé : envoyez ses pages en photos. Choisissez de " +
+                "nouveau les pages.",
+            "pdf-pages": "« dossier-complet.pdf » fait plus de 10 pages : envoyez ses pages en photos, 10 au plus, " +
+                "ou un PDF plus court. Choisissez de nouveau les pages."
+        };
         if (errors === "missing") {
             title.value = listing ? "Lot 12" : "Octobre 2026";
             showError(typeError, "Choisissez le type du document.");
             setInvalid(select, true);
-            showError(pagesError, "Ajoutez au moins une page : une photo ou une image par page.");
-        } else if (errors === "file" || errors === "size" || errors === "server") {
+            showError(pagesError, "Ajoutez au moins une page : une photo ou un PDF.");
+        } else if (Object.prototype.hasOwnProperty.call(pageErrors, errors)) {
             select.value = keptType;
             title.value = keptTitle;
-            if (errors === "file") {
-                showError(pagesError, "« titre-foncier.pdf » n'est pas une image : choisissez une photo JPEG, " +
-                    "PNG ou WEBP. Choisissez de nouveau les pages.");
-            } else if (errors === "size") {
-                showError(pagesError, "« IMG_2041.jpg » dépasse 5 Mo : reprenez la photo, ou choisissez une " +
-                    "image plus légère. Choisissez de nouveau les pages.");
-            } else {
-                $("[data-new-server-error]").hidden = false;
-            }
+            showError(pagesError, pageErrors[errors]);
+        } else if (errors === "server") {
+            select.value = keptType;
+            title.value = keptTitle;
+            $("[data-new-server-error]").hidden = false;
         }
         placeholder();
         count();
@@ -825,8 +858,9 @@
         if (firstError) firstError.focus();
     }
 
-    // The pages chosen, with JS: the native input is replaced by "Prendre une photo" / "Choisir des images" and the
-    // ordered thumbnails (each removable); on submit they're shrunk and sent one by one, with the progress.
+    // The pages chosen, with JS: the native input is replaced by "Prendre une photo" (images) / "Choisir des
+    // fichiers" (images and PDF) and the ordered rows (each removable); on submit images are shrunk and sent one by
+    // one, while a list holding a PDF posts the whole form (#366).
     function initPagePicker(form, onSent, validateOthers) {
         var native = $("[data-pages-native]", form);
         var enhanced = $("[data-pages-enhanced]", form);
@@ -847,20 +881,54 @@
         $("#pages").disabled = true;
         enhanced.hidden = false;
 
+        // How many pages the server will render: an image is one, a PDF's count is the server's (simulated here).
+        function pagesFrom(items) {
+            var pages = [];
+            items.forEach(function (item) {
+                var count = isPdfItem(item) ? PDF_SAMPLE_PAGES : 1;
+                for (var k = 0; k < count; k += 1) pages.push("page");
+            });
+            return pages;
+        }
+
+        // The browser can't count a PDF's pages, so with one the line counts files and says when its pages count.
+        function countText() {
+            var pdfs = chosen.filter(isPdfItem).length;
+            if (!chosen.length) return "Aucun fichier choisi.";
+            if (!pdfs) return pageCount(chosen.length) + " sur " + MAX_PAGES + " au plus";
+            return chosen.length + " fichier" + (chosen.length > 1 ? "s" : "") + " choisi" +
+                (chosen.length > 1 ? "s" : "") + " · " + MAX_PAGES + " pages au plus. Les pages d'un PDF " +
+                "comptent à l'envoi.";
+        }
+
+        // What the screen reader hears when the list changes (the count line is not a live region).
+        function announcement() {
+            var pdfs = chosen.filter(isPdfItem).length;
+            if (!chosen.length) return "Aucun fichier choisi.";
+            if (!pdfs) return pageCount(chosen.length) + " choisie" + (chosen.length > 1 ? "s" : "") + ".";
+            return chosen.length + " fichier" + (chosen.length > 1 ? "s" : "") + " choisi" +
+                (chosen.length > 1 ? "s" : "") + ".";
+        }
+
         function render() {
             list.innerHTML = "";
+            var images = 0;
             chosen.forEach(function (item, i) {
+                var pdf = isPdfItem(item);
+                if (!pdf) images += 1;
                 var li = template.content.firstElementChild.cloneNode(true);
-                $("[data-page-index]", li).textContent = "Page " + (i + 1);
+                // A PDF isn't "Page N": its pages are the server's to count, so the row says only that it is a PDF.
+                $("[data-page-index]", li).textContent = pdf ? "PDF" : "Page " + images;
                 // The name and size, read in the browser from the File: no thumbnail.
                 $("[data-page-name]", li).textContent = item.file.name;
                 $("[data-page-size]", li).textContent = formatSize(item.file.size);
                 var remove = $("[data-page-remove]", li);
-                remove.setAttribute("aria-label", "Retirer la page " + (i + 1) + " (" + item.file.name + ")");
+                remove.setAttribute("aria-label", pdf
+                    ? "Retirer le PDF " + item.file.name
+                    : "Retirer la page " + images + " (" + item.file.name + ")");
                 remove.hidden = sending;
                 remove.addEventListener("click", function () {
                     chosen.splice(i, 1);
-                    live.textContent = "Page " + (i + 1) + " retirée.";
                     render();
                     inputs[0].focus();
                 });
@@ -868,9 +936,8 @@
                 list.appendChild(li);
             });
             list.hidden = chosen.length === 0;
-            countLine.textContent = chosen.length
-                ? pageCount(chosen.length) + " sur " + MAX_PAGES + " au plus"
-                : "Aucune page choisie.";
+            countLine.textContent = countText();
+            if (!sending) live.textContent = announcement();
             var full = chosen.length >= MAX_PAGES;
             inputs.forEach(function (input) {
                 input.disabled = full || sending;
@@ -886,14 +953,14 @@
                     if (problem) {
                         refused.push(problem);
                     } else if (chosen.length >= MAX_PAGES) {
-                        refused.push("10 pages au plus par document : « " + file.name + " » n'a pas été ajoutée.");
+                        // Every file gives at least one page, so more than 10 files is always more than 10 pages.
+                        refused.push("10 fichiers au plus par document : « " + file.name + " » n'a pas été ajouté.");
                     } else {
                         chosen.push({ file: file });
                     }
                 });
                 input.value = "";
                 showError(error, refused.join(" "));
-                live.textContent = pageCount(chosen.length) + " choisie" + (chosen.length > 1 ? "s" : "") + ".";
                 render();
             });
         });
@@ -903,7 +970,7 @@
             if (sending) return;
             var ok = validateOthers();
             if (!chosen.length) {
-                showError(error, "Ajoutez au moins une page : une photo ou une image par page.");
+                showError(error, "Ajoutez au moins une page : une photo ou un PDF.");
                 ok = false;
             }
             if (!ok) {
@@ -917,30 +984,65 @@
             progressText.textContent = "Préparation des pages…";
             progressBar.max = chosen.length;
             progressBar.value = 0;
+            chosen.forEach(function (item) {
+                item.sentIndex = 0;
+            });
             render();
 
-            var pages = [];
-            (function next(i) {
-                if (i >= chosen.length) {
-                    progressText.textContent = "Document enregistré…";
-                    onSent(pages);
-                    return;
-                }
-                progressText.textContent = "Envoi de la page " + (i + 1) + " sur " + chosen.length + "…";
-                chosen.forEach(function (item) {
-                    item.sentIndex = i;
-                });
-                render();
-                // PROTOTYPE: shrunk to 2000 px and sent straight to the storage; the file isn't kept, "Voir" opens a
-                // sample asset.
-                shrink(chosen[i].file, MAX_SIDE, 0.85, function () {
-                    pages.push("page");
-                    setTimeout(function () {
-                        progressBar.value = i + 1;
-                        next(i + 1);
-                    }, 500);
-                });
-            })(0);
+            // PROTOTYPE: images only — each page is shrunk to 2000 px and sent straight to the storage; the file
+            // isn't kept, "Voir" opens a sample asset.
+            function sendDirectly() {
+                var pages = [];
+                (function next(i) {
+                    if (i >= chosen.length) {
+                        progressText.textContent = "Document enregistré…";
+                        onSent(pages);
+                        return;
+                    }
+                    progressText.textContent = "Envoi de la page " + (i + 1) + " sur " + chosen.length + "…";
+                    chosen.forEach(function (item) {
+                        item.sentIndex = i;
+                    });
+                    render();
+                    shrink(chosen[i].file, MAX_SIDE, 0.85, function () {
+                        pages.push("page");
+                        setTimeout(function () {
+                            progressBar.value = i + 1;
+                            next(i + 1);
+                        }, 500);
+                    });
+                })(0);
+            }
+
+            // PROTOTYPE: with a PDF, no presign nor attach — the browser shrinks each image, then posts the whole
+            // multipart form and waits for the server to render the PDF's pages, so there is no page count to show.
+            function sendAsForm() {
+                var i = 0;
+                (function next() {
+                    if (i >= chosen.length) {
+                        progressText.textContent = "Envoi du document…";
+                        progressBar.removeAttribute("value");
+                        setTimeout(function () {
+                            onSent(pagesFrom(chosen));
+                        }, 1200);
+                        return;
+                    }
+                    var item = chosen[i];
+                    i += 1;
+                    if (isPdfItem(item)) {
+                        progressBar.value = i;
+                        setTimeout(next, 200);
+                        return;
+                    }
+                    shrink(item.file, MAX_SIDE, 0.85, function () {
+                        progressBar.value = i;
+                        setTimeout(next, 200);
+                    });
+                })();
+            }
+
+            if (chosen.some(isPdfItem)) sendAsForm();
+            else sendDirectly();
         });
 
         render();
@@ -1094,7 +1196,7 @@
             var inputId = "page-" + n + "-file";
             input.id = inputId;
             $("label", li).setAttribute("for", inputId);
-            $("label", li).textContent = "Nouvelle image de la page " + n;
+            $("label", li).textContent = "Nouveau fichier de la page " + n;
             var error = $("[data-page-error]", li);
             error.id = inputId + "-error";
             input.setAttribute("aria-describedby", inputId + "-hint " + inputId + "-error");
@@ -1104,10 +1206,18 @@
 
             if (replaceError && String(n) === errorPage) {
                 replace.open = true;
+                // A one-page PDF is accepted like a photo (#366); a multi-page, protected, unreadable or over-5-Mo
+                // PDF is ndopify-server's refusal, worded here.
                 var messages = {
-                    type: "Ce fichier n'est pas une image : choisissez une photo JPEG, PNG ou WEBP.",
+                    type: "Ce fichier n'est ni une photo ni un PDF : choisissez une photo JPEG, PNG ou WEBP, ou un " +
+                        "PDF.",
                     size: "Cette image dépasse 5 Mo : reprenez la photo, ou choisissez une image plus légère.",
-                    empty: "Choisissez la nouvelle image de la page."
+                    "pdf-size": "Ce PDF dépasse 5 Mo : choisissez un PDF plus léger, ou envoyez une photo.",
+                    "pdf-protected": "Ce PDF est protégé par un mot de passe : enregistrez-le sans protection, ou " +
+                        "envoyez une photo.",
+                    "pdf-unreadable": "Ce PDF est vide ou endommagé : envoyez une photo.",
+                    "pdf-pages": "Ce PDF fait plusieurs pages : envoyez un PDF d'une page, ou une photo.",
+                    empty: "Choisissez la nouvelle page : une photo ou un PDF."
                 };
                 showError(error, messages[replaceError] || messages.empty);
                 setInvalid(input, true);
@@ -1116,36 +1226,43 @@
             $("form", li).addEventListener("submit", function (event) {
                 event.preventDefault();
                 var file = input.files[0];
-                var problem = !file ? "Choisissez la nouvelle image de la page." : fileError(file);
+                var problem = !file ? "Choisissez la nouvelle page : une photo ou un PDF." : fileError(file);
                 showError(error, problem);
                 setInvalid(input, !!problem);
                 if (problem) {
                     input.focus();
                     return;
                 }
-                // PROTOTYPE: shrunk, presign → PUT → POST …/pages/{pageId} (attach that replaces: attachTimeout).
+                function replaced() {
+                    var documents = documentsOf(id);
+                    documents.forEach(function (d) {
+                        if (String(d.id) === String(doc.id)) {
+                            // PROTOTYPE: the file isn't kept; "Voir" opens a sample asset.
+                            d.pages[i] = "page";
+                            // The server resets its analysis: the reading's data, dates and problems leave with it
+                            // (#331), and the document reads "Reçu" until it is read again.
+                            d.status = "UPLOADED";
+                            d.fields = [];
+                            d.problemCodes = [];
+                            d.issuedAt = null;
+                            d.expiresAt = null;
+                        }
+                    });
+                    saveDocuments(id, documents);
+                    window.location.href = self + "&outcome=replaced&page=" + n;
+                }
                 var button = $("[data-page-submit]", li);
                 button.setAttribute("aria-disabled", "true");
+                if (isPdf(file)) {
+                    // PROTOTYPE (#366): a PDF is never presigned — its multipart form posts, the server renders it.
+                    button.textContent = "Envoi du fichier…";
+                    setTimeout(replaced, 900);
+                    return;
+                }
+                // PROTOTYPE: shrunk, presign → PUT → POST …/pages/{pageId} (attach that replaces: attachTimeout).
                 button.textContent = "Envoi de la page " + n + "…";
                 shrink(file, MAX_SIDE, 0.85, function () {
-                    setTimeout(function () {
-                        var documents = documentsOf(id);
-                        documents.forEach(function (d) {
-                            if (String(d.id) === String(doc.id)) {
-                                // PROTOTYPE: the file isn't kept; "Voir" opens a sample asset.
-                                d.pages[i] = "page";
-                                // The server resets its analysis: the reading's data, dates and problems leave with it
-                                // (#331), and the document reads "Reçu" until it is read again.
-                                d.status = "UPLOADED";
-                                d.fields = [];
-                                d.problemCodes = [];
-                                d.issuedAt = null;
-                                d.expiresAt = null;
-                            }
-                        });
-                        saveDocuments(id, documents);
-                        window.location.href = self + "&outcome=replaced&page=" + n;
-                    }, 700);
+                    setTimeout(replaced, 700);
                 });
             });
             list.appendChild(li);

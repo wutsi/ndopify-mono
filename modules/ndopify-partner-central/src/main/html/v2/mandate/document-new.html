@@ -17,29 +17,35 @@
     <link rel="stylesheet" href="../assets/css/listing.css">
     <link rel="stylesheet" href="../assets/css/documents.css?v=20261125c">
     <script src="../assets/js/partner-central.js?v=20261125a" defer></script>
-    <script src="../assets/js/mandate-documents.js?v=20261125c" defer></script>
+    <script src="../assets/js/mandate-documents.js?v=20261126a" defer></script>
 </head>
 <!--
-    PROTOTYPE (#329): "Ajouter un document", reached from the mandate page's Documents section
+    PROTOTYPE (#329, #366): "Ajouter un document", reached from the mandate page's Documents section
     (GET|POST /mandates/{id}/documents/new, its own page so that it works without JavaScript).
     One multipart form (POST /v1/mandates/{id}/documents/upload without JS): the type (required), an optional title
-    (blank: the type's French name, a server rule; 100 characters at most) and the pages, one image each (JPEG, PNG or
-    WEBP, 5 Mo each, 10 at most, in the order chosen). Back on the mandate page (#documents-title) with "Document
-    ajouté : …", the new document first.
+    (blank: the type's French name, a server rule; 100 characters at most) and the pages, one file each (JPEG, PNG,
+    WEBP or PDF, 5 Mo each, 10 pages at most, in the order chosen). Back on the mandate page (#documents-title) with
+    "Document ajouté : …", the new document first.
     The type picker lists first the types that fit the mandate — LISTING: Carte nationale d'identité, Passeport, Titre
     foncier, Certificat de propriété, Plan de bornage, Procuration; SEARCH: Carte nationale d'identité, Passeport,
     Bulletin de paie, Accord de principe bancaire, Justificatif de fonds — then every other type under "Autres types"
     ("Document" last). A native select with two optgroups: the phone's own picker, nothing to load.
-    Without JS: one native file input (multiple, no capture, so a phone offers both its camera and its gallery).
-    With JS (mandate-documents.js): "Prendre une photo" (capture, one page per shot) and "Choisir des images" (several),
-    the chosen files listed in order ("Page 1 · IMG_2041.jpg · 1,8 Mo", name and size read in the browser from the
-    File objects, no thumbnail), each removable before sending; on submit each page is
-    shrunk (2000 px, as KYC) and sent straight to the storage (direct-upload.js: presign → PUT → create), with
-    "Envoi de la page 2 sur 3…" over a bar and the buttons inactive (aria-disabled); any direct-upload failure falls
-    back to the form post. Reordering a page is not offered: remove it and add it again.
+    Without JS: one native file input (multiple, no capture, so a phone offers both its camera and its gallery); it
+    accepts PDF too, so the form posts every file and the page comes back with the field error.
+    With JS (mandate-documents.js): "Prendre une photo" (capture, images only, one page per shot) and "Choisir des
+    fichiers" (several; images and PDF), the chosen files listed in order ("Page 1 · IMG_2041.jpg · 1,8 Mo", a PDF as
+    "PDF · titre-foncier.pdf · 2,4 Mo": name and size read in the browser from the File objects, no thumbnail), each
+    removable before sending.
+    #366 — a PDF is never presigned: a list holding one posts the whole multipart form (each image shrunk first), with
+    "Envoi du document…" and no page count over the bar (the browser can't count a PDF's pages; the server renders
+    them). Images alone are shrunk (2000 px, as KYC) and sent straight to the storage (direct-upload.js: presign → PUT
+    → create), with "Envoi de la page 2 sur 3…" and the buttons inactive (aria-disabled); any direct-upload failure
+    falls back to the form post. Reordering a page is not offered: remove it and add it again.
     The form again after an error keeps the type and the title (never the pages: a browser can't re-fill a file
-    input), the error under its field: ?errors=missing (or 1: no type, no page), ?errors=file (a non-image),
-    ?errors=size (over 5 Mo), ?errors=server (a 5xx: the form again with a generic error).
+    input), the error under its field: ?errors=missing (or 1: no type, no page), ?errors=file (not a photo nor a PDF),
+    ?errors=size (an image over 5 Mo), the server's PDF refusals ?errors=pdf-size (over 5 Mo), ?errors=pdf-protected
+    (password), ?errors=pdf-unreadable (empty or damaged), ?errors=pdf-pages (over 10 pages), ?errors=server (a 5xx:
+    the form again with a generic error).
     PROTOTYPE: ?id=301 (a seller: identity and ownership first), ?id=303 (a buyer: identity and financing first);
     ?id=311 (cancelled) and an unknown mandate show the locked view (production: back to the mandate page with the
     "changed" outcome). The static markup is the server's render for 301.
@@ -144,30 +150,33 @@
                     <fieldset class="doc-pages-field" aria-describedby="pages-hint pages-error">
                         <legend id="pages-legend">Pages</legend>
                         <p class="field__hint" id="pages-hint">Une photo par page, dans l'ordre (recto, puis
-                            verso). JPEG, PNG ou WEBP, 5&nbsp;Mo par page, 10&nbsp;pages au plus.</p>
+                            verso). JPEG, PNG, WEBP ou PDF, 5&nbsp;Mo par fichier, 10&nbsp;pages au plus. Les pages
+                            d'un PDF sont ajoutées à sa place, dans son ordre.</p>
 
-                        <!-- Without JS: the native input (the phone offers its camera or its gallery). -->
+                        <!-- Without JS: the native input (the phone offers its camera or its gallery), PDF included. -->
                         <div data-pages-native>
                             <input class="input input--file" id="pages" name="pages" type="file" multiple
-                                   accept="image/jpeg,image/png,image/webp" aria-labelledby="pages-legend"
+                                   accept="image/jpeg,image/png,image/webp,application/pdf" aria-labelledby="pages-legend"
                                    aria-describedby="pages-hint pages-error">
                         </div>
 
-                        <!-- With JS: a photo per page or several images, then the pages in order. -->
+                        <!-- With JS: a photo per page, or several images and PDFs, then the pages in order. -->
                         <div class="doc-pages-field" hidden data-pages-enhanced>
                             <div class="photo-actions">
                                 <label class="btn btn--primary">Prendre une photo
                                     <input class="upload__input" type="file" accept="image/jpeg,image/png,image/webp"
                                            capture="environment" aria-describedby="pages-hint pages-error"
                                            data-page-input></label>
-                                <label class="btn btn--outline">Choisir des images
-                                    <input class="upload__input" type="file" accept="image/jpeg,image/png,image/webp"
+                                <label class="btn btn--outline">Choisir des fichiers
+                                    <input class="upload__input" type="file"
+                                           accept="image/jpeg,image/png,image/webp,application/pdf"
                                            multiple aria-describedby="pages-hint pages-error" data-page-input></label>
                             </div>
-                            <p class="checklist__progress" data-pages-count>Aucune page choisie.</p>
+                            <p class="checklist__progress" data-pages-count>Aucun fichier choisi.</p>
                             <p class="visually-hidden" aria-live="polite" data-pages-live></p>
-                            <!-- The chosen files, in order: "Page 1", the name and the size (read in the browser),
-                                 removable. No thumbnail. -->
+                            <!-- The chosen files, in order: "Page 1" for an image, "PDF" for a PDF (its pages are the
+                                 server's to count), the name and the size (read in the browser), removable. No
+                                 thumbnail. -->
                             <ol class="doc-files" hidden data-pages-list></ol>
                             <template data-page-template>
                                 <li class="doc-file">

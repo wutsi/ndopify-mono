@@ -17,26 +17,32 @@
     <link rel="stylesheet" href="../assets/css/listing.css">
     <link rel="stylesheet" href="../assets/css/documents.css?v=20261125c">
     <script src="../assets/js/partner-central.js?v=20261125a" defer></script>
-    <script src="../assets/js/mandate-documents.js?v=20261125c" defer></script>
+    <script src="../assets/js/mandate-documents.js?v=20261126a" defer></script>
 </head>
 <!--
-    PROTOTYPE (#329, #331): one document of a mandate (GET /mandates/{id}/documents/{documentId}), opened from a row of
-    the mandate page's Documents section. Its header: the title (the type's name when it has none of its own), the status
-    pill, the type (when the title differs from it) and ONE upload date for the whole document ("Ajouté le 25/11/2026",
-    the tenant's dateFormat with the year). No image, no preview, no thumbnail, no size anywhere on the page.
+    PROTOTYPE (#329, #331, #366): one document of a mandate (GET /mandates/{id}/documents/{documentId}), opened from a
+    row of the mandate page's Documents section. Its header: the title (the type's name when it has none of its own), the
+    status pill, the type (when the title differs from it) and ONE upload date for the whole document ("Ajouté le
+    25/11/2026", the tenant's dateFormat with the year). No image, no preview, no thumbnail, no size anywhere on the
+    page.
     #331 adds, between the header and the pages, what the AI read (see the section's comment below): the fields it
     read, the hint while it reads, the instructions of a FAILED document and the notice of an expired one.
-    Then the pages in order, one plain row each: "Page 1", "Voir" and the folded "Remplacer".
+    Then the pages in order, one plain row each: "Page 1", "Voir" and the folded "Remplacer". A page rendered from a
+    PDF is one of them, exactly like a photo page (#366): its rank, "Voir" and "Remplacer", nothing saying it came from
+    a PDF.
     PRIVACY: nothing is shown inline. Production's "Voir" href is the page's presigned `url`
     (MandateDocumentPage.url, about an hour), opened in a new tab (target="_blank" rel="noopener"); no page path nor
     public URL is ever in the HTML. Here "Voir" opens a sample asset (assets/images/doc-sample-*.svg). A page left open
     longer than the URL lives gets an expired link: a reload mints new ones. The fields stay on this page only.
     Actions, each its own form so that the page works without JavaScript; all post-redirect-get back here with a flash:
       - Remplacer (per page row, folded): a file input (camera or gallery on a phone) and "Remplacer la page"
-        (POST /mandates/{id}/documents/{documentId}/pages/{pageId}, multipart). The page keeps its rank and the document
-        is back to "Reçu" (the server resets its analysis, and reads it again on its own). With JS: shrunk, sent
-        straight to the storage (attachTimeout: it replaces), the button reading "Envoi de la page 2…" meanwhile.
-        ?replaceError=type|size|empty&page=2 is the form again with its error, the row's box open;
+        (POST /mandates/{id}/documents/{documentId}/pages/{pageId}, multipart). It takes a photo (JPEG, PNG, WEBP) or a
+        one-page PDF (#366), 5 Mo at most. The page keeps its rank and the document is back to "Reçu" (the server resets
+        its analysis, and reads it again on its own). With JS: an image is shrunk and sent straight to the storage
+        (attachTimeout: it replaces), the button reading "Envoi de la page 2…" meanwhile; a PDF is never presigned, its
+        multipart form posts ("Envoi du fichier…").
+        ?replaceError=type|size|empty|pdf-size|pdf-protected|pdf-unreadable|pdf-pages&page=2 is the form again with its
+        error (a multi-page PDF is refused: a one-page PDF only), the row's box open and the page unchanged;
         ?outcome=replaced&page=2 the flash.
       - Renommer (folded): the title (blank or over 100 characters is a field error, unlike the add form where blank
         means the type's name) and the document's version (hidden). ?errors=blank|long; ?conflict=1 is the 409
@@ -233,11 +239,11 @@
                                 <form class="form" method="post" enctype="multipart/form-data"
                                       action="/mandates/301/documents/3103/pages/1" novalidate>
                                     <div class="field">
-                                        <label class="field__label" for="page-1-file">Nouvelle image de la page 1</label>
+                                        <label class="field__label" for="page-1-file">Nouveau fichier de la page 1</label>
                                         <input class="input input--file" id="page-1-file" name="file" type="file"
-                                               accept="image/jpeg,image/png,image/webp"
+                                               accept="image/jpeg,image/png,image/webp,application/pdf"
                                                aria-describedby="page-1-file-hint page-1-file-error">
-                                        <p class="field__hint" id="page-1-file-hint">JPEG, PNG ou WEBP, 5&nbsp;Mo au plus. Elle prend la place de cette page.</p>
+                                        <p class="field__hint" id="page-1-file-hint">Photo JPEG, PNG ou WEBP, ou PDF d'une page, 5&nbsp;Mo au plus. Le fichier prend la place de cette page.</p>
                                         <p class="field__error" id="page-1-file-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
                                     </div>
                                     <button type="submit" class="btn btn--primary btn--compact">Remplacer la page</button>
@@ -255,11 +261,11 @@
                                 <form class="form" method="post" enctype="multipart/form-data"
                                       action="/mandates/301/documents/3103/pages/2" novalidate>
                                     <div class="field">
-                                        <label class="field__label" for="page-2-file">Nouvelle image de la page 2</label>
+                                        <label class="field__label" for="page-2-file">Nouveau fichier de la page 2</label>
                                         <input class="input input--file" id="page-2-file" name="file" type="file"
-                                               accept="image/jpeg,image/png,image/webp"
+                                               accept="image/jpeg,image/png,image/webp,application/pdf"
                                                aria-describedby="page-2-file-hint page-2-file-error">
-                                        <p class="field__hint" id="page-2-file-hint">JPEG, PNG ou WEBP, 5&nbsp;Mo au plus. Elle prend la place de cette page.</p>
+                                        <p class="field__hint" id="page-2-file-hint">Photo JPEG, PNG ou WEBP, ou PDF d'une page, 5&nbsp;Mo au plus. Le fichier prend la place de cette page.</p>
                                         <p class="field__error" id="page-2-file-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
                                     </div>
                                     <button type="submit" class="btn btn--primary btn--compact">Remplacer la page</button>
@@ -277,10 +283,10 @@
                                 <summary data-page-replace-summary>Remplacer</summary>
                                 <form class="form" method="post" enctype="multipart/form-data" novalidate>
                                     <div class="field">
-                                        <label class="field__label">Nouvelle image</label>
+                                        <label class="field__label">Nouveau fichier</label>
                                         <input class="input input--file" name="file" type="file"
-                                               accept="image/jpeg,image/png,image/webp">
-                                        <p class="field__hint" data-page-hint>JPEG, PNG ou WEBP, 5&nbsp;Mo au plus. Elle prend la place de cette page.</p>
+                                               accept="image/jpeg,image/png,image/webp,application/pdf">
+                                        <p class="field__hint" data-page-hint>Photo JPEG, PNG ou WEBP, ou PDF d'une page, 5&nbsp;Mo au plus. Le fichier prend la place de cette page.</p>
                                         <p class="field__error" hidden data-page-error><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
                                     </div>
                                     <button type="submit" class="btn btn--primary btn--compact" data-page-submit>Remplacer la page</button>
