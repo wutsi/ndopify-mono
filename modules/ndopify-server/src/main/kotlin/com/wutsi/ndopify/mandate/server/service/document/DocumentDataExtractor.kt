@@ -6,6 +6,8 @@ import org.springframework.ai.chat.client.ChatClient
 import org.springframework.core.io.FileSystemResource
 import org.springframework.http.MediaType
 import java.io.File
+import java.time.Clock
+import java.time.LocalDate
 
 /** Reads one family of mandate documents with the vision model, returning its typed [DocumentData]. */
 interface DocumentDataExtractor {
@@ -34,3 +36,9 @@ internal fun <T : Any> ChatClient.readDocument(prompt: String, images: List<File
     }
     .call()
     .entity(clazz)
+
+/** Fills a document prompt's placeholders: the declared type, every type name and today's date. */
+internal fun documentPrompt(template: String, type: DocumentType, clock: Clock): String = template
+    .replace("{{TYPE}}", type.name)
+    .replace("{{DOCUMENT_TYPES}}", DocumentType.entries.joinToString(", ") { it.name })
+    .replace("{{TODAY}}", LocalDate.now(clock).toString())
