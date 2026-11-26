@@ -326,6 +326,13 @@ ndopify:
         contract:
             duration-months: 6             # A mandate's contract is valid for 6 months from its signature
             sale-commission-rate: 5        # A sale mandate's success commission, in % of the sale price
+        document:
+            extract:
+                cron: "0 */15 * * * ?"           # Every 15 minutes: documents not read yet, or left EXTRACTING
+                batch-size: 100                  # Documents examined per tenant per run
+                max-attempts: 3                  # Technical failures retried in the run, then FAILED
+                min-confidence: 0.7              # A required field below this confidence fails the document
+                in-progress-timeout-minutes: 15  # An EXTRACTING document older is interrupted: it's retried
 
     match:
         price-tolerance: 0.10           # A listing up to 10% over the budget is still a match, scored down
