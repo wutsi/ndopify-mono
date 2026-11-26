@@ -182,6 +182,13 @@ class MandateDocumentService(
 
         return try {
             saveLocked(mandateId) {
+                // The authoritative path check, under the mandate's lock: a concurrent create may have committed the
+                // same path since the pre-lock check above (a UNIQUE(path) violation would otherwise surface as a 500).
+                paths.forEach { path ->
+                    if (pageDao.findByPath(path) != null) {
+                        throw invalid("path", path)
+                    }
+                }
                 val saved = documentDao.save(document)
                 pages.forEach { page -> pageDao.save(page.copy(documentId = saved.id!!)) }
                 saved
@@ -240,6 +247,7 @@ class MandateDocumentService(
 
         return try {
             saveLocked(mandateId) {
+                // No path re-check: the paths are freshly generated UUIDs, so two requests can never collide.
                 val saved = documentDao.save(document)
                 pages.forEach { page -> pageDao.save(page.copy(documentId = saved.id!!)) }
                 saved
@@ -510,10 +518,13 @@ class MandateDocumentService(
         val document = findDocument(mandate, documentId)
         ensureNotClosed(mandate)
 
-        val pages = pageDao.findByDocumentIdOrderByPageIndex(document.id!!)
-        saveLocked(mandateId) {
+        val pages = saveLocked(mandateId) {
+            // Re-read the pages under the lock: a page added concurrently after the document was loaded must be
+            // deleted too (deleting the document while a page still references it would violate the page FK).
+            val pages = pageDao.findByDocumentIdOrderByPageIndex(document.id!!)
             pageDao.deleteAll(pages)
             documentDao.delete(document)
+            pages
         }
         pages.forEach { page -> deleteQuietly(mandateId, page.path, page.storageType) }
     }

@@ -178,4 +178,34 @@ class MandateDocumentServiceTest {
         assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, exception.error.code)
         verify(storage, never()).delete(any())
     }
+
+    @Test
+    fun `create - a path another page takes is refused under the lock`() {
+        val path = "mandate/100/documents/11111111-2222-3333-4444-555555555555.png"
+        val otherPage = MandateDocumentPageEntity(
+            id = 5000L,
+            documentId = 2000L,
+            pageIndex = 0,
+            path = path,
+            storageType = StorageType.S3,
+        )
+
+        doReturn(MandateEntity(id = 100L, status = MandateStatus.ASSIGNED)).whenever(mandateService).findById(100L)
+        doReturn(MandateEntity(id = 100L, status = MandateStatus.ASSIGNED)).whenever(mandateDao).findByIdForUpdate(100L)
+        // The pre-lock check sees nothing (so the verify runs), the in-lock check sees another page's path.
+        doReturn(null, otherPage).whenever(pageDao).findByPath(path)
+        doReturn(storage).whenever(storageProvider).get()
+        doReturn(StorageType.S3).whenever(storage).type()
+        doReturn("image/png").whenever(directUpload).verify(path, MandateDocumentService.prefix(100L))
+        doReturn(mock<TransactionStatus>()).whenever(transactionManager).getTransaction(any())
+
+        val exception = assertFailsWith<BadRequestException> {
+            service.create(100, CreateMandateDocumentRequest(type = DocumentType.LAND_TITLE, paths = listOf(path)))
+        }
+
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, exception.error.code)
+        verify(storage, never()).delete(any())
+        verify(documentDao, never()).save(any<MandateDocumentEntity>())
+        verify(pageDao, never()).save(any<MandateDocumentPageEntity>())
+    }
 }
