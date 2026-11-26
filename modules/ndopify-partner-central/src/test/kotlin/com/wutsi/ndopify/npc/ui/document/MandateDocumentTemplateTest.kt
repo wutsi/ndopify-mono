@@ -74,8 +74,8 @@ class MandateDocumentTemplateTest {
         title = "Titre foncier n° 4521",
         status = DocumentStatus.EXTRACTED,
         pages = listOf(
-            MandateDocumentPage(id = 2001, index = 0, url = "https://s3/page-1?signature=abc"),
-            MandateDocumentPage(id = 2002, index = 1, url = "https://s3/page-2?signature=def"),
+            MandateDocumentPage(id = 2001, index = 0),
+            MandateDocumentPage(id = 2002, index = 1),
         ),
         version = 3,
         createdAt = Date.from(Instant.parse("2026-11-25T10:00:00Z")),
@@ -187,9 +187,12 @@ class MandateDocumentTemplateTest {
         val page = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID"))
         ScriptFixtures.write("mandate-document", page)
 
-        // No image anywhere, and no page path: only the presigned URL of the Voir links
+        // No image, no storage URL and no page path: only the Partner Central preview route of the Voir links
         assertTrue(page.select("[data-document] img").isEmpty())
         assertFalse(page.html().contains("mandate/301/documents/"))
+        assertFalse(page.html().contains("https://s3"))
+        assertFalse(page.html().contains("signature"))
+        assertFalse(page.html().contains("presigned"))
         assertEquals("Titre foncier n° 4521 — Ndopify Partner Central", page.title())
         assertEquals("Titre foncier n° 4521", page.selectFirst("h1")?.text())
         assertEquals("Analysé", page.selectFirst("[data-document-status]")?.text()?.replace("Statut : ", ""))
@@ -201,7 +204,10 @@ class MandateDocumentTemplateTest {
         assertEquals(listOf("Page 1", "Page 2"), rows.map { it.selectFirst("[data-page-caption]")?.text() })
         val links = rows.map { it.selectFirst("a.doc-page__view") }
         assertEquals(
-            listOf("https://s3/page-1?signature=abc", "https://s3/page-2?signature=def"),
+            listOf(
+                "/mandates/301/documents/3103/pages/2001/preview",
+                "/mandates/301/documents/3103/pages/2002/preview",
+            ),
             links.map { it?.attr("href") },
         )
         assertEquals(listOf("_blank", "_blank"), links.map { it?.attr("target") })

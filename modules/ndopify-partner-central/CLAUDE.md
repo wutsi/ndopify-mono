@@ -340,9 +340,14 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   French name, a server rule, 100 characters at most) and the pages are JPEG, PNG or WEBP, 5 Mo each, 10 at most —
   `spring.servlet.multipart` keeps 10 MB per file and goes to 55 MB per request, and `KycUploadErrorHandler` sends a
   request over them back to `?error=too-large`. A document's page is `/mandates/{id}/documents/{documentId}`: **no
-  image** of a page anywhere (no preview, thumbnail nor size, never a page `path`), its type, title, status and one
-  *Ajouté le …*, then its pages in order (*Page 1*…), each with a *Voir* link to the page's short-lived presigned `url`
-  (new tab) and a folded *Remplacer* form (multipart `file`, `?replaceError=size&page={pageId}` after a multipart
+  image** of a page anywhere (no gallery, thumbnail nor size, never a page `path` nor a storage URL), its type, title,
+  status and one *Ajouté le …*, then its pages in order (*Page 1*…), each with a *Voir* link to this app's preview route
+  (`/mandates/{id}/documents/{documentId}/pages/{pageId}/preview`, new tab): the signed-in agent's route forwards the
+  token to ndopify-server and streams the watermarked JPEG (`image/jpeg`, `Content-Disposition: inline;
+  filename="mandat-<id>-page-<n>.jpg"`, `Cache-Control: private, max-age=300`, `X-Content-Type-Options: nosniff`); a
+  copied URL opens nothing without the agent's session (sign-in redirect), ndopify-server's 403/404 keep their status,
+  and its 5xx or an unreachable server is a 502. Then a folded *Remplacer* form (multipart `file`,
+  `?replaceError=size&page={pageId}` after a multipart
   limit), then *Renommer* (the posted `version`; a 409 `MANDATE_DOCUMENT_VERSION_CONFLICT` shows the current title and
   the "changed" panel) and *Supprimer le document* (`?delete=1` opens the confirmation without JS, in place with it).
   Writes only while `MandateRules.ACTIVE`; a CLOSED / CANCELLED mandate keeps the documents and their pages read-only

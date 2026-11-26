@@ -23,6 +23,7 @@ import com.wutsi.ndopify.web.core.service.TenantContext
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import org.apache.tika.Tika
 import org.slf4j.LoggerFactory
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -37,8 +38,11 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.HttpServerErrorException
+import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.client.RestClientException
 import org.springframework.web.multipart.MultipartFile
+import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 import java.time.Clock
 
@@ -48,7 +52,8 @@ import java.time.Clock
  * (`/mandates/{id}/documents/{documentId}`).
  *
  * The add and the replacement are multipart forms, so every action works without JavaScript; the pages show no image
- * of a page, only a *Voir* link to its short-lived presigned URL. Each post is post-redirect-get back to the mandate
+ * of a page, only a *Voir* link to its [preview] route, which streams the watermarked JPEG behind the agent's session.
+ * Each post is post-redirect-get back to the mandate
  * page (an add, a delete) or the document's page (a rename, a replacement) with a flash attribute, and the pages show
  * them: [OUTCOME] / [TITLE] on the mandate page, [RENAME_OUTCOME] and [PAGE] on the document's.
  *
@@ -206,6 +211,49 @@ class MandateDocumentController(
             model,
         )
     }
+
+    /**
+     * The authenticated preview of one page: ndopify-server's resized, watermarked JPEG, streamed with the agent's
+     * token. A copied URL opens nothing without the agent's session (the sign-in redirect). 403/404 keep the status
+     * ndopify-server answered; a 5xx or an unreachable server is a 502. Never the original bytes nor a storage URL.
+     */
+    @GetMapping("/{documentId}/pages/{pageId}/preview")
+    fun preview(
+        @PathVariable id: String,
+        @PathVariable documentId: String,
+        @PathVariable pageId: String,
+    ): ResponseEntity<ByteArray> {
+        currentAgent.get() ?: throw SignInRequiredException()
+        val mandateId = id.toLongOrNull() ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
+        // Read through the client so ndopify-server's 401 / 403 / 404 keep their status (a closed mandate stays shown)
+        val mandate = mandateClient.get(mandateId)
+        if (mandate.status !in MandateRules.SHOWN) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND)
+        }
+        val document = documentClient.get(mandateId, documentId.toLongOrNull() ?: return notFoundResponse())
+        val page = document.pages.sortedBy { it.index }
+            .firstOrNull { it.id == pageId.toLongOrNull() }
+            ?: return notFoundResponse()
+        val number = document.pages.sortedBy { it.index }.indexOfFirst { it.id == page.id } + 1
+
+        val bytes = try {
+            documentClient.preview(mandateId, document.id, page.id)
+        } catch (ex: HttpServerErrorException) {
+            LOGGER.error("Preview of page ${page.id} of document ${document.id} of mandate $mandateId failed: ${ex.statusCode}")
+            throw ResponseStatusException(HttpStatus.BAD_GATEWAY)
+        } catch (ex: ResourceAccessException) {
+            LOGGER.error("Preview of page ${page.id} of document ${document.id} of mandate $mandateId unreachable")
+            throw ResponseStatusException(HttpStatus.BAD_GATEWAY)
+        }
+        return ResponseEntity.ok()
+            .contentType(MediaType.IMAGE_JPEG)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"mandat-$mandateId-page-$number.jpg\"")
+            .header(HttpHeaders.CACHE_CONTROL, "private, max-age=300")
+            .header("X-Content-Type-Options", "nosniff")
+            .body(bytes)
+    }
+
+    private fun notFoundResponse(): Nothing = throw ResponseStatusException(HttpStatus.NOT_FOUND)
 
     /**
      * Renames a document; the version the page was loaded with is posted with the title, so a document changed since

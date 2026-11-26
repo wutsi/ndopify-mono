@@ -15,6 +15,7 @@ import org.springframework.test.web.client.match.MockRestRequestMatchers.method
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
 import org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
 import org.springframework.web.client.RestClient
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -52,6 +53,17 @@ class NdMandateDocumentClientTest {
     }
 
     @Test
+    fun `preview - the page's jpeg`() {
+        val bytes = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 1, 2, 3)
+        server.expect(requestTo("http://localhost:8080/v1/mandates/100/documents/10/pages/1000/preview"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(withSuccess(bytes, MediaType.IMAGE_JPEG))
+
+        assertContentEquals(bytes, client.preview(100, 10, 1000))
+        server.verify()
+    }
+
+    @Test
     fun `search without document`() {
         server.expect(requestTo("http://localhost:8080/v1/mandates/100/documents"))
             .andRespond(withSuccess("""{"documents":[]}""", MediaType.APPLICATION_JSON))
@@ -68,7 +80,7 @@ class NdMandateDocumentClientTest {
                 withSuccess(
                     """{"document":{"id":12,"mandateId":100,"type":"LAND_TITLE","title":"Titre foncier","status":"EXTRACTED","problemCodes":[],"fields":[],
                         "version":3,"createdAt":0,"modifiedAt":0,
-                        "pages":[{"id":21,"index":0,"contentType":"image/png","url":"https://s3/page-1","createdAt":0,"modifiedAt":0}]}}""",
+                        "pages":[{"id":21,"index":0,"contentType":"image/png","createdAt":0,"modifiedAt":0}]}}""",
                     MediaType.APPLICATION_JSON,
                 ),
             )
@@ -78,7 +90,7 @@ class NdMandateDocumentClientTest {
         assertEquals(12, document.id)
         assertEquals(DocumentType.LAND_TITLE, document.type)
         assertEquals(3, document.version)
-        assertEquals("https://s3/page-1", document.pages.single().url)
+        assertEquals("image/png", document.pages.single().contentType)
         server.verify()
     }
 
