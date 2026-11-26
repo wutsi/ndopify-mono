@@ -1,0 +1,1146 @@
+@charset "UTF-8";
+
+/*
+ * Ndopify — sales decks.
+ * Token source: DESIGN.md (repo root). Light theme only: DESIGN.md defines no dark palette.
+ * Tier 1 mirrors DESIGN.md 1:1 (the only place raw values appear); every rule below uses tier 2.
+ */
+
+/* ---------- Tier 1 — primitive tokens (DESIGN.md) ---------- */
+:root {
+    --primary: #1d7edf;
+    --primary-hover: #111184;
+    --background-default: #ffffff;
+    --background-secondary: #e4edf7;
+    --background-success: #f0fdf4;
+    --background-info: #dbeafe;
+    --background-warning: #fef3c7;
+    --background-error: #fef2f2;
+    --background-disabled: #808080;
+    --text-default: #040404;
+    --text-disabled: #ffffff;
+    --text-success: #155724;
+    --text-info: #1e3a8a;
+    --text-warning: #78350f;
+    --text-error: #8b0000;
+    --border-default: #dfdfdf;
+    --border-success: #dcfce7;
+    --border-info: #bfdbfe;
+    --border-warning: #fef08a;
+    --border-error: #fee2e2;
+    --surface-lowest: #ffffff;
+    --surface-low: #f8f8f8;
+    --surface-default: #dbeafe;
+    --surface-high: #1d7edf;
+
+    --button-primary-text: #ffffff;
+    --primary-glow: 0 4px 12px rgba(29, 126, 223, 0.25);
+
+    --font-heading: "Lora", Georgia, "Times New Roman", serif;
+    --font-body: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+
+    --spacing-sm: 0.25rem;
+    --spacing-md: 0.5rem;
+    --spacing-lg: 0.75rem;
+    --spacing-xl: 1.5rem;
+
+    --rounded-full: 30px;
+
+    --h1-size: 3.2rem;
+    --h2-size: 2.4rem;
+    --h3-size: 1.6rem;
+    --h4-size: 1.2rem;
+    --body-size: 1rem;
+}
+
+/* ---------- Tier 2 — semantic tokens ---------- */
+:root {
+    color-scheme: light;
+
+    --color-bg: var(--background-default);
+    --color-bg-subtle: var(--background-secondary);
+    --color-fg: var(--text-default);
+    --color-border: var(--border-default);
+    --color-accent: var(--primary);
+    --color-accent-hover: var(--primary-hover);
+    --color-on-accent: var(--button-primary-text);
+    --color-focus: var(--primary);
+
+    --color-ink: var(--primary-hover); /* the deep field: the brand's dark blue, as a surface */
+    --color-on-ink: var(--background-default);
+
+    --color-info-bg: var(--background-info);
+    --color-info-fg: var(--text-info);
+    --color-info-border: var(--border-info);
+    --color-success-bg: var(--background-success);
+    --color-success-fg: var(--text-success);
+    --color-success-border: var(--border-success);
+    --color-warning-bg: var(--background-warning);
+    --color-warning-fg: var(--text-warning);
+    --color-warning-border: var(--border-warning);
+
+    --shadow-cta: var(--primary-glow);
+    --radius-control: var(--rounded-full);
+
+    /* Spacing: the DESIGN.md scale, then whole multiples of `xl` for section rhythm. */
+    --space-1: var(--spacing-sm);
+    --space-2: var(--spacing-md);
+    --space-3: var(--spacing-lg);
+    --space-4: var(--spacing-xl);
+    --space-5: calc(var(--spacing-xl) * 2);
+    --space-6: calc(var(--spacing-xl) * 3);
+    --space-7: calc(var(--spacing-xl) * 4);
+    --space-8: calc(var(--spacing-xl) * 6);
+
+    /* Type: DESIGN.md's sizes are the desktop maxima; clamp() only scales them down on phones. */
+    --step-display: clamp(2rem, 1.2rem + 3.4vw, var(--h1-size));
+    --step-h2: clamp(var(--h3-size), 1.1rem + 1.7vw, var(--h2-size));
+    --step-h3: clamp(1.2rem, 1.05rem + 0.6vw, var(--h3-size));
+    --step-h4: var(--h4-size);
+    --step-body: var(--body-size);
+    --step-small: 0.875rem;
+
+    --measure: 65ch;
+    --measure-tight: 46ch;
+    --shell: 72rem;
+    --target: 2.75rem; /* 44px minimum tap target */
+
+    --duration: 200ms;
+    --ease-out: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* ---------- Base ---------- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+    caret-color: var(--color-accent);
+    scroll-padding-top: var(--space-5);
+    scrollbar-color: var(--color-border) var(--color-bg);
+}
+
+::selection {
+    background: var(--color-info-bg);
+    color: var(--color-info-fg);
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-body);
+    font-size: var(--step-body);
+    font-weight: 400;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+    margin: 0;
+    font-family: var(--font-heading);
+    font-weight: 700;
+    line-height: 1.12;
+    text-wrap: balance;
+}
+
+h1 {
+    font-size: var(--step-display);
+    line-height: 1.02;
+}
+
+h2 {
+    font-size: var(--step-h2);
+}
+
+h3 {
+    font-size: var(--step-h3);
+}
+
+h4 {
+    font-size: var(--step-h4);
+}
+
+p {
+    margin: 0;
+    max-width: var(--measure);
+    text-wrap: pretty;
+}
+
+ul,
+ol {
+    margin: 0;
+    padding: 0;
+}
+
+img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    text-decoration-thickness: 1px;
+}
+
+a:hover {
+    text-decoration-thickness: 2px;
+}
+
+:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 3px;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+.visually-hidden {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.skip-link {
+    position: absolute;
+    top: var(--space-2);
+    left: var(--space-2);
+    z-index: 100;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-bg);
+    color: var(--color-fg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    font-weight: 600;
+    transform: translateY(-200%);
+}
+
+.skip-link:focus {
+    transform: none;
+}
+
+/* ---------- Structure ---------- */
+.shell {
+    max-width: var(--shell);
+    margin-inline: auto;
+    padding-inline: clamp(1rem, 5vw, 4rem);
+}
+
+.site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.site-header__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    min-height: 4rem;
+}
+
+.brand {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    min-height: var(--target);
+}
+
+.brand img {
+    width: auto;
+    height: 2rem;
+}
+
+.deck-nav {
+    min-width: 0;
+}
+
+.deck-nav ul {
+    display: flex;
+    gap: var(--space-1);
+    list-style: none;
+    overflow-x: auto;
+    max-width: 100%;
+    padding-block: var(--space-1);
+    scrollbar-width: none;
+}
+
+.deck-nav ul::-webkit-scrollbar {
+    display: none;
+}
+
+.deck-nav a {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    min-height: var(--target);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-control);
+    font-size: var(--step-small);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.deck-nav a:hover {
+    background: var(--surface-low);
+    color: var(--color-info-fg);
+}
+
+.deck-nav a[aria-current="page"] {
+    background: var(--color-bg-subtle);
+    color: var(--color-info-fg);
+}
+
+/* ---------- Buttons (DESIGN.md › Components › Buttons) ---------- */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: var(--target);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid transparent;
+    border-radius: var(--radius-control);
+    font: 600 var(--step-body) / 1.25 var(--font-body);
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+        background-color var(--duration) var(--ease-out),
+        border-color var(--duration) var(--ease-out),
+        box-shadow var(--duration) var(--ease-out),
+        transform var(--duration) var(--ease-out);
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn--primary {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    box-shadow: var(--shadow-cta);
+}
+
+.btn--primary:hover {
+    background: var(--color-accent-hover);
+}
+
+.btn--secondary {
+    background: var(--color-bg-subtle);
+    color: var(--color-fg);
+}
+
+.btn--outline {
+    background: var(--color-bg);
+    color: var(--color-fg);
+    border-color: var(--color-border);
+}
+
+.btn .icon {
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+/* ---------- Hero ---------- */
+.hero {
+    padding-block: clamp(2.5rem, 7vw, var(--space-7));
+    border-bottom: 1px solid var(--color-border);
+}
+
+.hero__inner {
+    display: grid;
+    gap: var(--space-6);
+}
+
+.hero__title {
+    max-width: 26ch;
+}
+
+.hero__lead {
+    margin-top: var(--space-4);
+    max-width: 54ch;
+    font-size: var(--step-h4);
+    line-height: 1.55;
+}
+
+.hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-5);
+}
+
+.hero__note {
+    margin-top: var(--space-3);
+    font-size: var(--step-small);
+    max-width: 52ch;
+}
+
+.hero__aside {
+    align-self: end;
+}
+
+@media (min-width: 960px) {
+    .hero__inner {
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+        align-items: center;
+        gap: var(--space-6);
+    }
+}
+
+/*
+ * Below 768px the header is a plain block: logo, then the deck links on a wrapping row. A
+ * horizontally-scrolling pill rail clips its last pill at the screen edge, which reads as broken.
+ */
+@media (max-width: 767px) {
+    .site-header {
+        position: static;
+    }
+
+    .site-header__inner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0;
+        padding-block: var(--space-2);
+    }
+
+    .deck-nav {
+        width: 100%;
+        margin-top: var(--space-1);
+    }
+
+    .deck-nav ul {
+        flex-wrap: wrap;
+        overflow: visible;
+    }
+}
+
+/* ---------- Bands ---------- */
+.band {
+    padding-block: clamp(3rem, 8vw, var(--space-7));
+}
+
+.band--ink {
+    background: var(--color-ink);
+    color: var(--color-on-ink);
+}
+
+.band--soft {
+    background: var(--color-bg-subtle);
+}
+
+.band--ink .statement {
+    max-width: 30ch;
+    font-family: var(--font-heading);
+    font-size: var(--step-h2);
+    font-weight: 700;
+    line-height: 1.2;
+    text-wrap: balance;
+}
+
+.band--ink .statement + .band__text {
+    margin-top: var(--space-3);
+}
+
+.band--ink p + p {
+    margin-top: var(--space-4);
+}
+
+.band--ink .band__text {
+    max-width: 58ch;
+    color: var(--color-on-ink);
+}
+
+/* ---------- Sections ---------- */
+.section {
+    padding-block: clamp(2.5rem, 6vw, var(--space-6));
+    border-top: 1px solid var(--color-border);
+}
+
+.section:first-of-type,
+.hero + .section,
+.band + .section {
+    border-top: 0;
+}
+
+.section > * + * {
+    margin-top: var(--space-5);
+}
+
+/* Inside a shell, the head is followed by its content: give that pair the section rhythm. */
+.section:not(.section--split) > .shell > .section__head + *,
+.band > .shell > .section__head + * {
+    margin-top: var(--space-5);
+}
+
+.section__head {
+    max-width: var(--measure-tight);
+}
+
+.section__head p + p {
+    margin-top: var(--space-3);
+}
+
+.section__intro {
+    max-width: 54ch;
+}
+
+@media (min-width: 960px) {
+    .section--split {
+        display: grid;
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+        gap: var(--space-7);
+        align-items: start;
+    }
+
+    .section--split > * + * {
+        margin-top: 0;
+    }
+}
+
+/* ---------- Prose blocks ---------- */
+.prose > * + * {
+    margin-top: var(--space-4);
+}
+
+.prose p {
+    max-width: 60ch;
+}
+
+.pull {
+    max-width: 34ch;
+    font-family: var(--font-heading);
+    font-size: var(--step-h3);
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.prose .pull {
+    max-width: 34ch;
+    margin-top: var(--space-5);
+}
+
+/* ---------- The chain (the mandate's six steps) ---------- */
+.chain {
+    list-style: none;
+    display: grid;
+    gap: var(--space-5);
+    max-width: 46rem;
+}
+
+.chain__step {
+    position: relative;
+    padding-left: 3.25rem;
+}
+
+.chain__step::before {
+    content: attr(data-step);
+    position: absolute;
+    left: 0;
+    top: -0.15rem;
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    font-family: var(--font-body);
+    font-size: var(--step-small);
+    font-weight: 600;
+    line-height: 1;
+}
+
+.chain__step::after {
+    content: "";
+    position: absolute;
+    left: calc(1rem - 1px);
+    top: 2.35rem;
+    bottom: calc(-1 * var(--space-5) + 0.35rem);
+    width: 2px;
+    background: var(--color-info-border);
+}
+
+.chain__step:last-child::after {
+    display: none;
+}
+
+.chain__title {
+    font-size: var(--step-h4);
+}
+
+.chain__text {
+    margin-top: var(--space-1);
+    max-width: 56ch;
+    font-size: var(--step-small);
+    line-height: 1.65;
+}
+
+/* Compact variant: the chain as a legend, for the hero aside and the hub. */
+.chain--compact {
+    gap: var(--space-3);
+    max-width: none;
+}
+
+.chain--compact .chain__step {
+    padding-left: 2.5rem;
+}
+
+.chain--compact .chain__step::before {
+    top: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: var(--step-small);
+}
+
+.chain--compact .chain__step::after {
+    top: 1.75rem;
+    bottom: calc(-1 * var(--space-3) + 0.25rem);
+    left: calc(0.75rem - 1px);
+}
+
+.chain--compact .chain__title {
+    font-family: var(--font-body);
+    font-size: var(--step-body);
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.chain--compact .chain__text {
+    margin-top: 0;
+}
+
+/* ---------- Three levers ---------- */
+.levers {
+    display: grid;
+    gap: var(--space-4);
+}
+
+.lever__title {
+    font-family: var(--font-heading);
+    font-size: var(--step-h4);
+}
+
+.lever__text {
+    margin-top: var(--space-1);
+    font-size: var(--step-small);
+    line-height: 1.65;
+}
+
+@media (min-width: 768px) {
+    .levers {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0;
+        align-items: start;
+    }
+
+    .lever {
+        padding-inline: var(--space-4);
+        border-left: 1px solid var(--color-border);
+    }
+
+    .lever:first-child {
+        padding-left: 0;
+        border-left: 0;
+    }
+
+    .lever:last-child {
+        padding-right: 0;
+    }
+}
+
+/* ---------- Sheet: a mandate, laid out like a dossier ---------- */
+.sheet {
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    padding: var(--space-4);
+}
+
+.sheet__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.sheet > .chain--compact {
+    margin-top: var(--space-4);
+}
+
+.sheet__kind {
+    font-family: var(--font-heading);
+    font-size: var(--step-h4);
+    font-weight: 700;
+}
+
+.sheet__label {
+    font-size: var(--step-small);
+}
+
+.sheet__facts {
+    margin: 0;
+}
+
+.sheet__facts > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding-block: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.sheet__facts dt {
+    flex: none;
+    font-size: var(--step-small);
+}
+
+.sheet__facts dd {
+    margin: 0;
+    text-align: right;
+    font-weight: 600;
+}
+
+.sheet__foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+}
+
+.sheet__next {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--step-small);
+    font-weight: 600;
+}
+
+.sheet__next .icon {
+    flex: none;
+    width: 1rem;
+    height: 1rem;
+}
+
+.sheet__caption {
+    margin-top: var(--space-2);
+    font-size: var(--step-small);
+    max-width: none;
+}
+
+/* ---------- Chips (status triads) ---------- */
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid var(--color-info-border);
+    border-radius: var(--radius-control);
+    background: var(--color-info-bg);
+    color: var(--color-info-fg);
+    font-size: var(--step-small);
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.chip--warning {
+    background: var(--color-warning-bg);
+    color: var(--color-warning-fg);
+    border-color: var(--color-warning-border);
+}
+
+.chip--success {
+    background: var(--color-success-bg);
+    color: var(--color-success-fg);
+    border-color: var(--color-success-border);
+}
+
+.chip .icon {
+    flex: none;
+    width: 1rem;
+    height: 1rem;
+}
+
+/* ---------- Table (DESIGN.md › Components › Tables) ---------- */
+.table-wrap {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    min-width: 38rem;
+    border-collapse: collapse;
+    font-size: var(--step-body);
+    line-height: 1.5;
+}
+
+.table th,
+.table td {
+    padding: var(--space-3) var(--space-3);
+    text-align: left;
+    vertical-align: top;
+}
+
+/* The header uses the deep ink field, not `surface-high`: white on primary is 4.12:1, under AA. */
+.table thead th {
+    background: var(--color-ink);
+    color: var(--color-on-ink);
+    font-family: var(--font-body);
+    font-weight: 600;
+}
+
+.table tbody th {
+    font-family: var(--font-body);
+    font-weight: 600;
+}
+
+.table tbody tr:nth-child(odd) {
+    background: var(--surface-lowest);
+}
+
+.table tbody tr:nth-child(even) {
+    background: var(--surface-low);
+}
+
+/*
+ * Below 768px the comparison stacks: each row becomes a block, the row header a title, and each
+ * cell carries its column name. A three-column table at 320px either scrolls out of sight or
+ * squeezes to unreadable.
+ */
+@media (max-width: 767px) {
+    .table {
+        min-width: 0;
+    }
+
+    .table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+
+    .table,
+    .table tbody,
+    .table tr,
+    .table th,
+    .table td {
+        display: block;
+    }
+
+    .table tr {
+        padding-block: var(--space-3);
+        border-top: 1px solid var(--color-border);
+    }
+
+    .table tbody tr:nth-child(odd),
+    .table tbody tr:nth-child(even) {
+        background: transparent;
+    }
+
+    .table tbody th {
+        margin-bottom: var(--space-2);
+        font-family: var(--font-heading);
+        font-size: var(--step-h4);
+    }
+
+    .table td {
+        display: grid;
+        grid-template-columns: 9rem minmax(0, 1fr);
+        gap: var(--space-2);
+        padding: var(--space-1) 0;
+    }
+
+    .table td::before {
+        content: attr(data-label);
+        font-size: var(--step-small);
+    }
+}
+
+/* ---------- Check list ---------- */
+.checks {
+    list-style: none;
+    display: grid;
+    gap: var(--space-4);
+}
+
+.checks li {
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+}
+
+.checks strong {
+    display: block;
+    font-weight: 600;
+}
+
+.checks span {
+    display: block;
+    margin-top: var(--space-1);
+    font-size: var(--step-small);
+    line-height: 1.65;
+}
+
+@media (min-width: 768px) {
+    .checks {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        column-gap: var(--space-6);
+    }
+}
+
+/* ---------- Questions ---------- */
+.qa {
+    display: grid;
+    gap: var(--space-5);
+    max-width: 50rem;
+}
+
+.qa__item {
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+}
+
+.qa__item:first-child {
+    padding-top: 0;
+    border-top: 0;
+}
+
+.qa dt {
+    font-family: var(--font-heading);
+    font-size: var(--step-h4);
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.qa dd {
+    margin: var(--space-2) 0 0;
+    max-width: 62ch;
+}
+
+/* ---------- Doors (hub index) ---------- */
+.doors {
+    list-style: none;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.doors li {
+    border-top: 1px solid var(--color-border);
+}
+
+.door {
+    display: grid;
+    gap: var(--space-2);
+    padding-block: var(--space-5);
+    padding-inline: var(--space-2);
+    text-decoration: none;
+    transition: background-color var(--duration) var(--ease-out);
+}
+
+.door:hover {
+    background: var(--surface-low);
+}
+
+.door__title {
+    font-family: var(--font-heading);
+    font-size: var(--step-h3);
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.door__text {
+    max-width: 58ch;
+    font-size: var(--step-small);
+    line-height: 1.65;
+}
+
+.door__go {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--step-small);
+    font-weight: 600;
+}
+
+.door__go .icon {
+    width: 1rem;
+    height: 1rem;
+    transition: transform var(--duration) var(--ease-out);
+}
+
+.door:hover .door__go .icon {
+    transform: translateX(0.25rem);
+}
+
+@media (min-width: 768px) {
+    .door {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) auto;
+        align-items: start;
+        gap: var(--space-5);
+        padding-block: var(--space-5);
+    }
+
+    .door__go {
+        align-self: center;
+        white-space: nowrap;
+    }
+}
+
+/* ---------- Close ---------- */
+.close {
+    padding-block: clamp(3rem, 8vw, var(--space-7));
+    border-top: 1px solid var(--color-border);
+}
+
+.close__title {
+    max-width: 28ch;
+}
+
+.close__text {
+    margin-top: var(--space-3);
+    max-width: 52ch;
+}
+
+.close__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-5);
+}
+
+/* ---------- Footer ---------- */
+.site-footer {
+    background: var(--surface-low);
+    border-top: 1px solid var(--color-border);
+    padding-block: var(--space-6);
+    font-size: var(--step-small);
+}
+
+.site-footer__inner {
+    display: grid;
+    gap: var(--space-5);
+}
+
+.site-footer__tagline {
+    max-width: 30ch;
+    font-family: var(--font-heading);
+    font-size: var(--step-h4);
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.site-footer__links ul {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-4);
+}
+
+.site-footer__links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+}
+
+.site-footer__note {
+    max-width: 66ch;
+}
+
+@media (min-width: 768px) {
+    .site-footer__inner {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        align-items: start;
+    }
+
+    .site-footer__note {
+        grid-column: 1 / -1;
+    }
+}
+
+/* ---------- Motion ----------
+ * No entrance animation on content: a deck must be readable the instant it paints, and complete in a
+ * full-page capture. Movement lives in the interactive states (hover, active, focus) only.
+ */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        transition-duration: 1ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ---------- Print: an A4 leave-behind ---------- */
+@media print {
+    .site-header,
+    .site-footer__links,
+    .skip-link {
+        display: none;
+    }
+
+    * {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+
+    body {
+        font-size: 10pt;
+    }
+
+    .hero,
+    .section,
+    .close,
+    .band {
+        break-inside: avoid;
+        padding-block: 12mm 8mm;
+    }
+
+    h1,
+    h2,
+    h3 {
+        break-after: avoid;
+    }
+
+    .hero__inner,
+    .section--split {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 10mm;
+    }
+
+    .table,
+    .sheet {
+        break-inside: avoid;
+    }
+
+    @page {
+        margin: 14mm;
+    }
+}

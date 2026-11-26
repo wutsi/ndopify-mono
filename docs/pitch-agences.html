@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ndopify pour les agences — votre stock travaille pour les mandats de la place</title>
+    <meta name="description" content="Rattachez vos agents, publiez vos biens vérifiés et laissez les recherches approuvées de la place rencontrer votre stock. Le client de l'autre agent reste chez l'autre agent.">
+    <meta name="theme-color" content="#ffffff">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="fr_FR">
+    <meta property="og:title" content="Ndopify pour les agences et les partenaires">
+    <meta property="og:description" content="Co-brokerage sans perte de client, dispatch exclusif à vos agents, annonces vérifiées, contrats numérotés, signature vérifiable.">
+    <link rel="icon" href="pitch-assets/icon.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="pitch.css">
+</head>
+<body>
+    <a class="skip-link" href="#main">Aller au contenu</a>
+
+    <header class="site-header">
+        <div class="shell site-header__inner">
+            <a class="brand" href="pitch.html">
+                <img src="pitch-assets/logo.png" alt="Ndopify" width="119" height="40">
+            </a>
+            <nav class="deck-nav" aria-label="Présentations">
+                <ul>
+                    <li><a href="pitch.html">Vue d'ensemble</a></li>
+                    <li><a href="pitch-agents.html">Agents</a></li>
+                    <li><a href="pitch-clients.html">Clients</a></li>
+                    <li><a href="pitch-agences.html" aria-current="page">Agences</a></li>
+                    <li><a href="pitch-investisseurs.html">Investisseurs</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main">
+        <section class="hero">
+            <div class="shell hero__inner">
+                <div>
+                    <h1 class="hero__title">Votre stock travaille aussi pour les mandats des autres.</h1>
+                    <p class="hero__lead">
+                        Rattachez vos agents, publiez vos biens vérifiés, et laissez les recherches approuvées de la
+                        place venir à eux. Le client de l'autre agent reste chez l'autre agent.
+                    </p>
+                    <div class="hero__actions">
+                        <a class="btn btn--primary" href="../modules/ndopify-partner-central/src/main/html/rejoindre.html">
+                            Ouvrir un espace agence
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                        </a>
+                        <a class="btn btn--outline" href="#cobrokerage">Comprendre le co-brokerage</a>
+                    </div>
+                    <p class="hero__note">
+                        À l'inscription, un agent se déclare indépendant ou rattaché à une agence immobilière. Le
+                        rattachement est enregistré dans son profil.
+                    </p>
+                </div>
+
+                <aside class="hero__aside" aria-labelledby="example-visit-title">
+                    <div class="sheet">
+                        <div class="sheet__head">
+                            <h2 class="sheet__kind" id="example-visit-title">Visite d'un autre agent</h2>
+                            <span class="chip">Sur votre bien</span>
+                        </div>
+                        <dl class="sheet__facts">
+                            <div>
+                                <dt>Bien</dt>
+                                <dd>Appartement · Bonanjo</dd>
+                            </div>
+                            <div>
+                                <dt>Créneau</dt>
+                                <dd>Samedi, 10 h 30</dd>
+                            </div>
+                            <div>
+                                <dt>Organisateur</dt>
+                                <dd>Un agent de la place</dd>
+                            </div>
+                            <div>
+                                <dt>Votre rôle</dt>
+                                <dd>Accueillir sur place</dd>
+                            </div>
+                        </dl>
+                        <div class="sheet__foot">
+                            <p class="sheet__next">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 12l5 5L20 6"/></svg>
+                                Prochain pas : accueillir l'agent et son client
+                            </p>
+                        </div>
+                    </div>
+                    <p class="sheet__caption">
+                        Exemple illustratif — données de démonstration. Le client de l'agent organisateur ne vous est
+                        jamais exposé.
+                    </p>
+                </aside>
+            </div>
+        </section>
+
+        <section class="band band--ink" aria-labelledby="truth-title">
+            <div class="shell">
+                <h2 class="statement" id="truth-title">Un bien que personne ne cherche ne se loue pas.</h2>
+                <p class="band__text">
+                    Votre stock existe. Mais hors de vos propres clients, il n'existe pas : le locataire qui cherchait
+                    exactement ce bien a signé ailleurs, chez un agent qui ne l'avait même pas.
+                </p>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="shell section--split">
+                <div class="section__head">
+                    <h2>L'inventaire invisible</h2>
+                    <p>Ce n'est pas un problème d'annonces. C'est un problème de rencontres.</p>
+                </div>
+                <div class="prose">
+                    <p>
+                        Une agence connaît ses biens, ses bailleurs, ses quartiers. Mais une recherche de locataire,
+                        travaillée par un autre agent, ne rencontre votre stock que si quelqu'un fait le rapprochement
+                        à la main. La plupart du temps, personne ne le fait.
+                    </p>
+                    <p>
+                        Résultat : des biens qui restent libres plus longtemps que nécessaire, et des agents qui
+                        prospectent pour retrouver des clients qu'une correspondance aurait suffi à amener.
+                    </p>
+                    <p class="pull">Le co-brokerage ne consiste pas à donner vos clients. Il consiste à faire rencontrer votre stock et leurs recherches.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section" id="cobrokerage">
+            <div class="shell">
+                <div class="section__head">
+                    <h2>Le co-brokerage, sans perdre le client</h2>
+                    <p>
+                        Le mécanisme est volontairement borné : ce qui circule, c'est le bien publié. Ce qui ne circule
+                        jamais, c'est l'identité du client de l'autre agent.
+                    </p>
+                </div>
+                <ul class="checks">
+                    <li>
+                        <strong>Vos annonces entrent dans les recherches approuvées</strong>
+                        <span>Une annonce publiée est confrontée aux mandats de recherche approuvés. L'agent travaille d'abord son propre stock, puis les annonces publiées des autres agents.</span>
+                    </li>
+                    <li>
+                        <strong>Vous accueillez la visite, pas le client</strong>
+                        <span>Quand un autre agent organise une visite sur votre bien, vous êtes prévenu et vous accueillez l'agent et son client sur place. L'agent organisateur est nommé et contactable.</span>
+                    </li>
+                    <li>
+                        <strong>Le client reste chez l'organisateur</strong>
+                        <span>Vous ne voyez jamais l'identité du client d'un autre agent. Vous voyez un créneau, un bien, un agent responsable.</span>
+                    </li>
+                    <li>
+                        <strong>Chaque annonce dit son activité</strong>
+                        <span>Les correspondances et les visites sont suivies par annonce. C'est le signal qui dit si un bien circule ou s'il dort.</span>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="shell section--split">
+                <div class="section__head">
+                    <h2>Ce que vos agents reçoivent</h2>
+                    <p>
+                        Le même mécanisme que pour un agent indépendant, avec le rattachement à l'agence en plus.
+                    </p>
+                </div>
+                <ol class="chain">
+                    <li class="chain__step" data-step="1">
+                        <h3 class="chain__title">Les mandats de leur secteur</h3>
+                        <p class="chain__text">Recherches de locataires ou d'acheteurs et biens de propriétaires ou de vendeurs, saisis proprement dans les formulaires publics.</p>
+                    </li>
+                    <li class="chain__step" data-step="2">
+                        <h3 class="chain__title">Un dispatch exclusif et noté</h3>
+                        <p class="chain__text">Un seul agent sollicité à la fois, avec un délai. Refus ou expiration : re-dispatch vers un autre agent.</p>
+                    </li>
+                    <li class="chain__step" data-step="3">
+                        <h3 class="chain__title">Des mandats signés</h3>
+                        <p class="chain__text">Contrat de mandat numéroté par tenant : le client le signe en ligne, seul ; l'agent y figure comme partie. La dernière signature requise rend le contrat signé et le mandat approuvé.</p>
+                    </li>
+                    <li class="chain__step" data-step="4">
+                        <h3 class="chain__title">Trois canaux de visibilité</h3>
+                        <p class="chain__text">Annonce publique, co-brokerage, propositions actives au client. Les trois ensemble.</p>
+                    </li>
+                    <li class="chain__step" data-step="5">
+                        <h3 class="chain__title">Des visites cadrées</h3>
+                        <p class="chain__text">Sur place ou en vidéo WhatsApp, créneau confirmé, code de présence à quatre chiffres, no-show et annulation déclarés.</p>
+                    </li>
+                    <li class="chain__step" data-step="6">
+                        <h3 class="chain__title">Des transactions conclues</h3>
+                        <p class="chain__text">L'agent enregistre le prix final. Une correspondance ferme les deux mandats à la fois, au même prix. Sur une vente, le taux de commission est fixé au contrat.</p>
+                    </li>
+                </ol>
+            </div>
+        </section>
+
+        <section class="band band--soft">
+            <div class="shell">
+                <div class="section__head">
+                    <h2>Votre marque, vos URLs, vos données</h2>
+                    <p>
+                        La plateforme est multi-tenant. Chaque tenant est une marque et un marché distincts, pas un
+                        compte dans une place commune.
+                    </p>
+                </div>
+                <ul class="checks">
+                    <li>
+                        <strong>Vos propres URLs</strong>
+                        <span>L'espace agent, le portail de signature et le site public sont résolus par l'URL : votre espace agence a les siens.</span>
+                    </li>
+                    <li>
+                        <strong>Votre référence et votre formatage</strong>
+                        <span>Villes et quartiers de référence, langue, fuseau horaire, devise et symbole : chaque tenant formate ses dates et ses montants avec ses propres règles.</span>
+                    </li>
+                    <li>
+                        <strong>Vos clients chez vous</strong>
+                        <span>Le nom de la plateforme ne s'impose pas sur les pages client du tenant. Un tenant ne voit jamais les données d'un autre.</span>
+                    </li>
+                    <li>
+                        <strong>Vos agents vérifiés</strong>
+                        <span>Un agent rattaché à l'agence reste un agent vérifié : pièces d'identité, compte mobile money ou contrôle manuel, avant tout dispatch.</span>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="shell section--split">
+                <div class="section__head">
+                    <h2>Ce qui existe aujourd'hui</h2>
+                    <p>
+                        Pas de feuille de route à vendre : ce qui suit est en place, et c'est ce que vos agents
+                        utilisent.
+                    </p>
+                </div>
+                <div class="prose">
+                    <p>
+                        Espace agent, portail de signature, site public : trois applications serveur, sans état, qui
+                        parlent à la même API. Mandats, dispatch, annonces vérifiées, visites, contrats, clôture des transactions au prix final, données
+                        multi-tenant. Un agent peut suivre plusieurs mandats sans perdre le prochain pas de l'un d'eux.
+                    </p>
+                    <p>
+                        Ce qui n'existe pas encore — console d'administration, SDK, serveur de tracking — n'est pas
+                        promis dans ce document. Quand ce sera construit, ce sera écrit ici.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="shell section--split">
+                <div class="section__head">
+                    <h2>Vos questions</h2>
+                </div>
+                <dl class="qa">
+                    <div class="qa__item">
+                        <dt>Nos annonces vont-elles être aspirées par la place ?</dt>
+                        <dd>Une annonce publiée entre dans les correspondances des recherches approuvées. Elle expose le bien publié, pas vos dossiers ni vos mandats.</dd>
+                    </div>
+                    <div class="qa__item">
+                        <dt>Est-ce que cela remplace notre gestion interne ?</dt>
+                        <dd>Non. La plateforme prend en charge la chaîne du mandat — dispatch, visibilité, visites, contrat,
+                        clôture — et laisse la gestion interne à l'agence.</dd>
+                    </div>
+                    <div class="qa__item">
+                        <dt>Nos agents doivent-ils être vérifiés ?</dt>
+                        <dd>Oui, avant tout dispatch : pièces d'identité et compte mobile money, ou contrôle manuel fait hors ligne.</dd>
+                    </div>
+                    <div class="qa__item">
+                        <dt>Un client amené par un autre agent, on le voit ?</dt>
+                        <dd>Non. Vous voyez le créneau, le bien et l'agent organisateur. L'identité du client reste chez l'agent qui l'a amené.</dd>
+                    </div>
+                    <div class="qa__item">
+                        <dt>Et une vente ?</dt>
+                        <dd>La vente a ses propres mandats — recherche d'achat, mandat de vente — et fixe un taux de commission au contrat. La location garde le sien. Les deux se ferment de la même façon : au prix final.</dd>
+                    </div>
+                    <div class="qa__item">
+                        <dt>Sur quels marchés ?</dt>
+                        <dd>Le Cameroun aujourd'hui. Chaque tenant apporte ses URLs, ses quartiers, son formatage et sa devise : un autre marché s'ouvre par tenant, pas par réécriture.</dd>
+                    </div>
+                </dl>
+            </div>
+        </section>
+
+        <section class="close">
+            <div class="shell">
+                <h2 class="close__title">Votre stock n'attend pas un portail de plus.</h2>
+                <p class="close__text">
+                    Il attend des recherches approuvées, un agent pour les visites, et une transaction qui se conclut
+                    sans allers-retours. Ouvrez votre espace agence et rattachez vos agents.
+                </p>
+                <div class="close__actions">
+                    <a class="btn btn--primary" href="../modules/ndopify-partner-central/src/main/html/rejoindre.html">
+                        Ouvrir un espace agence
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </a>
+                    <a class="btn btn--outline" href="pitch-agents.html">Présentation des agents</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="shell site-footer__inner">
+            <p class="site-footer__tagline">Logements vérifiés.<br>Locations fiables.</p>
+            <div class="site-footer__links">
+                <nav aria-label="Présentations, pied de page">
+                    <ul>
+                        <li><a href="pitch.html">Vue d'ensemble</a></li>
+                        <li><a href="pitch-agents.html">Agents</a></li>
+                        <li><a href="pitch-clients.html">Clients</a></li>
+                        <li><a href="pitch-investisseurs.html">Investisseurs</a></li>
+                    </ul>
+                </nav>
+            </div>
+            <p class="site-footer__note">
+                Présentation produit. Aucun témoignage, aucune métrique de production et aucun tarif n'y sont cités.
+                Les données de démonstration sont signalées comme telles.
+            </p>
+        </div>
+    </footer>
+</body>
+</html>
