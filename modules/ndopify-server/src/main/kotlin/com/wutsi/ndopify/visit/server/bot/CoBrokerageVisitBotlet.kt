@@ -17,10 +17,12 @@ import java.time.Clock
  * events as `CoBrokerageVisitMailet`, each in the shared visit format — `<object> : <date/time>`, the listing's property
  * line and its type, then `Agent : <A>` — followed by the event's own line (the cancellation's actor, the no-show).
  *
- * [agent] is A, the organizer; [listing]'s agent is the recipient B, so the `Agent :` line names A. The buttons open the
- * visit on Partner Central and contact A on WhatsApp, each left out when the tenant has no `partnerCentralUrl` or A no
- * number. The text never carries A's customer: no name, number, note, code, address nor feedback — the customer is only
- * ever implied.
+ * [agent] is A, the organizer; [listing]'s agent is the recipient B, so the `Agent :` line names A. The confirmation
+ * and the reminder carry a `Voir la visite` button to the visit's card on B's Partner Central home page
+ * (`/#co-visit-{id}`), plus `Contacter sur WhatsApp` to A: B can't read `/visits/{id}`. The cancellation and the no-show
+ * carry only the WhatsApp button — the visit is no longer on the home page. Each button is left out when the tenant has
+ * no `partnerCentralUrl` or A no number. The text never carries A's customer: no name, number, note, code, address nor
+ * feedback — the customer is only ever implied.
  *
  * [ListingTelegramSender] sends the message with the listing's photo as its caption when it fits, else as the text
  * alone. [sendX]'s chat id comes from #135's link (`AgentTelegramService.chatId`), never B's e-mail. Telegram refusing
@@ -41,22 +43,22 @@ class CoBrokerageVisitBotlet(
     fun sendConfirmed(visit: VisitEntity, listing: ListingEntity, agent: AgentEntity, chatId: Long) =
         send(visit, listing, agent, chatId, "✅ Visite confirmée", { _, formatter ->
             labels.slot(visit.scheduledAt!!, formatter)
-        }, null)
+        }, null, withVisitLink = true)
 
     fun sendReminder(visit: VisitEntity, listing: ListingEntity, agent: AgentEntity, chatId: Long) =
         send(visit, listing, agent, chatId, "⏰ Rappel de visite", { tenant, formatter ->
             "${labels.dayWord(visit, tenant, clock)} à ${formatter.time(visit.scheduledAt!!)}"
-        }, null)
+        }, null, withVisitLink = true)
 
     fun sendCancelled(visit: VisitEntity, listing: ListingEntity, agent: AgentEntity, chatId: Long) =
         send(visit, listing, agent, chatId, "❌ Visite annulée", { _, formatter ->
             labels.slot(visit.scheduledAt!!, formatter)
-        }, labels.cancelledBy(visit.cancelledBy))
+        }, labels.cancelledBy(visit.cancelledBy), withVisitLink = false)
 
     fun sendNoShow(visit: VisitEntity, listing: ListingEntity, agent: AgentEntity, chatId: Long) =
         send(visit, listing, agent, chatId, "⚠️ Visite non honorée", { _, formatter ->
             labels.slot(visit.scheduledAt!!, formatter)
-        }, NO_SHOW)
+        }, NO_SHOW, withVisitLink = false)
 
     private fun send(
         visit: VisitEntity,
@@ -66,19 +68,25 @@ class CoBrokerageVisitBotlet(
         label: String,
         whenLabel: (TenantEntity, TenantFormatter) -> String,
         eventLine: String?,
+        withVisitLink: Boolean,
     ) {
         val tenant = tenantService.findById(visit.tenantId!!)
         val formatter = TenantFormatter(tenant)
         val text = labels.body(label, whenLabel(tenant, formatter), listing, visit, agent, formatter) +
             (eventLine?.let { "\n$it" } ?: "")
-        sender.send(chatId, listing, text, buttons(visit, agent, tenant))
+        sender.send(chatId, listing, text, buttons(visit, agent, tenant, withVisitLink))
     }
 
     // A's number, never the customer's: B acts on the visit from the chat
-    private fun buttons(visit: VisitEntity, agent: AgentEntity, tenant: TenantEntity): List<TelegramButton> =
+    private fun buttons(
+        visit: VisitEntity,
+        agent: AgentEntity,
+        tenant: TenantEntity,
+        withVisitLink: Boolean,
+    ): List<TelegramButton> =
         listOfNotNull(
-            tenant.partnerCentralUrl?.removeSuffix("/")?.takeIf { it.isNotBlank() }?.let { url ->
-                TelegramButton("Voir la visite", url = "$url/visits/${visit.id}")
+            tenant.partnerCentralUrl?.removeSuffix("/")?.takeIf { it.isNotBlank() && withVisitLink }?.let { url ->
+                TelegramButton("Voir la visite", url = "$url/#co-visit-${visit.id}")
             },
             agent.whatsappNumber?.trim()?.ifBlank { null }?.let { number ->
                 TelegramButton("Contacter sur WhatsApp", url = PhoneNumberUtils.toWhatsappUrl(number))

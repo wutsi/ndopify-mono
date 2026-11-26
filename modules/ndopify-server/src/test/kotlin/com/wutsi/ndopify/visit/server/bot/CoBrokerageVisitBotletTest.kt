@@ -118,7 +118,7 @@ class CoBrokerageVisitBotletTest {
         )
         assertEquals(
             listOf(
-                TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1"),
+                TelegramButton("Voir la visite", url = "https://partner.ndopify.com/#co-visit-1"),
                 TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237699000001"),
             ),
             buttons.firstValue,
@@ -143,7 +143,8 @@ class CoBrokerageVisitBotletTest {
         botlet.sendReminder(visit, listing, searchAgent, 1000L)
 
         val text = argumentCaptor<String>()
-        verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
+        val buttons = argumentCaptor<List<TelegramButton>>()
+        verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
             """
             ⏰ Rappel de visite : demain à 10:30
@@ -151,6 +152,13 @@ class CoBrokerageVisitBotletTest {
             Agent : Ray Sponsible
             """.trimIndent(),
             text.firstValue,
+        )
+        assertEquals(
+            listOf(
+                TelegramButton("Voir la visite", url = "https://partner.ndopify.com/#co-visit-1"),
+                TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237699000001"),
+            ),
+            buttons.firstValue,
         )
     }
 
@@ -164,7 +172,8 @@ class CoBrokerageVisitBotletTest {
         )
 
         val text = argumentCaptor<String>()
-        verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
+        val buttons = argumentCaptor<List<TelegramButton>>()
+        verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
             """
             ❌ Visite annulée : 26/11/2026 à 10:30
@@ -174,7 +183,18 @@ class CoBrokerageVisitBotletTest {
             """.trimIndent(),
             text.firstValue,
         )
+        assertEquals(
+            listOf(TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237699000001")),
+            buttons.firstValue,
+        )
         assertFalse(text.firstValue.contains("Mandat clôturé"))
+    }
+
+    @Test
+    fun `cancelled - an organizer without a number has no button`() {
+        botlet.sendCancelled(visit, listing, searchAgent.copy(whatsappNumber = null), 1000L)
+
+        verify(sender).send(eq(1000L), eq(listing), any(), eq(emptyList<TelegramButton>()))
     }
 
     @Test
@@ -191,13 +211,22 @@ class CoBrokerageVisitBotletTest {
     @Test
     fun `no-show - the customer did not come`() {
         val text = argumentCaptor<String>()
+        val buttons = argumentCaptor<List<TelegramButton>>()
         botlet.sendNoShow(visit.copy(noShowReason = VisitNoShowReason.CUSTOMER_ABSENT), listing, searchAgent, 1000L)
         botlet.sendNoShow(visit.copy(noShowReason = VisitNoShowReason.CODE_REFUSED), listing, searchAgent, 1000L)
 
-        verify(sender, times(2)).send(eq(1000L), eq(listing), text.capture(), any())
+        verify(sender, times(2)).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertTrue(text.allValues[0].startsWith("⚠️ Visite non honorée : 26/11/2026 à 10:30"))
         assertTrue(text.allValues[0].endsWith("Le client ne s'est pas présenté"))
         assertTrue(text.allValues[1].endsWith("Le client ne s'est pas présenté"))
+        assertEquals(
+            listOf(TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237699000001")),
+            buttons.allValues[0],
+        )
+        assertEquals(
+            listOf(TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237699000001")),
+            buttons.allValues[1],
+        )
     }
 
     @Test
@@ -236,7 +265,7 @@ class CoBrokerageVisitBotletTest {
             eq(1000L),
             eq(listing),
             any(),
-            eq(listOf(TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1"))),
+            eq(listOf(TelegramButton("Voir la visite", url = "https://partner.ndopify.com/#co-visit-1"))),
         )
     }
 
