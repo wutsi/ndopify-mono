@@ -312,6 +312,15 @@ class MandateDocumentService(
 
         return try {
             saveLocked(mandateId) {
+                // The authoritative path check, under the mandate's lock: a concurrent add may have committed since
+                // the pre-check above (which only saves the storage I/O of [DirectUploadService.verify]).
+                val current = pageDao.findByPath(path)
+                if (current != null) {
+                    if (current.documentId == document.id) {
+                        return@saveLocked current
+                    }
+                    throw invalid("path", path)
+                }
                 val saved = pageDao.save(page.copy(pageIndex = (pageDao.findMaxPageIndex(document.id ?: -1) ?: -1) + 1))
                 documentDao.save(resetExtraction(document))
                 saved
@@ -396,6 +405,15 @@ class MandateDocumentService(
 
         val saved = try {
             saveLocked(mandateId) {
+                // The authoritative path check, under the mandate's lock: a concurrent write may have committed since
+                // the pre-check above.
+                val current = pageDao.findByPath(path)
+                if (current != null) {
+                    if (current.id == page.id) {
+                        return@saveLocked current
+                    }
+                    throw invalid("path", path)
+                }
                 val s = pageDao.save(replaced)
                 documentDao.save(resetExtraction(document))
                 s
@@ -465,13 +483,15 @@ class MandateDocumentService(
         val page = findPage(document, pageId)
         ensureNotClosed(mandate)
 
-        if (pageDao.findByDocumentIdOrderByPageIndex(document.id!!).size == 1) {
-            throw BadRequestException(Error(ErrorCode.MANDATE_DOCUMENT_LAST_PAGE))
-        }
         val oldPath = page.path
         val oldStorageType = page.storageType
 
         saveLocked(mandateId) {
+            // The last-page check under the mandate's lock: two concurrent deletes of a 2-page document must not both
+            // pass (a close committed during the storage I/O is already refused here too).
+            if (pageDao.findByDocumentIdOrderByPageIndex(document.id!!).size == 1) {
+                throw BadRequestException(Error(ErrorCode.MANDATE_DOCUMENT_LAST_PAGE))
+            }
             pageDao.delete(page)
             documentDao.save(resetExtraction(document))
         }

@@ -8,6 +8,7 @@ import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.mandate.dto.CreateMandateDocumentRequest
 import com.wutsi.ndopify.mandate.dto.DocumentType
@@ -121,5 +122,60 @@ class MandateDocumentServiceTest {
 
         verify(storage).delete(newPath)
         verify(storage, never()).delete(oldPath)
+    }
+
+    @Test
+    fun `deletePage - the only page of a document is refused under the lock`() {
+        val page = MandateDocumentPageEntity(
+            id = 3000L,
+            documentId = 2000L,
+            pageIndex = 0,
+            path = "mandate/100/documents/page-2000-0.png",
+            storageType = StorageType.S3,
+        )
+
+        doReturn(MandateEntity(id = 100L, status = MandateStatus.ASSIGNED)).whenever(mandateService).findById(100L)
+        doReturn(MandateEntity(id = 100L, status = MandateStatus.ASSIGNED)).whenever(mandateDao).findByIdForUpdate(100L)
+        doReturn(Optional.of(MandateDocumentEntity(id = 2000L, mandateId = 100L))).whenever(documentDao).findById(2000L)
+        doReturn(Optional.of(page)).whenever(pageDao).findById(3000L)
+        // The document has a single page: the last-page check must refuse, under the lock.
+        doReturn(listOf(page)).whenever(pageDao).findByDocumentIdOrderByPageIndex(2000L)
+        doReturn(mock<TransactionStatus>()).whenever(transactionManager).getTransaction(any())
+
+        val exception = assertFailsWith<BadRequestException> {
+            service.deletePage(100, 2000, 3000)
+        }
+
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_LAST_PAGE, exception.error.code)
+        verify(pageDao, never()).delete(any())
+    }
+
+    @Test
+    fun `addPage - a path another page takes is refused under the lock`() {
+        val newPath = "mandate/100/documents/0f8fad5b-d9cb-469f-a165-70867728950e.png"
+        val otherPage = MandateDocumentPageEntity(
+            id = 4000L,
+            documentId = 2000L,
+            pageIndex = 0,
+            path = "mandate/100/documents/page-2000-0.png",
+            storageType = StorageType.S3,
+        )
+
+        doReturn(MandateEntity(id = 100L, status = MandateStatus.ASSIGNED)).whenever(mandateService).findById(100L)
+        doReturn(MandateEntity(id = 100L, status = MandateStatus.ASSIGNED)).whenever(mandateDao).findByIdForUpdate(100L)
+        doReturn(Optional.of(MandateDocumentEntity(id = 3000L, mandateId = 100L))).whenever(documentDao).findById(3000L)
+        // The pre-check sees nothing (so the verify runs), the in-lock check sees another page's path.
+        doReturn(null, otherPage).whenever(pageDao).findByPath(newPath)
+        doReturn(storage).whenever(storageProvider).get()
+        doReturn(StorageType.S3).whenever(storage).type()
+        doReturn("image/png").whenever(directUpload).verify(newPath, MandateDocumentService.prefix(100L))
+        doReturn(mock<TransactionStatus>()).whenever(transactionManager).getTransaction(any())
+
+        val exception = assertFailsWith<BadRequestException> {
+            service.addPage(100, 3000, newPath)
+        }
+
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, exception.error.code)
+        verify(storage, never()).delete(any())
     }
 }
