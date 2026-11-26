@@ -219,7 +219,17 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `GET /{documentId}`, `POST` (create from presigned `paths`), `POST /presign`, `POST /{documentId}` (rename), `POST
   /{documentId}/pages` (add), `POST /{documentId}/pages/{pageId}` (replace), `DELETE /{documentId}/pages/{pageId}`,
   `DELETE /{documentId}`, plus the `upload` variants (`POST /upload`, `/{documentId}/pages/upload`,
-  `/{documentId}/pages/{pageId}/upload`) that post a `MultipartFile` instead of a presigned path. Only the mandate's
+  `/{documentId}/pages/{pageId}/upload`) that post a `MultipartFile` instead of a presigned path. Those three also
+  accept `application/pdf`: every PDF page is rendered by `platform/image`'s `PdfRasterizer` to a JPEG (200 DPI at
+  most, 2000 px on the longest side) and stored as a page at the PDF's own place among the files, in the PDF's order,
+  the PDF never stored; a rendered page is an ordinary page downstream (preview, extraction). One `upload` has at most
+  10 pages once expanded when it holds a PDF (an image counts one page), `pages/upload` refuses a PDF over 10 pages,
+  and `pages/{pageId}/upload` takes a single-page PDF at most — 400 `MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES`, on `files`
+  for an add and `file` otherwise. A password-protected PDF is 400 `MANDATE_DOCUMENT_PDF_ENCRYPTED`, an empty or
+  corrupt one 400 `MANDATE_DOCUMENT_PDF_UNREADABLE`, a file over 5 MB or neither an image nor a PDF 400
+  `HTTP_INVALID_PARAMETER`; the PDF codes carry no message and no value, so no file name or path leaks. `presign` and
+  the JSON create / add / replace stay images-only (`DirectUploadService`), so a PDF is always posted through the
+  multipart form. Only the mandate's
   agent or an admin may use them — never the agent it's offered to, nor its customer — on the reads too: the search and
   get check `MandateAccessService.ensureCanUpdate` (`MandateDocumentEndpoints`), the writes through
   `MandateDocumentService.loadWritable`. The customer reads its mandate via `GET /v1/mandates/{id}` alone, which carries

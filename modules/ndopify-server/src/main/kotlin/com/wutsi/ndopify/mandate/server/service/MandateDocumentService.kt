@@ -19,12 +19,15 @@ import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.MandateDocumentEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateDocumentPageEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.platform.image.PdfRasterizationException
+import com.wutsi.ndopify.platform.image.PdfRasterizer
 import com.wutsi.ndopify.platform.image.UnprocessableImageException
 import com.wutsi.ndopify.platform.storage.StorageService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.platform.storage.upload.DirectUploadService
 import com.wutsi.ndopify.platform.util.MimeUtils
 import com.wutsi.ndopify.refdata.dto.StorageType
+import org.apache.tika.Tika
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
@@ -47,6 +50,7 @@ class MandateDocumentService(
     private val pageDao: MandateDocumentPageRepository,
     private val storageProvider: StorageServiceProvider,
     private val directUpload: DirectUploadService,
+    private val pdfRasterizer: PdfRasterizer,
     private val previewService: MandateDocumentPreviewService,
     private val tx: TransactionTemplate,
     private val clock: Clock,
@@ -54,9 +58,19 @@ class MandateDocumentService(
     companion object {
         private val LOGGER = LoggerFactory.getLogger(MandateDocumentService::class.java)
 
+        /** The most pages one document may have; a PDF's pages count one each, an image one. */
+        const val MAX_PAGES = 10
+
+        private const val PDF_MIME_TYPE = "application/pdf"
+        private const val JPEG_MIME_TYPE = "image/jpeg"
+        private val TIKA = Tika()
+
         /** The storage folder of a mandate's documents: the presign and the upload share it. */
         fun prefix(mandateId: Long) = "mandate/$mandateId/documents"
     }
+
+    /** One stored page to write: the bytes of an image, or of one page rendered from a PDF. */
+    private data class PageSource(val bytes: ByteArray, val mimeType: String)
 
     /**
      * The documents of a mandate, newest first.
@@ -202,9 +216,16 @@ class MandateDocumentService(
 
     /**
      * Creates a document from files posted as multipart, storing each one at a new path under the mandate's folder.
-     * Same checks as [create], plus `files` empty → 400 (`files`), and each file checked by [DirectUploadService.check]
-     * before it's stored (outside any transaction). A file refused, or a store that throws, deletes the files stored
-     * before it: they are fresh UUIDs no page references, so no reference check is needed.
+     * Same checks as [create], plus `files` empty → 400 (`files`), and each file checked before it's stored (outside
+     * any transaction). A JPEG / PNG / WEBP is one page; a PDF is rendered to one JPEG page per PDF page, in the PDF's
+     * order, at its own place in the files and never stored. A refused file, or a store that throws, deletes the files
+     * stored before it: they are fresh UUIDs no page references, so no reference check is needed.
+     *
+     * Errors, on top of [create]'s: a password-protected PDF → 400 [ErrorCode.MANDATE_DOCUMENT_PDF_ENCRYPTED], an
+     * empty or corrupt one → 400 [ErrorCode.MANDATE_DOCUMENT_PDF_UNREADABLE], both on `file`; an add holding a PDF
+     * whose expansion takes the document over [MAX_PAGES] pages → 400
+     * [ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES] on `files`. An image-only add has no page cap (the client's
+     * rule), so nothing changes for it.
      */
     fun upload(mandateId: Long, type: DocumentType, title: String?, files: List<MultipartFile>): MandateDocumentEntity {
         ensureWritable(mandateId)
@@ -220,28 +241,43 @@ class MandateDocumentService(
             throw invalid("files", "")
         }
 
-        // Storage I/O outside any transaction. A later file refused (or a store that throws) deletes the files already
+        // Storage I/O outside any transaction. A later file refused (or a store that throws) deletes the pages already
         // stored: fresh UUIDs, so no page can reference them.
         val storage = storageProvider.get()
         val prefix = prefix(mandateId)
         val now = Date(clock.millis())
+        val pages = mutableListOf<MandateDocumentPageEntity>()
         val storedPaths = mutableListOf<String>()
-        val pages = try {
-            files.mapIndexed { index, file ->
-                val mimeType = directUpload.check(file)
-                val path = "$prefix/${UUID.randomUUID()}.${MimeUtils.getExtensionFromMimeType(mimeType)}"
-                storage.store(path, file.inputStream, mimeType)
-                storedPaths.add(path)
-                previewService.generate(mandateId, storage, path, mimeType, original = file.bytes)
-                MandateDocumentPageEntity(
-                    pageIndex = index,
-                    path = path,
-                    storageType = storage.type(),
-                    mimeType = mimeType,
-                    createdAt = now,
-                    modifiedAt = now,
-                )
+        var hasPdf = false
+        try {
+            files.forEach { file ->
+                val mimeType = TIKA.detect(file.bytes)
+                val fileSources = pageSources(file, mimeType, "file")
+                hasPdf = hasPdf || mimeType == PDF_MIME_TYPE
+                // The page cap only counts once a PDF is in the add: an image-only add keeps its client-side cap
+                if (hasPdf && pages.size + fileSources.size > MAX_PAGES) {
+                    throw pdfError(PdfRasterizationException.Reason.TOO_MANY_PAGES, "files")
+                }
+                fileSources.forEach { source ->
+                    val path = "$prefix/${UUID.randomUUID()}.${MimeUtils.getExtensionFromMimeType(source.mimeType)}"
+                    storage.store(path, source.bytes.inputStream(), source.mimeType)
+                    storedPaths.add(path)
+                    previewService.generate(mandateId, storage, path, source.mimeType, original = source.bytes)
+                    pages.add(
+                        MandateDocumentPageEntity(
+                            pageIndex = pages.size,
+                            path = path,
+                            storageType = storage.type(),
+                            mimeType = source.mimeType,
+                            createdAt = now,
+                            modifiedAt = now,
+                        ),
+                    )
+                }
             }
+        } catch (ex: PdfRasterizationException) {
+            cleanup(mandateId, storedPaths, storage.type())
+            throw pdfError(ex.reason, "file")
         } catch (ex: UnprocessableImageException) {
             cleanup(mandateId, storedPaths, storage.type())
             throw invalidImage("file")
@@ -356,7 +392,14 @@ class MandateDocumentService(
 
     /**
      * Adds a page posted as multipart to [documentId]'s document, storing it at a new path under the mandate's folder.
-     * Same checks as [addPage], the file checked by [DirectUploadService.check] and stored outside any transaction.
+     * Same checks as [addPage], the file checked before it's stored, outside any transaction. An image adds one page;
+     * a PDF adds one page per PDF page, in the PDF's order, rendered to JPEGs and appended from the current last page
+     * index. Returns the first added page (the only one for an image).
+     *
+     * Errors, on top of [addPage]'s: a password-protected PDF → 400 [ErrorCode.MANDATE_DOCUMENT_PDF_ENCRYPTED], an
+     * empty or corrupt one → 400 [ErrorCode.MANDATE_DOCUMENT_PDF_UNREADABLE], a PDF over [MAX_PAGES] pages → 400
+     * [ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES], all on `file`. No per-document lifetime cap: it's checked per
+     * call, as for an add.
      */
     fun uploadPage(mandateId: Long, documentId: Long, file: MultipartFile): MandateDocumentPageEntity {
         val mandate = loadWritable(mandateId)
@@ -365,36 +408,53 @@ class MandateDocumentService(
 
         // Storage I/O outside any transaction
         val storage = storageProvider.get()
-        val mimeType = directUpload.check(file)
-        val path = "${prefix(mandateId)}/${UUID.randomUUID()}.${MimeUtils.getExtensionFromMimeType(mimeType)}"
+        val sources = try {
+            pageSources(file, TIKA.detect(file.bytes), "file")
+        } catch (ex: PdfRasterizationException) {
+            throw pdfError(ex.reason, "file")
+        }
+        val now = Date(clock.millis())
+        val storedPaths = mutableListOf<String>()
+        val pages = mutableListOf<MandateDocumentPageEntity>()
         try {
-            storage.store(path, file.inputStream, mimeType)
-            previewService.generate(mandateId, storage, path, mimeType, original = file.bytes)
+            sources.forEach { source ->
+                val path = "${prefix(mandateId)}/${UUID.randomUUID()}.${MimeUtils.getExtensionFromMimeType(source.mimeType)}"
+                storage.store(path, source.bytes.inputStream(), source.mimeType)
+                storedPaths.add(path)
+                previewService.generate(mandateId, storage, path, source.mimeType, original = source.bytes)
+                pages.add(
+                    MandateDocumentPageEntity(
+                        documentId = document.id ?: -1,
+                        pageIndex = 0,
+                        path = path,
+                        storageType = storage.type(),
+                        mimeType = source.mimeType,
+                        createdAt = now,
+                        modifiedAt = now,
+                    ),
+                )
+            }
+        } catch (ex: PdfRasterizationException) {
+            cleanup(mandateId, storedPaths, storage.type())
+            throw pdfError(ex.reason, "file")
         } catch (ex: UnprocessableImageException) {
-            cleanup(mandateId, listOf(path), storage.type())
+            cleanup(mandateId, storedPaths, storage.type())
             throw invalidImage("file")
         } catch (ex: Exception) {
-            cleanup(mandateId, listOf(path), storage.type())
+            cleanup(mandateId, storedPaths, storage.type())
             throw ex
         }
-        val page = MandateDocumentPageEntity(
-            documentId = document.id ?: -1,
-            pageIndex = 0,
-            path = path,
-            storageType = storage.type(),
-            mimeType = mimeType,
-            createdAt = Date(clock.millis()),
-            modifiedAt = Date(clock.millis()),
-        )
 
         return try {
             saveLocked(mandateId) {
-                val saved = pageDao.save(page.copy(pageIndex = (pageDao.findMaxPageIndex(document.id ?: -1) ?: -1) + 1))
+                // The base index under the lock: a concurrent add must not give two pages the same index.
+                val base = (pageDao.findMaxPageIndex(document.id ?: -1) ?: -1) + 1
+                val saved = pages.mapIndexed { index, page -> pageDao.save(page.copy(pageIndex = base + index)) }
                 documentDao.save(resetExtraction(document))
-                saved
+                saved.first()
             }
         } catch (ex: Exception) {
-            deleteUnreferenced(mandateId, listOf(path), storage.type())
+            deleteUnreferenced(mandateId, storedPaths, storage.type())
             throw ex
         }
     }
@@ -461,7 +521,13 @@ class MandateDocumentService(
 
     /**
      * Replaces a page's file with one posted as multipart, storing it at a new path under the mandate's folder. Same
-     * checks as [replacePage], the file checked by [DirectUploadService.check] and stored outside any transaction.
+     * checks as [replacePage], the file checked before it's stored, outside any transaction. An image, or a PDF of
+     * exactly one page rendered to a JPEG, replaces the page and keeps its `pageIndex`.
+     *
+     * Errors, on top of [replacePage]'s: a password-protected PDF → 400 [ErrorCode.MANDATE_DOCUMENT_PDF_ENCRYPTED], an
+     * empty or corrupt one → 400 [ErrorCode.MANDATE_DOCUMENT_PDF_UNREADABLE], a PDF of more than one page → 400
+     * [ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES], all on `file`. A refused file leaves the page, its object and
+     * its preview untouched.
      */
     fun uploadReplacementPage(
         mandateId: Long,
@@ -476,11 +542,15 @@ class MandateDocumentService(
 
         // Storage I/O outside any transaction
         val storage = storageProvider.get()
-        val mimeType = directUpload.check(file)
-        val path = "${prefix(mandateId)}/${UUID.randomUUID()}.${MimeUtils.getExtensionFromMimeType(mimeType)}"
+        val source = try {
+            pageSources(file, TIKA.detect(file.bytes), "file", maxPages = 1).single()
+        } catch (ex: PdfRasterizationException) {
+            throw pdfError(ex.reason, "file")
+        }
+        val path = "${prefix(mandateId)}/${UUID.randomUUID()}.${MimeUtils.getExtensionFromMimeType(source.mimeType)}"
         try {
-            storage.store(path, file.inputStream, mimeType)
-            previewService.generate(mandateId, storage, path, mimeType, original = file.bytes)
+            storage.store(path, source.bytes.inputStream(), source.mimeType)
+            previewService.generate(mandateId, storage, path, source.mimeType, original = source.bytes)
         } catch (ex: UnprocessableImageException) {
             cleanup(mandateId, listOf(path), storage.type())
             throw invalidImage("file")
@@ -493,7 +563,7 @@ class MandateDocumentService(
         val replaced = page.copy(
             path = path,
             storageType = storage.type(),
-            mimeType = mimeType,
+            mimeType = source.mimeType,
             modifiedAt = Date(clock.millis()),
         )
 
@@ -617,6 +687,54 @@ class MandateDocumentService(
         Error(
             code = ErrorCode.HTTP_INVALID_PARAMETER,
             parameter = Parameter(name = name, type = ParameterType.PARAMETER_TYPE_PAYLOAD, value = value),
+        ),
+    )
+
+    /**
+     * The pages of one posted file, in order: an image is one page, a PDF as many pages as it has, each rendered to a
+     * JPEG ([maxPages] at most). Errors, all on [field]: neither an image nor a PDF, or a PDF over 5 MB → 400
+     * [ErrorCode.HTTP_INVALID_PARAMETER]; a PDF that can't be expanded → [PdfRasterizationException], which the caller
+     * words through [pdfError].
+     */
+    private fun pageSources(
+        file: MultipartFile,
+        mimeType: String,
+        field: String,
+        maxPages: Int = MAX_PAGES,
+    ): List<PageSource> = when {
+        mimeType == PDF_MIME_TYPE -> {
+            if (file.size > DirectUploadService.MAX_BYTES) {
+                throw invalidFile(field)
+            }
+            pdfRasterizer.rasterize(file.bytes, maxPages).map { page -> PageSource(page, JPEG_MIME_TYPE) }
+        }
+
+        mimeType in DirectUploadService.IMAGE_MIME_TYPES -> listOf(PageSource(file.bytes, directUpload.check(file)))
+        else -> throw invalidFile(field)
+    }
+
+    /**
+     * A refused PDF, as a 400 whose [reason] picks the code. No message and no value: neither a file name nor a path of
+     * the PDF may reach the error body or the logs.
+     */
+    private fun pdfError(reason: PdfRasterizationException.Reason, field: String) = BadRequestException(
+        Error(
+            code = when (reason) {
+                PdfRasterizationException.Reason.ENCRYPTED -> ErrorCode.MANDATE_DOCUMENT_PDF_ENCRYPTED
+                PdfRasterizationException.Reason.TOO_MANY_PAGES -> ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES
+                PdfRasterizationException.Reason.UNREADABLE,
+                PdfRasterizationException.Reason.EMPTY,
+                -> ErrorCode.MANDATE_DOCUMENT_PDF_UNREADABLE
+            },
+            parameter = Parameter(name = field, type = ParameterType.PARAMETER_TYPE_PAYLOAD),
+        ),
+    )
+
+    /** A file that is neither an image nor a PDF, or a PDF over 5 MB: 400 on [field], with no value to leak its name. */
+    private fun invalidFile(field: String) = BadRequestException(
+        Error(
+            code = ErrorCode.HTTP_INVALID_PARAMETER,
+            parameter = Parameter(name = field, type = ParameterType.PARAMETER_TYPE_PAYLOAD),
         ),
     )
 
