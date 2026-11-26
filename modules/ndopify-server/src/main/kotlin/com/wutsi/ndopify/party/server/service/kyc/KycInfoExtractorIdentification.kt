@@ -28,7 +28,10 @@ class KycInfoExtractorIdentification(
             - Fist name: First name of the holder of the document
             - Last name: Last name of the holder of the document
             - Country Code: 2 letter ISO code of the country that issued the document
+            - Date of birth: The holder's date of birth in YYYY-MM-DD format
+            - Issue date: The document's issue date in YYYY-MM-DD format
             - Expiry date: Expiry date of the document in YYYY-MM-DD format
+            - Sides present: The sides of the document visible among the provided images, among "FRONT" and "BACK"
             - valid: true if the document is valid, false otherwise
                 - Do not consider expired document as invalid, but provide the expiry date.
                 - Consider the document invalid when:
@@ -39,6 +42,7 @@ class KycInfoExtractorIdentification(
                     - other reasons that make the document invalid.
             - Reason for invalidity: If the document is invalid, provide a reason for invalidity. If the document is valid, do not include this field.
             - confidence: A score between 0..1 indicating the confidence of your assessment. 1 means you are very confident, 0 means you are not confident at all.
+            - fieldConfidences: A score between 0..1 for each extracted field, keyed by its JSON name.
 
             Return the information in the following JSON format:
             {
@@ -47,10 +51,14 @@ class KycInfoExtractorIdentification(
                 "firstName": "John",
                 "lastName": "Doe",
                 "countryCode": "US",
+                "dateOfBirth": "1980-01-01",
+                "issueDate": "2020-01-01",
                 "expiryDate": "2030-01-01",
+                "sidesPresent": ["FRONT"],
                 "valid": false,
                 "invalidityReason": "Document is expired",
-                "confidence": 0.5
+                "confidence": 0.5,
+                "fieldConfidences": {"number": 0.9, "firstName": 0.8, "lastName": 0.8}
             }
 
             ## Image Requirements
