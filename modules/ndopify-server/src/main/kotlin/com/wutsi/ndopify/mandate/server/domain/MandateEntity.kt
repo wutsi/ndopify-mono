@@ -52,6 +52,13 @@ data class MandateEntity(
      */
     val conversationSubject: String? = null,
 
+    /**
+     * The Message-ID the relay assigned to the conversation's first message, captured from its 250 reply and kept:
+     * every later e-mail references it. Null when the relay named none (Mailpit / GreenMail) or for a conversation
+     * opened before it was captured; the pinned root is then the fallback.
+     */
+    val conversationMessageId: String? = null,
+
     /** The listing the mandate was seeded from; null for a mandate created another way. */
     @Column(name = "origin_listing_id")
     val originListingId: Long? = null,

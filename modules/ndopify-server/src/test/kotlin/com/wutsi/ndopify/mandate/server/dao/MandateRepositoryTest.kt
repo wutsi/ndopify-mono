@@ -107,4 +107,45 @@ class MandateRepositoryTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(0, written)
         assertNull(transactionTemplate.execute { dao.findConversationSubjectById(9) })
     }
+
+    @Test
+    fun `the conversation message id is written once`() {
+        TenantContext.set(TENANT_ID)
+
+        val written = transactionTemplate.execute {
+            dao.markConversationMessageId(1, "0101-abc@email.amazonses.com")
+        }
+        val again = transactionTemplate.execute {
+            dao.markConversationMessageId(1, "0101-def@email.amazonses.com")
+        }
+
+        assertEquals(1, written)
+        assertEquals(0, again)
+        assertEquals(
+            "0101-abc@email.amazonses.com",
+            transactionTemplate.execute { dao.findConversationMessageIdById(1) },
+        )
+    }
+
+    @Test
+    fun `writing the conversation message id does not bump the version`() {
+        TenantContext.set(TENANT_ID)
+        val before = transactionTemplate.execute { dao.findById(1).get().version }
+
+        transactionTemplate.execute { dao.markConversationMessageId(1, "0101-abc@email.amazonses.com") }
+
+        assertEquals(before, transactionTemplate.execute { dao.findById(1).get().version })
+    }
+
+    @Test
+    fun `the conversation message id is never another tenant's`() {
+        TenantContext.set(TENANT_ID)
+
+        val written = transactionTemplate.execute {
+            dao.markConversationMessageId(9, "0101-abc@email.amazonses.com")
+        }
+
+        assertEquals(0, written)
+        assertNull(transactionTemplate.execute { dao.findConversationMessageIdById(9) })
+    }
 }

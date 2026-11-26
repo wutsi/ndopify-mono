@@ -49,6 +49,23 @@ interface MandateRepository : CrudRepository<MandateEntity, Long>, JpaSpecificat
     @Query("UPDATE MandateEntity m SET m.conversationSubject = :subject WHERE m.id = :id AND m.conversationSubject IS NULL")
     fun markConversationSubject(@Param("id") id: Long, @Param("subject") subject: String): Int
 
+    // Read from the database: a bulk update below is not reflected in an entity already loaded in the session
+    @Query("SELECT m.conversationMessageId FROM MandateEntity m WHERE m.id = :id")
+    fun findConversationMessageIdById(@Param("id") id: Long): String?
+
+    /**
+     * Stores the id the relay assigned to the conversation's first message once. A bulk update on purpose: it skips the
+     * `@Version` check, so an agent editing the mandate meanwhile neither fails with a 409 nor loses the edit. 0 when
+     * another e-mail recorded one first, which is then the root to use.
+     */
+    @Transactional
+    @Modifying
+    @Query(
+        "UPDATE MandateEntity m SET m.conversationMessageId = :messageId " +
+            "WHERE m.id = :id AND m.conversationMessageId IS NULL",
+    )
+    fun markConversationMessageId(@Param("id") id: Long, @Param("messageId") messageId: String): Int
+
     // The customer's search still open in the same city and for the same listing type: a listing asked for from its
     // public page attaches to it instead of creating a duplicate search. Newest first, should a customer have two.
     fun findFirstByCustomerIdAndMandateTypeAndCityIdAndListingTypeAndStatusNotInOrderByIdDesc(
