@@ -60,7 +60,7 @@ class VisitNoShowMailet(
             token?.let { "$url?token=$it" } ?: url
         }
         val conversation = conversationService.of(visit.mandateId)
-        mailService.send(
+        val sentMessageId = mailService.send(
             Email(
                 sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = customer.party.email, displayName = customerName),
@@ -88,6 +88,9 @@ class VisitNoShowMailet(
                 ),
             ),
         )
+        if (conversation.inReplyTo == null) {
+            conversationService.recordRoot(visit.mandateId, sentMessageId)
+        }
 
         if (visit.noShowParty == VisitParty.AGENT) {
             val agentUrl = tenant.partnerCentralUrl?.removeSuffix("/")?.let { "$it/visits/${visit.id}" }

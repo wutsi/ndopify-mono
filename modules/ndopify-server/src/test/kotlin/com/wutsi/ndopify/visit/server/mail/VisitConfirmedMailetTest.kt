@@ -123,6 +123,7 @@ class VisitConfirmedMailetTest {
         assertEquals("mandate-1-1@wutsi.com", customerEmail.inReplyTo)
         assertEquals(listOf("mandate-1-1@wutsi.com"), customerEmail.references)
         verify(conversationService).of(1L)
+        verify(conversationService, never()).recordRoot(any(), any())
         assertEquals("<html>confirmed</html>", customerEmail.body)
 
         assertEquals("Kim Possible", customerEmail.sender?.displayName)
@@ -222,6 +223,23 @@ class VisitConfirmedMailetTest {
 
         assertNull(customerContext()["visit_url"])
         verify(linkTokenService, never()).create(any())
+    }
+
+    @Test
+    fun `the first customer e-mail records the relay's id`() {
+        doReturn(
+            MandateConversation(
+                subject = "Votre recherche : appartement à Bastos (Yaounde) · mandat 1",
+                messageId = "mandate-1-1@wutsi.com",
+                inReplyTo = null,
+                references = emptyList(),
+            ),
+        ).whenever(conversationService).of(1L)
+        doReturn("0101-abc@email.amazonses.com").whenever(mailService).send(any())
+
+        mailet.send(visit, customer, agent, listing)
+
+        verify(conversationService).recordRoot(1L, "0101-abc@email.amazonses.com")
     }
 
     private fun email(address: String): Email {

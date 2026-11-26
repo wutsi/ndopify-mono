@@ -59,7 +59,7 @@ class VisitReminderMailet(
         }
         val conversation = conversationService.of(visit.mandateId)
 
-        mailService.send(
+        val sentMessageId = mailService.send(
             Email(
                 sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = customer.party.email, displayName = customerName),
@@ -93,6 +93,9 @@ class VisitReminderMailet(
                 ),
             ),
         )
+        if (conversation.inReplyTo == null) {
+            conversationService.recordRoot(visit.mandateId, sentMessageId)
+        }
     }
 
     fun sendAgent(visit: VisitEntity, customer: CustomerEntity, agent: AgentEntity, listing: ListingEntity) {

@@ -50,7 +50,7 @@ class VisitExpiredMailet(
         val agentUrl = tenant.partnerCentralUrl?.removeSuffix("/")?.let { "$it/visits/${visit.id}" }
         val conversation = conversationService.of(visit.mandateId)
 
-        mailService.send(
+        val sentMessageId = mailService.send(
             Email(
                 sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = customer.party.email, displayName = customerName),
@@ -77,6 +77,9 @@ class VisitExpiredMailet(
                 ),
             ),
         )
+        if (conversation.inReplyTo == null) {
+            conversationService.recordRoot(visit.mandateId, sentMessageId)
+        }
         mailService.send(
             Email(
                 recipient = Receipient(email = agent.party.email, displayName = agentName),

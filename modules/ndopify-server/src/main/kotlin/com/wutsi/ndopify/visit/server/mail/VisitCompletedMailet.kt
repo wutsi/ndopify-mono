@@ -44,7 +44,7 @@ class VisitCompletedMailet(
             token?.let { "$url?token=$it" } ?: url
         }
         val conversation = conversationService.of(visit.mandateId)
-        mailService.send(
+        val sentMessageId = mailService.send(
             Email(
                 sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = customer.party.email, displayName = customerName),
@@ -72,6 +72,9 @@ class VisitCompletedMailet(
                 ),
             ),
         )
+        if (conversation.inReplyTo == null) {
+            conversationService.recordRoot(visit.mandateId, sentMessageId)
+        }
     }
 
     private fun listingTitle(listing: ListingEntity): String =
