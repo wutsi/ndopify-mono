@@ -13,6 +13,8 @@ data class DocumentRowView(
     /** "Ajouté le 25/11/2026", in the tenant's date format. */
     val addedOn: String,
     val pageCount: Int,
+    /** `expiresAt` before the tenant's today: the row carries the *Expirée* marker, the status doesn't say it. */
+    val expired: Boolean = false,
     val href: String,
 )
 

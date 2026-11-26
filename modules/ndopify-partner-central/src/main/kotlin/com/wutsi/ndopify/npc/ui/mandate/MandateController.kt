@@ -488,6 +488,7 @@ class MandateController(
                     null
                 },
                 formatter(),
+                today(),
             ),
         )
         (model.getAttribute(MandateDocumentController.OUTCOME) as? String)?.let { outcome ->

@@ -6,6 +6,7 @@ import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.mandate.dto.DocumentField
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.DocumentType
 import com.wutsi.ndopify.mandate.dto.Mandate
@@ -28,6 +29,7 @@ import org.jsoup.nodes.Document
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.context.support.ResourceBundleMessageSource
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.test.web.servlet.MockMvc
@@ -40,6 +42,7 @@ import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import java.util.Date
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -59,6 +62,12 @@ class MandateDocumentTemplateTest {
     private val documentClient = mock<NdMandateDocumentClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
+    private val labels = DocumentFieldLabels(
+        ResourceBundleMessageSource().apply {
+            setBasename("messages")
+            setDefaultEncoding("UTF-8")
+        },
+    )
     private lateinit var mvc: MockMvc
 
     private val mandate = Mandate(
@@ -80,6 +89,16 @@ class MandateDocumentTemplateTest {
         version = 3,
         createdAt = Date.from(Instant.parse("2026-11-25T10:00:00Z")),
         modifiedAt = Date.from(Instant.parse("2026-11-25T10:00:00Z")),
+    )
+
+    private val landTitleFields = listOf(
+        DocumentField("titleNumber", "4521", 0.97),
+        DocumentField("owners", "Rodrigue Essomba, Carine Mbarga", 0.93),
+        DocumentField("department", "Wouri", 0.95),
+        DocumentField("arrondissement", "Douala 5e", 0.91),
+        DocumentField("locality", "Bonapriso", 0.94),
+        DocumentField("surface", "500", 0.88),
+        DocumentField("issueDate", "2019-06-14", 0.96),
     )
 
     @BeforeEach
@@ -106,7 +125,7 @@ class MandateDocumentTemplateTest {
         }
         mvc = MockMvcBuilders
             .standaloneSetup(
-                MandateDocumentController(currentAgent, mandateClient, documentClient, tenantContext, clock),
+                MandateDocumentController(currentAgent, mandateClient, documentClient, labels, tenantContext, clock),
             )
             .setControllerAdvice(SignedInAdvice(), HttpClientErrorHandler(mock()))
             .setViewResolvers(viewResolver)
@@ -312,6 +331,190 @@ class MandateDocumentTemplateTest {
         assertEquals("open", row.selectFirst("details")?.attr("open"))
         assertEquals("Choisissez une image.", row.selectFirst("[data-error-text]")?.text())
         assertFalse(page.select(".doc-page")[0].selectFirst("details")!!.hasAttr("open"))
+    }
+
+    @Test
+    fun `document - the fields the AI read`() {
+        doReturn(document.copy(fields = landTitleFields)).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val page = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID"))
+        val reading = page.selectFirst("[data-document-reading]")!!
+
+        assertEquals("Données lues", reading.selectFirst("h2")?.text())
+        assertTrue(reading.select(".alert--warning").isEmpty())
+        assertTrue(reading.select(".hint").isEmpty())
+        assertEquals(
+            listOf(
+                "Numéro du titre",
+                "Propriétaires",
+                "Département",
+                "Arrondissement",
+                "Localité",
+                "Surface",
+                "Date de délivrance",
+            ),
+            reading.select(".doc-data .review__term").map { it.text() },
+        )
+        assertEquals(
+            listOf("4521", "Rodrigue Essomba, Carine Mbarga", "Wouri", "Douala 5e", "Bonapriso", "500 m²", "14 juin 2019"),
+            reading.select(".doc-data .review__value").map { it.text().replace('\u00A0', ' ').replace('\u202F', ' ') },
+        )
+        assertTrue(
+            reading.selectFirst(".doc-reading__intro")!!.text().replace('\u00A0', ' ')
+                .startsWith("Lues automatiquement sur la pièce : vérifiez-les sur l'original."),
+        )
+        // No confidence, no raw JSON
+        assertFalse(reading.text().contains("0.9"))
+        assertFalse(page.html().contains("\"confidence\""))
+    }
+
+    @Test
+    fun `document - an unknown key and the amounts' currency`() {
+        doReturn(
+            document.copy(
+                fields = listOf(
+                    DocumentField("currency", "XAF"),
+                    DocumentField("amount", "12500000"),
+                    DocumentField("position", "Chargée de clientèle"),
+                ),
+            ),
+        ).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val reading = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID")).selectFirst("[data-document-reading]")!!
+
+        assertEquals(listOf("Montant", "Autre donnée"), reading.select(".doc-data .review__term").map { it.text() })
+        assertEquals(
+            listOf("12,5M FCFA", "Chargée de clientèle"),
+            reading.select(".doc-data .review__value").map { it.text().replace('\u00A0', ' ') },
+        )
+    }
+
+    @Test
+    fun `document - waiting for the reading`() {
+        for ((status, text) in listOf(
+            DocumentStatus.UPLOADED to
+                "Le document est reçu : sa lecture va commencer. Rien à faire, elle se lance d'elle-même ; ses données " +
+                "apparaîtront ici.",
+            DocumentStatus.EXTRACTING to
+                "L'IA lit le document. Ses données apparaîtront ici dès qu'elle aura terminé : rien à faire.",
+        )) {
+            doReturn(document.copy(status = status, fields = emptyList())).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+            val reading = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID")).selectFirst("[data-document-reading]")!!
+
+            assertEquals(text, reading.selectFirst("[data-reading-waiting]")?.text())
+            assertNull(reading.selectFirst(".doc-data"))
+            assertNull(reading.selectFirst(".doc-problems"))
+        }
+    }
+
+    @Test
+    fun `document - an extracted document without a field says no data was read`() {
+        doReturn(document.copy(fields = emptyList())).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val page = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID"))
+        val reading = page.selectFirst("[data-document-reading]")!!
+
+        assertTrue(
+            reading.selectFirst("[data-reading-empty]")!!.text().replace('\u00A0', ' ')
+                .startsWith("Aucune donnée n'a été lue sur ce document. Vérifiez la pièce elle-même : elle reste consultable."),
+        )
+        assertNull(reading.selectFirst(".doc-data"))
+        assertEquals("Analysé", page.selectFirst("[data-document-status]")?.text()?.replace("Statut : ", ""))
+    }
+
+    @Test
+    fun `document - a failed reading shows one instruction per code`() {
+        doReturn(
+            document.copy(
+                status = DocumentStatus.FAILED,
+                fields = emptyList(),
+                problemCodes = listOf("DOCUMENT_PAGE_MISSING", "DOCUMENT_FIELD_LOW_CONFIDENCE"),
+            ),
+        ).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val reading = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID")).selectFirst("[data-document-reading]")!!
+
+        assertEquals(
+            listOf(
+                "Il manque une page du document, son verso par exemple. Remplacez la page manquante par une photo, ou " +
+                    "supprimez le document et ajoutez-le avec toutes ses pages.",
+                "L'IA n'est pas sûre d'un champ obligatoire. Vérifiez-le sur la pièce : si la photo est floue, " +
+                    "remplacez la page ; sinon, supprimez le document et ajoutez-le de nouveau.",
+            ),
+            reading.select(".doc-problems li").map { it.text() },
+        )
+        assertNull(reading.selectFirst(".doc-data"))
+    }
+
+    @Test
+    fun `document - DOCUMENT_EXPIRED is the notice, never an instruction`() {
+        doReturn(
+            document.copy(
+                problemCodes = listOf("DOCUMENT_EXPIRED"),
+                expiresAt = LocalDate.of(2025, 1, 12),
+            ),
+        ).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val reading = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID")).selectFirst("[data-document-reading]")!!
+
+        assertNull(reading.selectFirst(".doc-problems"))
+        assertNotNull(reading.selectFirst("[data-reading-expired]"))
+    }
+
+    @Test
+    fun `document - an expired piece shows the notice and its way out`() {
+        doReturn(document.copy(problemCodes = listOf("DOCUMENT_EXPIRED"), expiresAt = LocalDate.of(2025, 1, 12)))
+            .whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val page = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID"))
+        val notice = page.selectFirst("[data-reading-expired]")!!
+
+        assertEquals("Pièce expirée le 12 janv. 2025", notice.selectFirst("[data-expired-title]")?.text())
+        assertEquals("Elle était déjà expirée quand l'IA l'a lue.", notice.selectFirst("[data-expired-when]")?.text())
+        assertTrue(
+            notice.selectFirst("[data-expired-action]")!!.text().replace('\u00A0', ' ')
+                .startsWith("Ajoutez une pièce en cours de validité : remplacez ses pages par celles de la nouvelle pièce"),
+        )
+        // The status pill stays Analysé: an expiry is not a status
+        assertEquals("Analysé", page.selectFirst("[data-document-status]")?.text()?.replace("Statut : ", ""))
+    }
+
+    @Test
+    fun `document - expired since its reading`() {
+        doReturn(document.copy(expiresAt = LocalDate.of(2025, 1, 12))).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val notice = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID")).selectFirst("[data-reading-expired]")!!
+
+        assertEquals("Elle a expiré depuis sa lecture.", notice.selectFirst("[data-expired-when]")?.text())
+    }
+
+    @Test
+    fun `document - no notice when the piece is valid or has no expiry`() {
+        for (expiresAt in listOf(LocalDate.of(2026, 11, 26), LocalDate.of(2026, 12, 1), null)) {
+            doReturn(document.copy(expiresAt = expiresAt)).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+            val page = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID"))
+
+            assertNull(page.selectFirst("[data-reading-expired]"), "$expiresAt")
+        }
+    }
+
+    @Test
+    fun `document - a cancelled mandate keeps the notice readable, without a way out`() {
+        doReturn(mandate.copy(status = MandateStatus.CANCELLED)).whenever(mandateClient).get(MANDATE_ID)
+        doReturn(document.copy(fields = landTitleFields, expiresAt = LocalDate.of(2025, 1, 12)))
+            .whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val page = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID"))
+
+        assertEquals(
+            "Mandat annulé : cette pièce reste consultable telle quelle.",
+            page.selectFirst("[data-expired-action]")?.text(),
+        )
+        assertEquals(7, page.select(".doc-data .review__item").size)
+        assertTrue(page.select(".doc-page details").isEmpty())
+        assertNull(page.selectFirst("[data-document-manage]"))
     }
 
     private fun conflict(): HttpClientErrorException {

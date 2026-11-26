@@ -6,6 +6,7 @@ import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 import com.wutsi.ndopify.web.core.service.TenantFormatter
+import java.time.LocalDate
 
 /**
  * Builds the *Documents* section of the mandate page and a document's page from ndopify-server's DTOs. The documents
@@ -27,7 +28,12 @@ object MandateDocumentViews {
             "de principe bancaire ou justificatif de fonds."
 
     /** [documents] null when they can't be read: the section says so, and the rest of the page is unchanged. */
-    fun section(mandate: Mandate, documents: List<MandateDocument>?, formatter: TenantFormatter): DocumentSectionView {
+    fun section(
+        mandate: Mandate,
+        documents: List<MandateDocument>?,
+        formatter: TenantFormatter,
+        today: LocalDate,
+    ): DocumentSectionView {
         val sale = FindPropertyRules.isSale(mandate.listingType)
         val listing = mandate.mandateType == MandateType.LISTING
         val words = MandateRules.words(mandate.mandateType, mandate.listingType)
@@ -51,6 +57,7 @@ object MandateDocumentViews {
                         status = MandateDocumentLabels.status(document.status),
                         addedOn = formatter.date(document.createdAt),
                         pageCount = document.pages.size,
+                        expired = document.expiresAt?.isBefore(today) == true,
                         href = "/mandates/${mandate.id}/documents/${document.id}",
                     )
                 },

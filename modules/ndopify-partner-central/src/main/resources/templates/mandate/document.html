@@ -1,19 +1,23 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head(${document} ? |${document.title} — Ndopify Partner Central| : 'Document — Ndopify Partner Central', |Un document d'un mandat : son type, son titre et ses pages.|, false)}"></head>
+<head th:replace="~{fragments/head :: head(${document} ? |${document.title} — Ndopify Partner Central| : 'Document — Ndopify Partner Central', |Un document d'un mandat : ce que l'IA y a lu, ses problèmes, ses pages.|, false)}"></head>
 <!--/*
   One document of a mandate (MandateDocumentController, GET /mandates/{id}/documents/{documentId}), opened from a row
   of the mandate page's Documents section. Its header: the title, the status pill, the type and ONE upload date
   ("Ajouté le 25 nov. 2026", tenant dateFormat with the year), for the whole document. No image, no preview, no
   thumbnail, no size anywhere: a page is a plain row "*Page 1*", its *Voir* link (this app's authenticated preview
   route, a new tab) and its folded *Remplacer* form. Nothing of a page's path nor any storage URL is ever in the HTML.
+  #331 adds what the AI read between the header and the pages: the fields it read (labelled and formatted, in the
+  server's order), the hint while it reads, one instruction per problem code of a FAILED document and the notice of an
+  expired piece (MandateDocumentReadingViews, the "reading" model attribute). No confidence is shown, and a
+  DOCUMENT_EXPIRED warning is the notice's, never an instruction.
   Then *Renommer* (the title and the version the page was loaded with; a blank or over-100 title is a field error,
   [conflict] is ndopify-server's 409 MANDATE_DOCUMENT_VERSION_CONFLICT with the current title) and *Supprimer le
   document* (a confirmation; without JS a link to ?delete=1 opens it on this same page, [deleting]).
   "document" is the DocumentView, "mandate" the MandateView (number and back link). "replaceErrors" holds the
   replacement error of a page, by page id, and "outcomeText" / "outcomeStyle" the last action's outcome.
-  A CLOSED / CANCELLED mandate shows the document read-only: its pages keep *Voir*, and there is no Remplacer,
-  Renommer nor Supprimer ([document.writable]).
+  A CLOSED / CANCELLED mandate shows the document read-only: its fields, instructions and notice stay readable, its
+  pages keep *Voir*, and there is no Remplacer, Renommer nor Supprimer ([document.writable]).
 */-->
 <body data-page="mandate-document">
     <th:block th:replace="~{fragments/site-header :: header(@{/}, true)}"></th:block>
@@ -48,6 +52,69 @@
                     <svg th:replace="~{fragments/icon :: info}"></svg>
                     <p>Mandat fermé&nbsp;: ce document reste consultable, sans modification.</p>
                 </div>
+
+                <!--
+                  #331: what the AI read on this document, before its pages. The server renders every state: the fields
+                  it read (one row per field, in the server's order, labelled from messages.properties and formatted by
+                  kind: dates in the tenant's dateFormat, a pay month, short amounts with the document's currency,
+                  "•••• 0123", "500 m²", "Solde" / "Attesté"), the hint while it reads, one instruction per problem code
+                  of a FAILED document, and the notice of a piece expired on the tenant's clock. No confidence, no JSON,
+                  no page path. On a closed or cancelled mandate the section stays readable, with no action of its own.
+                -->
+                <section class="doc-reading" aria-labelledby="reading-title" data-document-reading
+                         th:if="${reading.waiting != null or reading.expiry != null or !reading.problems.isEmpty() or !reading.rows.isEmpty() or reading.noData}">
+                    <h2 id="reading-title" class="doc-manage__title">Données lues</h2>
+
+                    <!-- expiresAt before today: the piece is no longer valid, whatever its status says. -->
+                    <div class="alert alert--warning" th:if="${reading.expiry != null}" data-reading-expired>
+                        <svg th:replace="~{fragments/icon :: warning}"></svg>
+                        <div>
+                            <p class="alert__title" data-expired-title>Pièce expirée le <span
+                                    th:text="${reading.expiry.date}">12 janv. 2025</span></p>
+                            <p th:text="${reading.expiry.since}" data-expired-when>Elle était déjà expirée quand l'IA l'a
+                                lue.</p>
+                            <p th:text="${reading.expiry.wayOut}" data-expired-action>Ajoutez une pièce en cours de
+                                validité&nbsp;: remplacez ses pages par celles de la nouvelle pièce.</p>
+                        </div>
+                    </div>
+
+                    <!-- UPLOADED / EXTRACTING: the reading is automatic, there is nothing to do but wait. -->
+                    <div class="hint" th:if="${reading.waiting != null}" data-reading-waiting>
+                        <svg th:replace="~{fragments/icon :: clock}"></svg>
+                        <p th:text="${reading.waiting}" data-waiting-text>L'IA lit le document.</p>
+                    </div>
+
+                    <!-- EXTRACTED without a field (an older payload): no empty list. -->
+                    <div class="hint" th:if="${reading.noData}" data-reading-empty>
+                        <svg th:replace="~{fragments/icon :: info}"></svg>
+                        <p>Aucune donnée n'a été lue sur ce document. Vérifiez la pièce elle-même&nbsp;: elle reste
+                            consultable.</p>
+                    </div>
+
+                    <!-- FAILED: one instruction per problem code, in the server's order. -->
+                    <div class="alert alert--warning" th:unless="${reading.problems.isEmpty()}" data-reading-problems>
+                        <svg th:replace="~{fragments/icon :: warning}"></svg>
+                        <div>
+                            <p class="alert__title">Ce document n'a pas pu être lu</p>
+                            <p>Corrigez ce qui suit&nbsp;: la lecture repart d'elle-même.</p>
+                            <ul class="doc-problems" data-reading-problem-list>
+                                <li th:each="problem : ${reading.problems}" th:text="${problem}">Il manque une page du
+                                    document.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <th:block th:unless="${reading.rows.isEmpty()}">
+                        <p class="doc-reading__intro">Lues automatiquement sur la pièce&nbsp;: vérifiez-les sur
+                            l'original.</p>
+                        <dl class="review doc-data" data-reading-fields>
+                            <div class="review__item" th:each="row : ${reading.rows}">
+                                <dt class="review__term" th:text="${row.label}">Numéro du titre</dt>
+                                <dd class="review__value" th:text="${row.value}">4521</dd>
+                            </div>
+                        </dl>
+                    </th:block>
+                </section>
 
                 <section class="doc-pages-section" aria-labelledby="pages-title">
                     <h2 id="pages-title" class="doc-manage__title">Pages</h2>

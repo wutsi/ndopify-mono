@@ -52,6 +52,8 @@
                     <span th:class="|status-tag ${#strings.isEmpty(row.status.style) ? '' : 'status-tag--' + row.status.style}|"
                           data-doc-status><span class="visually-hidden">Statut&nbsp;: </span><span
                             th:text="${row.status.label}">Analysé</span></span>
+                    <span class="status-tag status-tag--error" th:if="${row.expired}"
+                          data-doc-expired>Expirée</span>
                 </span>
                 <span class="doc-row__title" th:if="${row.title}" th:text="${row.title}" data-doc-title>Titre foncier
                     n° 4521</span>

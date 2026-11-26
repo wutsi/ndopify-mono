@@ -45,6 +45,9 @@ import org.springframework.web.multipart.MultipartFile
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 import java.time.Clock
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 
 /**
  * A mandate's documents: the *Documents* section of the mandate page ([com.wutsi.ndopify.npc.ui.mandate.MandateController]
@@ -69,6 +72,7 @@ class MandateDocumentController(
     private val currentAgent: CurrentAgent,
     private val mandateClient: NdMandateClient,
     private val documentClient: NdMandateDocumentClient,
+    private val labels: DocumentFieldLabels,
     private val tenantContext: TenantContext,
     private val clock: Clock,
 ) {
@@ -582,6 +586,7 @@ class MandateDocumentController(
     ): String {
         model.addAttribute("mandate", view(mandate))
         model.addAttribute("document", MandateDocumentViews.document(mandate, document, formatter()))
+        model.addAttribute("reading", MandateDocumentReadingViews.of(mandate, document, formatter(), labels, today()))
         model.addAttribute("renameForm", renameForm)
         model.addAttribute("renameErrors", renameErrors)
         model.addAttribute("replaceErrors", replaceErrors)
@@ -704,4 +709,7 @@ class MandateDocumentController(
     )
 
     private fun formatter(): TenantFormatter = TenantFormatter(tenantContext.getTenant())
+
+    /** Today in the tenant's time zone. Like the rest of this controller, only reads `clock.millis()`. */
+    private fun today(): LocalDate = formatter().today(Clock.fixed(Instant.ofEpochMilli(clock.millis()), ZoneOffset.UTC))
 }
