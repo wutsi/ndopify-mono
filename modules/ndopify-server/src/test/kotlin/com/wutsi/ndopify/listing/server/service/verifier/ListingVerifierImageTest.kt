@@ -294,6 +294,22 @@ class ListingVerifierImageTest {
     }
 
     @Test
+    fun `one photo among the maps is enough`() {
+        mockImages(
+            pending = emptyList(),
+            verified = listOf(
+                image(11, status = ImageStatus.VERIFIED).copy(kind = ImageKind.MAP),
+                image(12, status = ImageStatus.VERIFIED),
+            ),
+        )
+
+        val result = verifier.verify(listing)
+
+        assertTrue(result.success)
+        assertNull(result.errorCode)
+    }
+
+    @Test
     fun `the rendition is sent to the extractor`() {
         mockImages(pending = listOf(image(11)), verified = emptyList())
         doReturn(url("/rendition.jpg")).whenever(imageService).transform(any(), any())
