@@ -8,7 +8,7 @@ import com.wutsi.ndopify.web.core.service.TenantFormatter
 import java.time.LocalDate
 
 /**
- * Builds what the AI read on a document from ndopify-server's [MandateDocument]: its fields (labelled by
+ * Builds what was read on a document from ndopify-server's [MandateDocument]: its fields (labelled by
  * [DocumentFieldLabels] and formatted by [DocumentFieldValues], never the raw JSON nor a confidence), the hint of a
  * document still waiting for its reading, one instruction per problem code of a FAILED one, and the notice of a piece
  * expired before [today]. Only an EXTRACTED document shows field rows: a waiting or failed one never does (#331's
@@ -22,8 +22,8 @@ object MandateDocumentReadingViews {
         "Le document est reçu : sa lecture va commencer. Rien à faire, elle se lance d'elle-même ; ses données " +
             "apparaîtront ici."
     private const val WAITING_EXTRACTING =
-        "L'IA lit le document. Ses données apparaîtront ici dès qu'elle aura terminé : rien à faire."
-    private const val ALREADY_EXPIRED = "Elle était déjà expirée quand l'IA l'a lue."
+        "La lecture du document est en cours. Ses données apparaîtront ici dès qu'elle sera terminée : rien à faire."
+    private const val ALREADY_EXPIRED = "Elle était déjà expirée lors de sa lecture."
     private const val EXPIRED_SINCE = "Elle a expiré depuis sa lecture."
     private const val FIND_A_VALID_ONE =
         "Ajoutez une pièce en cours de validité : remplacez ses pages par celles de la nouvelle pièce, ou " +
