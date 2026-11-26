@@ -283,7 +283,10 @@ class MandateDocumentTemplateTest {
             "Un document d'un mandat : ce qui en a été lu, ses problèmes, ses pages.",
             page.selectFirst("meta[name=description]")?.attr("content"),
         )
-        assertFalse(page.html().contains("l'IA"))
+        val html = page.html()
+        assertFalse(Regex("""\bIA\b""").containsMatchIn(html), "the page names the AI")
+        assertFalse(Regex("""\bAI\b""").containsMatchIn(html), "the page names the AI")
+        assertFalse(html.contains("intelligence artificielle", ignoreCase = true), "the page names the AI")
     }
 
     @Test
