@@ -9,13 +9,15 @@ agent must fix.
 
 **Architecture:** A new extraction sub-package of the mandate domain in `ndopify-server`
 (`mandate/server/service/document/`): a versioned sealed `DocumentData` per handled `DocumentType`, one extractor per
-document family on `ChatClients.VISION` (identity reuses the KYC identification prompt/schema), a pure checks object
-for the problem codes, and `MandateDocumentExtractionService` (claim under a lock, storage I/O and LLM call outside any
-transaction, save under `@Version`), driven by `MandateDocumentJobs.extract` and two `@OpsEndpoint`s. No migration and no
-DTO change: #328's `T_MANDATE_DOCUMENT` columns and `MandateDocument` / `DocumentField` carry everything.
+document family on `ChatClients.VISION` (identity reuses the KYC identification prompt/schema; every page is first
+re-encoded by a reusable `platform/image` resizer, never the stored original), a pure checks object for the problem
+codes, and `MandateDocumentExtractionService` (claim under a lock, storage I/O and LLM call outside any transaction,
+save under `@Version`), driven by `MandateDocumentJobs.extract` and two `@OpsEndpoint`s. No migration, no DTO change
+and no storage change: #328's `T_MANDATE_DOCUMENT` columns and `MandateDocument` / `DocumentField` carry everything.
 
 **Tech Stack:** Kotlin, Spring Boot, Spring AI (`ChatClients.VISION`), Spring Data JPA / Hibernate (`@TenantId`,
-`@Version`, pessimistic lock), Jackson, MySQL 8, JUnit + `kotlin.test` + mockito-kotlin, `TestRestTemplate`.
+`@Version`, pessimistic lock), Jackson, MySQL 8, ImageIO + TwelveMonkeys, JUnit + `kotlin.test` + mockito-kotlin,
+`TestRestTemplate`.
 
 **Spec:** GitHub issue #330 (enriched body: *Acceptance criteria*, *Decisions and assumptions*), epic #327. #328's plan
 (`docs/superpowers/plans/328-server-mandate-documents-record-private-storage-upload-read.md`) defines the document
@@ -57,6 +59,15 @@ the merged #330 code wins; this plan's flat nullable properties + `fieldConfiden
   `issueDate`; other `title`, `summary`. Values are display-ready strings: ISO dates, a surface in m² as a number,
   `owners` joined with ", ". `detectedType`, `valid`, `invalidityReason`, `sidesPresent`, the overall confidence and the
   confidence map are internal and never exposed as fields.
+- **Vision input:** the extractor never receives the stored page. Each page is re-encoded locally to a JPEG of at
+  most ~1.69 MP (~1300×1300-equivalent, the `deepseek-flash` resample target; it bills at most 1024 tokens/image, so
+  a bigger copy is bytes and latency wasted), quality 85, aspect kept, never upscaled, EXIF-oriented, transparent
+  composited on white, metadata dropped. Dimensions come from the header first; the decode is subsampled to ≤ ~7 MP;
+  a page over 40 MP or undecodable is `FAILED` `DOCUMENT_UNREADABLE`, without an LLM call and never retried. The
+  stored original is never modified. The resizer decodes at most 2 images at once (a 24 MP page is ~70–96 MB fully
+  decoded; a Heroku standard-1x dyno is `-Xmx300m`). It lives in `platform/image` with no mandate rule, so KYC
+  validation adopts it later (out of scope here). New dependencies: TwelveMonkeys `imageio-jpeg` / `imageio-webp` and
+  a small EXIF reader.
 - **Dates:** the AI returns `yyyy-MM-dd`; `issued_at` is the issue date (titles, occupancy) or the procuration's date;
   `expires_at` is the ID/passport expiry or the procuration's end date. An unparseable date is null; an unparseable
   required expiry is `EXPIRY_DATE_UNREADABLE`. An expiry strictly before today on the tenant's clock and time zone is
@@ -73,8 +84,8 @@ the merged #330 code wins; this plan's flat nullable properties + `fieldConfiden
 - **Privacy:** never log an extracted value. Log only ids, type, status, problem codes and counts — never an exception
   message (it may carry the model's output).
 - **Testing:** `kotlin.test` assertions, mockito-kotlin, one unit test per class; endpoint tests against MySQL with
-  `@Sql(clean.sql + fixture)`, mocking `StorageServiceProvider` / `DocumentDataExtractorProvider`; the full gate is
-  `cd modules/ndopify-server && mvn verify`.
+  `@Sql(clean.sql + fixture)`, mocking `StorageServiceProvider` / `DocumentDataExtractorProvider` / `ImageResizer`;
+  the full gate is `cd modules/ndopify-server && mvn verify`.
 - Code, comments, KDoc, codes and keys in English. No user-facing text in this story.
 
 ## Review Focus
@@ -89,6 +100,9 @@ the merged #330 code wins; this plan's flat nullable properties + `fieldConfiden
    type-wide ops endpoint answers 400 for them, and never touches an `EXTRACTING` document of a valid type.
 5. **A malformed or older stored payload** — `GET` still returns 200 with empty `fields`, never a 500; an older
    `data_version` or an unknown extra field reads without error.
+6. **A large phone photo** — the extractor gets a ≤1.7 MP JPEG (longest side ≈ 1500 px for a 4:3 page), the stored
+   page's bytes are untouched, and at most 2 pages decode at once; a 40 MP page ends `FAILED` `DOCUMENT_UNREADABLE`
+   with no OOM and no LLM call.
 
 ---
 
@@ -153,7 +167,56 @@ the merged #330 code wins; this plan's flat nullable properties + `fieldConfiden
 - [ ] **Step 4:** Run the same command — Expected: PASS.
 - [ ] **Step 5:** Commit `feat(server): add the mandate document extraction data and JSON helper` with `Refs #330`.
 
-### Task 2: Share the identity schema with KYC and map it
+### Task 2: The reusable vision-image resizer
+
+**Files:**
+- Create: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/platform/image/ImageResizer.kt`
+- Create: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/platform/image/ImageResizeException.kt`
+- Modify: `modules/ndopify-server/pom.xml` (TwelveMonkeys `imageio-jpeg` / `imageio-webp`, an EXIF reader such as
+  `metadata-extractor`; versions in the root `pom.xml` properties, like the other libraries)
+- Test: `modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/platform/image/ImageResizerTest.kt`
+
+**Interfaces — Produces:**
+- `data class ResizeOptions(val maxPixels: Long = 1_690_000, val jpegQuality: Int = 85,
+  val maxSourcePixels: Long = 40_000_000, val maxDecodePixels: Long = 7_000_000)`, with
+  `companion object { val VISION = ResizeOptions() }`.
+- `class ImageResizeException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)`
+- `@Component class ImageResizer` with
+  `fun resize(source: InputStream, options: ResizeOptions = ResizeOptions.VISION): ByteArray` — the page as JPEG.
+  Stateless and thread-safe; no storage, mandate or KYC rule, so KYC validation can inject it later. KDoc: why
+  ~1300×1300 (the `deepseek-flash` resample target and 1024-token cap) and why the header cap and subsampling (a
+  40 MP page is ~160 MB decoded; a standard-1x dyno is `-Xmx300m`).
+- Behaviour, in order: read `width`/`height` from the header (`ImageReader.getWidth/getHeight`) without decoding;
+  `ImageResizeException` when the pixels exceed `maxSourcePixels` or no reader exists; choose the smallest integer
+  subsampling factor whose decoded pixels stay ≤ `maxDecodePixels` (`ceil(sqrt(pixels / maxDecodePixels))`), read with
+  `setSourceSubsampling`, and fall back to a plain decode only when the reader rejects it and the source is ≤ 16 MP;
+  apply the EXIF orientation; composite transparency on white; scale with `Graphics2D` bicubic to fit `maxPixels`,
+  preserving the aspect and never upscaling; encode JPEG at `jpegQuality` with `ImageWriteParam`; `dispose()` the
+  reader. At most 2 calls decode at once (`Semaphore(2)`), which also bounds KYC once it adopts the component.
+- Expose the pure `internal fun subsamplingFactor(width: Int, height: Int, maxDecodePixels: Long): Int` for its test.
+
+**Consumes:** nothing (ImageIO / TwelveMonkeys only).
+
+- [ ] **Step 1: Write the failing tests** (`ImageResizerTest`; fixtures: a 4000×3000 JPEG generated in the test as
+  `ListingVerifierImageTest` does, the existing `files/identity/cm/cni-front.png`, `files/identity/cm/passport.webp`,
+  `files/identity/us/driver-license-front.jpg`, a transparent PNG, a committed EXIF-rotated JPEG and a corrupt
+  `byteArrayOf(1, 2, 3)`):
+  - the 4000×3000 JPEG with `ResizeOptions.VISION` → a JPEG (magic bytes, `ImageIO.read` works) whose
+    `width * height <= 1_690_000`, aspect kept, longest side ≈ 1500 px; the source is not modified.
+  - a 400×300 PNG → 400×300, never upscaled.
+  - `ResizeOptions(maxSourcePixels = 1_000_000)` on the 4000×3000 JPEG → `ImageResizeException` (no full decode).
+  - `subsamplingFactor(4000, 3000, 7_000_000) == 2`, `(1000, 750, 7_000_000) == 1`, `(8000, 6000, 7_000_000) == 3`;
+    each decoded size stays ≤ 7 MP.
+  - a transparent PNG → the output's corner is white, not black.
+  - an EXIF-rotated phone JPEG → the output is rotated (landscape in, portrait out).
+  - `passport.webp` decodes; `byteArrayOf(1, 2, 3)` throws `ImageResizeException`.
+- [ ] **Step 2:** Run `cd modules/ndopify-server && mvn test -Dtest=ImageResizerTest` — Expected: FAIL (class
+  missing).
+- [ ] **Step 3:** Add the dependencies and implement the resizer.
+- [ ] **Step 4:** Run the same command — Expected: PASS.
+- [ ] **Step 5:** Commit `feat(server): add the reusable vision image resizer` with `Refs #330`.
+
+### Task 3: Share the identity schema with KYC and map it
 
 **Files:**
 - Create: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/mandate/server/service/document/DocumentDataExtractor.kt`
@@ -199,7 +262,7 @@ the merged #330 code wins; this plan's flat nullable properties + `fieldConfiden
 - [ ] **Step 4:** Run the same command — Expected: PASS.
 - [ ] **Step 5:** Commit `feat(server): share the KYC identity schema with mandate documents` with `Refs #330`.
 
-### Task 3: The ownership, locality and other extractors
+### Task 4: The ownership, locality and other extractors
 
 **Files:**
 - Create: `.../document/DocumentDataExtractorProvider.kt`
@@ -228,7 +291,7 @@ the merged #330 code wins; this plan's flat nullable properties + `fieldConfiden
   - `OccupancyDocumentDataExtractor`: `LEASE_CONTRACT`, `UTILITY_BILL`, `TAX_RECEIPT` → the matching data class.
   - `OtherDocumentDataExtractor`: `OTHER` → `Other`.
 
-**Consumes:** Task 1, Task 2's interface/exception.
+**Consumes:** Task 1, Task 3's interface/exception.
 
 - [ ] **Step 1: Write the failing tests** (each extractor test mocks a `ChatModel` with a JSON answer, as
   `KycInfoExtractorIdentificationTest` does, and asserts the returned data):
@@ -246,7 +309,7 @@ the merged #330 code wins; this plan's flat nullable properties + `fieldConfiden
 - [ ] **Step 4:** Run the same command — Expected: PASS.
 - [ ] **Step 5:** Commit `feat(server): add the ownership and locality document extractors` with `Refs #330`.
 
-### Task 4: Requirements and the generic checks
+### Task 5: Requirements and the generic checks
 
 **Files:**
 - Create: `.../document/DocumentProblemCodes.kt`
@@ -291,7 +354,7 @@ the merged #330 code wins; this plan's flat nullable properties + `fieldConfiden
 - [ ] **Step 4:** Run the same command — Expected: PASS.
 - [ ] **Step 5:** Commit `feat(server): check the extracted mandate documents` with `Refs #330`.
 
-### Task 5: The extraction service
+### Task 6: The extraction service
 
 **Files:**
 - Create: `.../document/MandateDocumentExtractionService.kt`
@@ -306,7 +369,7 @@ the merged #330 code wins; this plan's flat nullable properties + `fieldConfiden
   - `fun findByTypeAndStatusNot(type: DocumentType, status: DocumentStatus): List<MandateDocumentEntity>`
 - `@Service class MandateDocumentExtractionService(...)` injecting `MandateService`, `MandateDocumentService`
   (`findDocument`), `MandateDocumentRepository`, `MandateDocumentPageRepository`, `StorageServiceProvider`,
-  `DocumentDataExtractorProvider`, `DocumentChecks`, `DocumentDataCodec`, `TenantService`, `Clock`,
+  `DocumentDataExtractorProvider`, `ImageResizer`, `DocumentChecks`, `DocumentDataCodec`, `TenantService`, `Clock`,
   `TransactionTemplate`, `KVLogger`, and the three config values `batch-size`, `max-attempts`,
   `in-progress-timeout-minutes` (`min-confidence` lives in `DocumentChecks`). Produces:
   - `fun extractDue(timeZone: String): Int` — recover the interrupted, then extract the tenant's `UPLOADED`
@@ -320,8 +383,10 @@ the merged #330 code wins; this plan's flat nullable properties + `fieldConfiden
     `UPLOADED` with data/dates/codes cleared (each locked; a version conflict skips that one); returns the count.
   - private `extract(document, timeZone, force)`: a type without an extractor (`extractors.supports(type)` false) is
     left untouched and returns; otherwise claim under the lock (`EXTRACTING`, cleared) — skip a document already
-    `EXTRACTING`, or not `UPLOADED` without `force`; download the pages to temp files (each page's own storage, the
-    default one for `UNKNOWN`) and delete them in `finally`; call the extractor up to `maxAttempts` times (no
+    `EXTRACTING`, or not `UPLOADED` without `force`; read each page from its own storage (the default one for
+    `UNKNOWN`, at most 5 MB) and write `ImageResizer.resize`'s JPEG to a temp `.jpg` — the stored object is never
+    written to — deleting every temp file in `finally`; an `ImageResizeException` is `FAILED`
+    `DOCUMENT_UNREADABLE`, with no LLM call and no retry; call the extractor up to `maxAttempts` times (no
     exception message logged); if every attempt throws → `FAILED` `EXTRACTION_FAILED`; otherwise
     `DocumentChecks.check`; dates from `data.issuedAt()` / `data.expiresAt()`; no failure code →
     `EXTRACTED`, `data` = `codec.write`, `data_version` = 1, the dates, `DOCUMENT_EXPIRED` when the expiry is before
@@ -331,15 +396,19 @@ the merged #330 code wins; this plan's flat nullable properties + `fieldConfiden
   - private `recoverInterrupted()`: `EXTRACTING` older than `in-progress-timeout-minutes` → `UPLOADED` (re-read under
     the lock, conflict skipped).
 
-**Consumes:** Tasks 1–4; #328's entities/services.
+**Consumes:** Tasks 1–5; #328's entities/services.
 
 - [ ] **Step 1: Write the failing tests** (`MandateDocumentExtractionServiceTest`, a real `DocumentChecks` /
-  `DocumentDataCodec`, mocked DAOs/storage/extractor provider, a fixed `Clock`, a real `TransactionTemplate` over a
-  mocked transaction manager, and a mocked `KVLogger`):
+  `DocumentDataCodec`, mocked DAOs/storage/extractor provider/resizer (the resizer returns a small JPEG), a fixed
+  `Clock`, a real `TransactionTemplate` over a mocked transaction manager, and a mocked `KVLogger`):
   - `extractDue` recovers an `EXTRACTING` document older than 15 min to `UPLOADED`, then extracts the `UPLOADED`
     documents (up to the batch) and returns the count; a document whose extraction throws doesn't stop the others.
   - A successful `NATIONAL_ID` → `EXTRACTED`, `data_version = 1`, `data` non-null, `issued_at`/`expires_at` set,
     `problem_codes` empty; the extractor called once.
+  - The extractor receives one temp `.jpg` per page holding the resizer's output; the resizer was called once per
+    page with that page's bytes, and every temp file is deleted afterwards.
+  - A page the resizer rejects (`ImageResizeException`) → `FAILED` `DOCUMENT_UNREADABLE`, no extractor call, not
+    retried.
   - A document reset to `UPLOADED` by a page change (data, dates and codes null) is extracted again, from its new
     pages.
   - `valid = false` → `FAILED` `DOCUMENT_UNREADABLE`, extractor called once (never retried), data/dates null.
@@ -360,7 +429,7 @@ the merged #330 code wins; this plan's flat nullable properties + `fieldConfiden
 - [ ] **Step 4:** Run the same command — Expected: PASS.
 - [ ] **Step 5:** Commit `feat(server): extract the mandate documents in the background` with `Refs #330`.
 
-### Task 6: The job and its configuration
+### Task 7: The job and its configuration
 
 **Files:**
 - Create: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/mandate/server/job/MandateDocumentJobs.kt`
@@ -400,7 +469,7 @@ the merged #330 code wins; this plan's flat nullable properties + `fieldConfiden
 - [ ] **Step 4:** Run the same command — Expected: PASS.
 - [ ] **Step 5:** Commit `feat(server): schedule the mandate document extraction` with `Refs #330`.
 
-### Task 7: The ops endpoints
+### Task 8: The ops endpoints
 
 **Files:**
 - Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/mandate/server/endpoint/MandateDocumentEndpoints.kt`
@@ -425,7 +494,8 @@ the merged #330 code wins; this plan's flat nullable properties + `fieldConfiden
   of type `PAY_SLIP`; document `1100` on mandate `101`. `ExtractMandateDocumentsByTypeEndpoint.sql`: document `1001`
   of type `LAND_TITLE` `EXTRACTED` with `data`/dates/codes, document `1002` of type `LAND_TITLE` `EXTRACTING`,
   document `1003` of type `PAY_SLIP`; `@MockitoBean StorageServiceProvider` returning bytes, `@MockitoBean
-  DocumentDataExtractorProvider` returning a mocked `IdentityDocumentDataExtractor`/`LandTitleDocumentDataExtractor`):
+  ImageResizer` returning a small JPEG, `@MockitoBean DocumentDataExtractorProvider` returning a mocked
+  `IdentityDocumentDataExtractor`/`LandTitleDocumentDataExtractor`):
   - `ExtractMandateDocumentEndpointTest`: POST `/v1/mandates/100/documents/1000/extract` → 204; reloaded document is
     `EXTRACTED`, `data_version = 1`, `data` non-null, `issued_at`/`expires_at` set (the identity answer has both
     dates), one storage download per page; POST `/v1/mandates/100/documents/1100/extract` → 404
@@ -441,7 +511,7 @@ the merged #330 code wins; this plan's flat nullable properties + `fieldConfiden
 - [ ] **Step 4:** Run the same command — Expected: PASS.
 - [ ] **Step 5:** Commit `feat(server): add the mandate document extraction ops endpoints` with `Refs #330`.
 
-### Task 8: Expose the fields, document, verify
+### Task 9: Expose the fields, document, verify
 
 **Files:**
 - Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/mandate/server/mapper/MandateDocumentMapper.kt`
@@ -460,9 +530,11 @@ the merged #330 code wins; this plan's flat nullable properties + `fieldConfiden
   handled types and the financial ones left to #333, `UPLOADED → EXTRACTING → EXTRACTED | FAILED`, the problem codes
   and their required fields, the `fields` keys and value formats, the KYC schema shared with
   `KycInfoExtractorIdentification`, the ops endpoints, the retry/timeout rule, privacy); the `util/jpa` bullet for
-  `JsonHelper` and the `@JdbcTypeCode(SqlTypes.JSON)` column; `MandateDocumentJobs` in the jobs list.
+  `JsonHelper` and the `@JdbcTypeCode(SqlTypes.JSON)` column; a `platform/image` bullet for `ImageResizer` (why
+  ~1300×1300, the header cap and subsampling, 2 concurrent decodes, KYC reuse); `MandateDocumentJobs` in the jobs
+  list.
 
-**Consumes:** Tasks 1–7.
+**Consumes:** Tasks 1–8.
 
 - [ ] **Step 1: Write the failing tests**
   - Extend `GetMandateDocumentEndpointTest`'s fixture with a `LAND_TITLE` document whose `data` is

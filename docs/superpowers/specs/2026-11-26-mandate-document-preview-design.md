@@ -16,8 +16,8 @@ We want two things:
 2. what an agent can save is a **resized, watermarked** copy, attributable to the tenant and the mandate
    (`<tenant name> - <mandate number>`), never the original.
 
-The original must stay untouched: it is the evidence, and the pending extraction (#330) needs its full
-resolution and its metadata.
+The original must stay untouched: it is the evidence. Extraction (#330) reads it and hands the vision model a
+locally downscaled copy, so previews and extraction both leave the uploaded bytes as they are.
 
 ## Goals
 
@@ -26,7 +26,7 @@ resolution and its metadata.
 - The preview is served through Partner Central, behind the agent session, so copying the URL outside that
   session yields no document.
 - The original object is never modified, never served to the browser, and is still what the future extraction
-  reads.
+  reads (then resizes for the model).
 - Existing pages work without a migration or a backfill job.
 
 ## Non-goals
@@ -245,7 +245,9 @@ GET /mandates/{id}/documents/{documentId}/pages/{pageId}/preview
 ## Left to the builder
 
 - Exact class names/packages; whether the image component sits in `platform/image` with mandate-specific
-  composition in `mandate/server/service`.
+  composition in `mandate/server/service`. If #330 has landed, its `platform/image/ImageResizer` already does the
+  decode, EXIF orientation, header cap, subsampling and JPEG encode; the preview layer adds the watermark and its
+  own output size/quality.
 - Metadata/EXIF library and bundled font choice.
 - Streaming vs buffering the bytes between server and Partner Central (images are small; buffering is fine).
 - Whether to add a pixel-dimension check to the upload path so an unprocessable image is refused before it
