@@ -44,6 +44,7 @@ import org.springframework.transaction.support.TransactionTemplate
 import tools.jackson.databind.json.JsonMapper
 import java.io.File
 import java.io.InputStream
+import java.math.BigDecimal
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -250,6 +251,80 @@ class MandateDocumentExtractionServiceTest {
             "surface" to surfaceConfidence,
         ),
     )
+
+    private fun paySlip(
+        netSalaryConfidence: Double = 0.95,
+        currency: String? = "XAF",
+    ) = PaySlipData(
+        detectedType = "PAY_SLIP",
+        employerName = "Wutsi",
+        employeeName = "John Doe",
+        payMonth = "2026-10",
+        grossSalary = BigDecimal("400000"),
+        netSalary = BigDecimal("350000"),
+        currency = currency,
+        valid = true,
+        fieldConfidences = mapOf(
+            "employerName" to 0.9,
+            "employeeName" to 0.95,
+            "payMonth" to 0.95,
+            "grossSalary" to 0.8,
+            "netSalary" to netSalaryConfidence,
+            "currency" to 0.95,
+        ),
+    )
+
+    private fun bankPreApproval(validityDate: String? = "2027-01-31") = BankPreApprovalData(
+        detectedType = "BANK_PRE_APPROVAL",
+        bankName = "Afriland First Bank",
+        beneficiaries = listOf("John Doe"),
+        amount = BigDecimal("25000000"),
+        currency = "XAF",
+        issueDate = "2026-11-01",
+        validityDate = validityDate,
+        valid = true,
+        fieldConfidences = mapOf(
+            "bankName" to 0.95,
+            "beneficiaries" to 0.95,
+            "amount" to 0.95,
+            "currency" to 0.95,
+            "issueDate" to 0.95,
+            "validityDate" to 0.95,
+        ),
+    )
+
+    private fun proofOfFunds(accountLast4: String? = "0123") = ProofOfFundsData(
+        detectedType = "PROOF_OF_FUNDS",
+        bankName = "Afriland First Bank",
+        accountHolder = "Jean Dupont",
+        amount = BigDecimal("1200000"),
+        amountKind = AmountKind.BALANCE,
+        currency = "XAF",
+        statementDate = "2026-11-20",
+        accountLast4 = accountLast4,
+        valid = true,
+        fieldConfidences = mapOf(
+            "bankName" to 0.95,
+            "accountHolder" to 0.95,
+            "amount" to 0.95,
+            "amountKind" to 0.95,
+            "currency" to 0.95,
+            "statementDate" to 0.95,
+            "accountLast4" to 0.95,
+        ),
+    )
+
+    /** Makes the mocked provider handle [types]; the same extractor answers all of them. */
+    private fun support(vararg types: DocumentType) {
+        doReturn(types.toSet()).whenever(extractors).types()
+        types.forEach { type ->
+            doReturn(true).whenever(extractors).supports(type)
+            doReturn(extractor).whenever(extractors).get(type)
+        }
+    }
+
+    private fun extractedData(document: MandateDocumentEntity): DocumentData =
+        DocumentDataCodec(JsonHelper(JsonMapper())).read(document.data, document.type, document.dataVersion)!!
 
     private fun add(document: MandateDocumentEntity, vararg page: MandateDocumentPageEntity) {
         documents[document.id!!] = document
@@ -475,6 +550,159 @@ class MandateDocumentExtractionServiceTest {
     }
 
     @Test
+    fun `extract - a pay slip ends extracted, its issuedAt the first day of the pay month`() {
+        support(DocumentType.PAY_SLIP)
+        add(document(DOCUMENT_ID, type = DocumentType.PAY_SLIP), page(100, path = "p0.png"))
+        doReturn(paySlip()).whenever(extractor).extract(eq(DocumentType.PAY_SLIP), any())
+
+        service.extractDue("UTC")
+
+        val extracted = documents[DOCUMENT_ID]!!
+        assertEquals(DocumentStatus.EXTRACTED, extracted.status)
+        assertEquals(java.time.LocalDate.of(2026, 10, 1), extracted.issuedAt)
+        assertNull(extracted.expiresAt)
+        assertEquals(emptyList(), extracted.problemCodes)
+
+        val fields = extractedData(extracted).toFields()
+        assertEquals(
+            listOf("employerName", "employeeName", "payMonth", "grossSalary", "netSalary", "currency"),
+            fields.keys.toList(),
+        )
+        assertEquals("350000", fields["netSalary"])
+        assertEquals("2026-10", fields["payMonth"])
+    }
+
+    @Test
+    fun `extract - a pay slip whose net salary or currency is uncertain fails`() {
+        support(DocumentType.PAY_SLIP)
+        add(document(DOCUMENT_ID, type = DocumentType.PAY_SLIP), page(100, path = "p0.png"))
+        doReturn(paySlip(netSalaryConfidence = 0.3)).whenever(extractor).extract(eq(DocumentType.PAY_SLIP), any())
+
+        service.extractDue("UTC")
+
+        assertEquals(DocumentStatus.FAILED, documents[DOCUMENT_ID]!!.status)
+        assertEquals(listOf(DocumentProblemCodes.DOCUMENT_FIELD_LOW_CONFIDENCE), documents[DOCUMENT_ID]!!.problemCodes)
+
+        add(document(DOCUMENT_ID, type = DocumentType.PAY_SLIP), page(100, path = "p0.png"))
+        doReturn(paySlip(currency = null)).whenever(extractor).extract(eq(DocumentType.PAY_SLIP), any())
+
+        service.extractDue("UTC")
+
+        assertEquals(DocumentStatus.FAILED, documents[DOCUMENT_ID]!!.status)
+        assertEquals(listOf(DocumentProblemCodes.DOCUMENT_FIELD_LOW_CONFIDENCE), documents[DOCUMENT_ID]!!.problemCodes)
+    }
+
+    @Test
+    fun `extract - a pre-approval valid until the tenant's today is not expired`() {
+        support(DocumentType.BANK_PRE_APPROVAL)
+        add(document(DOCUMENT_ID, type = DocumentType.BANK_PRE_APPROVAL), page(100, path = "p0.png"))
+        doReturn(bankPreApproval("2026-11-25")).whenever(extractor)
+            .extract(eq(DocumentType.BANK_PRE_APPROVAL), any())
+
+        // At 2026-11-26T00:00Z it's still 2026-11-25 in Honolulu: the tenant's today, the pre-approval's last day
+        service.extractDue("Pacific/Honolulu")
+
+        val extracted = documents[DOCUMENT_ID]!!
+        assertEquals(DocumentStatus.EXTRACTED, extracted.status)
+        assertEquals(java.time.LocalDate.of(2026, 11, 1), extracted.issuedAt)
+        assertEquals(java.time.LocalDate.of(2026, 11, 25), extracted.expiresAt)
+        assertEquals(emptyList(), extracted.problemCodes)
+
+        add(document(DOCUMENT_ID, type = DocumentType.BANK_PRE_APPROVAL), page(100, path = "p0.png"))
+        service.extractDue("UTC")
+
+        assertEquals(DocumentStatus.EXTRACTED, documents[DOCUMENT_ID]!!.status)
+        assertEquals(listOf(DocumentProblemCodes.DOCUMENT_EXPIRED), documents[DOCUMENT_ID]!!.problemCodes)
+    }
+
+    @Test
+    fun `extract - a pre-approval without a validity date fails with the expiry code alone`() {
+        support(DocumentType.BANK_PRE_APPROVAL)
+        add(document(DOCUMENT_ID, type = DocumentType.BANK_PRE_APPROVAL), page(100, path = "p0.png"))
+        doReturn(bankPreApproval(null)).whenever(extractor).extract(eq(DocumentType.BANK_PRE_APPROVAL), any())
+
+        service.extractDue("UTC")
+
+        assertEquals(DocumentStatus.FAILED, documents[DOCUMENT_ID]!!.status)
+        assertEquals(listOf(DocumentProblemCodes.EXPIRY_DATE_UNREADABLE), documents[DOCUMENT_ID]!!.problemCodes)
+    }
+
+    @Test
+    fun `extract - a proof of funds ends extracted, its account masked to four digits`() {
+        support(DocumentType.PROOF_OF_FUNDS)
+        add(document(DOCUMENT_ID, type = DocumentType.PROOF_OF_FUNDS), page(100, path = "p0.png"))
+        doReturn(proofOfFunds()).whenever(extractor).extract(eq(DocumentType.PROOF_OF_FUNDS), any())
+
+        service.extractDue("UTC")
+
+        val extracted = documents[DOCUMENT_ID]!!
+        assertEquals(DocumentStatus.EXTRACTED, extracted.status)
+        assertEquals(java.time.LocalDate.of(2026, 11, 20), extracted.issuedAt)
+        assertNull(extracted.expiresAt)
+        val fields = extractedData(extracted).toFields()
+        assertEquals("0123", fields["accountLast4"])
+        assertEquals("BALANCE", fields["amountKind"])
+        assertFalse(Regex("""\d{8,}""").containsMatchIn(extracted.data!!), extracted.data!!)
+    }
+
+    @Test
+    fun `extract - a proof of funds read as a pay slip is a mismatch`() {
+        support(DocumentType.PROOF_OF_FUNDS)
+        add(document(DOCUMENT_ID, type = DocumentType.PROOF_OF_FUNDS), page(100, path = "p0.png"))
+        doReturn(proofOfFunds().copy(detectedType = "PAY_SLIP")).whenever(extractor)
+            .extract(eq(DocumentType.PROOF_OF_FUNDS), any())
+
+        service.extractDue("UTC")
+
+        assertEquals(DocumentStatus.FAILED, documents[DOCUMENT_ID]!!.status)
+        assertEquals(listOf(DocumentProblemCodes.DOCUMENT_TYPE_MISMATCH), documents[DOCUMENT_ID]!!.problemCodes)
+    }
+
+    @Test
+    fun `extract - a financial document's values never reach the logger`() {
+        support(DocumentType.PROOF_OF_FUNDS)
+        add(document(DOCUMENT_ID, type = DocumentType.PROOF_OF_FUNDS), page(100, path = "p0.png"))
+        doReturn(proofOfFunds()).whenever(extractor).extract(eq(DocumentType.PROOF_OF_FUNDS), any())
+
+        service.extractDue("UTC")
+
+        assertTrue(logger.entries.isNotEmpty())
+        logger.entries.forEach { (key, value) ->
+            listOf("1200000", "Jean Dupont", "0123").forEach { secret ->
+                assertFalse(value?.contains(secret) == true, "$key=$value")
+            }
+        }
+    }
+
+    @Test
+    fun `requeueByType - a financial type is requeued, another type is left untouched`() {
+        add(
+            document(
+                id = 1001,
+                type = DocumentType.PAY_SLIP,
+                status = DocumentStatus.EXTRACTED,
+                data = "{}",
+                dataVersion = 1,
+            ),
+        )
+        add(
+            document(
+                id = 1002,
+                type = DocumentType.NATIONAL_ID,
+                status = DocumentStatus.EXTRACTED,
+                data = "{}",
+                dataVersion = 1,
+            ),
+        )
+
+        val count = service.requeueByType(DocumentType.PAY_SLIP)
+
+        assertEquals(1, count)
+        assertEquals(DocumentStatus.UPLOADED, documents[1001]!!.status)
+        assertEquals(DocumentStatus.EXTRACTED, documents[1002]!!.status)
+    }
+
+    @Test
     fun `extractDue - a financial document doesn't fill the batch`() {
         // A financial document older than the identity one: the batch of 1 must still pick the identity up
         add(document(id = 9, type = DocumentType.PAY_SLIP), page(90, documentId = 9, path = "p0.png"))
@@ -600,12 +828,10 @@ class MandateDocumentExtractionServiceTest {
 
     @Test
     fun `requeueByType - a type without an extractor is a bad request`() {
-        listOf(DocumentType.PAY_SLIP, DocumentType.UNKNOWN, DocumentType.BANK_PRE_APPROVAL, DocumentType.PROOF_OF_FUNDS)
-            .forEach { type ->
-                val exception = assertFailsWith<BadRequestException> { service.requeueByType(type) }
-                assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, exception.error.code)
-                assertEquals("type", exception.error.parameter?.name)
-            }
+        val exception = assertFailsWith<BadRequestException> { service.requeueByType(DocumentType.UNKNOWN) }
+
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, exception.error.code)
+        assertEquals("type", exception.error.parameter?.name)
     }
 
     @Test

@@ -242,15 +242,24 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   ~1.7 MP, EXIF-oriented, never the stored original; an undecodable page or one over 40 MP is `DOCUMENT_UNREADABLE`
   without an LLM call and without a retry), then the type's `DocumentDataExtractor` reads it with `ChatClients.VISION`.
   The identity extractor reuses `KycInfoExtractorIdentification`'s prompt and `KycInfo` schema (`dateOfBirth`,
-  `issueDate`, `sidesPresent`, `fieldConfidences`); `PAY_SLIP`, `BANK_PRE_APPROVAL`, `PROOF_OF_FUNDS` (and `UNKNOWN`)
-  have no extractor yet (#333) and stay `UPLOADED`. `MandateDocumentJobs.extract` runs every 15 minutes per tenant
+  `issueDate`, `sidesPresent`, `fieldConfidences`). The financial extractor (`FinancialDocumentDataExtractor`) reads a
+  `PAY_SLIP` (`employerName`, `employeeName`, `payMonth` `YYYY-MM` — `issued_at` its first day —, `grossSalary`,
+  `netSalary`, `currency`), a `BANK_PRE_APPROVAL` (`bankName`, `beneficiaries`, `amount`, `currency`, `issueDate`,
+  `validityDate` — `expires_at`) and a `PROOF_OF_FUNDS` (`bankName`, `accountHolder`, `amount`, `amountKind`
+  `BALANCE` for a statement or `CERTIFIED` for an attestation, `currency`, `statementDate` — `issued_at` —,
+  `accountLast4`), prompting with the tenant's `currencyCode` (*FCFA* / *F CFA*) and its today; amounts are decimal
+  `BigDecimal`s and the currency its own ISO 4217 field, never a formatted amount. `AccountNumberSanitizer` masks every
+  text field of that data before it's stored — an IBAN or a run of 8+ digits keeps only its last 4 digits, and
+  `accountLast4` is cut to four — because a prompt can ask for the last four digits but can't be trusted with them.
+  `UNKNOWN` has no extractor and stays `UPLOADED`. `MandateDocumentJobs.extract` runs every 15 minutes per tenant
   (`ndopify.mandate.document.extract.*`: `batch-size` 100, `max-attempts` 3 technical retries, `min-confidence` 0.7,
   `in-progress-timeout-minutes` 15). The typed, versioned `DocumentData` (one subclass per type, `data_version` 1,
   stored in `data`) is checked by `DocumentChecks`: any of `DOCUMENT_TYPE_MISMATCH`, `DOCUMENT_UNREADABLE`,
   `DOCUMENT_PAGE_MISSING`, `DOCUMENT_FIELD_LOW_CONFIDENCE`, `EXPIRY_DATE_UNREADABLE`, `EXTRACTION_FAILED` makes the
   document `FAILED`; a readable document whose expiry is past on the tenant's clock stays `EXTRACTED` with the warning
   `DOCUMENT_EXPIRED`. `DocumentRequirements` holds each type's required fields (the only confidence-checked ones) and
-  sides; an identity's unreadable expiry is `EXPIRY_DATE_UNREADABLE`, not the generic field code. The DTO's generic
+  sides; an unreadable required expiry (an identity's `expiryDate`, a pre-approval's `validityDate`) is
+  `EXPIRY_DATE_UNREADABLE`, not the generic field code. The DTO's generic
   `fields` list is `DocumentData.toFields()` — the display keys in the type's order (`number`, `firstName`...;
   `titleNumber`, `owners`...; `holderName`, `address`...), each with its 0..1 confidence — never the raw `data`, which
   doesn't leave the server. `issued_at` / `expires_at` hold the dates read. Two `@OpsEndpoint`s (off in prod) re-run
