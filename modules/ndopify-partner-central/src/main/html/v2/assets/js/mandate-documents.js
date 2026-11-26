@@ -16,16 +16,25 @@
  * pages, so the chosen list shows it as "PDF" (name and size, no thumbnail) and the count line counts files. An image
  * keeps its shrink and direct upload. A PDF over 5 Mo is refused here; a password-protected, empty or damaged PDF,
  * more than 10 pages on add and a multi-page PDF on replace are the server's errors, shown as the field's error.
+ * #369: a mandate holds 5 documents at most, and a document is either photos or one PDF (never both, never two PDFs).
+ * The section's head counts them compactly ("3/5" beside the title, its accessible label reading "3 documents sur
+ * 5"), hides *Ajouter un document* at 5 and says the cap instead; the
+ * add page opened at the cap shows the notice in place of the form, and a list mixing photos with a PDF (or two PDFs)
+ * is refused here before sending. The document page names the document's kind (a "PDF" / "Photos" tag) and its
+ * Remplacer accepts that kind only (an image document a photo, a PDF document a one-page PDF); a document with no
+ * recorded kind (grandfathered) accepts either.
  * Query switches: mandate.html ?docs=none|error, ?documentOutcome=added|deleted|changed; document-new.html
- * ?errors=missing|file|size|server|pdf-size|pdf-protected|pdf-unreadable|pdf-pages (?errors=1 = missing);
- * document.html ?delete=1, ?outcome=renamed|replaced&page=N, ?errors=blank|long, ?conflict=1,
- * ?replaceError=type|size|empty|pdf-size|pdf-protected|pdf-unreadable|pdf-pages&page=N; the reading states come from
- * the samples (?id=&document=, see DOCUMENTS). ?docs=reset (any page) forgets the session.
+ * ?errors=missing|file|size|server|pdf-size|pdf-protected|pdf-unreadable|pdf-pages|mixed|pages|limit
+ * (?errors=1 = missing); document.html ?delete=1, ?outcome=renamed|replaced&page=N, ?errors=blank|long, ?conflict=1,
+ * ?replaceError=type|size|empty|mixed|pdf-size|pdf-protected|pdf-unreadable|pdf-pages&page=N; the reading states come
+ * from the samples (?id=&document=, see DOCUMENTS). ?docs=reset (any page) forgets the session.
  */
 (function () {
     "use strict";
 
     var MAX_PAGES = 10;
+    // #369: the mandate's cap, all types together, LISTING and SEARCH alike.
+    var MAX_DOCUMENTS = 5;
     var MAX_FILE_BYTES = 5 * 1024 * 1024;
     var MAX_TITLE = 100;
     // As KYC: a page is shrunk to 2000 px on its longest side before it is sent (production: direct-upload.js).
@@ -36,6 +45,15 @@
     // PROTOTYPE: a PDF isn't read in the browser; the simulated server renders it to this many pages (#366).
     var PDF_SAMPLE_PAGES = 2;
     var KEY = "npc.documents";
+
+    // #369: a document's kind (MandateDocument.source). Its tag on the document page, the files its Remplacer takes
+    // and what that form's hint expects. A document with no recorded kind (grandfathered data) accepts either.
+    var SOURCES = {
+        IMAGE: { tag: "Photos", accept: IMAGE_TYPES.join(","), expects: "une photo" },
+        PDF: { tag: "PDF", accept: PDF_TYPE, expects: "un PDF d'une page" }
+    };
+    var MIXED_SOURCES = "Un document contient soit des photos, soit un PDF : gardez un seul PDF, ou seulement " +
+        "des photos.";
 
     // The French names of #328's MandateDocumentLabels, in DocumentType order (UNKNOWN never shown).
     var TYPES = {
@@ -177,7 +195,7 @@
     var DOCUMENTS = {
         301: [
             { id: 3103, type: "LAND_TITLE", title: "Titre foncier n° 4521 — Bonapriso", status: "EXTRACTED",
-                createdAt: "2026-11-25", version: 1, pages: ["page", "page"],
+                source: "PDF", createdAt: "2026-11-25", version: 1, pages: ["page", "page"],
                 issuedAt: "2019-06-14", expiresAt: null, problemCodes: [],
                 fields: [
                     { key: "titleNumber", value: "4521", confidence: 0.97 },
@@ -189,10 +207,10 @@
                     { key: "issueDate", value: "2019-06-14", confidence: 0.96 }
                 ] },
             { id: 3105, type: "UTILITY_BILL", title: "Facture d'eau — octobre 2026", status: "EXTRACTING",
-                createdAt: "2026-11-24", version: 0, pages: ["page"],
+                source: "IMAGE", createdAt: "2026-11-24", version: 0, pages: ["page"],
                 issuedAt: null, expiresAt: null, problemCodes: [], fields: [] },
             { id: 3102, type: "NATIONAL_ID", title: "Carte nationale d'identité", status: "EXTRACTED",
-                createdAt: "2026-11-23", version: 0, pages: ["id-front", "id-back"],
+                source: "IMAGE", createdAt: "2026-11-23", version: 0, pages: ["id-front", "id-back"],
                 issuedAt: "2015-01-12", expiresAt: "2025-01-12", problemCodes: ["DOCUMENT_EXPIRED"],
                 fields: [
                     { key: "number", value: "1038472659", confidence: 0.96 },
@@ -204,19 +222,19 @@
                     { key: "countryCode", value: "CM", confidence: 0.99 }
                 ] },
             { id: 3104, type: "POWER_OF_ATTORNEY", title: "Procuration — vente du lot 12", status: "UPLOADED",
-                createdAt: "2026-11-21", version: 0, pages: ["page"],
+                source: "PDF", createdAt: "2026-11-21", version: 0, pages: ["page"],
                 issuedAt: null, expiresAt: null, problemCodes: [], fields: [] },
             { id: 3101, type: "SURVEY_PLAN", title: "Plan de bornage", status: "FAILED",
-                createdAt: "2026-11-20", version: 2, pages: ["plan"],
+                source: "PDF", createdAt: "2026-11-20", version: 2, pages: ["plan"],
                 issuedAt: null, expiresAt: null,
                 problemCodes: ["DOCUMENT_PAGE_MISSING", "DOCUMENT_FIELD_LOW_CONFIDENCE"], fields: [] }
         ],
         303: [
             { id: 3305, type: "POWER_OF_ATTORNEY", title: "Procuration — achat de l'appartement", status: "EXTRACTED",
-                createdAt: "2026-11-25", version: 0, pages: ["page"],
+                source: "PDF", createdAt: "2026-11-25", version: 0, pages: ["page"],
                 issuedAt: null, expiresAt: null, problemCodes: [], fields: [] },
             { id: 3304, type: "PROOF_OF_FUNDS", title: "Relevé de compte — Afriland First Bank", status: "EXTRACTED",
-                createdAt: "2026-11-24", version: 0, pages: ["page"],
+                source: "PDF", createdAt: "2026-11-24", version: 0, pages: ["page"],
                 issuedAt: "2026-11-20", expiresAt: null, problemCodes: [],
                 fields: [
                     { key: "bankName", value: "Afriland First Bank", confidence: 0.95 },
@@ -228,7 +246,7 @@
                     { key: "accountLast4", value: "0123", confidence: 0.96 }
                 ] },
             { id: 3302, type: "PAY_SLIP", title: "Bulletin de paie — octobre 2026", status: "EXTRACTED",
-                createdAt: "2026-11-23", version: 0, pages: ["page"],
+                source: "IMAGE", createdAt: "2026-11-23", version: 0, pages: ["page"],
                 issuedAt: "2026-10-01", expiresAt: null, problemCodes: [],
                 fields: [
                     { key: "employerName", value: "Orange Cameroun", confidence: 0.94 },
@@ -240,7 +258,7 @@
                     { key: "currency", value: "XAF", confidence: 0.97 }
                 ] },
             { id: 3301, type: "NATIONAL_ID", title: "Carte nationale d'identité", status: "EXTRACTED",
-                createdAt: "2026-11-21", version: 0, pages: ["id-front", "id-back"],
+                source: "IMAGE", createdAt: "2026-11-21", version: 0, pages: ["id-front", "id-back"],
                 issuedAt: "2022-05-20", expiresAt: "2032-05-20", problemCodes: [],
                 fields: [
                     { key: "number", value: "1094738215", confidence: 0.95 },
@@ -252,7 +270,7 @@
                     { key: "countryCode", value: "CM", confidence: 0.99 }
                 ] },
             { id: 3303, type: "BANK_PRE_APPROVAL", title: "Accord de principe — prêt immobilier",
-                status: "EXTRACTED", createdAt: "2026-11-10", version: 0, pages: ["page", "page"],
+                status: "EXTRACTED", source: "PDF", createdAt: "2026-11-10", version: 0, pages: ["page", "page"],
                 issuedAt: "2026-08-20", expiresAt: "2026-11-20", problemCodes: [],
                 fields: [
                     { key: "bankName", value: "Afriland First Bank", confidence: 0.95 },
@@ -265,7 +283,7 @@
         ],
         311: [
             { id: 3113, type: "PROOF_OF_FUNDS", title: "Attestation de solde — Afriland First Bank",
-                status: "EXTRACTED", createdAt: "2026-11-12", version: 0, pages: ["page"],
+                status: "EXTRACTED", source: "PDF", createdAt: "2026-11-12", version: 0, pages: ["page"],
                 issuedAt: "2026-11-05", expiresAt: null, problemCodes: [],
                 fields: [
                     { key: "bankName", value: "Afriland First Bank", confidence: 0.95 },
@@ -277,7 +295,7 @@
                     { key: "accountLast4", value: "4471", confidence: 0.97 }
                 ] },
             { id: 3112, type: "BANK_PRE_APPROVAL", title: "Accord de principe — prêt immobilier", status: "EXTRACTED",
-                createdAt: "2026-11-10", version: 0, pages: ["page", "page"],
+                source: "PDF", createdAt: "2026-11-10", version: 0, pages: ["page", "page"],
                 issuedAt: "2026-03-02", expiresAt: "2026-09-02", problemCodes: ["DOCUMENT_EXPIRED"],
                 fields: [
                     { key: "bankName", value: "BICEC", confidence: 0.94 },
@@ -288,7 +306,7 @@
                     { key: "validityDate", value: "2026-09-02", confidence: 0.95 }
                 ] },
             { id: 3111, type: "PASSPORT", title: "Passeport", status: "FAILED",
-                createdAt: "2026-11-05", version: 0, pages: ["id-front"],
+                source: "IMAGE", createdAt: "2026-11-05", version: 0, pages: ["id-front"],
                 issuedAt: null, expiresAt: null, problemCodes: ["DOCUMENT_BACK_MISSING"], fields: [] }
         ]
     };
@@ -604,6 +622,8 @@
         var list = $("[data-documents-list]", section);
         var template = $("[data-documents-template]", section);
         var add = $("[data-documents-add]", section);
+        var count = $("[data-documents-count]", section);
+        var limit = $("[data-documents-limit]", section);
         var flash = $("[data-documents-flash]", section);
 
         // The page's own rendering says whether the mandate is closed or cancelled (the cancel form may change it).
@@ -626,8 +646,24 @@
                 (listing ? "de propriété " : "de financement ") + whose +
                 ". Privées : jamais publiées ni montrées à un autre agent.";
 
-            add.hidden = readOnly;
+            // #369: the count against the cap, compact next to the heading ("3/5") so that the action stays on its
+            // line at 390 px; its accessible label reads "3 documents sur 5". An unavailable list keeps the action
+            // (adding doesn't need the list) and shows no count (it isn't known).
+            var atLimit = !readOnly && !unavailable && documents.length >= MAX_DOCUMENTS;
+            count.textContent = "";
+            var countLabel = document.createElement("span");
+            countLabel.className = "visually-hidden";
+            countLabel.textContent = documents.length + " document" + (documents.length > 1 ? "s" : "") + " sur " +
+                MAX_DOCUMENTS;
+            var countValue = document.createElement("span");
+            countValue.setAttribute("aria-hidden", "true");
+            countValue.textContent = documents.length + "/" + MAX_DOCUMENTS;
+            count.appendChild(countLabel);
+            count.appendChild(countValue);
+            count.hidden = unavailable;
+            add.hidden = readOnly || atLimit;
             add.href = "mandate/document-new.html?id=" + id;
+            limit.hidden = !atLimit;
             $("[data-documents-readonly]", section).hidden = !readOnly;
             $("[data-documents-readonly-text]", section).textContent =
                 (closedPanel() === "CLOSED" ? "Mandat fermé" : "Mandat annulé") +
@@ -737,10 +773,19 @@
             link.href = back;
         });
 
+        var errors = params.get("errors");
+        if (errors === "1") errors = "missing";
+
+        var intro = $("[data-new-intro]");
+        var limit = $("[data-new-limit]");
+        var formBox = $("[data-new]");
+
         if (!owns(id) || isClosed(statusOf(id))) {
             var locked = $("[data-new-locked]");
             locked.hidden = false;
-            $("[data-new]").hidden = true;
+            intro.hidden = true;
+            limit.hidden = true;
+            formBox.hidden = true;
             if (isClosed(statusOf(id))) {
                 $("[data-new-locked-title]").textContent = "Ce mandat est " +
                     (statusOf(id) === "CLOSED" ? "fermé" : "annulé");
@@ -749,7 +794,20 @@
             }
             return;
         }
+
+        // #369: at the cap the notice replaces the form (a stale tab, a bookmark). The server refuses the 6th
+        // document, so there is nothing to post. ?errors=limit is the refusal page: the form is rendered again with
+        // the type and title kept, the notice above it.
         $("[data-new-meta]").textContent = "Mandat n° " + id + " · " + partyLabel(id) + " : " + mandateOf(id).name;
+        if (documentsOf(id).length >= MAX_DOCUMENTS && errors !== "limit") {
+            intro.hidden = false;
+            limit.hidden = false;
+            formBox.hidden = true;
+            return;
+        } else {
+            limit.hidden = true;
+            formBox.hidden = false;
+        }
 
         var form = $("[data-new-form]");
         var select = $("#documentType");
@@ -758,6 +816,7 @@
         var typeError = $("#documentType-error");
         var titleError = $("#documentTitle-error");
         var pagesError = $("#pages-error");
+        var limitError = $("[data-new-limit-error]");
         var listing = kindOf(id) === "LISTING";
 
         fillTypePicker(select, id, "");
@@ -779,9 +838,9 @@
 
         // The error states of the form as the server renders them again: the type and title kept, pages to choose
         // again (a browser never re-fills a file input). The pdf-* ones are ndopify-server's refusals of a PDF (#366):
-        // over 5 Mo, password-protected, empty or unreadable, more than 10 pages.
-        var errors = params.get("errors");
-        if (errors === "1") errors = "missing";
+        // over 5 Mo, password-protected, empty or unreadable, more than 10 pages. #369 adds the mixed selection
+        // (photos and a PDF, or two PDFs), the document over 10 pages once the PDF is expanded, and the mandate at its
+        // 5 documents (a form-level notice, not a pages field's error).
         var keptType = listing ? "LAND_TITLE" : "PAY_SLIP";
         var keptTitle = listing ? "Titre foncier lot 12" : "Bulletin de paie — octobre 2026";
         var pageErrors = {
@@ -796,13 +855,22 @@
             "pdf-unreadable": "« scan-2026.pdf » est vide ou endommagé : envoyez ses pages en photos. Choisissez de " +
                 "nouveau les pages.",
             "pdf-pages": "« dossier-complet.pdf » fait plus de 10 pages : envoyez ses pages en photos, 10 au plus, " +
-                "ou un PDF plus court. Choisissez de nouveau les pages."
+                "ou un PDF plus court. Choisissez de nouveau les pages.",
+            "mixed": "Un document contient soit des photos, soit un PDF, jamais les deux : choisissez de nouveau " +
+                "les pages.",
+            "pages": "Ce document dépasse 10 pages une fois les pages du PDF ajoutées : gardez 10 pages au plus. " +
+                "Choisissez de nouveau les pages."
         };
         if (errors === "missing") {
             title.value = listing ? "Lot 12" : "Octobre 2026";
             showError(typeError, "Choisissez le type du document.");
             setInvalid(select, true);
             showError(pagesError, "Ajoutez au moins une page : une photo ou un PDF.");
+        } else if (errors === "limit") {
+            select.value = keptType;
+            title.value = keptTitle;
+            limitError.hidden = false;
+            limitError.focus();
         } else if (Object.prototype.hasOwnProperty.call(pageErrors, errors)) {
             select.value = keptType;
             title.value = keptTitle;
@@ -815,13 +883,15 @@
         placeholder();
         count();
 
-        initPagePicker(form, function (pages) {
+        initPagePicker(form, function (pages, source) {
             // PROTOTYPE: presign → PUT → POST /mandates/{id}/documents per page; the multipart post without JS.
             var type = select.value;
             var documents = documentsOf(id);
             var doc = {
                 id: Date.now(),
                 type: type,
+                // Server rule: the request's files give the document its kind (#369): 1-10 images, or exactly one PDF.
+                source: source,
                 // Server rule: a blank title is the type's French name.
                 title: title.value.trim() || TYPES[type],
                 status: "UPLOADED",
@@ -835,6 +905,15 @@
                 encodeURIComponent(doc.title) + "#documents-title";
         }, function () {
             var ok = true;
+            // #369: a tab left open below the cap while another tab added the 5th: the 6th is refused here, before
+            // sending (the server would answer MANDATE_DOCUMENT_LIMIT_REACHED).
+            if (documentsOf(id).length >= MAX_DOCUMENTS) {
+                limitError.hidden = false;
+                limitError.focus();
+                ok = false;
+            } else {
+                limitError.hidden = true;
+            }
             if (!select.value) {
                 showError(typeError, "Choisissez le type du document.");
                 setInvalid(select, true);
@@ -854,7 +933,7 @@
         // As the server's error page: the first field in error takes the focus.
         var serverError = $("[data-new-server-error]");
         var firstError = $('[aria-invalid="true"]', form) || (!pagesError.hidden && $("[data-page-input]", form)) ||
-            (!serverError.hidden && serverError);
+            (!limitError.hidden && limitError) || (!serverError.hidden && serverError);
         if (firstError) firstError.focus();
     }
 
@@ -910,6 +989,13 @@
                 (chosen.length > 1 ? "s" : "") + ".";
         }
 
+        // #369: a document is either photos or one PDF, never both, and never two PDFs. Refused here before sending,
+        // and again by the server (MANDATE_DOCUMENT_MIXED_SOURCES).
+        function mixedProblem() {
+            var pdfs = chosen.filter(isPdfItem).length;
+            return pdfs > 1 || (pdfs === 1 && chosen.length > 1) ? MIXED_SOURCES : "";
+        }
+
         function render() {
             list.innerHTML = "";
             var images = 0;
@@ -930,6 +1016,8 @@
                 remove.addEventListener("click", function () {
                     chosen.splice(i, 1);
                     render();
+                    // Removing the PDF (or the last photo) lifts the mixed-selection refusal.
+                    showError(error, mixedProblem());
                     inputs[0].focus();
                 });
                 if (sending && i >= item.sentIndex) li.classList.add("doc-file--pending");
@@ -960,7 +1048,8 @@
                     }
                 });
                 input.value = "";
-                showError(error, refused.join(" "));
+                var mixed = mixedProblem();
+                showError(error, refused.concat(mixed ? [mixed] : []).join(" "));
                 render();
             });
         });
@@ -971,6 +1060,11 @@
             var ok = validateOthers();
             if (!chosen.length) {
                 showError(error, "Ajoutez au moins une page : une photo ou un PDF.");
+                ok = false;
+            }
+            var mixed = mixedProblem();
+            if (mixed) {
+                showError(error, mixed);
                 ok = false;
             }
             if (!ok) {
@@ -996,7 +1090,7 @@
                 (function next(i) {
                     if (i >= chosen.length) {
                         progressText.textContent = "Document enregistré…";
-                        onSent(pages);
+                        onSent(pages, "IMAGE");
                         return;
                     }
                     progressText.textContent = "Envoi de la page " + (i + 1) + " sur " + chosen.length + "…";
@@ -1023,7 +1117,7 @@
                         progressText.textContent = "Envoi du document…";
                         progressBar.removeAttribute("value");
                         setTimeout(function () {
-                            onSent(pagesFrom(chosen));
+                            onSent(pagesFrom(chosen), "PDF");
                         }, 1200);
                         return;
                     }
@@ -1071,6 +1165,13 @@
 
         $("[data-document-heading]").textContent = doc.title || typeName;
         setStatusTag($("[data-document-status]"), doc.status);
+        // #369: the document's kind — created from photos, or from one PDF — decides which file its Remplacer takes.
+        // A document with no recorded kind (grandfathered data) accepts either.
+        var source = $("[data-document-source]");
+        var kind = SOURCES[doc.source];
+        source.hidden = false;
+        source.innerHTML = '<span class="visually-hidden">Créé à partir de : </span>';
+        source.appendChild(document.createTextNode(kind ? kind.tag : "Photos ou PDF"));
         // One upload date for the whole document; no size, no image.
         $("[data-document-meta]").textContent = (doc.title && doc.title !== typeName ? typeName + " · " : "") +
             "Ajouté le " + formatDate(doc.createdAt);
@@ -1178,6 +1279,44 @@
         var template = $("[data-document-page-template]");
         var replaceError = params.get("replaceError");
         var errorPage = params.get("page");
+        var kind = SOURCES[doc.source];
+        // #369: the kind's file only — a photo for an image document, a one-page PDF for a PDF document. A document
+        // with no recorded kind (grandfathered data) accepts either, as #366.
+        var accept = kind ? kind.accept : ACCEPTED_TYPES.join(",");
+        var hint = kind
+            ? (doc.source === "PDF"
+                ? "PDF d'une page, 5\u00a0Mo au plus. Ce document a été créé à partir d'un PDF\u00a0: seul un PDF " +
+                    "d'une page remplace cette page."
+                : "Photo JPEG, PNG ou WEBP, 5\u00a0Mo au plus. Ce document a été créé à partir de photos\u00a0: " +
+                    "une photo remplace cette page.")
+            : "Photo JPEG, PNG ou WEBP, ou PDF d'une page, 5\u00a0Mo au plus. Le fichier prend la place de cette page.";
+        var emptyMessage = kind
+            ? "Choisissez " + kind.expects + " pour cette page."
+            : "Choisissez la nouvelle page : une photo ou un PDF.";
+        var mixedMessage = doc.source === "PDF"
+            ? "Ce document a été créé à partir d'un PDF : remplacez cette page par un PDF d'une page, pas par une photo."
+            : doc.source === "IMAGE"
+                ? "Ce document a été créé à partir de photos : remplacez cette page par une photo JPEG, PNG ou WEBP, " +
+                    "pas par un PDF."
+                : "Ce document accepte une photo ou un PDF d'une page : vérifiez le fichier.";
+        // A multi-page, protected, unreadable or over-5-Mo PDF is ndopify-server's refusal, worded here (#366). On a
+        // PDF document (#369) the way out is a PDF, never a photo, which that document refuses.
+        var pdfOnly = doc.source === "PDF";
+        var messages = {
+            type: "Ce fichier n'est ni une photo ni un PDF : choisissez une photo JPEG, PNG ou WEBP, ou un " +
+                "PDF.",
+            size: "Cette image dépasse 5 Mo : reprenez la photo, ou choisissez une image plus légère.",
+            mixed: mixedMessage,
+            "pdf-size": "Ce PDF dépasse 5 Mo : choisissez un PDF plus léger" +
+                (pdfOnly ? "." : ", ou envoyez une photo."),
+            "pdf-protected": "Ce PDF est protégé par un mot de passe : enregistrez-le sans protection" +
+                (pdfOnly ? "." : ", ou envoyez une photo."),
+            "pdf-unreadable": "Ce PDF est vide ou endommagé : envoyez " +
+                (pdfOnly ? "un autre PDF." : "une photo."),
+            "pdf-pages": "Ce PDF fait plusieurs pages : envoyez un PDF d'une page" +
+                (pdfOnly ? "." : ", ou une photo."),
+            empty: emptyMessage
+        };
         list.innerHTML = "";
         doc.pages.forEach(function (page, i) {
             var n = i + 1;
@@ -1195,30 +1334,19 @@
             var input = $("input[type=file]", li);
             var inputId = "page-" + n + "-file";
             input.id = inputId;
+            input.setAttribute("accept", accept);
             $("label", li).setAttribute("for", inputId);
             $("label", li).textContent = "Nouveau fichier de la page " + n;
             var error = $("[data-page-error]", li);
             error.id = inputId + "-error";
             input.setAttribute("aria-describedby", inputId + "-hint " + inputId + "-error");
             $("[data-page-hint]", li).id = inputId + "-hint";
+            $("[data-page-hint]", li).textContent = hint;
             // Production: POST /mandates/{id}/documents/{documentId}/pages/{pageId} (multipart), a form per page.
             $("form", li).setAttribute("action", "/mandates/" + id + "/documents/" + doc.id + "/pages/" + (i + 1));
 
             if (replaceError && String(n) === errorPage) {
                 replace.open = true;
-                // A one-page PDF is accepted like a photo (#366); a multi-page, protected, unreadable or over-5-Mo
-                // PDF is ndopify-server's refusal, worded here.
-                var messages = {
-                    type: "Ce fichier n'est ni une photo ni un PDF : choisissez une photo JPEG, PNG ou WEBP, ou un " +
-                        "PDF.",
-                    size: "Cette image dépasse 5 Mo : reprenez la photo, ou choisissez une image plus légère.",
-                    "pdf-size": "Ce PDF dépasse 5 Mo : choisissez un PDF plus léger, ou envoyez une photo.",
-                    "pdf-protected": "Ce PDF est protégé par un mot de passe : enregistrez-le sans protection, ou " +
-                        "envoyez une photo.",
-                    "pdf-unreadable": "Ce PDF est vide ou endommagé : envoyez une photo.",
-                    "pdf-pages": "Ce PDF fait plusieurs pages : envoyez un PDF d'une page, ou une photo.",
-                    empty: "Choisissez la nouvelle page : une photo ou un PDF."
-                };
                 showError(error, messages[replaceError] || messages.empty);
                 setInvalid(input, true);
             }
@@ -1226,7 +1354,15 @@
             $("form", li).addEventListener("submit", function (event) {
                 event.preventDefault();
                 var file = input.files[0];
-                var problem = !file ? "Choisissez la nouvelle page : une photo ou un PDF." : fileError(file);
+                var problem = !file ? emptyMessage : "";
+                // #369: the file must be the document's kind (MANDATE_DOCUMENT_MIXED_SOURCES otherwise). A file that
+                // is neither a photo nor a PDF keeps the generic refusal.
+                if (!problem && doc.source === "PDF" && !isPdf(file) &&
+                        ACCEPTED_TYPES.indexOf(file.type) !== -1) {
+                    problem = mixedMessage;
+                }
+                if (!problem && doc.source === "IMAGE" && isPdf(file)) problem = mixedMessage;
+                if (!problem) problem = fileError(file);
                 showError(error, problem);
                 setInvalid(input, !!problem);
                 if (problem) {

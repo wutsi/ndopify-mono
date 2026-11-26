@@ -17,10 +17,10 @@
     <link rel="stylesheet" href="assets/css/home.css?v=20261126a">
     <link rel="stylesheet" href="assets/css/listing.css">
     <link rel="stylesheet" href="assets/css/visit.css">
-    <link rel="stylesheet" href="assets/css/documents.css?v=20261125c">
+    <link rel="stylesheet" href="assets/css/documents.css?v=20261126b">
     <script src="assets/js/partner-central.js?v=20261125a" defer></script>
     <script src="assets/js/visit.js?v=20261118a" defer></script>
-    <script src="assets/js/mandate-documents.js?v=20261126a" defer></script>
+    <script src="assets/js/mandate-documents.js?v=20261126c" defer></script>
 </head>
 <!--
     v2: a SALE mandate (?id=301, a seller's villa, signed; ?id=302, a seller's plot of land whose criteria show its
@@ -587,23 +587,34 @@
                     "Expirée" beside the status pill of a document whose expiresAt is before today (tenant clock): the
                     statuses don't say a piece expired, so the row does. Nothing else of the reading is repeated here:
                     its fields, its instructions and the expiry notice stay on the document page.
-                    "Ajouter un document" opens mandate/document-new.html (/mandates/{id}/documents/new): beside the
-                    title, the contact's WhatsApp button style (btn--secondary btn--compact), the same whether the list
-                    is empty or not; absent on a CLOSED / CANCELLED mandate, which keeps the
+                    "Ajouter un document" opens mandate/document-new.html (/mandates/{id}/documents/new):
+                    beside the title, the contact's WhatsApp button style (btn--secondary btn--compact), the same
+                    whether the list is empty or not; absent on a CLOSED / CANCELLED mandate, which keeps the
                     list read-only. The documents failing to load only affect this section ("unavailable"). The outcome
                     of an add or a delete (flash documentOutcome) shows here, the page coming back to #documents-title.
-                    PROTOTYPE: ?id=301 (a seller: titre foncier read, facture d'eau being read, CNI expired, procuration
-                    waiting, plan de bornage to fix), ?id=303 (a buyer: attestation de solde, procuration, bulletin de
-                    paie, CNI, accord de principe expired), ?id=302 / 201 / 104 once accepted (none: the empty state and
-                    its hint for that mandate), ?id=311 (a cancelled search: read-only); &docs=none, &docs=error,
-                    &documentOutcome=added|deleted|changed&documentTitle=…; &docs=reset forgets the session's changes.
-                    mandate-documents.js renders it.
+                    #369: the head counts the stored documents against the cap as a compact "3/5" beside the title
+                    (its accessible label reads "3 documents sur 5"), all types together, LISTING and SEARCH alike.
+                    The compact count keeps "Ajouter un document" on the title's line at 390 px; if space runs out,
+                    the count wraps under the title, never the action. At 5 the section hides "Ajouter un document" and
+                    shows "Un mandat peut avoir 5 documents au plus." in its place; the count stays. An unavailable list
+                    keeps the action (adding doesn't need the list) and shows no count (it isn't known); a closed or
+                    cancelled mandate keeps its read-only hint and no action, whatever the count.
+                    PROTOTYPE: ?id=301 (a seller at 5: titre foncier read, facture d'eau being read, CNI expired,
+                    procuration waiting, plan de bornage to fix), ?id=303 (a buyer at 5: attestation de solde,
+                    procuration, bulletin de paie, CNI, accord de principe expired), ?id=302 / 201 / 104 once accepted
+                    (none: below the cap, the empty state and its hint for that mandate), ?id=311 (a cancelled search:
+                    read-only, 3 documents); &docs=none, &docs=error, &documentOutcome=added|deleted|changed
+                    &documentTitle=…; &docs=reset forgets the session's changes. mandate-documents.js renders it.
                 -->
                 <section class="home-section documents" aria-labelledby="documents-title" data-documents>
                     <div class="documents__head">
-                        <h2 id="documents-title">Documents</h2>
+                        <div class="documents__title">
+                            <h2 id="documents-title">Documents</h2>
+                            <p class="documents__count" data-documents-count><span class="visually-hidden" data-count-label>5 documents sur 5</span><span aria-hidden="true" data-count-value>5/5</span></p>
+                        </div>
                         <a class="btn btn--secondary btn--compact" href="mandate/document-new.html?id=301"
-                           data-documents-add>Ajouter un document</a>
+                           data-documents-add hidden>Ajouter un document</a>
+                        <p class="documents__limit" data-documents-limit>Un mandat peut avoir 5 documents au plus.</p>
                     </div>
                     <p class="documents__intro" data-documents-intro>Les pièces d'identité et de propriété du vendeur.
                         Privées : jamais publiées ni montrées à un autre agent.</p>

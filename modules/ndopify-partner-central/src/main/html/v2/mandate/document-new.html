@@ -15,12 +15,12 @@
     <link rel="stylesheet" href="../assets/css/rejoindre.css">
     <link rel="stylesheet" href="../assets/css/home.css">
     <link rel="stylesheet" href="../assets/css/listing.css">
-    <link rel="stylesheet" href="../assets/css/documents.css?v=20261125c">
+    <link rel="stylesheet" href="../assets/css/documents.css?v=20261126b">
     <script src="../assets/js/partner-central.js?v=20261125a" defer></script>
-    <script src="../assets/js/mandate-documents.js?v=20261126a" defer></script>
+    <script src="../assets/js/mandate-documents.js?v=20261126c" defer></script>
 </head>
 <!--
-    PROTOTYPE (#329, #366): "Ajouter un document", reached from the mandate page's Documents section
+    PROTOTYPE (#329, #366, #369): "Ajouter un document", reached from the mandate page's Documents section
     (GET|POST /mandates/{id}/documents/new, its own page so that it works without JavaScript).
     One multipart form (POST /v1/mandates/{id}/documents/upload without JS): the type (required), an optional title
     (blank: the type's French name, a server rule; 100 characters at most) and the pages, one file each (JPEG, PNG,
@@ -46,9 +46,16 @@
     ?errors=size (an image over 5 Mo), the server's PDF refusals ?errors=pdf-size (over 5 Mo), ?errors=pdf-protected
     (password), ?errors=pdf-unreadable (empty or damaged), ?errors=pdf-pages (over 10 pages), ?errors=server (a 5xx:
     the form again with a generic error).
-    PROTOTYPE: ?id=301 (a seller: identity and ownership first), ?id=303 (a buyer: identity and financing first);
-    ?id=311 (cancelled) and an unknown mandate show the locked view (production: back to the mandate page with the
-    "changed" outcome). The static markup is the server's render for 301.
+    #369: a mandate holds 5 documents at most, a document 10 pages at most and is either photos or one PDF. The hint
+    names all three. At the cap the page shows the notice ("Un mandat peut avoir 5 documents au plus.") and a way back
+    instead of the form (the same page, not a redirect; nothing is posted). The server's two new refusals keep the type
+    and title: ?errors=mixed (photos and a PDF, or two PDFs, in one request) and ?errors=pages (over 10 pages once the
+    PDF is expanded) are the pages field's errors; ?errors=limit (the mandate's 5th document was added meanwhile) is a
+    form-level error with the cap's copy and the way back.
+    PROTOTYPE: ?id=301 (a seller at 5: the cap notice) and ?id=303 (a buyer at 5: the same); ?id=302 (a seller) and
+    ?id=201 (a renter) are below the cap and show the form — identity and ownership first for a seller, identity and
+    financing for a client; ?id=311 (cancelled) and an unknown mandate show the locked view (production: back to the
+    mandate page with the "changed" outcome). The static markup is the server's render for 301 (at the cap).
 -->
 <body data-page="mandate-document-new">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -92,10 +99,32 @@
                 </div>
             </div>
 
-            <div data-new>
-                <div class="page-intro">
-                    <h1>Ajouter un document</h1>
-                    <p class="mandate__meta" data-new-meta>Mandat n° 301 · Vendeur : Rodrigue Essomba</p>
+            <div class="page-intro" data-new-intro>
+                <h1>Ajouter un document</h1>
+                <p class="mandate__meta" data-new-meta>Mandat n° 301 · Vendeur : Rodrigue Essomba</p>
+            </div>
+
+            <!-- #369: at the cap (5 documents), the notice in place of the form. The server renders it too, so a
+                 stale tab or a bookmark posts nothing; production: GET /mandates/{id}/documents/new checks the count. -->
+            <div class="alert alert--info" data-new-limit>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                <div>
+                    <p class="alert__title">Un mandat peut avoir 5 documents au plus.</p>
+                    <p>Supprimez un document du mandat pour en ajouter un autre.</p>
+                    <p><a class="alert__link" href="../mandate.html?id=301#documents-title" data-back-link>Voir les documents du mandat</a></p>
+                </div>
+            </div>
+
+            <div data-new hidden>
+                <!-- #369: the 6th document refused by ndopify-server (400 MANDATE_DOCUMENT_LIMIT_REACHED), the form
+                     again with the type and title kept. With JS, a stale tab below the cap shows it before sending. -->
+                <div class="alert alert--error" tabindex="-1" hidden data-new-limit-error>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <div>
+                        <p class="alert__title">Un mandat peut avoir 5 documents au plus.</p>
+                        <p>Le document n'a pas été ajouté. Supprimez un document du mandat pour en ajouter un autre.</p>
+                        <p><a class="alert__link" href="../mandate.html?id=301#documents-title" data-back-link>Voir les documents du mandat</a></p>
+                    </div>
                 </div>
 
                 <!-- A 5xx from ndopify-server: the form again, the type and title kept. -->
@@ -149,9 +178,10 @@
 
                     <fieldset class="doc-pages-field" aria-describedby="pages-hint pages-error">
                         <legend id="pages-legend">Pages</legend>
-                        <p class="field__hint" id="pages-hint">Une photo par page, dans l'ordre (recto, puis
-                            verso). JPEG, PNG, WEBP ou PDF, 5&nbsp;Mo par fichier, 10&nbsp;pages au plus. Les pages
-                            d'un PDF sont ajoutées à sa place, dans son ordre.</p>
+                        <p class="field__hint" id="pages-hint">5&nbsp;documents par mandat, 10&nbsp;pages au plus,
+                            soit des photos soit un PDF. Une photo par page, dans l'ordre (recto, puis
+                            verso)&nbsp;: JPEG, PNG, WEBP ou PDF, 5&nbsp;Mo par fichier. Les pages d'un PDF sont
+                            ajoutées à sa place, dans son ordre.</p>
 
                         <!-- Without JS: the native input (the phone offers its camera or its gallery), PDF included. -->
                         <div data-pages-native>

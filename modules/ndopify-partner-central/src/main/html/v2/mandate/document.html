@@ -15,14 +15,15 @@
     <link rel="stylesheet" href="../assets/css/rejoindre.css">
     <link rel="stylesheet" href="../assets/css/home.css">
     <link rel="stylesheet" href="../assets/css/listing.css">
-    <link rel="stylesheet" href="../assets/css/documents.css?v=20261125c">
+    <link rel="stylesheet" href="../assets/css/documents.css?v=20261126b">
     <script src="../assets/js/partner-central.js?v=20261125a" defer></script>
-    <script src="../assets/js/mandate-documents.js?v=20261126a" defer></script>
+    <script src="../assets/js/mandate-documents.js?v=20261126c" defer></script>
 </head>
 <!--
-    PROTOTYPE (#329, #331, #366): one document of a mandate (GET /mandates/{id}/documents/{documentId}), opened from a
-    row of the mandate page's Documents section. Its header: the title (the type's name when it has none of its own), the
-    status pill, the type (when the title differs from it) and ONE upload date for the whole document ("Ajouté le
+    PROTOTYPE (#329, #331, #366, #369): one document of a mandate (GET /mandates/{id}/documents/{documentId}),
+    opened from a row of the mandate page's Documents section. Its header: the title (the type's name when it has none
+    of its own), the status pill, the document's kind (#369: "PDF" / "Photos" / "Photos ou PDF" for a grandfathered
+    one), the type (when the title differs from it) and ONE upload date for the whole document ("Ajouté le
     25/11/2026", the tenant's dateFormat with the year). No image, no preview, no thumbnail, no size anywhere on the
     page.
     #331 adds, between the header and the pages, what the AI read (see the section's comment below): the fields it
@@ -36,14 +37,16 @@
     longer than the URL lives gets an expired link: a reload mints new ones. The fields stay on this page only.
     Actions, each its own form so that the page works without JavaScript; all post-redirect-get back here with a flash:
       - Remplacer (per page row, folded): a file input (camera or gallery on a phone) and "Remplacer la page"
-        (POST /mandates/{id}/documents/{documentId}/pages/{pageId}, multipart). It takes a photo (JPEG, PNG, WEBP) or a
-        one-page PDF (#366), 5 Mo at most. The page keeps its rank and the document is back to "Reçu" (the server resets
-        its analysis, and reads it again on its own). With JS: an image is shrunk and sent straight to the storage
-        (attachTimeout: it replaces), the button reading "Envoi de la page 2…" meanwhile; a PDF is never presigned, its
-        multipart form posts ("Envoi du fichier…").
-        ?replaceError=type|size|empty|pdf-size|pdf-protected|pdf-unreadable|pdf-pages&page=2 is the form again with its
-        error (a multi-page PDF is refused: a one-page PDF only), the row's box open and the page unchanged;
-        ?outcome=replaced&page=2 the flash.
+        (POST /mandates/{id}/documents/{documentId}/pages/{pageId}, multipart). #369: the file must be the document's
+        kind — an image document takes a photo (JPEG, PNG, WEBP), a PDF document a one-page PDF — never the other
+        kind (400 MANDATE_DOCUMENT_MIXED_SOURCES); a document with no recorded kind (grandfathered) takes either. 5 Mo
+        at most. The hint under the field says what it expects. The page keeps its rank and the document is back to
+        "Reçu" (the server resets its analysis, and reads it again on its own). With JS: an image is shrunk and sent
+        straight to the storage (attachTimeout: it replaces), the button reading "Envoi de la page 2…" meanwhile; a
+        PDF is never presigned, its multipart form posts ("Envoi du fichier…").
+        ?replaceError=type|size|empty|mixed|pdf-size|pdf-protected|pdf-unreadable|pdf-pages&page=2 is the form again
+        with its error (mixed: the wrong kind for this document; a multi-page PDF is refused: a one-page PDF only),
+        the row's box open and the page unchanged; ?outcome=replaced&page=2 the flash.
       - Renommer (folded): the title (blank or over 100 characters is a field error, unlike the add form where blank
         means the type's name) and the document's version (hidden). ?errors=blank|long; ?conflict=1 is the 409
         MANDATE_DOCUMENT_VERSION_CONFLICT: the form again with the current title and a message; ?outcome=renamed.
@@ -55,12 +58,14 @@
     another agent's) is the "not available" view here; production redirects to the mandate page with the "changed"
     outcome. Out of scope: adding or deleting a single page, changing the type (delete it and add it again), and any
     action on the extracted data (no re-analysis, no field correction: replacing a page restarts the reading).
-    PROTOTYPE: ?id=301&document=3103 (Titre foncier, 2 pages, EXTRACTED + its fields — the static markup), 3105
-    (EXTRACTING), 3102 (CNI, EXTRACTED + expired), 3104 (Procuration, EXTRACTED without fields), 3101 (Plan de bornage,
-    FAILED: missing page + unreadable); ?id=303&document=3305 (Procuration, EXTRACTED without fields), 3304 (Relevé de
-    compte, EXTRACTED: amounts, "•••• 0123", "Solde"), 3302 (Bulletin de paie: an unknown key), 3301 (CNI, valid), 3303
-    (Accord de principe, EXTRACTED, expired since the reading); ?id=311&document=3113 (read-only fields), 3112
-    (read-only, expired) and 3111 (read-only, FAILED with an unknown code).
+    PROTOTYPE: ?id=301&document=3103 (Titre foncier, a 2-page PDF, EXTRACTED + its fields — the static markup), 3105
+    (Facture, photos, EXTRACTING), 3102 (CNI, photos, EXTRACTED + expired), 3104 (Procuration, PDF, EXTRACTED without
+    fields), 3101 (Plan de bornage, PDF, FAILED: missing page + unreadable); ?id=303&document=3305 (Procuration, PDF,
+    EXTRACTED without fields), 3304 (Relevé de compte, PDF, EXTRACTED: amounts, "•••• 0123", "Solde"), 3302 (Bulletin
+    de paie, photos: an unknown key), 3301 (CNI, photos, valid), 3303 (Accord de principe, PDF, EXTRACTED, expired
+    since the reading); ?id=311&document=3113 (read-only fields), 3112 (read-only, expired) and 3111 (read-only, FAILED
+    with an unknown code). #369's wrong-kind replace: ?replaceError=mixed&page=2 on a PDF document (3103: a photo is
+    refused) and on an image document (3102: a PDF is refused).
 -->
 <body data-page="mandate-document" data-assets="../assets/images/" data-currency="FCFA">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -110,6 +115,8 @@
                     <div class="doc-intro__head">
                         <h1 data-document-heading>Titre foncier n° 4521 — Bonapriso</h1>
                         <span class="status-tag status-tag--success" data-document-status><span class="visually-hidden">Statut : </span>Analysé</span>
+                        <!-- #369: the kind the document was created with; it decides which file Remplacer takes. -->
+                        <span class="status-tag status-tag--neutral" data-document-source><span class="visually-hidden">Créé à partir de : </span>PDF</span>
                     </div>
                     <p class="mandate__meta" data-document-meta>Titre foncier · Ajouté le 25/11/2026</p>
                     <p class="mandate__meta" data-document-mandate>Mandat n° 301 · Vendeur : Rodrigue Essomba</p>
@@ -241,9 +248,9 @@
                                     <div class="field">
                                         <label class="field__label" for="page-1-file">Nouveau fichier de la page 1</label>
                                         <input class="input input--file" id="page-1-file" name="file" type="file"
-                                               accept="image/jpeg,image/png,image/webp,application/pdf"
+                                               accept="application/pdf"
                                                aria-describedby="page-1-file-hint page-1-file-error">
-                                        <p class="field__hint" id="page-1-file-hint">Photo JPEG, PNG ou WEBP, ou PDF d'une page, 5&nbsp;Mo au plus. Le fichier prend la place de cette page.</p>
+                                        <p class="field__hint" id="page-1-file-hint">PDF d'une page, 5&nbsp;Mo au plus. Ce document a été créé à partir d'un PDF&nbsp;: seul un PDF d'une page remplace cette page.</p>
                                         <p class="field__error" id="page-1-file-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
                                     </div>
                                     <button type="submit" class="btn btn--primary btn--compact">Remplacer la page</button>
@@ -263,9 +270,9 @@
                                     <div class="field">
                                         <label class="field__label" for="page-2-file">Nouveau fichier de la page 2</label>
                                         <input class="input input--file" id="page-2-file" name="file" type="file"
-                                               accept="image/jpeg,image/png,image/webp,application/pdf"
+                                               accept="application/pdf"
                                                aria-describedby="page-2-file-hint page-2-file-error">
-                                        <p class="field__hint" id="page-2-file-hint">Photo JPEG, PNG ou WEBP, ou PDF d'une page, 5&nbsp;Mo au plus. Le fichier prend la place de cette page.</p>
+                                        <p class="field__hint" id="page-2-file-hint">PDF d'une page, 5&nbsp;Mo au plus. Ce document a été créé à partir d'un PDF&nbsp;: seul un PDF d'une page remplace cette page.</p>
                                         <p class="field__error" id="page-2-file-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
                                     </div>
                                     <button type="submit" class="btn btn--primary btn--compact">Remplacer la page</button>

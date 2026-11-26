@@ -50,25 +50,28 @@ rentals and sales (decided 2026-11-22): no mandate is filtered on a specialisati
 | `mandate.html`, `mandate/document-new.html`, `mandate/document.html`, `assets/js/mandate-documents.js`, `assets/css/documents.css`, `assets/images/doc-sample-*.svg`, `assets/js/partner-central.js` (#329) | A mandate's **documents**, on LISTING and SEARCH mandates alike. The mandate page gets a *Documents* section before *Sa recherche*: one row per document, newest first, the whole row a link to its page — the type, the agent's title under it only when it differs from the type's name, the status pill (*Reçu* `UPLOADED`, *En cours d'analyse* `EXTRACTING`, *Analysé* `EXTRACTED`, *À corriger* `FAILED` — no *Expiré* status: an expired piece keeps its status and takes #331's *Expirée* marker) and *Ajouté le 25/11/2026 · 2 pages* (tenant date format with the year); *Ajouter un document* beside the title, in the contact block's WhatsApp button style (`btn--secondary btn--compact`), the same in the empty and the list states. States: empty (with a one-line hint of what to add for that mandate: identity and ownership for a seller / landlord, identity and financing for a buyer / client), unavailable (the rest of the page unchanged), a flash after an add or a delete, read-only on a closed or cancelled mandate (no add). *Ajouter un document* is its own page: the type (a native select, the mandate's suggested types first, then *Autres types*), an optional *Titre* (placeholder the type's name, 100 at most) and the pages (one native multiple input without JS; with JS *Prendre une photo* / *Choisir des fichiers*, then the chosen files listed in order with their name and size read in the browser — *Page 1 · IMG_2041.jpg · 1,8 Mo*, each removable, no thumbnail —, shrink to 2000 px and *Envoi de la page 2 sur 3…*). The document page shows **no image** (no preview, thumbnail nor size): its type, title, status and one upload date (*Ajouté le 25/11/2026*), then its pages in order as plain rows (*Page 1*, *Page 2*…), each with *Voir* (a new tab; production's href is the page's presigned URL, here a sample asset) and its own folded *Remplacer* form, then *Renommer* (field errors, the version-conflict message) and *Supprimer le document* (`?delete=1` confirmation without JS, in place with it). New sample mandate **311**: a buyer's search cancelled after its approval, for the read-only states. |
 | `mandate/document.html`, `mandate.html`, `assets/js/mandate-documents.js`, `assets/css/documents.css` (#331) | What the AI read on a document, **on its page and before its pages**. `EXTRACTED` with `fields`: one row per value, in the server's order, its French label by key (`FIELD_LABELS`, production's message bundle; an unknown key reads *Autre donnée*) and its value by kind — a date in the tenant's dateFormat with the year (`14/06/2019`), a pay month as *Octobre 2026*, the short amount of #292 with the document's currency (*350K FCFA*), *•••• 0123*, a grouped surface (*500 m²*), *Solde* / *Attesté* for `amountKind`; `currency` is never a row, no confidence, no JSON and nothing of the pages. A value the page can't read shows as sent, a null or blank one has no row. `EXTRACTED` without fields (an older payload) reads *Aucune donnée n'a été lue sur ce document.* with its *Analysé* status; `UPLOADED` / `EXTRACTING` show a hint that the reading happens on its own. `FAILED` shows one instruction per problem code, in the server's order (wrong type, unreadable document, missing page, doubtful required field, unreadable expiry date, failed extraction; an unknown code reads a generic instruction) and no field row — `DOCUMENT_EXPIRED` is a warning, never an instruction. A piece whose `expiresAt` is before today (tenant clock and zone) gets the notice *Pièce expirée le …*, saying whether it was already expired when the AI read it (the server's `DOCUMENT_EXPIRED` warning) or has expired since, and the way out (*remplacez ses pages par celles de la nouvelle pièce, ou supprimez-la et ajoutez la nouvelle*); today or later, or no `expiresAt`, no notice. The mandate page's *Documents* section adds the *Expirée* pill beside an expired document's status, and nothing else of the reading. All of it is server-rendered (no JavaScript needed); on a `CLOSED` / `CANCELLED` mandate the reading stays readable with no action of its own (*Voir* only), and its expiry notice keeps the piece consultable instead of naming the way out. The stale *Expiré* status of the dropped #332 is gone (an expired piece is `EXTRACTED` + a warning, or expired since). | A mandate's **documents**, on LISTING and SEARCH mandates alike. The mandate page gets a *Documents* section before *Sa recherche*: one row per document, newest first, the whole row a link to its page — the type, the agent's title under it only when it differs from the type's name, the status pill (*Reçu* `UPLOADED`, *En cours d'analyse* `EXTRACTING`, *Analysé* `EXTRACTED`, *À corriger* `FAILED` — no *Expiré* status: an expired piece keeps its status and takes #331's *Expirée* marker) and *Ajouté le 25/11/2026 · 2 pages* (tenant date format with the year); *Ajouter un document* beside the title, in the contact block's WhatsApp button style (`btn--secondary btn--compact`), the same in the empty and the list states. States: empty (with a one-line hint of what to add for that mandate: identity and ownership for a seller / landlord, identity and financing for a buyer / client), unavailable (the rest of the page unchanged), a flash after an add or a delete, read-only on a closed or cancelled mandate (no add). *Ajouter un document* is its own page: the type (a native select, the mandate's suggested types first, then *Autres types*), an optional *Titre* (placeholder the type's name, 100 at most) and the pages (one native multiple input without JS; with JS *Prendre une photo* / *Choisir des fichiers*, then the chosen files listed in order with their name and size read in the browser — *Page 1 · IMG_2041.jpg · 1,8 Mo*, each removable, no thumbnail —, shrink to 2000 px and *Envoi de la page 2 sur 3…*). The document page shows **no image** (no preview, thumbnail nor size): its type, title, status and one upload date (*Ajouté le 25/11/2026*), then its pages in order as plain rows (*Page 1*, *Page 2*…), each with *Voir* (a new tab; production's href is the page's presigned URL, here a sample asset) and its own folded *Remplacer* form, then *Renommer* (field errors, the version-conflict message) and *Supprimer le document* (`?delete=1` confirmation without JS, in place with it). New sample mandate **311**: a buyer's search cancelled after its approval, for the read-only states. |
 | `mandate/document-new.html`, `mandate/document.html`, `assets/js/mandate-documents.js` (#366) | PDFs next to photos. The add form's hint names them (*Une photo par page, dans l'ordre (recto, puis verso). JPEG, PNG, WEBP ou PDF, 5 Mo par fichier, 10 pages au plus. Les pages d'un PDF sont ajoutées à sa place, dans son ordre.*), the native multiple input and the JS picker accept `application/pdf` (*Choisir des fichiers* — *Prendre une photo* keeps images only), and the chosen list shows a PDF by its name and size under *PDF* (no thumbnail) while images keep *Page N*; with a PDF the count line counts files and says its pages count at sending, since the browser can't know them. Submitting with a PDF posts the whole multipart form after the browser shrinks each image (*Envoi du document…*, the bar indeterminate), never presign → PUT → create; images alone keep their direct upload (*Envoi de la page 2 sur 3…*). A PDF over 5 Mo is refused in the browser before any call; ndopify-server's refusals (over 5 Mo, password-protected, empty or damaged, more than 10 pages) come back as the pages field's error, the type and title kept and the pages to choose again: `?errors=pdf-size`, `pdf-protected`, `pdf-unreadable`, `pdf-pages` (`?errors=file` now shows a Word file). The per-page *Remplacer* takes a photo or a one-page PDF (`?replaceError=pdf-size`, `pdf-protected`, `pdf-unreadable`, `pdf-pages&page=2`: the row's box open with the French message, the page unchanged); a PDF posts its form, an image keeps shrinking and attaching. Without JavaScript every input posts the form. A page rendered from a PDF is an ordinary *Page N* of the document page (*Voir* only). |
+| `mandate.html`, `mandate/document-new.html`, `mandate/document.html`, `assets/js/mandate-documents.js`, `assets/css/documents.css` (#369) | The mandate's document limits. The Documents section's head counts the stored documents against the cap as a compact *5/5* right after the title — its visually hidden label reads *5 documents sur 5* — all types together, on a LISTING and a SEARCH alike; the compact count keeps *Ajouter un document* on the heading's line at 390 px (if space runs out, the count wraps under the title, never the action). At 5 it hides *Ajouter un document* and shows *Un mandat peut avoir 5 documents au plus.* in its place (the count stays). A read-only mandate keeps its hint and no action; an unavailable list keeps the action and shows no count. The add page at 5 shows the cap notice and a way back instead of the form — the same page, nothing posts — and its hint names the caps (*5 documents par mandat, 10 pages au plus, soit des photos soit un PDF*), with #366's photo order, file types, *5 Mo par fichier* and PDF-pages sentence. With JS a list mixing photos with a PDF (or two PDFs) is refused before sending; without JS the server's 400 is the pages field's error (`?errors=mixed`), and `?errors=pages` (over 10 pages once the PDF is expanded) and `?errors=limit` (the 6th document, the form kept with its type and title) are the other refusals. A document's page names its kind — *PDF* / *Photos*, *Photos ou PDF* for a grandfathered document — and its *Remplacer* takes that kind only (a photo for an image document, a one-page PDF for a PDF document), the hint saying so and `?replaceError=mixed&page=2` for the wrong kind. Samples: 301 and 303 are at 5, 302 and 201 below; 3103 is a PDF document, 3102 an image one. |
 
 To review #329 (a mandate's documents), with the session fresh (or `&docs=reset` once): `mandate.html?id=301` (a
 seller: *Titre foncier n° 4521 — Bonapriso* *Analysé*, *Facture d'eau — octobre 2026* *En cours d'analyse*, *Carte
 nationale d'identité* *Analysé* + *Expirée* — no second line, its title being the type's name —, *Procuration — vente
 du lot 12* *Reçu*, *Plan de bornage* *À corriger*) and `mandate.html?id=303` (a buyer: *Attestation de solde — Afriland
 First Bank*, *Procuration — achat de l'appartement*, *Bulletin de paie — octobre 2026*, *Carte nationale d'identité*
-*Analysé*, *Accord de principe — prêt immobilier* *Analysé* + *Expirée*); the empty state on `mandate.html?id=302`
+*Analysé*, *Accord de principe — prêt immobilier* *Analysé* + *Expirée* — both lists are at #369's cap of 5, so their
+*Ajouter un document* is replaced by the cap notice); the empty state on `mandate.html?id=302`
 (a seller: identity and ownership hint) and `?id=201` (a renter: identity and income hint), or any of them with
 `&docs=none`; `&docs=error` for *Documents indisponibles*; `&documentOutcome=added&documentTitle=Titre%20foncier`,
 `deleted` and `changed` for the flashes; `mandate.html?id=311` the read-only list of a cancelled search (no *Ajouter*).
-The add form: `mandate/document-new.html?id=301` (seller's suggestions first) and `?id=303` (buyer's), then
+The add form — 301 and 303 reached their cap in #369, so it is reviewed below the cap:
+`mandate/document-new.html?id=302` (seller's suggestions first) and `?id=201` (a client's), then
 `&errors=missing` (no type, no page, the title kept), `&errors=file` (a Word file), `&errors=size` (over 5 Mo) and
 `&errors=server`, each keeping the type and title; `?id=311` is the locked view. Add a document for real (pick two or
 three images, remove one, submit): each chosen file is a row *Page N · name · size* (no thumbnail), then the progress,
 then the mandate page with the flash and the new row first. The document page — no image anywhere, one *Ajouté le …*
 date, no size, a plain row per page with *Voir* (new tab) and *Remplacer*: `mandate/document.html?id=301&document=3103`
 (two pages), `&document=3102` (an identity card, recto and verso), `&document=3101` (one page); `&outcome=renamed`,
-`&outcome=replaced&page=2`, `&errors=blank`, `&errors=long`, `&conflict=1`, `&replaceError=type&page=2` (also `size`,
-`empty`), `&delete=1` (the confirmation as without JS); `mandate/document.html?id=311&document=3113` read-only (*Voir*
+`&outcome=replaced&page=2`, `&errors=blank`, `&errors=long`, `&conflict=1`, `&document=3102&replaceError=type&page=2`
+(also `size`, `empty`), `&delete=1` (the confirmation as without JS); `mandate/document.html?id=311&document=3113` read-only (*Voir*
 only: no *Remplacer*, *Renommer* nor *Supprimer*). Check every page at 390 px: no horizontal scroll, a long type
 (*Facture d'eau ou d'électricité*, *Accord de principe bancaire*) wraps inside its row with the pill kept on the first
 line, a long file name wraps beside its remove button, and the dates keep their year. Assumptions: the section sits
@@ -98,7 +101,8 @@ pill. Then one URL per state of the document page:
 | `mandate/document.html?id=311&document=3112` | Read-only and expired: the notice, whose way out reads *Mandat annulé : cette pièce reste consultable telle quelle.* |
 | `mandate/document.html?id=311&document=3111` | Read-only `FAILED` with an unknown code (`DOCUMENT_BACK_MISSING`): the generic instruction. |
 
-Replace a page of `3103` (*Remplacer*, a photo): the document comes back *Reçu* and its reading is gone (the server
+Replace a page of `3102` (*Remplacer*, a photo — an image document in #369; `3103` is a PDF document and takes a
+one-page PDF): the document comes back *Reçu* and its reading is gone (the server
 resets its analysis), then read again on its own — the section follows. Deleting and re-adding a document does the
 same. At 390 px the field rows keep two columns (the label wraps on two lines, never the value outside the screen), the
 notice, the instructions and the waiting hint sit full width above them, and a row's two pills keep the type wrapping
@@ -110,16 +114,18 @@ first, then the reading; an expired piece is *EXTRACTED* + `DOCUMENT_EXPIRED` (a
 `currency` never gets a row; a `CLOSED` / `CANCELLED` mandate shows the whole reading but names no action of its own
 (none of this story's, and the replace/delete of #329 are absent).
 
-To review #366 (a PDF next to photos in a mandate's documents): on `mandate/document-new.html?id=301` choose *Choisir
-des fichiers*, an image and a PDF — *Page 1 · IMG_2041.jpg · 1,8 Mo* then *PDF · titre-foncier.pdf · 2,4 Mo*, the
-count line *2 fichiers choisis · 10 pages au plus. Les pages d'un PDF comptent à l'envoi.*, each removable; submit for
-*Préparation des pages…*, then *Envoi du document…* (no page count) and the mandate page, whose new document's pages
-are ordinary *Page 1*, *Page 2* rows with *Voir*. Images alone keep *Envoi de la page 2 sur 3…*. The add form's
-server refusals: `&errors=pdf-size` (*titre-foncier.pdf* over 5 Mo), `&errors=pdf-protected` (a password),
+To review #366 (a PDF next to photos in a mandate's documents): on `mandate/document-new.html?id=302` (a seller below
+#369's cap; 301 and 303 are at it) choose *Choisir des fichiers*, an image and a PDF — *Page 1 · IMG_2041.jpg · 1,8 Mo*
+then *PDF · titre-foncier.pdf · 2,4 Mo*, the count line *2 fichiers choisis · 10 pages au plus. Les pages d'un PDF
+comptent à l'envoi.*, each removable; submit for *Préparation des pages…*, then *Envoi du document…* (no page count) and
+the mandate page, whose new document's pages are ordinary *Page 1*, *Page 2* rows with *Voir*. Images alone keep
+*Envoi de la page 2 sur 3…*. #369 refuses that mixed list before it is sent: remove the PDF (or keep only it) to see
+#366's flow. The add form's server refusals:
+`&errors=pdf-size` (*titre-foncier.pdf* over 5 Mo), `&errors=pdf-protected` (a password),
 `&errors=pdf-unreadable` (empty or damaged), `&errors=pdf-pages` (over 10 pages), each keeping the type and title and
 asking for the pages again; `&errors=file` is now a Word file. The replace form: `mandate/document.html?id=301&document=3103`
-accepts a one-page PDF, and `&replaceError=pdf-pages&page=2` (also `pdf-size`, `pdf-protected`, `pdf-unreadable`) opens
-the row's box with the French message, the page unchanged. Turn JavaScript off: every input still posts the form and the
+is a PDF document in #369, so it accepts a one-page PDF (and refuses a photo); `&replaceError=pdf-pages&page=2` (also
+`pdf-size`, `pdf-protected`, `pdf-unreadable`) opens the row's box with the French message, the page unchanged. Turn JavaScript off: every input still posts the form and the
 page comes back with its field error. At 390 px: a long PDF name wraps in its row, the new error text wraps under the
 field, the count line and the replace box stay on screen. Assumptions: a PDF is shown as *PDF*, never *Page N* (its page
 count is the server's), and the count line counts files then; the prototype simulates a PDF as two rendered pages;
@@ -128,6 +134,45 @@ the 5 Mo limit is per file (the story's copy said per page) and no copy promises
 To review the type and status badges (#276): `index.html` (offer 104 and card 301 read *Vente*; the rental cards read
 *Location*, their badge hugging its own word) and `mandate.html?id=301` (*Vente* + *Actif*) against `?id=201`
 (*Location* + *Assigné*), both at 390 px to see the pair on its own line under the title.
+
+To review #369 (the mandate's document limits), one URL per state:
+
+| URL | State |
+|---|---|
+| `mandate.html?id=301` | A seller at the cap: *5/5* (its accessible label *5 documents sur 5*), the five rows, no *Ajouter un document*, *Un mandat peut avoir 5 documents au plus.* in its place (the static render). |
+| `mandate.html?id=303` | A buyer at the cap: the same, with the buyer's five documents. |
+| `mandate.html?id=302` | A seller below the cap: *0/5*, the empty hint and *Ajouter un document* on the heading's line. |
+| `mandate.html?id=201` | A renter below the cap: the same. |
+| `mandate.html?id=311` | A cancelled search: *3/5* (its accessible label *3 documents sur 5*), the read-only hint, no action (not the cap notice). |
+| `mandate.html?id=301&docs=error` | *Documents indisponibles*: no count, the add action stays. |
+| `mandate.html?id=301&docs=none` | Empty at *0/5*, the seller's hint, the add action. |
+| `mandate/document-new.html?id=301` | At the cap: the notice *Un mandat peut avoir 5 documents au plus.*, how to free a place and *Voir les documents du mandat* — no form (the same for `?id=303`). |
+| `mandate/document-new.html?id=302` | The add form below the cap: the hint names the three caps, then the type, the title and the pages. `?id=201` is a client's (identity and financing first). |
+| `mandate/document-new.html?id=302&errors=mixed` | The server's 400 for photos and a PDF (or two PDFs): the pages field's error, the type and title kept. |
+| `mandate/document-new.html?id=302&errors=pages` | Over 10 pages once the PDF is expanded: the pages field's error, the type and title kept. |
+| `mandate/document-new.html?id=301&errors=limit` | The 6th document refused: the form again with the cap's error above it, type and title kept, the way back (the agent's form was open at 4 while another tab added the 5th). |
+| `mandate/document-new.html?id=311` | The locked view (closed or cancelled mandate). |
+| `mandate/document.html?id=301&document=3103` | A PDF document: the *PDF* tag, two pages, *Remplacer* expecting a one-page PDF (hint and file picker). |
+| `mandate/document.html?id=301&document=3102` | An image document: the *Photos* tag, two pages, *Remplacer* expecting a photo. |
+| `mandate/document.html?id=301&document=3103&replaceError=mixed&page=2` | The wrong kind for a PDF document: the row open with *Ce document a été créé à partir d'un PDF : … pas par une photo.* |
+| `mandate/document.html?id=301&document=3102&replaceError=mixed&page=2` | The wrong kind for an image document: *… à partir de photos : … pas par un PDF.* |
+| `mandate/document.html?id=303&document=3302` | Another image document (a pay slip), on the buyer's side; `3303` is a PDF one. |
+
+With JS on `mandate/document-new.html?id=302`, choose a photo and a PDF (or two PDFs): the pages field's error shows as
+the list becomes mixed and *Ajouter le document* sends nothing; remove the PDF (or one of the two) and it clears. The
+6th document is caught before sending only from a tab left open below the cap (the page at 5 shows no form). Delete two
+of 301's documents from their pages and come back to `mandate.html?id=301`: *3/5*, *Ajouter un document* back, the cap
+notice gone. The static markup is the server's render, JavaScript or not — the section at 5, the add page's notice and
+the form's hint — and every form still posts; the `?errors=` / `?replaceError=` states are this prototype's script
+switches (production renders them server-side). At 390 px the compact count keeps *Ajouter un document* on the
+heading's line; if space runs out it wraps under the title, never the action, and at 5 the notice takes its own line
+under the title and its count. The long hint wraps inside its field, the kind pill follows the status on its line, and
+no page scrolls sideways. Assumptions: 301 and 303 being at 5, the add form moved to 302 (a seller) and 201 (a client),
+whose suggested types are the same; a document's kind is a neutral pill in its header, not a status; `?errors=limit` is
+a form-level error (the cap is not a field's mistake); a document with no recorded kind (grandfathered) accepts either
+kind, as #366, and has no sample; data over a cap stays readable (the section counts it, *6/5*, and hides the add; an
+11-page document still lists its pages and replaces one), and no sample seeds one; the count comes from the session's
+stored list, so adding and deleting on the add and document pages moves it.
 
 To review the sale states: `index.html` (offer 104, card 301), `mandate.html?id=301` (a seller's villa) and
 `mandate.html?id=302` (a seller's plot of land, whose criteria show its *Document de propriété*), `mandate/close.html?id=301`;

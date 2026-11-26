@@ -1,8 +1,9 @@
 /*
- * Ndopify Partner Central — a mandate's documents (#329, #331): the *Documents* section of mandate.html,
+ * Ndopify Partner Central — a mandate's documents (#329, #331, #369): the *Documents* section of mandate.html,
  * mandate/document-new.html and mandate/document.html.
  * #331 adds what the AI read on the document page (its fields, the waiting hint, the problem instructions and the
  * expiry notice) and the "Expirée" marker of an expired document's row on mandate.html.
+ * #369 adds the count against the cap and the cap notice of the section's head, and the add page's cap notice.
  * Loaded after partner-central.css, home.css and listing.css; uses their tier-2 semantic tokens only, no new colours.
  * Reuses listing.css's .photo__delete / .photo-actions / .upload-progress for the pages chosen. No page image is
  * shown anywhere: a page opens through its "Voir" link.
@@ -16,7 +17,41 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-3);
+    gap: var(--space-2);
+}
+
+/*
+ * #369: the title with the compact count against the cap ("3/5"), then the action — or, at the cap, the notice in its
+ * place. The count reads as a hint right after the heading (its accessible label carries "3 documents sur 5"); its
+ * small size keeps "Ajouter un document" on the same line at 390 px. A zero flex basis keeps the action on the title's
+ * line whatever the count's width: the title takes what is left, and the count wraps under it if that is too narrow.
+ * Never the action.
+ */
+.documents__title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-1);
+    flex: 1 1 0;
+    min-width: min-content;
+}
+
+.documents__count {
+    font-size: var(--step-hint);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.documents__limit {
+    font-size: var(--step-hint);
+    font-weight: 600;
+}
+
+/* On a phone the cap notice takes its own line under the title and its count (it is long and replaces no action). */
+@media (max-width: 639.98px) {
+    .documents__limit {
+        flex-basis: 100%;
+    }
 }
 
 .documents__intro,
@@ -125,6 +160,11 @@ a.doc-row:focus-visible {
 }
 
 /* ---------- mandate/document-new.html ---------- */
+
+/* #369: the refusal's alert above the form (and #366's 5xx one): space under it, none when it's hidden. */
+[data-new] .alert:not([hidden]) {
+    margin-bottom: var(--space-4);
+}
 
 /* Without JS: the native file input, visible, so the chosen files' names show. */
 .input--file {
