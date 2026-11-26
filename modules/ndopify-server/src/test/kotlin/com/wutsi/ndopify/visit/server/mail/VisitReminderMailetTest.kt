@@ -5,6 +5,7 @@ import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
@@ -120,6 +121,7 @@ class VisitReminderMailetTest {
         assertEquals("mandate-1-1@wutsi.com", email.inReplyTo)
         assertEquals(listOf("mandate-1-1@wutsi.com"), email.references)
         verify(conversationService).of(1L)
+        verify(conversationService, never()).recordRoot(any(), any())
         assertEquals("Kim Possible", email.sender?.displayName)
 
         val customerContext = context(VisitReminderMailet.TEMPLATE_CUSTOMER)
@@ -179,6 +181,23 @@ class VisitReminderMailetTest {
         mailet.sendCustomer(visit, customer, agent, listing.copy(title = " "))
 
         assertEquals("Bien n° 101", context(VisitReminderMailet.TEMPLATE_CUSTOMER)["listing_title"])
+    }
+
+    @Test
+    fun `the first customer e-mail records the relay's id`() {
+        doReturn(
+            MandateConversation(
+                subject = "Votre recherche : appartement à Bastos (Yaounde) · mandat 1",
+                messageId = "mandate-1-1@wutsi.com",
+                inReplyTo = null,
+                references = emptyList(),
+            ),
+        ).whenever(conversationService).of(1L)
+        doReturn("0101-abc@email.amazonses.com").whenever(mailService).send(any())
+
+        mailet.sendCustomer(visit, customer, agent, listing)
+
+        verify(conversationService).recordRoot(1L, "0101-abc@email.amazonses.com")
     }
 
     private fun email(): Email {

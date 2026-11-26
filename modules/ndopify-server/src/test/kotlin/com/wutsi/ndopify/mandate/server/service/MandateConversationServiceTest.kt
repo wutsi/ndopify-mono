@@ -4,6 +4,7 @@ import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
+import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.dto.ListingType
@@ -138,5 +139,53 @@ class MandateConversationServiceTest {
         assertEquals("mandate-1-13@wutsi.com", second.messageId)
         assertEquals("Votre recherche : appartement à Bastos, Mvan (Yaounde) · mandat 12", first.subject)
         assertEquals("Votre recherche : appartement à Bastos, Mvan (Yaounde) · mandat 13", second.subject)
+    }
+
+    @Test
+    fun `a captured SES id is the conversation's root`() {
+        doReturn("0101-abc@email.amazonses.com").whenever(dao).findConversationMessageIdById(12L)
+        doReturn("Votre recherche · mandat 12").whenever(dao).findConversationSubjectById(12L)
+
+        val conversation = service.of(12L)
+
+        assertEquals("0101-abc@email.amazonses.com", conversation.inReplyTo)
+        assertEquals(listOf("0101-abc@email.amazonses.com"), conversation.references)
+        assertTrue(conversation.messageId.startsWith("mandate-1-12-"))
+    }
+
+    @Test
+    fun `a conversation opened before the capture falls back to the pinned root`() {
+        doReturn(null).whenever(dao).findConversationMessageIdById(12L)
+        doReturn("Votre recherche · mandat 12").whenever(dao).findConversationSubjectById(12L)
+
+        val conversation = service.of(12L)
+
+        assertEquals("mandate-1-12@wutsi.com", conversation.inReplyTo)
+        assertEquals(listOf("mandate-1-12@wutsi.com"), conversation.references)
+    }
+
+    @Test
+    fun `two mandates keep their own captured root`() {
+        val other = mandate.copy(id = 13L)
+        doReturn(Optional.of(other)).whenever(dao).findById(13L)
+        doReturn("0101-abc@email.amazonses.com").whenever(dao).findConversationMessageIdById(12L)
+        doReturn("0202-def@email.amazonses.com").whenever(dao).findConversationMessageIdById(13L)
+        doReturn("Votre recherche · mandat 12").whenever(dao).findConversationSubjectById(12L)
+        doReturn("Votre recherche · mandat 13").whenever(dao).findConversationSubjectById(13L)
+
+        val first = service.of(12L)
+        val second = service.of(13L)
+
+        assertEquals(listOf("0101-abc@email.amazonses.com"), first.references)
+        assertEquals(listOf("0202-def@email.amazonses.com"), second.references)
+    }
+
+    @Test
+    fun `the server id is recorded once, and never for a null id`() {
+        service.recordRoot(12L, "0101-abc@email.amazonses.com")
+        service.recordRoot(12L, null)
+
+        verify(dao).markConversationMessageId(12L, "0101-abc@email.amazonses.com")
+        verify(dao, times(1)).markConversationMessageId(any(), any())
     }
 }

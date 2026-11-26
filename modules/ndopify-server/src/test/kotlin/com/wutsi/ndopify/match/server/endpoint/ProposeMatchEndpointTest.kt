@@ -4,6 +4,7 @@ import com.auth0.jwt.JWT
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.dao.MatchRepository
 import com.wutsi.ndopify.refdata.dto.ApplicationCode
@@ -30,6 +31,9 @@ import kotlin.test.assertTrue
 class ProposeMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Autowired
     private lateinit var dao: MatchRepository
+
+    @Autowired
+    private lateinit var mandateDao: MandateRepository
 
     @Autowired
     private lateinit var accessTokenService: AccessTokenService
@@ -63,6 +67,21 @@ class ProposeMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         val body = message.content.toString()
         assertTrue(body.contains("https://www.ndopify.com/match/1?token="))
         assertTrue(body.contains("Nice apartment"))
+    }
+
+    @Test
+    fun `a captured SES id is the root of the later e-mails`() {
+        rest.postForEntity("/v1/matches/1/propose", null, Any::class.java)
+        assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
+
+        // The first e-mail's 250 reply is what the mailet records; simulate the captured id here.
+        mandateDao.markConversationMessageId(1L, "0101-abc@email.amazonses.com")
+        rest.postForEntity("/v1/matches/10/propose", null, Any::class.java)
+
+        assertTrue(smtp.waitForIncomingEmail(5000, 2), "no second email received")
+        val second = smtp.receivedMessages[1]
+        assertEquals("<0101-abc@email.amazonses.com>", second.getHeader("In-Reply-To")?.first())
+        assertEquals("<0101-abc@email.amazonses.com>", second.getHeader("References")?.first())
     }
 
     @Test

@@ -156,6 +156,24 @@ class MatchProposedMailetTest {
         assertEquals("Kim Possible", email.firstValue.sender?.displayName)
         assertEquals("", email.firstValue.sender?.email)
         verify(conversationService).of(1L)
+        verify(conversationService, never()).recordRoot(any(), any())
+    }
+
+    @Test
+    fun `the first customer e-mail records the relay's id`() {
+        doReturn(
+            MandateConversation(
+                "Votre recherche : appartement à Bastos (Yaounde) · mandat 1",
+                "mandate-1-1@wutsi.com",
+                null,
+                emptyList(),
+            ),
+        ).whenever(conversationService).of(1L)
+        doReturn("0101-abc@email.amazonses.com").whenever(mailService).send(any())
+
+        mailet.send(listOf(match), customer, agent)
+
+        verify(conversationService).recordRoot(1L, "0101-abc@email.amazonses.com")
     }
 
     @Test

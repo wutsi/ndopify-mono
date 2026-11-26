@@ -5,6 +5,7 @@ import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
@@ -110,6 +111,24 @@ class ContractSignatureMailetTest {
         assertEquals("mandate-1-7-abc@wutsi.com", email.firstValue.messageId)
         assertEquals("mandate-1-7@wutsi.com", email.firstValue.inReplyTo)
         assertEquals(listOf("mandate-1-7@wutsi.com"), email.firstValue.references)
+        verify(conversationService, never()).recordRoot(any(), any())
+    }
+
+    @Test
+    fun `the first mandate e-mail records the relay's id`() {
+        doReturn(
+            MandateConversation(
+                "Votre recherche : appartement à Yaounde · mandat 7",
+                "mandate-1-7@wutsi.com",
+                null,
+                emptyList(),
+            ),
+        ).whenever(conversationService).of(7L)
+        doReturn("0101-abc@email.amazonses.com").whenever(mailService).send(any())
+
+        mailet.send(contract, party, mandate = mandate)
+
+        verify(conversationService).recordRoot(7L, "0101-abc@email.amazonses.com")
     }
 
     @Test

@@ -1,13 +1,17 @@
 package com.wutsi.ndopify.platform.mail
 
 import jakarta.mail.Message
+import jakarta.mail.MessagingException
 import jakarta.mail.Part
 import jakarta.mail.Session
 import jakarta.mail.internet.MimeBodyPart
 import jakarta.mail.internet.MimeMessage
 import jakarta.mail.internet.MimeMultipart
+import org.eclipse.angus.mail.smtp.SMTPTransport
+import org.springframework.mail.MailSendException
 import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.mail.javamail.JavaMailSenderImpl
+import java.util.Date
 
 class MailService(
     private val mail: JavaMailSender,
@@ -16,9 +20,48 @@ class MailService(
     /** The domain of the configured sender, for the message ids a caller builds (`<mandate-1-1@wutsi.com>`). */
     val fromDomain: String get() = from.substringAfterLast('@', "").ifBlank { "ndopify.com" }
 
-    fun send(email: Email) {
-        val msg = createMessage(email)
-        mail.send(msg)
+    /**
+     * Sends the message and returns the `Message-ID` the relay assigned, without angle brackets, or null when it named
+     * none (Mailpit, GreenMail). SES replaces the `Message-ID` we set, so its reply is the only source of the delivered
+     * id. Each send takes its own transport: the last response belongs to this message, whatever runs concurrently.
+     */
+    fun send(email: Email): String? {
+        val sender = mail as JavaMailSenderImpl
+        try {
+            val msg = createMessage(email)
+            val transport = sender.session.getTransport(protocol(sender))
+            try {
+                transport.connect(
+                    sender.host,
+                    sender.port,
+                    sender.username?.ifEmpty { null },
+                    sender.password?.ifEmpty { null },
+                )
+                prepare(msg)
+                transport.sendMessage(msg, msg.allRecipients)
+                return ServerMessageIdParser.parse((transport as? SMTPTransport)?.lastServerResponse, sender.host)
+            } finally {
+                runCatching { transport.close() }
+            }
+        } catch (ex: MessagingException) {
+            throw MailSendException("Mail server connection failed", ex)
+        }
+    }
+
+    private fun protocol(sender: JavaMailSenderImpl): String =
+        sender.protocol ?: sender.session.getProperty("mail.transport.protocol") ?: "smtp"
+
+    // What JavaMailSenderImpl does before handing the message to the transport: a sent date, saveChanges() and the
+    // pinned Message-ID restored (Spring's doSend(), which we bypass to keep its transport).
+    private fun prepare(msg: MimeMessage) {
+        if (msg.sentDate == null) {
+            msg.sentDate = Date()
+        }
+        val messageId = msg.messageID
+        msg.saveChanges()
+        if (messageId != null) {
+            msg.setHeader("Message-ID", messageId)
+        }
     }
 
     /**

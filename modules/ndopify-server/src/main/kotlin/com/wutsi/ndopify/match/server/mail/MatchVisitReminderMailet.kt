@@ -48,7 +48,7 @@ class MatchVisitReminderMailet(
         val fullName = party.fullName()
         val conversation = conversationService.of(match.mandate.id!!)
         val token = tenant.publicPortalUrl?.let { linkTokenService.create(customer) }
-        mailService.send(
+        val sentMessageId = mailService.send(
             Email(
                 sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = party.email, displayName = fullName),
@@ -81,6 +81,9 @@ class MatchVisitReminderMailet(
                 ),
             ),
         )
+        if (conversation.inReplyTo == null) {
+            conversationService.recordRoot(match.mandate.id!!, sentMessageId)
+        }
     }
 
     private fun listingTitle(listing: ListingEntity): String =

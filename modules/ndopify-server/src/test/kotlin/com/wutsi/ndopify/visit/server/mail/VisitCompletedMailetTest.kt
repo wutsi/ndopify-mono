@@ -5,6 +5,7 @@ import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
@@ -126,6 +127,7 @@ class VisitCompletedMailetTest {
         assertEquals("mandate-1-1@wutsi.com", email.firstValue.inReplyTo)
         assertEquals(listOf("mandate-1-1@wutsi.com"), email.firstValue.references)
         verify(conversationService).of(1L)
+        verify(conversationService, never()).recordRoot(any(), any())
         assertEquals("<html>completed</html>", email.firstValue.body)
         assertEquals("Kim Possible", email.firstValue.sender?.displayName)
     }
@@ -137,6 +139,23 @@ class VisitCompletedMailetTest {
         mailet.send(visit, customer, agent, listing)
 
         assertNull(context()["visit_url"])
+    }
+
+    @Test
+    fun `the first customer e-mail records the relay's id`() {
+        doReturn(
+            MandateConversation(
+                subject = "Votre recherche : appartement à Bastos (Yaounde) · mandat 1",
+                messageId = "mandate-1-1@wutsi.com",
+                inReplyTo = null,
+                references = emptyList(),
+            ),
+        ).whenever(conversationService).of(1L)
+        doReturn("0101-abc@email.amazonses.com").whenever(mailService).send(any())
+
+        mailet.send(visit, customer, agent, listing)
+
+        verify(conversationService).recordRoot(1L, "0101-abc@email.amazonses.com")
     }
 
     private fun context(): Map<String, Any?> {

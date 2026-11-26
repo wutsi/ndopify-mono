@@ -49,6 +49,10 @@ class AcceptAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest()
             "Votre recherche : appartement à Yaounde · mandat 1",
             mandateDao.findById(1L).get().conversationSubject,
         )
+        assertNull(
+            mandateDao.findById(1L).get().conversationMessageId,
+            "GreenMail names no id: nothing is captured",
+        )
 
         val body = message.content.toString()
         assertTrue(body.contains("Ray Sponsible"))

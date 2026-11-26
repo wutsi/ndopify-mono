@@ -5,6 +5,7 @@ import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
@@ -144,6 +145,7 @@ class VisitCancelledMailetTest {
         assertEquals("mandate-1-1@wutsi.com", email.firstValue.inReplyTo)
         assertEquals(listOf("mandate-1-1@wutsi.com"), email.firstValue.references)
         verify(conversationService).of(1L)
+        verify(conversationService, never()).recordRoot(any(), any())
         assertEquals("J'ai annulé la visite.", context()["cancelled_by_label"])
         assertEquals("https://www.ndopify.com/visits/1?token=xxx.yyy.zzz", context()["visit_url"])
         assertEquals(false, context()["system_cancelled"])
@@ -184,6 +186,23 @@ class VisitCancelledMailetTest {
         mailet.sendToCustomer(visit.copy(cancelledBy = VisitParty.SYSTEM), customer, agent, listing)
 
         verifyNoInteractions(mailService)
+    }
+
+    @Test
+    fun `the first customer e-mail records the relay's id`() {
+        doReturn(
+            MandateConversation(
+                subject = "Votre recherche : appartement à Bastos (Yaounde) · mandat 1",
+                messageId = "mandate-1-1@wutsi.com",
+                inReplyTo = null,
+                references = emptyList(),
+            ),
+        ).whenever(conversationService).of(1L)
+        doReturn("0101-abc@email.amazonses.com").whenever(mailService).send(any())
+
+        mailet.sendToCustomer(visit.copy(cancelledBy = VisitParty.AGENT), customer, agent, listing)
+
+        verify(conversationService).recordRoot(1L, "0101-abc@email.amazonses.com")
     }
 
     private fun context(): Map<String, Any?> {

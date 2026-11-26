@@ -43,4 +43,23 @@ class MandateConversationServiceCommitTest : TenantAwareEndpointIntegrationTest(
             )
         }
     }
+
+    /**
+     * The e-mail is already in the customer's inbox when the id is recorded: the caller's later rollback must not erase
+     * the root the next messages will reference.
+     */
+    @Test
+    fun `the captured root is committed independently of the caller`() {
+        val outer = TransactionTemplate(transactionManager)
+        val other = TransactionTemplate(transactionManager).apply { propagationBehavior = PROPAGATION_REQUIRES_NEW }
+
+        outer.executeWithoutResult {
+            service.recordRoot(1L, "0101-abc@email.amazonses.com")
+
+            assertEquals(
+                "0101-abc@email.amazonses.com",
+                other.execute { dao.findConversationMessageIdById(1L) },
+            )
+        }
+    }
 }

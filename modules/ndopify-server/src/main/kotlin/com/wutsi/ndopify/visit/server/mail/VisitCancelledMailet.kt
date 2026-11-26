@@ -123,7 +123,7 @@ class VisitCancelledMailet(
         reason: String?,
         footer: Map<String, Any?>,
     ) {
-        mailService.send(
+        val sentMessageId = mailService.send(
             Email(
                 sender = sender,
                 recipient = Receipient(email = recipient.email, displayName = recipient.fullName()),
@@ -147,6 +147,9 @@ class VisitCancelledMailet(
                 ),
             ),
         )
+        if (conversation != null && conversation.inReplyTo == null) {
+            conversationService.recordRoot(visit.mandateId, sentMessageId)
+        }
     }
 
     private fun listingTitle(listing: ListingEntity): String =
