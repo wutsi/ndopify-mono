@@ -1,13 +1,13 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head(${document} ? |${document.title} — Ndopify Partner Central| : 'Document — Ndopify Partner Central', |Un document d'un mandat : ce que l'IA y a lu, ses problèmes, ses pages.|, false)}"></head>
+<head th:replace="~{fragments/head :: head(${document} ? |${document.title} — Ndopify Partner Central| : 'Document — Ndopify Partner Central', |Un document d'un mandat : ce qui en a été lu, ses problèmes, ses pages.|, false)}"></head>
 <!--/*
   One document of a mandate (MandateDocumentController, GET /mandates/{id}/documents/{documentId}), opened from a row
   of the mandate page's Documents section. Its header: the title, the status pill, the type and ONE upload date
   ("Ajouté le 25 nov. 2026", tenant dateFormat with the year), for the whole document. No image, no preview, no
   thumbnail, no size anywhere: a page is a plain row "*Page 1*", its *Voir* link (this app's authenticated preview
   route, a new tab) and its folded *Remplacer* form. Nothing of a page's path nor any storage URL is ever in the HTML.
-  #331 adds what the AI read between the header and the pages: the fields it read (labelled and formatted, in the
+  #331 adds what was read between the header and the pages: the fields it read (labelled and formatted, in the
   server's order), the hint while it reads, one instruction per problem code of a FAILED document and the notice of an
   expired piece (MandateDocumentReadingViews, the "reading" model attribute). No confidence is shown, and a
   DOCUMENT_EXPIRED warning is the notice's, never an instruction.
@@ -56,7 +56,7 @@
                 </div>
 
                 <!--
-                  #331: what the AI read on this document, before its pages. The server renders every state: the fields
+                  #331: what was read on this document, before its pages. The server renders every state: the fields
                   it read (one row per field, in the server's order, labelled from messages.properties and formatted by
                   kind: dates in the tenant's dateFormat, a pay month, short amounts with the document's currency,
                   "•••• 0123", "500 m²", "Solde" / "Attesté"), the hint while it reads, one instruction per problem code
@@ -73,8 +73,8 @@
                         <div>
                             <p class="alert__title" data-expired-title>Pièce expirée le <span
                                     th:text="${reading.expiry.date}">12 janv. 2025</span></p>
-                            <p th:text="${reading.expiry.since}" data-expired-when>Elle était déjà expirée quand l'IA l'a
-                                lue.</p>
+                            <p th:text="${reading.expiry.since}" data-expired-when>Elle était déjà expirée lors de sa
+                                lecture.</p>
                             <p th:text="${reading.expiry.wayOut}" data-expired-action>Ajoutez une pièce en cours de
                                 validité&nbsp;: remplacez ses pages par celles de la nouvelle pièce.</p>
                         </div>
@@ -83,7 +83,8 @@
                     <!-- UPLOADED / EXTRACTING: the reading is automatic, there is nothing to do but wait. -->
                     <div class="hint" th:if="${reading.waiting != null}" data-reading-waiting>
                         <svg th:replace="~{fragments/icon :: clock}"></svg>
-                        <p th:text="${reading.waiting}" data-waiting-text>L'IA lit le document.</p>
+                        <p th:text="${reading.waiting}" data-waiting-text>La lecture du document est en cours. Ses
+                            données apparaîtront ici dès qu'elle sera terminée&nbsp;: rien à faire.</p>
                     </div>
 
                     <!-- EXTRACTED without a field (an older payload): no empty list. -->

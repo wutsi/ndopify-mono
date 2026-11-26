@@ -276,6 +276,17 @@ class MandateDocumentTemplateTest {
     }
 
     @Test
+    fun `document - nothing names the AI`() {
+        val page = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID"))
+
+        assertEquals(
+            "Un document d'un mandat : ce qui en a été lu, ses problèmes, ses pages.",
+            page.selectFirst("meta[name=description]")?.attr("content"),
+        )
+        assertFalse(page.html().contains("l'IA"))
+    }
+
+    @Test
     fun `document - no image, one upload date, no size`() {
         val page = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID"))
 
@@ -423,7 +434,7 @@ class MandateDocumentTemplateTest {
                 "Le document est reçu : sa lecture va commencer. Rien à faire, elle se lance d'elle-même ; ses données " +
                 "apparaîtront ici.",
             DocumentStatus.EXTRACTING to
-                "L'IA lit le document. Ses données apparaîtront ici dès qu'elle aura terminé : rien à faire.",
+                "La lecture du document est en cours. Ses données apparaîtront ici dès qu'elle sera terminée : rien à faire.",
         )) {
             doReturn(document.copy(status = status, fields = emptyList())).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
 
@@ -466,8 +477,8 @@ class MandateDocumentTemplateTest {
             listOf(
                 "Il manque une page du document, son verso par exemple. Remplacez la page manquante par une photo, ou " +
                     "supprimez le document et ajoutez-le avec toutes ses pages.",
-                "L'IA n'est pas sûre d'un champ obligatoire. Vérifiez-le sur la pièce : si la photo est floue, " +
-                    "remplacez la page ; sinon, supprimez le document et ajoutez-le de nouveau.",
+                "Un champ obligatoire n'a pas pu être lu avec certitude. Vérifiez-le sur la pièce : si la photo est " +
+                    "floue, remplacez la page ; sinon, supprimez le document et ajoutez-le de nouveau.",
             ),
             reading.select(".doc-problems li").map { it.text() },
         )
@@ -498,7 +509,7 @@ class MandateDocumentTemplateTest {
         val notice = page.selectFirst("[data-reading-expired]")!!
 
         assertEquals("Pièce expirée le 12 janv. 2025", notice.selectFirst("[data-expired-title]")?.text())
-        assertEquals("Elle était déjà expirée quand l'IA l'a lue.", notice.selectFirst("[data-expired-when]")?.text())
+        assertEquals("Elle était déjà expirée lors de sa lecture.", notice.selectFirst("[data-expired-when]")?.text())
         assertTrue(
             notice.selectFirst("[data-expired-action]")!!.text().replace('\u00A0', ' ')
                 .startsWith("Ajoutez une pièce en cours de validité : remplacez ses pages par celles de la nouvelle pièce"),
