@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.mandate.server.domain
 
+import com.wutsi.ndopify.mandate.dto.DocumentSource
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.DocumentType
 import com.wutsi.ndopify.util.jpa.StringListConverter
@@ -36,6 +37,9 @@ data class MandateDocumentEntity(
     val type: DocumentType = DocumentType.UNKNOWN,
     val title: String = "",
     val status: DocumentStatus = DocumentStatus.UNKNOWN,
+
+    /** The kind of files it was created from; `UNKNOWN` for a row written before the kind was recorded. */
+    val source: DocumentSource = DocumentSource.UNKNOWN,
 
     /** The codes of the problems the extraction reported; empty until then. */
     @Convert(converter = StringListConverter::class)

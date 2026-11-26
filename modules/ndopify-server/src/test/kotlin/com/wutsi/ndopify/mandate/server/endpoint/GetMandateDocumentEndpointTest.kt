@@ -9,6 +9,7 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.mandate.dto.DocumentSource
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.GetMandateDocumentResponse
 import com.wutsi.ndopify.platform.storage.StorageService
@@ -61,6 +62,15 @@ class GetMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationTest
         verify(s3, never()).generatePresignedUrl(any(), any())
         verify(local, never()).generatePresignedUrl(any(), any())
         verify(defaultStorage, never()).generatePresignedUrl(any(), any())
+    }
+
+    @Test
+    fun `get - the kind the document was created from`() {
+        val pdf = rest.getForEntity("/v1/mandates/100/documents/17", GetMandateDocumentResponse::class.java).body!!.document
+        val legacy = rest.getForEntity("/v1/mandates/100/documents/18", GetMandateDocumentResponse::class.java).body!!.document
+
+        assertEquals(DocumentSource.PDF, pdf.source)
+        assertEquals(DocumentSource.UNKNOWN, legacy.source)
     }
 
     @Test

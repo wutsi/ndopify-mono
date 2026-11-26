@@ -16,6 +16,7 @@ import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.server.domain.ImageKind
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
+import com.wutsi.ndopify.mandate.dto.DocumentSource
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.DocumentType
 import com.wutsi.ndopify.mandate.dto.FinancingType
@@ -99,6 +100,9 @@ class PropertyTypeConverter : EnumConverter<PropertyType>(PropertyType::class.ja
 @Converter(autoApply = true)
 class AssignmentStatusConverter :
     EnumConverter<AssignmentStatus>(AssignmentStatus::class.java, AssignmentStatus.UNKNOWN)
+
+@Converter(autoApply = true)
+class DocumentSourceConverter : EnumConverter<DocumentSource>(DocumentSource::class.java, DocumentSource.UNKNOWN)
 
 @Converter(autoApply = true)
 class DocumentStatusConverter :

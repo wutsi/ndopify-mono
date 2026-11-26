@@ -62,3 +62,9 @@ INSERT INTO T_MANDATE_DOCUMENT(id, tenant_id, mandate_id, type, title, status, p
      1, NULL, '2021-01-01', 0, '2024-06-12 00:00:00', '2024-06-12 00:00:00'),
     (15, 1, 100, 'OTHER', 'Autre', 'UPLOADED', NULL, NULL, NULL, NULL, NULL, 0, '2024-06-12 00:00:00', '2024-06-12 00:00:00'),
     (16, 1, 100, 'OTHER', 'Autre', 'EXTRACTED', NULL, '[]', 1, NULL, NULL, 0, '2024-06-12 00:00:00', '2024-06-12 00:00:00');
+
+-- 17: created from a PDF   18: a row written before the kind was recorded (source NULL)
+INSERT INTO T_MANDATE_DOCUMENT(id, tenant_id, mandate_id, type, title, status, source, version, created_at, modified_at) VALUES
+    (17, 1, 100, 'LAND_TITLE', 'Titre foncier', 'UPLOADED', 'PDF', 0, '2024-06-13 00:00:00', '2024-06-13 00:00:00'),
+    (18, 1, 100, 'LAND_TITLE', 'Titre foncier', 'UPLOADED', NULL, 0, '2024-06-14 00:00:00', '2024-06-14 00:00:00');
+
