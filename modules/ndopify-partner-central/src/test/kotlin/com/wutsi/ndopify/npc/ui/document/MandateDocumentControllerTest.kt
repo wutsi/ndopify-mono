@@ -17,6 +17,7 @@ import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.error.dto.Parameter
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.DocumentField
+import com.wutsi.ndopify.mandate.dto.DocumentSource
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.DocumentType
 import com.wutsi.ndopify.mandate.dto.Mandate
@@ -126,6 +127,9 @@ class MandateDocumentControllerTest {
 
     private fun replacement(bytes: ByteArray = jpeg) = MockMultipartFile("file", "page.jpg", "image/jpeg", bytes)
 
+    private fun documents(count: Int): List<MandateDocument> =
+        List(count) { index -> document.copy(id = 4000L + index, title = "Document ${index + 1}") }
+
     private fun serverError(status: HttpStatus, code: String = "", parameter: String? = null): HttpClientErrorException {
         val ex = HttpClientErrorException(status)
         ex.setBodyConvertFunction {
@@ -173,6 +177,100 @@ class MandateDocumentControllerTest {
             (model(result)["errors"] as Map<*, *>)["files"],
         )
         assertEquals("Titre foncier lot 12", (model(result)["form"] as AddDocumentForm).title)
+    }
+
+    @Test
+    fun `add form - at the cap`() {
+        doReturn(documents(5)).whenever(documentClient).search(MANDATE_ID)
+
+        val result = mvc.perform(get("/mandates/$MANDATE_ID/documents/new")).andReturn()
+
+        assertEquals(MandateDocumentController.VIEW_NEW, result.modelAndView?.viewName)
+        assertEquals(true, model(result)["atLimit"])
+        assertEquals(5, model(result)["documentsCount"])
+    }
+
+    @Test
+    fun `add form - below the cap`() {
+        doReturn(documents(2)).whenever(documentClient).search(MANDATE_ID)
+
+        val result = mvc.perform(get("/mandates/$MANDATE_ID/documents/new")).andReturn()
+
+        assertEquals(false, model(result)["atLimit"])
+        assertEquals(2, model(result)["documentsCount"])
+    }
+
+    @Test
+    fun `add form - the documents can't be read - the form still opens`() {
+        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR))
+            .whenever(documentClient).search(MANDATE_ID)
+
+        val result = mvc.perform(get("/mandates/$MANDATE_ID/documents/new")).andReturn()
+
+        assertEquals(MandateDocumentController.VIEW_NEW, result.modelAndView?.viewName)
+        assertEquals(false, model(result)["atLimit"])
+    }
+
+    @Test
+    fun `add - a stale tab at the cap posts nothing`() {
+        doReturn(documents(5)).whenever(documentClient).search(MANDATE_ID)
+
+        val result = mvc
+            .perform(multipart("/mandates/$MANDATE_ID/documents").file(photo()).param("type", DocumentType.PASSPORT.name))
+            .andReturn()
+
+        assertEquals(MandateDocumentController.VIEW_NEW, result.modelAndView?.viewName)
+        assertEquals(true, model(result)["atLimit"])
+        verify(documentClient, never()).upload(any(), any(), anyOrNull(), any())
+    }
+
+    @Test
+    fun `add - the 6th document refused by the server - the form again with the cap error`() {
+        doReturn(documents(4)).whenever(documentClient).search(MANDATE_ID)
+        doThrow(serverError(HttpStatus.BAD_REQUEST, ErrorCode.MANDATE_DOCUMENT_LIMIT_REACHED))
+            .whenever(documentClient).upload(any(), any(), anyOrNull(), any())
+
+        val result = mvc
+            .perform(
+                multipart("/mandates/$MANDATE_ID/documents")
+                    .file(photo())
+                    .param("type", DocumentType.PASSPORT.name)
+                    .param("title", "Titre"),
+            )
+            .andReturn()
+
+        assertEquals(MandateDocumentController.VIEW_NEW, result.modelAndView?.viewName)
+        assertEquals(true, model(result)["limitError"])
+        assertEquals("Titre", (model(result)["form"] as AddDocumentForm).title)
+    }
+
+    @Test
+    fun `add - a mixed selection refused by the server`() {
+        doReturn(documents(1)).whenever(documentClient).search(MANDATE_ID)
+        doThrow(serverError(HttpStatus.BAD_REQUEST, ErrorCode.MANDATE_DOCUMENT_MIXED_SOURCES, "files"))
+            .whenever(documentClient).upload(any(), any(), anyOrNull(), any())
+
+        val result = mvc
+            .perform(multipart("/mandates/$MANDATE_ID/documents").file(photo()).param("type", DocumentType.PASSPORT.name))
+            .andReturn()
+
+        assertEquals(mapOf("files" to MandateDocumentRules.MIXED_SOURCES), model(result)["errors"])
+    }
+
+    @Test
+    fun `add - the document over 10 pages refused by the server`() {
+        doReturn(documents(1)).whenever(documentClient).search(MANDATE_ID)
+        doThrow(serverError(HttpStatus.BAD_REQUEST, ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES, "files"))
+            .whenever(documentClient).upload(any(), any(), anyOrNull(), any())
+
+        val result = mvc
+            .perform(multipart("/mandates/$MANDATE_ID/documents").file(photo()).param("type", DocumentType.PASSPORT.name))
+            .andReturn()
+
+        assertEquals(
+            mapOf("files" to MandateDocumentController.ADD_TOO_MANY_PAGES),
+            model(result)["errors"],
+        )
     }
 
     @Test
@@ -1091,6 +1189,37 @@ class MandateDocumentControllerTest {
                 page2.id to "Cette page n'a pas pu être remplacée : vérifiez qu'il s'agit d'une photo lisible ou d'un " +
                     "PDF d'une page, non protégé.",
             ),
+            model(result)["replaceErrors"],
+        )
+    }
+
+    @Test
+    fun `replace a page - a photo on a PDF document is refused`() {
+        doReturn(document.copy(source = DocumentSource.PDF)).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val result = mvc
+            .perform(multipart("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page2.id}").file(replacement()))
+            .andReturn()
+
+        assertEquals(
+            mapOf(page2.id to MandateDocumentRules.mixedReplace(DocumentSource.PDF)),
+            model(result)["replaceErrors"],
+        )
+        verify(documentClient, never()).uploadReplacementPage(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `replace a page - the server's mixed refusal is worded by the document's kind`() {
+        doReturn(document.copy(source = DocumentSource.PDF)).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+        doThrow(serverError(HttpStatus.BAD_REQUEST, ErrorCode.MANDATE_DOCUMENT_MIXED_SOURCES, "file"))
+            .whenever(documentClient).uploadReplacementPage(any(), any(), any(), any())
+
+        val result = mvc
+            .perform(multipart("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page2.id}").file(replacement()))
+            .andReturn()
+
+        assertEquals(
+            mapOf(page2.id to MandateDocumentRules.mixedReplace(DocumentSource.PDF)),
             model(result)["replaceErrors"],
         )
     }

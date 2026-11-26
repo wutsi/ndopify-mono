@@ -118,6 +118,11 @@ class MandateDocumentController(
         private const val RENAME_FAILED = "Le titre n'a pas pu être enregistré. Réessayez dans quelques instants."
         private const val REPLACE_FAILED = "La page n'a pas pu être remplacée. Réessayez dans quelques instants."
 
+        // The add's page cap: the document already has 10 pages, whether images or a PDF's expansion.
+        const val ADD_TOO_MANY_PAGES =
+            "Ce document dépasse 10 pages une fois les pages du PDF ajoutées : gardez 10 pages au plus. Choisissez " +
+                "de nouveau les pages."
+
         /**
          * ndopify-server's PDF refusals, worded for each form: an add loses every chosen file, a replacement only its
          * own. The codes tell the causes apart (`MANDATE_DOCUMENT_PDF_*`); anything else on `file`/`files` is a bad
@@ -141,6 +146,7 @@ class MandateDocumentController(
             "Ce PDF est protégé par un mot de passe : enregistrez-le sans protection, ou envoyez une photo."
         private const val REPLACE_PDF_UNREADABLE = "Ce PDF est vide ou endommagé : envoyez une photo."
         private const val REPLACE_PDF_TOO_MANY_PAGES = "Ce PDF fait plusieurs pages : envoyez un PDF d'une page, ou une photo."
+        private const val REPLACE_PDF_TOO_MANY_PAGES_ONLY = "Ce PDF fait plusieurs pages : envoyez un PDF d'une page."
 
         private val CHANGED_STATUSES = setOf(403, 404, 409)
     }
@@ -156,7 +162,16 @@ class MandateDocumentController(
         ProfileRules.header(agent, model)
         val mandate = writableMandate(id) ?: return changed(id, redirect)
         val errors = if (uploadError == ERROR_TOO_LARGE) mapOf("files" to TOO_LARGE) else emptyMap()
-        return addPage(mandate, AddDocumentForm(), errors, null, model)
+        val count = documentsCount(mandate.id)
+        return addPage(
+            mandate,
+            AddDocumentForm(),
+            errors,
+            null,
+            model,
+            atLimit = count != null && MandateDocumentRules.atLimit(count),
+            documentsCount = count ?: 0,
+        )
     }
 
     /**
@@ -175,6 +190,11 @@ class MandateDocumentController(
         val agent = currentAgent.get() ?: throw SignInRequiredException()
         ProfileRules.header(agent, model)
         val mandate = writableMandate(id) ?: return changed(id, redirect)
+        val count = documentsCount(mandate.id)
+        if (count != null && MandateDocumentRules.atLimit(count)) {
+            // A stale tab, or a bookmarked URL, at the cap: the notice in place of the form, nothing posted.
+            return addPage(mandate, form, emptyMap(), null, model, atLimit = true, documentsCount = count)
+        }
 
         val pages = files.orEmpty().filterNot { it.isEmpty }.map { sniff(it) }
         val errors = MandateDocumentRules.validateAdd(form, pages)
@@ -197,6 +217,15 @@ class MandateDocumentController(
             LOGGER.warn("Documents of mandate ${mandate.id} not added: ${ex.statusCode}")
             when {
                 ex.statusCode.value() in CHANGED_STATUSES -> changed(mandate.id, redirect)
+                errorCode(ex) == ErrorCode.MANDATE_DOCUMENT_LIMIT_REACHED -> addPage(
+                    mandate,
+                    form,
+                    emptyMap(),
+                    null,
+                    model,
+                    documentsCount = MandateDocumentRules.MAX_DOCUMENTS,
+                    limitError = true,
+                )
                 ex.statusCode.value() == 400 ->
                     addPage(mandate, form, pageServerErrors(ex, PageAction.ADD, "files"), null, model)
                 else -> addPage(mandate, form, emptyMap(), ADD_FAILED, model)
@@ -360,14 +389,14 @@ class MandateDocumentController(
             ?: return changed(mandate.id, redirect)
 
         val uploaded = file?.takeIf { !it.isEmpty }?.let { sniff(it) }
-        val error = MandateDocumentRules.validatePage(uploaded)
+        val error = MandateDocumentRules.validatePage(uploaded, document.source)
         if (error != null || uploaded == null) {
             return documentPage(
                 mandate,
                 document,
                 RenameDocumentForm(document.title, document.version),
                 emptyMap(),
-                mapOf(page.id to (error ?: MandateDocumentRules.FILE_REQUIRED)),
+                mapOf(page.id to (error ?: MandateDocumentRules.replaceRequired(document.source))),
                 false,
                 false,
                 model,
@@ -392,7 +421,11 @@ class MandateDocumentController(
                     document,
                     RenameDocumentForm(document.title, document.version),
                     emptyMap(),
-                    mapOf(page.id to (pageServerErrors(ex, PageAction.REPLACE, "file")["file"] ?: REPLACE_FAILED)),
+                    mapOf(
+                        page.id to (
+                            pageServerErrors(ex, PageAction.REPLACE, "file", document.source)["file"] ?: REPLACE_FAILED
+                            ),
+                    ),
                     false,
                     false,
                     model,
@@ -591,11 +624,17 @@ class MandateDocumentController(
         errors: Map<String, String>,
         error: String?,
         model: Model,
+        atLimit: Boolean = false,
+        documentsCount: Int = 0,
+        limitError: Boolean = false,
     ): String {
         model.addAttribute("mandate", view(mandate))
         model.addAttribute("form", form)
         model.addAttribute("errors", errors)
         model.addAttribute("error", error)
+        model.addAttribute("atLimit", atLimit)
+        model.addAttribute("documentsCount", documentsCount)
+        model.addAttribute("limitError", limitError)
         model.addAttribute("suggested", MandateDocumentLabels.suggested(mandate.mandateType))
         model.addAttribute("others", MandateDocumentLabels.others(mandate.mandateType))
         model.addAttribute("labels", MandateDocumentLabels)
@@ -714,20 +753,32 @@ class MandateDocumentController(
         ex: HttpClientErrorException,
         action: PageAction,
         fallback: String,
+        source: com.wutsi.ndopify.mandate.dto.DocumentSource = com.wutsi.ndopify.mandate.dto.DocumentSource.UNKNOWN,
     ): Map<String, String> {
         val error = try {
             ex.getResponseBodyAs(ErrorResponse::class.java)?.error
         } catch (ignored: Exception) {
             null
         }
-        val field = error?.parameter?.name?.takeIf { it == "type" || it == "title" } ?: fallback
+        val parameter = error?.parameter?.name
+        val field = parameter?.takeIf { it == "type" || it == "title" } ?: fallback
         val message = when (error?.code) {
+            ErrorCode.MANDATE_DOCUMENT_MIXED_SOURCES ->
+                if (action == PageAction.ADD) {
+                    MandateDocumentRules.MIXED_SOURCES
+                } else {
+                    MandateDocumentRules.mixedReplace(source)
+                }
             ErrorCode.MANDATE_DOCUMENT_PDF_ENCRYPTED ->
                 if (action == PageAction.ADD) ADD_PDF_ENCRYPTED else REPLACE_PDF_ENCRYPTED
             ErrorCode.MANDATE_DOCUMENT_PDF_UNREADABLE ->
                 if (action == PageAction.ADD) ADD_PDF_UNREADABLE else REPLACE_PDF_UNREADABLE
-            ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES ->
-                if (action == PageAction.ADD) ADD_PDF_TOO_MANY_PAGES else REPLACE_PDF_TOO_MANY_PAGES
+            ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES -> when {
+                action == PageAction.ADD && parameter == "files" -> ADD_TOO_MANY_PAGES
+                action == PageAction.ADD -> ADD_PDF_TOO_MANY_PAGES
+                source == com.wutsi.ndopify.mandate.dto.DocumentSource.PDF -> REPLACE_PDF_TOO_MANY_PAGES_ONLY
+                else -> REPLACE_PDF_TOO_MANY_PAGES
+            }
             else -> when (field) {
                 "type" -> MandateDocumentRules.TYPE_REQUIRED
                 "title" -> MandateDocumentRules.TITLE_TOO_LONG
@@ -765,6 +816,18 @@ class MandateDocumentController(
         clock.millis(),
         formatter(),
     )
+
+    /** The mandate's stored document count, null when they can't be read (the server still enforces the cap). */
+    private fun documentsCount(mandateId: Long): Int? =
+        try {
+            documentClient.search(mandateId).size
+        } catch (ex: HttpClientErrorException) {
+            LOGGER.warn("Documents of mandate $mandateId not read: ${ex.statusCode}")
+            null
+        } catch (ex: RestClientException) {
+            LOGGER.error("Documents of mandate $mandateId not read", ex)
+            null
+        }
 
     private fun formatter(): TenantFormatter = TenantFormatter(tenantContext.getTenant())
 
