@@ -53,7 +53,7 @@ class MatchProposedMailet(
         val agentName = agent.party.fullName()
         val conversation = conversationService.of(mandate.id!!)
         val token = tenant.publicPortalUrl?.let { linkTokenService.create(customer) } // One for all the links
-        mailService.send(
+        val sentMessageId = mailService.send(
             Email(
                 sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = party.email, displayName = fullName),
@@ -77,6 +77,9 @@ class MatchProposedMailet(
                 ),
             ),
         )
+        if (conversation.inReplyTo == null) {
+            conversationService.recordRoot(mandate.id!!, sentMessageId)
+        }
     }
 
     private fun listing(
