@@ -3,6 +3,7 @@ package com.wutsi.ndopify.mandate.server.service.document
 import com.wutsi.ndopify.mandate.dto.DocumentType
 import com.wutsi.ndopify.util.jpa.JsonHelper
 import tools.jackson.databind.json.JsonMapper
+import java.math.BigDecimal
 import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -85,6 +86,37 @@ class DocumentDataCodecTest {
                 valid = true,
             ),
             DocumentType.OTHER to Other(detectedType = "OTHER", title = "Acte", summary = "Un acte", valid = true),
+            DocumentType.PAY_SLIP to PaySlipData(
+                detectedType = "PAY_SLIP",
+                employerName = "Wutsi",
+                employeeName = "John Doe",
+                payMonth = "2026-10",
+                grossSalary = BigDecimal("400000"),
+                netSalary = BigDecimal("350000"),
+                currency = "XAF",
+                valid = true,
+            ),
+            DocumentType.BANK_PRE_APPROVAL to BankPreApprovalData(
+                detectedType = "BANK_PRE_APPROVAL",
+                bankName = "Afriland First Bank",
+                beneficiaries = listOf("A", "B"),
+                amount = BigDecimal("25000000"),
+                currency = "XAF",
+                issueDate = "2026-11-01",
+                validityDate = "2027-01-31",
+                valid = true,
+            ),
+            DocumentType.PROOF_OF_FUNDS to ProofOfFundsData(
+                detectedType = "PROOF_OF_FUNDS",
+                bankName = "Afriland First Bank",
+                accountHolder = "A",
+                amount = BigDecimal("12000000"),
+                amountKind = AmountKind.CERTIFIED,
+                currency = "XAF",
+                statementDate = "2026-11-20",
+                accountLast4 = "0123",
+                valid = true,
+            ),
         )
 
         datas.forEach { (type, data) -> assertEquals(data, roundTrip(data, type)) }
@@ -132,13 +164,23 @@ class DocumentDataCodecTest {
     @Test
     fun `read - a type without data, a malformed payload and a blank one are null`() {
         assertNull(codec.read("""{"a":1}""", DocumentType.UNKNOWN, 1))
-        assertNull(codec.read("""{"a":1}""", DocumentType.PAY_SLIP, 1))
-        assertNull(codec.read("""{"a":1}""", DocumentType.BANK_PRE_APPROVAL, 1))
-        assertNull(codec.read("""{"a":1}""", DocumentType.PROOF_OF_FUNDS, 1))
         assertNull(codec.read("{not json", DocumentType.NATIONAL_ID, 1))
         assertNull(codec.read("[]", DocumentType.NATIONAL_ID, 1))
         assertNull(codec.read(null, DocumentType.NATIONAL_ID, 1))
         assertNull(codec.read("  ", DocumentType.NATIONAL_ID, 1))
+    }
+
+    @Test
+    fun `read - a pay slip missing the gross salary`() {
+        val data = codec.read(
+            """{"detectedType":"PAY_SLIP","employeeName":"A","payMonth":"2026-10","netSalary":350000,"valid":true}""",
+            DocumentType.PAY_SLIP,
+            dataVersion = 1,
+        ) as PaySlipData
+
+        assertNull(data.grossSalary)
+        assertEquals(BigDecimal("350000"), data.netSalary)
+        assertEquals("2026-10", data.payMonth)
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.wutsi.ndopify.mandate.server.service.document
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import java.time.LocalDate
+import java.time.YearMonth
 
 /**
  * What the vision model read on a mandate document, typed by the document's [com.wutsi.ndopify.mandate.dto.DocumentType]
@@ -24,6 +25,16 @@ sealed class DocumentData {
             value?.trim()?.takeIf { it.isNotEmpty() }?.let { text ->
                 try {
                     LocalDate.parse(text)
+                } catch (ex: Exception) {
+                    null
+                }
+            }
+
+        /** The first day of a value the model returned as `yyyy-MM`; null when blank or unparseable. */
+        internal fun monthStart(value: String?): LocalDate? =
+            value?.trim()?.takeIf { it.isNotEmpty() }?.let { text ->
+                try {
+                    YearMonth.parse(text).atDay(1)
                 } catch (ex: Exception) {
                     null
                 }
@@ -292,4 +303,17 @@ data class Other(
         "title" to title,
         "summary" to summary,
     )
+}
+
+/**
+ * The fields of a financial document — a pay slip, a bank pre-approval or a proof of funds. Amounts are decimals and
+ * the currency its own ISO 4217 field, so the client formats them; the account number is never stored whole.
+ */
+sealed class FinancialData : DocumentData() {
+    /**
+     * This reading with every text field masked by [AccountNumberSanitizer], which keeps only the last four digits of
+     * an account number or an IBAN; the confidences are kept. It is applied to the model's answer before it's stored:
+     * a prompt can ask for the last four digits, it can't be trusted with them.
+     */
+    abstract fun sanitized(): FinancialData
 }

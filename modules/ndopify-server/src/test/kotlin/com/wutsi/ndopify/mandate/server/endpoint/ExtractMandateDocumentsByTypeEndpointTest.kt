@@ -34,23 +34,37 @@ class ExtractMandateDocumentsByTypeEndpointTest : AuthorizationAwareEndpointInte
         assertNull(requeued.expiresAt)
         assertEquals(emptyList(), requeued.fields)
         assertEquals(DocumentStatus.EXTRACTING, documents[1002]!!.status)
-        assertEquals(DocumentStatus.UPLOADED, documents[1003]!!.status)
+        assertEquals(DocumentStatus.EXTRACTED, documents[1003]!!.status)
+    }
+
+    @Test
+    fun `extract - a financial type is requeued, another type is left untouched`() {
+        val response = rest.postForEntity("/v1/mandate-documents/extract?type=PAY_SLIP", null, Void::class.java)
+
+        assertEquals(HttpStatus.NO_CONTENT, response.statusCode)
+
+        val documents = documents()
+        val requeued = assertNotNull(documents[1003])
+        assertEquals(DocumentStatus.UPLOADED, requeued.status)
+        assertEquals(emptyList(), requeued.fields)
+        assertNull(requeued.issuedAt)
+        val untouched = assertNotNull(documents[1001])
+        assertEquals(DocumentStatus.EXTRACTED, untouched.status)
+        assertEquals(listOf("DOCUMENT_EXPIRED"), untouched.problemCodes)
     }
 
     @Test
     fun `extract - a type without an extractor is a bad request`() {
-        listOf("PAY_SLIP", "UNKNOWN", "BANK_PRE_APPROVAL", "PROOF_OF_FUNDS").forEach { type ->
-            val response = rest.postForEntity(
-                "/v1/mandate-documents/extract?type=$type",
-                null,
-                ErrorResponse::class.java,
-            )
+        val response = rest.postForEntity(
+            "/v1/mandate-documents/extract?type=UNKNOWN",
+            null,
+            ErrorResponse::class.java,
+        )
 
-            assertEquals(HttpStatus.BAD_REQUEST, response.statusCode, type)
-            assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code, type)
-            assertEquals("type", response.body?.error?.parameter?.name, type)
-        }
-        assertEquals(DocumentStatus.UPLOADED, documents()[1003]!!.status)
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
+        assertEquals("type", response.body?.error?.parameter?.name)
+        assertEquals(DocumentStatus.EXTRACTED, documents()[1003]!!.status)
     }
 
     @Test

@@ -28,9 +28,16 @@ class DocumentDataExtractorProviderTest {
     private val other = mock<DocumentDataExtractor> {
         on { types } doReturn setOf(DocumentType.OTHER)
     }
+    private val financial = mock<DocumentDataExtractor> {
+        on { types } doReturn setOf(
+            DocumentType.PAY_SLIP,
+            DocumentType.BANK_PRE_APPROVAL,
+            DocumentType.PROOF_OF_FUNDS,
+        )
+    }
 
     private val provider = DocumentDataExtractorProvider(
-        listOf(identity, landTitle, survey, procuration, occupancy, other),
+        listOf(identity, landTitle, survey, procuration, occupancy, financial, other),
     )
 
     @Test
@@ -44,26 +51,22 @@ class DocumentDataExtractorProviderTest {
         assertEquals(occupancy, provider.get(DocumentType.LEASE_CONTRACT))
         assertEquals(occupancy, provider.get(DocumentType.UTILITY_BILL))
         assertEquals(occupancy, provider.get(DocumentType.TAX_RECEIPT))
+        assertEquals(financial, provider.get(DocumentType.PAY_SLIP))
+        assertEquals(financial, provider.get(DocumentType.BANK_PRE_APPROVAL))
+        assertEquals(financial, provider.get(DocumentType.PROOF_OF_FUNDS))
         assertEquals(other, provider.get(DocumentType.OTHER))
     }
 
     @Test
-    fun `the financial types have no extractor`() {
-        listOf(
-            DocumentType.UNKNOWN,
-            DocumentType.PAY_SLIP,
-            DocumentType.BANK_PRE_APPROVAL,
-            DocumentType.PROOF_OF_FUNDS,
-        ).forEach { type ->
-            assertNull(provider.get(type), type.name)
-            assertFalse(provider.supports(type), type.name)
-        }
+    fun `the unknown type has no extractor`() {
+        assertNull(provider.get(DocumentType.UNKNOWN))
+        assertFalse(provider.supports(DocumentType.UNKNOWN))
     }
 
     @Test
     fun `supports the handled types`() {
         DocumentType.entries
-            .filter { type -> type !in setOf(DocumentType.UNKNOWN, DocumentType.PAY_SLIP, DocumentType.BANK_PRE_APPROVAL, DocumentType.PROOF_OF_FUNDS) }
+            .filter { type -> type != DocumentType.UNKNOWN }
             .forEach { type -> assertTrue(provider.supports(type), type.name) }
     }
 }

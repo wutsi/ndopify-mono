@@ -36,14 +36,16 @@ INSERT INTO T_MANDATE(
     (101, 1, 10, 20, 'ASSIGNED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', 'Mine search', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (200, 1, 10, 30, 'ASSIGNED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', 'Not mine', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
--- 1000: the identity document to extract   1003: a financial document, left to #333   1100: mandate 101's
+-- 1000: the identity document to extract   1003: a pay slip   1004: an unknown document   1100: mandate 101's
 INSERT INTO T_MANDATE_DOCUMENT(id, tenant_id, mandate_id, type, title, status, version, created_at, modified_at) VALUES
     (1000, 1, 100, 'NATIONAL_ID', 'Carte d''identité', 'UPLOADED', 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (1003, 1, 100, 'PAY_SLIP', 'Bulletin mars', 'UPLOADED', 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (1004, 1, 100, 'UNKNOWN', 'Document', 'UPLOADED', 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (1100, 1, 101, 'LAND_TITLE', 'Titre foncier', 'UPLOADED', 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
 INSERT INTO T_MANDATE_DOCUMENT_PAGE(id, tenant_id, document_id, page_index, path, storage_type, mime_type, created_at, modified_at) VALUES
     (1000, 1, 1000, 0, 'mandate/100/documents/page-1000-0.png', 'S3', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (1001, 1, 1000, 1, 'mandate/100/documents/page-1000-1.png', 'S3', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (1003, 1, 1003, 0, 'mandate/100/documents/page-1003-0.png', 'S3', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (1004, 1, 1004, 0, 'mandate/100/documents/page-1004-0.png', 'S3', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (1100, 1, 1100, 0, 'mandate/101/documents/page-1100-0.png', 'S3', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00');

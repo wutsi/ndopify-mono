@@ -29,15 +29,16 @@ INSERT INTO T_MANDATE(
 ) VALUES
     (100, 1, 10, 20, 'ASSIGNED', 'LISTING', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', 'Mine listing', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
--- 1001: an extracted title to send back   1002: its extraction is running   1003: a financial document
+-- 1001: an extracted title to send back   1002: its extraction is running   1003: an extracted pay slip
 INSERT INTO T_MANDATE_DOCUMENT(id, tenant_id, mandate_id, type, title, status, problem_codes, data, data_version, issued_at, expires_at, version, created_at, modified_at) VALUES
     (1001, 1, 100, 'LAND_TITLE', 'Titre foncier', 'EXTRACTED', 'DOCUMENT_EXPIRED',
      '{"detectedType":"LAND_TITLE","titleNumber":"TF-1","owners":["A"],"locality":"Yaoundé","valid":true}', 1,
      '2020-01-01', '2021-01-01', 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (1002, 1, 100, 'LAND_TITLE', 'Titre foncier', 'EXTRACTING', NULL, NULL, NULL, NULL, NULL, 0,
      '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    (1003, 1, 100, 'PAY_SLIP', 'Bulletin mars', 'UPLOADED', NULL, NULL, NULL, NULL, NULL, 0,
-     '2024-06-10 00:00:00', '2024-06-10 00:00:00');
+    (1003, 1, 100, 'PAY_SLIP', 'Bulletin mars', 'EXTRACTED', NULL,
+     '{"detectedType":"PAY_SLIP","employeeName":"A","payMonth":"2026-10","netSalary":350000,"valid":true}', 1,
+     '2026-10-01', NULL, 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
 INSERT INTO T_MANDATE_DOCUMENT_PAGE(id, tenant_id, document_id, page_index, path, storage_type, mime_type, created_at, modified_at) VALUES
     (1001, 1, 1001, 0, 'mandate/100/documents/page-1001-0.png', 'S3', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),

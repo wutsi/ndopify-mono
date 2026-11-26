@@ -4,8 +4,8 @@ import com.wutsi.ndopify.mandate.dto.DocumentType
 import org.springframework.stereotype.Service
 
 /**
- * The [DocumentDataExtractor] of a [DocumentType]. A type without one (the financial documents #333 adds,
- * [DocumentType.UNKNOWN]) is never read: the extraction job leaves its documents `UPLOADED`.
+ * The [DocumentDataExtractor] of a [DocumentType]. A type without one ([DocumentType.UNKNOWN]) is never read: the
+ * extraction job leaves its documents `UPLOADED`.
  */
 @Service
 class DocumentDataExtractorProvider(extractors: List<DocumentDataExtractor>) {
