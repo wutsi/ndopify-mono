@@ -7,16 +7,15 @@ import com.wutsi.ndopify.mandate.server.domain.MandateDocumentPageEntity
 import org.springframework.stereotype.Service
 
 /**
- * Maps a [MandateDocumentEntity] and its pages to the DTO. The page's storage path is never handed out: only
- * [urlOf]'s presigned URL, so the page DTO carries no path. The extracted fields stay empty until the extraction
- * (#330).
+ * Maps a [MandateDocumentEntity] and its pages to the DTO. A page's file is private: the DTO carries neither its
+ * storage path nor a URL, the caller builds its authenticated preview route from the ids. The extracted fields stay
+ * empty until the extraction (#330).
  */
 @Service
 class MandateDocumentMapper {
     fun toMandateDocument(
         entity: MandateDocumentEntity,
         pages: List<MandateDocumentPageEntity>,
-        urlOf: (MandateDocumentPageEntity) -> String,
     ): MandateDocument {
         return MandateDocument(
             id = entity.id ?: -1,
@@ -28,21 +27,17 @@ class MandateDocumentMapper {
             fields = emptyList(),
             issuedAt = entity.issuedAt,
             expiresAt = entity.expiresAt,
-            pages = pages.map { page -> toMandateDocumentPage(page, urlOf) },
+            pages = pages.map { page -> toMandateDocumentPage(page) },
             version = entity.version ?: 0,
             createdAt = entity.createdAt,
             modifiedAt = entity.modifiedAt,
         )
     }
 
-    private fun toMandateDocumentPage(
-        page: MandateDocumentPageEntity,
-        urlOf: (MandateDocumentPageEntity) -> String,
-    ): MandateDocumentPage = MandateDocumentPage(
+    private fun toMandateDocumentPage(page: MandateDocumentPageEntity): MandateDocumentPage = MandateDocumentPage(
         id = page.id ?: -1,
         index = page.pageIndex,
         contentType = page.mimeType,
-        url = urlOf(page),
         createdAt = page.createdAt,
         modifiedAt = page.modifiedAt,
     )

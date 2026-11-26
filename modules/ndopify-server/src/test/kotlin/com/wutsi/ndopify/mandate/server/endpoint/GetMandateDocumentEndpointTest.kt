@@ -17,13 +17,12 @@ import org.junit.jupiter.api.BeforeEach
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
-import java.net.URL
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** Reading one document of a mandate: private, pages only through presigned URLs. */
+/** Reading one document of a mandate: private, a page carries neither its path nor a URL. */
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/GetMandateDocumentEndpoint.sql"])
 class GetMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @MockitoBean
@@ -38,22 +37,19 @@ class GetMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationTest
         doReturn(s3).whenever(storageProvider).get(StorageType.S3)
         doReturn(local).whenever(storageProvider).get(StorageType.LOCAL)
         doReturn(defaultStorage).whenever(storageProvider).get()
-        doReturn(URL("https://s3.example.com/page")).whenever(s3).generatePresignedUrl(any(), any())
-        doReturn(URL("https://local.example.com/page")).whenever(local).generatePresignedUrl(any(), any())
-        doReturn(URL("https://default.example.com/page")).whenever(defaultStorage).generatePresignedUrl(any(), any())
     }
 
     @Test
-    fun `get - pages ordered by index with their own storage's url`() {
+    fun `get - pages ordered by index, without any url`() {
         val document = rest.getForEntity("/v1/mandates/100/documents/10", GetMandateDocumentResponse::class.java).body!!.document
 
         assertEquals(2, document.pages.size)
         assertEquals(listOf(0, 1), document.pages.map { it.index })
-        assertEquals(listOf("https://s3.example.com/page", "https://s3.example.com/page"), document.pages.map { it.url })
         assertEquals(listOf("image/png", "image/png"), document.pages.map { it.contentType })
         assertTrue(document.fields.isEmpty())
-        verify(s3, never()).publicUrl(any())
-        verify(local, never()).publicUrl(any())
+        verify(s3, never()).generatePresignedUrl(any(), any())
+        verify(local, never()).generatePresignedUrl(any(), any())
+        verify(defaultStorage, never()).generatePresignedUrl(any(), any())
     }
 
     @Test
@@ -61,12 +57,9 @@ class GetMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationTest
         val document = rest.getForEntity("/v1/mandates/100/documents/11", GetMandateDocumentResponse::class.java).body!!.document
 
         assertEquals(listOf(0, 1), document.pages.map { it.index })
-        // Page 0 is LOCAL, page 1 has no storage type: the default storage
-        assertEquals("https://local.example.com/page", document.pages[0].url)
-        assertEquals("https://default.example.com/page", document.pages[1].url)
-        verify(s3, never()).publicUrl(any())
-        verify(local, never()).publicUrl(any())
-        verify(defaultStorage, never()).publicUrl(any())
+        verify(s3, never()).generatePresignedUrl(any(), any())
+        verify(local, never()).generatePresignedUrl(any(), any())
+        verify(defaultStorage, never()).generatePresignedUrl(any(), any())
     }
 
     @Test
@@ -74,6 +67,7 @@ class GetMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationTest
         val body = rest.getForEntity("/v1/mandates/100/documents/10", String::class.java).body!!
 
         assertFalse(body.contains("\"path\""), body)
+        assertFalse(body.contains("\"url\""), body)
         assertFalse(body.contains("publicUrl"), body)
     }
 

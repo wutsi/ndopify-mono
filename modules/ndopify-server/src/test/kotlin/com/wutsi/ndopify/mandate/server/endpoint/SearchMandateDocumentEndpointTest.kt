@@ -15,7 +15,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
-import java.net.URL
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -33,8 +32,6 @@ class SearchMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
         doReturn(s3).whenever(storageProvider).get()
         doReturn(s3).whenever(storageProvider).get(StorageType.S3)
         doReturn(local).whenever(storageProvider).get(StorageType.LOCAL)
-        doReturn(URL("https://s3.example.com/page")).whenever(s3).generatePresignedUrl(any(), any())
-        doReturn(URL("https://local.example.com/page")).whenever(local).generatePresignedUrl(any(), any())
     }
 
     @Test

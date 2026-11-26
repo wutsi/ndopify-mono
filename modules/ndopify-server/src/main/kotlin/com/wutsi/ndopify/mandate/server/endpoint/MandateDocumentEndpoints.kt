@@ -44,7 +44,7 @@ class MandateDocumentEndpoints(
         val pages = service.findPages(documents.map { it.id!! })
         return SearchMandateDocumentResponse(
             documents = documents.map { document ->
-                mapper.toMandateDocument(document, pages[document.id!!] ?: emptyList(), service::pageUrl)
+                mapper.toMandateDocument(document, pages[document.id!!] ?: emptyList())
             },
         )
     }
@@ -56,7 +56,7 @@ class MandateDocumentEndpoints(
         val document = service.findDocument(mandate, documentId)
         val pages = service.findPages(listOf(document.id!!))[document.id!!] ?: emptyList()
         return GetMandateDocumentResponse(
-            document = mapper.toMandateDocument(document, pages, service::pageUrl),
+            document = mapper.toMandateDocument(document, pages),
         )
     }
 
