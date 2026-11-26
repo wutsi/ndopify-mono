@@ -248,9 +248,10 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `validityDate` — `expires_at`) and a `PROOF_OF_FUNDS` (`bankName`, `accountHolder`, `amount`, `amountKind`
   `BALANCE` for a statement or `CERTIFIED` for an attestation, `currency`, `statementDate` — `issued_at` —,
   `accountLast4`), prompting with the tenant's `currencyCode` (*FCFA* / *F CFA*) and its today; amounts are decimal
-  `BigDecimal`s and the currency its own ISO 4217 field, never a formatted amount. `AccountNumberSanitizer` masks every
-  text field of that data before it's stored — an IBAN or a run of 8+ digits keeps only its last 4 digits, and
-  `accountLast4` is cut to four — because a prompt can ask for the last four digits but can't be trusted with them.
+  `BigDecimal`s and the currency its own ISO 4217 field, never a formatted amount. `AccountNumberSanitizer` masks the
+  free-text fields of that data — a name, a bank, an account holder — before it's stored: an IBAN or a run of 8+ digits
+  keeps only its last 4 digits, and `accountLast4` is cut to four, because a prompt can ask for the last four digits but
+  can't be trusted with them. A date or the currency is kept as read (the digit rule would mangle a `YYYY-MM-DD`).
   `UNKNOWN` has no extractor and stays `UPLOADED`. `MandateDocumentJobs.extract` runs every 15 minutes per tenant
   (`ndopify.mandate.document.extract.*`: `batch-size` 100, `max-attempts` 3 technical retries, `min-confidence` 0.7,
   `in-progress-timeout-minutes` 15). The typed, versioned `DocumentData` (one subclass per type, `data_version` 1,

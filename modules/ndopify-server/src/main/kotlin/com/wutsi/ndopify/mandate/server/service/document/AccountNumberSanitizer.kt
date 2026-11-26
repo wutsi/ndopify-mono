@@ -5,8 +5,10 @@ package com.wutsi.ndopify.mandate.server.service.document
  *
  * The masking is enforced here, never trusted to the model: the prompts ask for the last four digits, but a vision
  * model may still return the full account number or the IBAN it read, and a stored payload, an e-mail or a client
- * would then hold it. [scrub] is applied to every text field of a [FinancialData] and [last4] to its account suffix, so
- * no stored field holds more than the last four digits of an account number.
+ * would then hold it. [scrub] is applied to every free-text field of a [FinancialData] — a name, a bank, an account
+ * holder — and [last4] to its account suffix, so no stored field holds more than the last four digits of an account
+ * number. A date or the currency is kept as read: [ACCOUNT_NUMBER] accepts dashes, so a `yyyy-MM-dd` value would be
+ * masked into nonsense.
  */
 object AccountNumberSanitizer {
     /** The masked form of an account number: a marker, then its last four digits. */

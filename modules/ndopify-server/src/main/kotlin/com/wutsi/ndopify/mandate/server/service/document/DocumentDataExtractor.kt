@@ -38,8 +38,8 @@ internal fun <T : Any> ChatClient.readDocument(prompt: String, images: List<File
     .entity(clazz)
 
 /**
- * Fills a document prompt's placeholders: the declared type, every type name and [today] (the server's date in the
- * tenant's time zone — a document's own date is read against it).
+ * Fills a document prompt's placeholders: the declared type, every type name and [today], the calendar date a document's
+ * own date is read against ([LocalDate.now] in the clock's zone, or the tenant's today when the caller has one).
  */
 internal fun documentPrompt(
     template: String,
