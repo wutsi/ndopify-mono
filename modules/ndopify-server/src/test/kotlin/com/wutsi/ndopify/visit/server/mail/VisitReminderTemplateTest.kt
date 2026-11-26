@@ -118,6 +118,15 @@ class VisitReminderTemplateTest {
     }
 
     @Test
+    fun `agent - VIDEO`() {
+        val html = resolver.resolve(VisitReminderMailet.TEMPLATE_AGENT, agent + mapOf("on_site" to false))
+
+        assertTrue(html.contains("appelez le client en vidéo sur WhatsApp"))
+        assertEquals("+237600000001", Jsoup.parse(html).selectFirst("""a[href="https://wa.me/237600000001"]""")?.text())
+        assertFalse(html.contains("Demandez le code de visite"))
+    }
+
+    @Test
     fun `agent - without the customer WhatsApp URL`() {
         val html = resolver.resolve(VisitReminderMailet.TEMPLATE_AGENT, agent - "customer_whatsapp_url")
 
