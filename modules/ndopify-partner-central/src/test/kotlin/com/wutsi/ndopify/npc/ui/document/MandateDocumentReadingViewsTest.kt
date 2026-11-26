@@ -25,8 +25,8 @@ class MandateDocumentReadingViewsTest {
             "Le document est reçu : sa lecture va commencer. Rien à faire, elle se lance d'elle-même ; ses données " +
                 "apparaîtront ici."
         const val WAITING_EXTRACTING =
-            "L'IA lit le document. Ses données apparaîtront ici dès qu'elle aura terminé : rien à faire."
-        const val ALREADY_EXPIRED = "Elle était déjà expirée quand l'IA l'a lue."
+            "La lecture du document est en cours. Ses données apparaîtront ici dès qu'elle sera terminée : rien à faire."
+        const val ALREADY_EXPIRED = "Elle était déjà expirée lors de sa lecture."
         const val EXPIRED_SINCE = "Elle a expiré depuis sa lecture."
         const val FIND_A_VALID_ONE =
             "Ajoutez une pièce en cours de validité : remplacez ses pages par celles de la nouvelle pièce, ou " +
@@ -39,7 +39,7 @@ class MandateDocumentReadingViewsTest {
             "Il manque une page du document, son verso par exemple. Remplacez la page manquante par une photo, ou " +
                 "supprimez le document et ajoutez-le avec toutes ses pages."
         const val LOW_CONFIDENCE =
-            "L'IA n'est pas sûre d'un champ obligatoire. Vérifiez-le sur la pièce : si la photo est floue, " +
+            "Un champ obligatoire n'a pas pu être lu avec certitude. Vérifiez-le sur la pièce : si la photo est floue, " +
                 "remplacez la page ; sinon, supprimez le document et ajoutez-le de nouveau."
     }
 
