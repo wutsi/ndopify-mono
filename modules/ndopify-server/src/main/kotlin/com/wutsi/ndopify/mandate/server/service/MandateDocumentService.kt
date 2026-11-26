@@ -99,6 +99,13 @@ class MandateDocumentService(
     }
 
     /**
+     * The display copy of [page]: its watermarked JPEG, generated lazily when it isn't stored yet. A failure is a 500
+     * [ErrorCode.HTTP_INTERNAL] ([MandateDocumentPreviewService.read]), never the original bytes.
+     */
+    fun preview(mandate: MandateEntity, page: MandateDocumentPageEntity): ByteArray =
+        previewService.read(mandate.id ?: -1, page.path, page.storageType, page.mimeType)
+
+    /**
      * A short-lived URL to upload a page straight to the storage. Errors, in order: 404 [ErrorCode.MANDATE_NOT_FOUND],
      * 403 [ErrorCode.MANDATE_ACCESS_DENIED], 409 [ErrorCode.MANDATE_ALREADY_CLOSED], then 400
      * [ErrorCode.HTTP_INVALID_PARAMETER] (`contentType`, by [DirectUploadService.presign]) for a type that isn't JPEG,

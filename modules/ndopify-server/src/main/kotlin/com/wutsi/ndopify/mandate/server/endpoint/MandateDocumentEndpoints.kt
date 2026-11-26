@@ -14,6 +14,8 @@ import com.wutsi.ndopify.mandate.server.mapper.MandateDocumentMapper
 import com.wutsi.ndopify.mandate.server.service.MandateAccessService
 import com.wutsi.ndopify.mandate.server.service.MandateDocumentService
 import com.wutsi.ndopify.mandate.server.service.MandateService
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -58,6 +60,26 @@ class MandateDocumentEndpoints(
         return GetMandateDocumentResponse(
             document = mapper.toMandateDocument(document, pages),
         )
+    }
+
+    /**
+     * The page's authenticated preview: the resized, watermarked JPEG, generated now if it isn't stored yet. Same
+     * checks and order as the document reads; a CLOSED / CANCELLED mandate still serves its pages. A generation or
+     * storage failure is a 500, never the original bytes.
+     */
+    @GetMapping("/{documentId}/pages/{pageId}/preview")
+    fun preview(
+        @PathVariable id: Long,
+        @PathVariable documentId: Long,
+        @PathVariable pageId: Long,
+    ): ResponseEntity<ByteArray> {
+        val mandate = mandateService.findById(id)
+        access.ensureCanUpdate(mandate)
+        val document = service.findDocument(mandate, documentId)
+        val page = service.findPage(document, pageId)
+        return ResponseEntity.ok()
+            .contentType(MediaType.IMAGE_JPEG)
+            .body(service.preview(mandate, page))
     }
 
     @PostMapping("/presign")

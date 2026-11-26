@@ -75,6 +75,13 @@ class MandateDocumentCustomerAccessEndpointTest : AuthorizationAwareEndpointInte
     }
 
     @Test
+    fun `the customer can't preview a page`() {
+        assertDenied(
+            rest.getForEntity("/v1/mandates/100/documents/10/pages/100/preview", ErrorResponse::class.java),
+        )
+    }
+
+    @Test
     fun `the customer can't delete a page`() {
         assertDenied(
             rest.exchange(
