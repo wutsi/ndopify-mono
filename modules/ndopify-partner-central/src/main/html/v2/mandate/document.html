@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Document — Ndopify Partner Central</title>
-    <meta name="description" content="Un document du mandat : ses pages, son titre, sa suppression.">
+    <meta name="description" content="Un document du mandat : ce que l'IA y a lu, ses problèmes, ses pages.">
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#ffffff">
     <link rel="apple-touch-icon" href="../assets/images/icon.png">
@@ -15,40 +15,48 @@
     <link rel="stylesheet" href="../assets/css/rejoindre.css">
     <link rel="stylesheet" href="../assets/css/home.css">
     <link rel="stylesheet" href="../assets/css/listing.css">
-    <link rel="stylesheet" href="../assets/css/documents.css?v=20261125b">
+    <link rel="stylesheet" href="../assets/css/documents.css?v=20261125c">
     <script src="../assets/js/partner-central.js?v=20261125a" defer></script>
-    <script src="../assets/js/mandate-documents.js?v=20261125b" defer></script>
+    <script src="../assets/js/mandate-documents.js?v=20261125c" defer></script>
 </head>
 <!--
-    PROTOTYPE (#329): one document of a mandate (GET /mandates/{id}/documents/{documentId}), opened from a row of the
-    mandate page's Documents section. Its header: the title (the type's name when it has none of its own), the status
+    PROTOTYPE (#329, #331): one document of a mandate (GET /mandates/{id}/documents/{documentId}), opened from a row of
+    the mandate page's Documents section. Its header: the title (the type's name when it has none of its own), the status
     pill, the type (when the title differs from it) and ONE upload date for the whole document ("Ajouté le 25/11/2026",
     the tenant's dateFormat with the year). No image, no preview, no thumbnail, no size anywhere on the page.
+    #331 adds, between the header and the pages, what the AI read (see the section's comment below): the fields it
+    read, the hint while it reads, the instructions of a FAILED document and the notice of an expired one.
     Then the pages in order, one plain row each: "Page 1", "Voir" and the folded "Remplacer".
     PRIVACY: nothing is shown inline. Production's "Voir" href is the page's presigned `url`
     (MandateDocumentPage.url, about an hour), opened in a new tab (target="_blank" rel="noopener"); no page path nor
     public URL is ever in the HTML. Here "Voir" opens a sample asset (assets/images/doc-sample-*.svg). A page left open
-    longer than the URL lives gets an expired link: a reload mints new ones.
+    longer than the URL lives gets an expired link: a reload mints new ones. The fields stay on this page only.
     Actions, each its own form so that the page works without JavaScript; all post-redirect-get back here with a flash:
       - Remplacer (per page row, folded): a file input (camera or gallery on a phone) and "Remplacer la page"
         (POST /mandates/{id}/documents/{documentId}/pages/{pageId}, multipart). The page keeps its rank and the document
-        is back to "Reçu" (the server resets its analysis). With JS: shrunk, sent straight to the storage
-        (attachTimeout: it replaces), the button reading "Envoi de la page 2…" meanwhile. ?replaceError=type|size|empty
-        &page=2 is the form again with its error, the row's box open; ?outcome=replaced&page=2 the flash.
+        is back to "Reçu" (the server resets its analysis, and reads it again on its own). With JS: shrunk, sent
+        straight to the storage (attachTimeout: it replaces), the button reading "Envoi de la page 2…" meanwhile.
+        ?replaceError=type|size|empty&page=2 is the form again with its error, the row's box open;
+        ?outcome=replaced&page=2 the flash.
       - Renommer (folded): the title (blank or over 100 characters is a field error, unlike the add form where blank
         means the type's name) and the document's version (hidden). ?errors=blank|long; ?conflict=1 is the 409
         MANDATE_DOCUMENT_VERSION_CONFLICT: the form again with the current title and a message; ?outcome=renamed.
       - Supprimer le document: without JS a link to ?delete=1, this same page with the confirmation panel open
         (Supprimer posts POST /mandates/{id}/documents/{documentId}/delete, Annuler is a link back here); with JS the
         same panel in place. Confirmed, back to the mandate page with "Document supprimé : …".
-    A closed or cancelled mandate shows the document read-only: its pages keep "Voir", no Remplacer, Renommer nor
-    Supprimer (?id=311). An unknown or deleted document (or another agent's) is the "not available" view here;
-    production redirects to the mandate page with the "changed" outcome. Out of scope: the extracted data and problems
-    (#331), adding or deleting a single page, changing the type (delete it and add it again).
-    PROTOTYPE: ?id=301&document=3103 (Titre foncier, 2 pages), 3102 (CNI, title = type), 3101 (Plan de bornage, 1 page,
-    À corriger); ?id=303&document=3302 / 3301; ?id=311&document=3112 (read-only). The static markup is 301/3103.
+    A closed or cancelled mandate shows the document read-only: its fields, instructions and notice stay readable, and
+    its pages keep "Voir", with no Remplacer, Renommer nor Supprimer (?id=311). An unknown or deleted document (or
+    another agent's) is the "not available" view here; production redirects to the mandate page with the "changed"
+    outcome. Out of scope: adding or deleting a single page, changing the type (delete it and add it again), and any
+    action on the extracted data (no re-analysis, no field correction: replacing a page restarts the reading).
+    PROTOTYPE: ?id=301&document=3103 (Titre foncier, 2 pages, EXTRACTED + its fields — the static markup), 3105
+    (EXTRACTING), 3102 (CNI, EXTRACTED + expired), 3104 (Procuration, EXTRACTED without fields), 3101 (Plan de bornage,
+    FAILED: missing page + unreadable); ?id=303&document=3305 (Procuration, EXTRACTED without fields), 3304 (Relevé de
+    compte, EXTRACTED: amounts, "•••• 0123", "Solde"), 3302 (Bulletin de paie: an unknown key), 3301 (CNI, valid), 3303
+    (Accord de principe, EXTRACTED, expired since the reading); ?id=311&document=3113 (read-only fields), 3112
+    (read-only, expired) and 3111 (read-only, FAILED with an unknown code).
 -->
-<body data-page="mandate-document" data-assets="../assets/images/">
+<body data-page="mandate-document" data-assets="../assets/images/" data-currency="FCFA">
     <a class="skip-link" href="#main">Aller au contenu</a>
     <header class="site-header">
         <div class="site-header__inner">
@@ -95,7 +103,7 @@
                 <div class="doc-intro">
                     <div class="doc-intro__head">
                         <h1 data-document-heading>Titre foncier n° 4521 — Bonapriso</h1>
-                        <span class="status-tag status-tag--info" data-document-status><span class="visually-hidden">Statut : </span>En cours d'analyse</span>
+                        <span class="status-tag status-tag--success" data-document-status><span class="visually-hidden">Statut : </span>Analysé</span>
                     </div>
                     <p class="mandate__meta" data-document-meta>Titre foncier · Ajouté le 25/11/2026</p>
                     <p class="mandate__meta" data-document-mandate>Mandat n° 301 · Vendeur : Rodrigue Essomba</p>
@@ -111,6 +119,104 @@
                     <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
                     <p data-document-readonly-text>Mandat annulé : ce document reste consultable, sans modification.</p>
                 </div>
+
+                <!--
+                    #331: what the AI read on this document, before its pages. One real state here (301/3103, EXTRACTED
+                    with its fields); mandate-documents.js renders the others from the samples:
+                      - EXTRACTED with fields: one row per field, in the server's order, its French label from
+                        FIELD_LABELS (an unknown key: "Autre donnée") and its value by kind (dates in the tenant's
+                        dateFormat with the year, a pay month as "Octobre 2026", amounts short with the document's
+                        currency, "•••• 0123", "500 m²", "Solde" / "Attesté"). No confidence, no JSON, no page path.
+                      - EXTRACTED without fields (an older payload): "Aucune donnée n'a été lue…", status unchanged.
+                      - UPLOADED / EXTRACTING: a hint that the reading happens on its own; no field row.
+                      - FAILED: one instruction per problem code, in the server's order (DOCUMENT_TYPE_MISMATCH,
+                        DOCUMENT_UNREADABLE, DOCUMENT_PAGE_MISSING, DOCUMENT_FIELD_LOW_CONFIDENCE,
+                        EXPIRY_DATE_UNREADABLE, EXTRACTION_FAILED); an unknown code reads the generic instruction. No
+                        field row.
+                      - expiresAt before today (tenant clock): the notice "Pièce expirée le …", saying whether it was
+                        already expired when the AI read it (the DOCUMENT_EXPIRED warning) or has expired since, and the
+                        way out (replace its pages, or delete it and add the valid one). DOCUMENT_EXPIRED is a warning,
+                        never an instruction.
+                    The whole section is server-rendered (it works without JavaScript); on a CLOSED / CANCELLED mandate
+                    it stays readable, with no action of its own ("ce document reste consultable, sans modification").
+                -->
+                <section class="doc-reading" aria-labelledby="reading-title" data-document-reading>
+                    <h2 id="reading-title" class="doc-manage__title">Données lues</h2>
+
+                    <!-- expiresAt before today: the piece is no longer valid, whatever its status says. -->
+                    <div class="alert alert--warning" data-reading-expired hidden>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p class="alert__title" data-expired-title>Pièce expirée le 12/01/2025</p>
+                            <p data-expired-when>Elle était déjà expirée quand l'IA l'a lue.</p>
+                            <p data-expired-action>Ajoutez une pièce en cours de validité&nbsp;: remplacez ses pages par
+                                celles de la nouvelle pièce, ou supprimez-la et ajoutez la nouvelle.</p>
+                        </div>
+                    </div>
+
+                    <!-- UPLOADED / EXTRACTING: the reading is automatic, there is nothing to do but wait. -->
+                    <div class="hint" data-reading-waiting hidden>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 5.5V10l3 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <p data-waiting-text>L'IA lit le document. Ses données apparaîtront ici dès qu'elle aura
+                            terminé&nbsp;: rien à faire.</p>
+                    </div>
+
+                    <!-- EXTRACTED without fields (an older payload): no empty list. -->
+                    <div class="hint" data-reading-empty hidden>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <p>Aucune donnée n'a été lue sur ce document. Vérifiez la pièce elle-même&nbsp;: elle reste
+                            consultable.</p>
+                    </div>
+
+                    <!-- FAILED: one instruction per problem code, in the server's order. -->
+                    <div class="alert alert--warning" data-reading-problems hidden>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p class="alert__title">Ce document n'a pas pu être lu</p>
+                            <p>Corrigez ce qui suit&nbsp;: la lecture repart d'elle-même.</p>
+                            <ul class="doc-problems" data-reading-problem-list></ul>
+                        </div>
+                    </div>
+
+                    <p class="doc-reading__intro" data-reading-intro>Lues automatiquement sur la pièce&nbsp;:
+                        vérifiez-les sur l'original.</p>
+                    <dl class="review doc-data" data-reading-fields>
+                        <div class="review__item">
+                            <dt class="review__term">Numéro du titre</dt>
+                            <dd class="review__value">4521</dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Propriétaires</dt>
+                            <dd class="review__value">Rodrigue Essomba, Carine Mbarga</dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Département</dt>
+                            <dd class="review__value">Wouri</dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Arrondissement</dt>
+                            <dd class="review__value">Douala 5e</dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Localité</dt>
+                            <dd class="review__value">Bonapriso</dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Surface</dt>
+                            <dd class="review__value">500&nbsp;m²</dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Date de délivrance</dt>
+                            <dd class="review__value">14/06/2019</dd>
+                        </div>
+                    </dl>
+                    <template data-reading-field-template>
+                        <div class="review__item">
+                            <dt class="review__term" data-field-label></dt>
+                            <dd class="review__value" data-field-value></dd>
+                        </div>
+                    </template>
+                </section>
 
                 <section class="doc-pages-section" aria-labelledby="pages-title">
                     <h2 id="pages-title" class="doc-manage__title">Pages</h2>

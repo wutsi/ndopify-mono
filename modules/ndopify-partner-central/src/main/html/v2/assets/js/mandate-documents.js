@@ -1,14 +1,20 @@
 /*
- * Ndopify Partner Central — a mandate's documents (#329), static prototype.
+ * Ndopify Partner Central — a mandate's documents (#329, #331), static prototype.
  *   - mandate.html (data-page="mandate"): the *Documents* section, after partner-central.js has rendered the page;
  *   - mandate/document-new.html (data-page="mandate-document-new"): *Ajouter un document*;
- *   - mandate/document.html (data-page="mandate-document"): one document, its pages, Remplacer / Renommer / Supprimer.
+ *   - mandate/document.html (data-page="mandate-document"): one document, what the AI read on it, its pages,
+ *     Remplacer / Renommer / Supprimer.
  * Every page is written to work without JavaScript (multipart forms, ?delete=1 confirmation): this script only
  * renders the prototype's sample data and enhances (the chosen files listed by name and size, shrink, upload
  * progress, the delete confirmation in place). No page image is ever shown inline: a page opens through "Voir". Server calls are simulated; every simulation is marked "PROTOTYPE".
+ * #331: the document page shows what the AI read (MandateDocument.fields, in the server's order, its French label
+ * from FIELD_LABELS and its value formatted by kind), the hint while it reads, one instruction per problem code of a
+ * FAILED document, and the notice of a piece whose expiresAt is before today; the mandate page's row adds the
+ * "Expirée" marker. Confidence, the page paths and any JSON stay out of the HTML.
  * Query switches: mandate.html ?docs=none|error, ?documentOutcome=added|deleted|changed; document-new.html
  * ?errors=missing|file|size|server (?errors=1 = missing); document.html ?delete=1, ?outcome=renamed|replaced&page=N,
- * ?errors=blank|long, ?conflict=1, ?replaceError=type|size|empty&page=N. ?docs=reset (any page) forgets the session.
+ * ?errors=blank|long, ?conflict=1, ?replaceError=type|size|empty&page=N; the reading states come from the samples
+ * (?id=&document=, see DOCUMENTS). ?docs=reset (any page) forgets the session.
  */
 (function () {
     "use strict";
@@ -46,13 +52,12 @@
         SEARCH: ["NATIONAL_ID", "PASSPORT", "PAY_SLIP", "BANK_PRE_APPROVAL", "PROOF_OF_FUNDS"]
     };
 
-    // DocumentStatus → label and pill. Until #330 (extraction) every document is UPLOADED ("Reçu").
+    // DocumentStatus → label and pill. No EXPIRED status: an expired piece stays EXTRACTED, marked "Expirée" (#331).
     var STATUSES = {
         UPLOADED: ["Reçu", ""],
         EXTRACTING: ["En cours d'analyse", "status-tag--info"],
         EXTRACTED: ["Analysé", "status-tag--success"],
-        FAILED: ["À corriger", "status-tag--warning"],
-        EXPIRED: ["Expiré", "status-tag--error"]
+        FAILED: ["À corriger", "status-tag--warning"]
     };
 
     // PROTOTYPE: what the pages need of partner-central.js's MANDATES (party, sale, the customer's name and the
@@ -72,28 +77,209 @@
         311: { party: "client", sale: true, name: "Blaise Nkoulou", status: "CANCELLED" }
     };
 
-    // PROTOTYPE: GET /v1/mandates/{id}/documents, newest first. A page's "Voir" opens a sample asset
-    // (assets/images/doc-sample-*); production's is the page's presigned `url` (MandateDocumentPage.url), never a path.
+    /*
+     * #331: the French label of a DocumentField key — production's message bundle, by key. A key the bundle doesn't
+     * know yet shows FIELD_OTHER with its value, so a server field added later is never lost. `currency` is the
+     * document's currency, used by the amounts: it is never a row of its own.
+     */
+    var FIELD_LABELS = {
+        number: "Numéro",
+        firstName: "Prénom(s)",
+        lastName: "Nom",
+        dateOfBirth: "Date de naissance",
+        issueDate: "Date de délivrance",
+        expiryDate: "Date d'expiration",
+        countryCode: "Pays",
+        titleNumber: "Numéro du titre",
+        owners: "Propriétaires",
+        department: "Département",
+        arrondissement: "Arrondissement",
+        locality: "Localité",
+        surface: "Surface",
+        parcelReference: "Référence de la parcelle",
+        coordinates: "Coordonnées",
+        grantor: "Mandant",
+        attorney: "Mandataire",
+        purpose: "Objet",
+        notary: "Notaire",
+        holderName: "Titulaire",
+        address: "Adresse",
+        provider: "Fournisseur",
+        title: "Titre",
+        summary: "Résumé",
+        employerName: "Employeur",
+        employeeName: "Salarié",
+        payMonth: "Mois de paie",
+        grossSalary: "Salaire brut",
+        netSalary: "Salaire net",
+        bankName: "Banque",
+        beneficiaries: "Bénéficiaires",
+        amount: "Montant",
+        validityDate: "Valable jusqu'au",
+        amountKind: "Nature du montant",
+        accountHolder: "Titulaire du compte",
+        statementDate: "Date du relevé",
+        accountLast4: "Compte"
+    };
+    var FIELD_OTHER = "Autre donnée";
+
+    // The two values of DocumentData.AmountKind, in words.
+    var AMOUNT_KINDS = { BALANCE: "Solde", CERTIFIED: "Attesté" };
+
+    // The currencies a tenant of this prototype may read; another ISO code shows as sent (production: the tenant's
+    // currencySymbol, from TenantFormatter).
+    var CURRENCY_SYMBOLS = { XAF: "FCFA", XOF: "FCFA" };
+
+    var MONTHS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre",
+        "novembre", "décembre"];
+
+    /*
+     * #331: one instruction per problem code, in the server's own order (DocumentProblemCodes). Each says what the
+     * agent can actually do from this page — replace a page, or delete the document and add it again; there is no
+     * re-analysis and no field to correct. DOCUMENT_EXPIRED is a warning, never an instruction: the expiry notice is
+     * what the agent sees. PROBLEM_OTHER answers an unknown code.
+     */
+    var PROBLEM_INSTRUCTIONS = {
+        DOCUMENT_TYPE_MISMATCH: "Le document ne correspond pas au type choisi. Supprimez-le, puis ajoutez-le avec " +
+            "le bon type.",
+        DOCUMENT_UNREADABLE: "L'IA n'a pas pu lire le document. Remplacez ses pages par des photos plus nettes, " +
+            "droites et sans reflet, ou supprimez-le et ajoutez-le de nouveau.",
+        DOCUMENT_PAGE_MISSING: "Il manque une page du document, son verso par exemple. Remplacez la page manquante " +
+            "par une photo, ou supprimez le document et ajoutez-le avec toutes ses pages.",
+        DOCUMENT_FIELD_LOW_CONFIDENCE: "L'IA n'est pas sûre d'un champ obligatoire. Vérifiez-le sur la pièce : si " +
+            "la photo est floue, remplacez la page ; sinon, supprimez le document et ajoutez-le de nouveau.",
+        EXPIRY_DATE_UNREADABLE: "La date d'expiration de la pièce n'a pas pu être lue. Remplacez la page où elle " +
+            "figure par une photo plus nette, ou supprimez le document et ajoutez-le de nouveau.",
+        EXTRACTION_FAILED: "La lecture du document a échoué. Remplacez ses pages, ou supprimez le document et " +
+            "ajoutez-le de nouveau pour relancer la lecture."
+    };
+    var PROBLEM_OTHER = "Un problème a été signalé sur ce document. Supprimez-le et ajoutez-le de nouveau pour " +
+        "relancer la lecture.";
+
+    /*
+     * PROTOTYPE: GET /v1/mandates/{id}/documents, newest first; a page's "Voir" opens a sample asset
+     * (assets/images/doc-sample-*), production's is the page's presigned `url` (MandateDocumentPage.url), never a path.
+     * #331's fields (`{ key, value, confidence }`, the type's own order, display-ready values), `problemCodes`
+     * (server order) and the two dates come with each sample, so every reading state is one URL away. A page's
+     * confidence is never rendered. EXPIRED is not a status: an expired piece is EXTRACTED + DOCUMENT_EXPIRED, or
+     * EXTRACTED and expired since (no code), and its expiresAt is what marks it.
+     */
     var DOCUMENTS = {
         301: [
-            { id: 3103, type: "LAND_TITLE", title: "Titre foncier n° 4521 — Bonapriso", status: "EXTRACTING",
-                createdAt: "2026-11-25", version: 1, pages: ["page", "page"] },
-            { id: 3102, type: "NATIONAL_ID", title: "Carte nationale d'identité", status: "UPLOADED",
-                createdAt: "2026-11-24", version: 0, pages: ["id-front", "id-back"] },
+            { id: 3103, type: "LAND_TITLE", title: "Titre foncier n° 4521 — Bonapriso", status: "EXTRACTED",
+                createdAt: "2026-11-25", version: 1, pages: ["page", "page"],
+                issuedAt: "2019-06-14", expiresAt: null, problemCodes: [],
+                fields: [
+                    { key: "titleNumber", value: "4521", confidence: 0.97 },
+                    { key: "owners", value: "Rodrigue Essomba, Carine Mbarga", confidence: 0.93 },
+                    { key: "department", value: "Wouri", confidence: 0.95 },
+                    { key: "arrondissement", value: "Douala 5e", confidence: 0.91 },
+                    { key: "locality", value: "Bonapriso", confidence: 0.94 },
+                    { key: "surface", value: "500", confidence: 0.88 },
+                    { key: "issueDate", value: "2019-06-14", confidence: 0.96 }
+                ] },
+            { id: 3105, type: "UTILITY_BILL", title: "Facture d'eau — octobre 2026", status: "EXTRACTING",
+                createdAt: "2026-11-24", version: 0, pages: ["page"],
+                issuedAt: null, expiresAt: null, problemCodes: [], fields: [] },
+            { id: 3102, type: "NATIONAL_ID", title: "Carte nationale d'identité", status: "EXTRACTED",
+                createdAt: "2026-11-23", version: 0, pages: ["id-front", "id-back"],
+                issuedAt: "2015-01-12", expiresAt: "2025-01-12", problemCodes: ["DOCUMENT_EXPIRED"],
+                fields: [
+                    { key: "number", value: "1038472659", confidence: 0.96 },
+                    { key: "firstName", value: "Rodrigue", confidence: 0.97 },
+                    { key: "lastName", value: "Essomba", confidence: 0.98 },
+                    { key: "dateOfBirth", value: "1979-03-08", confidence: 0.92 },
+                    { key: "issueDate", value: "2015-01-12", confidence: 0.95 },
+                    { key: "expiryDate", value: "2025-01-12", confidence: 0.97 },
+                    { key: "countryCode", value: "CM", confidence: 0.99 }
+                ] },
+            { id: 3104, type: "POWER_OF_ATTORNEY", title: "Procuration — vente du lot 12", status: "UPLOADED",
+                createdAt: "2026-11-21", version: 0, pages: ["page"],
+                issuedAt: null, expiresAt: null, problemCodes: [], fields: [] },
             { id: 3101, type: "SURVEY_PLAN", title: "Plan de bornage", status: "FAILED",
-                createdAt: "2026-11-20", version: 2, pages: ["plan"] }
+                createdAt: "2026-11-20", version: 2, pages: ["plan"],
+                issuedAt: null, expiresAt: null,
+                problemCodes: ["DOCUMENT_PAGE_MISSING", "DOCUMENT_FIELD_LOW_CONFIDENCE"], fields: [] }
         ],
         303: [
+            { id: 3305, type: "POWER_OF_ATTORNEY", title: "Procuration — achat de l'appartement", status: "EXTRACTED",
+                createdAt: "2026-11-25", version: 0, pages: ["page"],
+                issuedAt: null, expiresAt: null, problemCodes: [], fields: [] },
+            { id: 3304, type: "PROOF_OF_FUNDS", title: "Relevé de compte — Afriland First Bank", status: "EXTRACTED",
+                createdAt: "2026-11-24", version: 0, pages: ["page"],
+                issuedAt: "2026-11-20", expiresAt: null, problemCodes: [],
+                fields: [
+                    { key: "bankName", value: "Afriland First Bank", confidence: 0.95 },
+                    { key: "accountHolder", value: "Mireille Tchoumi", confidence: 0.93 },
+                    { key: "amount", value: "12500000", confidence: 0.9 },
+                    { key: "amountKind", value: "BALANCE", confidence: 0.87 },
+                    { key: "currency", value: "XAF", confidence: 0.98 },
+                    { key: "statementDate", value: "2026-11-20", confidence: 0.94 },
+                    { key: "accountLast4", value: "0123", confidence: 0.96 }
+                ] },
             { id: 3302, type: "PAY_SLIP", title: "Bulletin de paie — octobre 2026", status: "EXTRACTED",
-                createdAt: "2026-11-23", version: 0, pages: ["page"] },
-            { id: 3301, type: "NATIONAL_ID", title: "Carte nationale d'identité", status: "EXPIRED",
-                createdAt: "2026-11-21", version: 0, pages: ["id-front", "id-back"] }
+                createdAt: "2026-11-23", version: 0, pages: ["page"],
+                issuedAt: "2026-10-01", expiresAt: null, problemCodes: [],
+                fields: [
+                    { key: "employerName", value: "Orange Cameroun", confidence: 0.94 },
+                    { key: "employeeName", value: "Mireille Tchoumi", confidence: 0.96 },
+                    { key: "position", value: "Chargée de clientèle", confidence: 0.71 },
+                    { key: "payMonth", value: "2026-10", confidence: 0.98 },
+                    { key: "grossSalary", value: "412000", confidence: 0.93 },
+                    { key: "netSalary", value: "350000", confidence: 0.95 },
+                    { key: "currency", value: "XAF", confidence: 0.97 }
+                ] },
+            { id: 3301, type: "NATIONAL_ID", title: "Carte nationale d'identité", status: "EXTRACTED",
+                createdAt: "2026-11-21", version: 0, pages: ["id-front", "id-back"],
+                issuedAt: "2022-05-20", expiresAt: "2032-05-20", problemCodes: [],
+                fields: [
+                    { key: "number", value: "1094738215", confidence: 0.95 },
+                    { key: "firstName", value: "Mireille", confidence: 0.97 },
+                    { key: "lastName", value: "Tchoumi", confidence: 0.98 },
+                    { key: "dateOfBirth", value: "1991-11-02", confidence: 0.94 },
+                    { key: "issueDate", value: "2022-05-20", confidence: 0.96 },
+                    { key: "expiryDate", value: "2032-05-20", confidence: 0.96 },
+                    { key: "countryCode", value: "CM", confidence: 0.99 }
+                ] },
+            { id: 3303, type: "BANK_PRE_APPROVAL", title: "Accord de principe — prêt immobilier",
+                status: "EXTRACTED", createdAt: "2026-11-10", version: 0, pages: ["page", "page"],
+                issuedAt: "2026-08-20", expiresAt: "2026-11-20", problemCodes: [],
+                fields: [
+                    { key: "bankName", value: "Afriland First Bank", confidence: 0.95 },
+                    { key: "beneficiaries", value: "Mireille Tchoumi, Patrice Owona", confidence: 0.92 },
+                    { key: "amount", value: "45000000", confidence: 0.94 },
+                    { key: "currency", value: "XAF", confidence: 0.98 },
+                    { key: "issueDate", value: "2026-08-20", confidence: 0.93 },
+                    { key: "validityDate", value: "2026-11-20", confidence: 0.95 }
+                ] }
         ],
         311: [
+            { id: 3113, type: "PROOF_OF_FUNDS", title: "Attestation de solde — Afriland First Bank",
+                status: "EXTRACTED", createdAt: "2026-11-12", version: 0, pages: ["page"],
+                issuedAt: "2026-11-05", expiresAt: null, problemCodes: [],
+                fields: [
+                    { key: "bankName", value: "Afriland First Bank", confidence: 0.95 },
+                    { key: "accountHolder", value: "Blaise Nkoulou", confidence: 0.96 },
+                    { key: "amount", value: "8000000", confidence: 0.92 },
+                    { key: "amountKind", value: "CERTIFIED", confidence: 0.89 },
+                    { key: "currency", value: "XAF", confidence: 0.98 },
+                    { key: "statementDate", value: "2026-11-05", confidence: 0.94 },
+                    { key: "accountLast4", value: "4471", confidence: 0.97 }
+                ] },
             { id: 3112, type: "BANK_PRE_APPROVAL", title: "Accord de principe — prêt immobilier", status: "EXTRACTED",
-                createdAt: "2026-11-10", version: 0, pages: ["page", "page"] },
-            { id: 3111, type: "PASSPORT", title: "Passeport", status: "UPLOADED",
-                createdAt: "2026-11-05", version: 0, pages: ["id-front"] }
+                createdAt: "2026-11-10", version: 0, pages: ["page", "page"],
+                issuedAt: "2026-03-02", expiresAt: "2026-09-02", problemCodes: ["DOCUMENT_EXPIRED"],
+                fields: [
+                    { key: "bankName", value: "BICEC", confidence: 0.94 },
+                    { key: "beneficiaries", value: "Blaise Nkoulou", confidence: 0.91 },
+                    { key: "amount", value: "35000000", confidence: 0.93 },
+                    { key: "currency", value: "XAF", confidence: 0.98 },
+                    { key: "issueDate", value: "2026-03-02", confidence: 0.92 },
+                    { key: "validityDate", value: "2026-09-02", confidence: 0.95 }
+                ] },
+            { id: 3111, type: "PASSPORT", title: "Passeport", status: "FAILED",
+                createdAt: "2026-11-05", version: 0, pages: ["id-front"],
+                issuedAt: null, expiresAt: null, problemCodes: ["DOCUMENT_BACK_MISSING"], fields: [] }
         ]
     };
 
@@ -217,6 +403,92 @@
         var d = new Date();
         return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" +
             String(d.getDate()).padStart(2, "0");
+    }
+
+    /* ---------- #331: what the AI read ---------- */
+
+    // An expiry before today, on the tenant's clock: `expiresAt` is a LocalDate on both sides, so ISO strings compare
+    // as dates. A document without one never expires.
+    function isExpired(doc) {
+        return !!doc.expiresAt && String(doc.expiresAt) < todayIso();
+    }
+
+    function fieldOf(fields, key) {
+        var value = null;
+        (fields || []).forEach(function (field) {
+            if (field && field.key === key) value = field.value;
+        });
+        return value;
+    }
+
+    // The document's own currency for its amounts, else the tenant's (the body's data-currency).
+    function currencySymbolOf(fields) {
+        var code = fieldOf(fields, "currency");
+        if (!code) return document.body.getAttribute("data-currency") || "FCFA";
+        return CURRENCY_SYMBOLS[code] || code;
+    }
+
+    // A displayed amount, short and in the tenant's French form (#292), with the document's currency: "350K FCFA",
+    // "45M FCFA", "12,5M FCFA". K keeps one decimal, M and G two, half-up, the unit bumped after rounding.
+    function formatMoney(value, symbol) {
+        var n = Math.abs(Number(value) || 0);
+        function rounded(amount, decimals) {
+            var factor = Math.pow(10, decimals);
+            return Math.round(amount * factor) / factor;
+        }
+        function text(amount, decimals) {
+            return String(amount.toFixed(decimals)).replace(/\.?0+$/, "").replace(".", ",");
+        }
+        var short;
+        if (n < 1000) {
+            short = String(n);
+        } else {
+            var k = rounded(n / 1000, 1);
+            if (k < 1000) {
+                short = text(k, 1) + "K";
+            } else {
+                var m = rounded(n / 1000000, 2);
+                short = m < 1000 ? text(m, 2) + "M" : text(rounded(n / 1000000000, 2), 2) + "G";
+            }
+        }
+        return short + "\u00A0" + symbol;
+    }
+
+    // A count grouped by thousands, as the app writes a surface: "500", "1 200".
+    function formatCount(value) {
+        return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, "\u00A0");
+    }
+
+    // "2026-10" → "Octobre 2026" (the tenant's locale in production).
+    function formatMonth(value) {
+        var parts = String(value).split("-");
+        var month = MONTHS[Number(parts[1]) - 1];
+        return month ? month.charAt(0).toUpperCase() + month.slice(1) + " " + parts[2] : value;
+    }
+
+    // One field's value, formatted by its kind. Anything it can't read shows as sent: never an error.
+    function readingValue(key, value, fields) {
+        var text = String(value);
+        if (key === "issueDate" || key === "expiryDate" || key === "validityDate" || key === "statementDate" ||
+                key === "dateOfBirth") {
+            return /^\d{4}-\d{2}-\d{2}$/.test(text) ? formatDate(text) : text;
+        }
+        if (key === "payMonth") return /^\d{4}-\d{2}$/.test(text) ? formatMonth(text) : text;
+        if (key === "amount" || key === "grossSalary" || key === "netSalary") {
+            return /^\d+(\.\d+)?$/.test(text) ? formatMoney(text, currencySymbolOf(fields)) : text;
+        }
+        if (key === "accountLast4") return /^\d{4}$/.test(text) ? "•••• " + text : text;
+        if (key === "surface") return /^\d+$/.test(text) ? formatCount(text) + "\u00A0m²" : text;
+        if (key === "amountKind") return AMOUNT_KINDS[text] || text;
+        return text;
+    }
+
+    // The fields worth a row, in the server's order: `currency` isn't one, and a null or blank value has no row.
+    function readingFields(doc) {
+        return (doc.fields || []).filter(function (field) {
+            if (!field || field.key === "currency") return false;
+            return field.value !== null && field.value !== undefined && String(field.value).trim() !== "";
+        });
     }
 
     // A chosen file's size, French style: "850 Ko", "1,8 Mo" (production: the same, read from the File).
@@ -353,6 +625,8 @@
                 link.href = "mandate/document.html?id=" + id + "&document=" + doc.id;
                 $("[data-doc-type]", row).textContent = TYPES[doc.type] || TYPES.OTHER;
                 setStatusTag($("[data-doc-status]", row), doc.status);
+                // #331: the statuses don't say a piece expired, so the row does (the document page has the notice).
+                $("[data-doc-expired]", row).hidden = !isExpired(doc);
                 var title = $("[data-doc-title]", row);
                 title.textContent = doc.title;
                 title.hidden = !doc.title || doc.title === TYPES[doc.type];
@@ -705,6 +979,7 @@
             " : ce document reste consultable, sans modification.";
         $("[data-document-manage]").hidden = readOnly;
 
+        renderReading(id, doc, readOnly);
         renderPages(id, doc, readOnly, self);
         if (!readOnly) {
             initRename(id, doc, self);
@@ -723,6 +998,76 @@
             flash.hidden = false;
             flash.focus();
             dropParams(["outcome", "page"]);
+        }
+    }
+
+    /*
+     * #331: what the AI read on the document, above its pages — the expiry notice, the hint while it reads, one
+     * instruction per problem code, then the field rows (no confidence, no JSON). Production renders all of it
+     * server-side, so the page works without JavaScript; here the section's blocks are switched and its rows built
+     * from the sample. A CLOSED / CANCELLED mandate keeps the whole section readable, with no action of its own.
+     */
+    function renderReading(id, doc, readOnly) {
+        var section = $("[data-document-reading]");
+        if (!section) return;
+        var fields = readingFields(doc);
+        var codes = doc.problemCodes || [];
+        var waiting = doc.status === "UPLOADED" || doc.status === "EXTRACTING";
+        var failed = doc.status === "FAILED";
+        var hasFields = doc.status === "EXTRACTED" && fields.length > 0;
+
+        // The notice: expiresAt before today. DOCUMENT_EXPIRED (the server's warning at reading time) tells a piece
+        // already expired when the AI read it from one that has expired since.
+        var expired = isExpired(doc);
+        $("[data-reading-expired]", section).hidden = !expired;
+        if (expired) {
+            $("[data-expired-title]", section).textContent = "Pièce expirée le " + formatDate(doc.expiresAt);
+            $("[data-expired-when]", section).textContent = codes.indexOf("DOCUMENT_EXPIRED") !== -1
+                ? "Elle était déjà expirée quand l'IA l'a lue."
+                : "Elle a expiré depuis sa lecture.";
+            // Read-only: no action of this story's own, and none of replacing on a closed or cancelled mandate.
+            $("[data-expired-action]", section).textContent = readOnly
+                ? (statusOf(id) === "CLOSED" ? "Mandat fermé" : "Mandat annulé") +
+                    " : cette pièce reste consultable telle quelle."
+                : "Ajoutez une pièce en cours de validité : remplacez ses pages par celles de la nouvelle pièce, " +
+                    "ou supprimez-la et ajoutez la nouvelle.";
+        }
+
+        var waitingBox = $("[data-reading-waiting]", section);
+        waitingBox.hidden = !waiting;
+        if (waiting) {
+            $("[data-waiting-text]", section).textContent = doc.status === "UPLOADED"
+                ? "Le document est reçu : sa lecture va commencer. Rien à faire, elle se lance d'elle-même ; ses " +
+                    "données apparaîtront ici."
+                : "L'IA lit le document. Ses données apparaîtront ici dès qu'elle aura terminé : rien à faire.";
+        }
+
+        $("[data-reading-empty]", section).hidden = !(doc.status === "EXTRACTED" && !fields.length);
+
+        var problems = $("[data-reading-problems]", section);
+        problems.hidden = !failed;
+        if (failed) {
+            var list = $("[data-reading-problem-list]", section);
+            list.innerHTML = "";
+            codes.forEach(function (code) {
+                var li = document.createElement("li");
+                li.textContent = PROBLEM_INSTRUCTIONS[code] || PROBLEM_OTHER;
+                list.appendChild(li);
+            });
+        }
+
+        $("[data-reading-intro]", section).hidden = !hasFields;
+        var data = $("[data-reading-fields]", section);
+        data.hidden = !hasFields;
+        if (hasFields) {
+            var template = $("[data-reading-field-template]", section);
+            data.innerHTML = "";
+            fields.forEach(function (field) {
+                var row = template.content.firstElementChild.cloneNode(true);
+                $("[data-field-label]", row).textContent = FIELD_LABELS[field.key] || FIELD_OTHER;
+                $("[data-field-value]", row).textContent = readingValue(field.key, field.value, doc.fields);
+                data.appendChild(row);
+            });
         }
     }
 
@@ -789,7 +1134,13 @@
                             if (String(d.id) === String(doc.id)) {
                                 // PROTOTYPE: the file isn't kept; "Voir" opens a sample asset.
                                 d.pages[i] = "page";
+                                // The server resets its analysis: the reading's data, dates and problems leave with it
+                                // (#331), and the document reads "Reçu" until it is read again.
                                 d.status = "UPLOADED";
+                                d.fields = [];
+                                d.problemCodes = [];
+                                d.issuedAt = null;
+                                d.expiresAt = null;
                             }
                         });
                         saveDocuments(id, documents);

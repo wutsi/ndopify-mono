@@ -1,6 +1,8 @@
 /*
- * Ndopify Partner Central — a mandate's documents (#329): the *Documents* section of mandate.html,
+ * Ndopify Partner Central — a mandate's documents (#329, #331): the *Documents* section of mandate.html,
  * mandate/document-new.html and mandate/document.html.
+ * #331 adds what the AI read on the document page (its fields, the waiting hint, the problem instructions and the
+ * expiry notice) and the "Expirée" marker of an expired document's row on mandate.html.
  * Loaded after partner-central.css, home.css and listing.css; uses their tier-2 semantic tokens only, no new colours.
  * Reuses listing.css's .photo__delete / .photo-actions / .upload-progress for the pages chosen. No page image is
  * shown anywhere: a page opens through its "Voir" link.
@@ -79,10 +81,17 @@ a.doc-row:focus-visible {
     overflow-wrap: anywhere;
 }
 
-.doc-row .status-tag {
+/*
+ * The status pill, plus the "Expirée" marker on an expired document (#331), on the row's first line. The type wraps
+ * in its own column rather than pushing either pill out; the pills themselves never wrap mid-word.
+ */
+.doc-row__tags {
     grid-column: 3;
     grid-row: 1;
-    justify-self: end;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-1);
 }
 
 .doc-row__title,
@@ -103,7 +112,7 @@ a.doc-row:focus-visible {
     }
 }
 
-/* À corriger / Expiré need the error hue, which the status pills of home.css don't have yet. */
+/* À corriger needs the error hue, which the status pills of home.css don't have yet. */
 .status-tag--error {
     border-color: var(--color-error-border);
     background: var(--color-error-bg);
@@ -310,4 +319,66 @@ a.doc-row:focus-visible {
 
 .doc-manage .alert__title:focus {
     outline: none;
+}
+
+/* ---------- mandate/document.html: what the AI read (#331) ---------- */
+
+/*
+ * The reading of the document, above its pages: the expiry notice, what the AI read (or why it couldn't), then the
+ * problems. It reads at a glance because it is what the document is worth to the agent.
+ */
+.doc-reading > * + * {
+    margin-top: var(--space-3);
+}
+
+.doc-reading__intro {
+    font-size: var(--step-hint);
+}
+
+/*
+ * The fields, as the review lists: the label in a narrower column, the value beside it, aligned on the first line of
+ * the pair. Two columns read faster than a stacked row for ten short facts, and still wrap inside their column on a
+ * 390 px phone.
+ */
+.doc-data .review__item {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    column-gap: var(--space-3);
+    align-items: baseline;
+    padding-block: var(--space-2);
+}
+
+.doc-data .review__item:first-child {
+    padding-top: 0;
+}
+
+.doc-data .review__term {
+    grid-column: 1;
+    font-size: var(--step-hint);
+}
+
+.doc-data .review__value {
+    grid-column: 2;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 359px) {
+    .doc-data .review__item {
+        grid-template-columns: minmax(0, 1fr);
+        row-gap: var(--space-1);
+    }
+
+    .doc-data .review__term,
+    .doc-data .review__value {
+        grid-column: 1;
+    }
+}
+
+/* The problems: one instruction per line, under the alert's title. */
+.doc-reading .doc-problems {
+    margin: var(--space-2) 0 0;
+    padding-left: var(--space-4);
+}
+
+.doc-reading .doc-problems > li + li {
+    margin-top: var(--space-2);
 }
