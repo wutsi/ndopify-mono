@@ -120,9 +120,15 @@ class KycService(
         return dao.findAll(spec, OffsetLimitPageRequest(request.offset, request.limit, sort)).content
     }
 
+    /**
+     * Opens a new KYC case for a party's identification. Errors, in order: 404 PARTY_NOT_FOUND, then 403
+     * HTTP_ACCESS_DENIED but for that party or an admin ([KycAccessService]). The internal
+     * [create] overload (agent sign-up) checks nothing.
+     */
     @Transactional
     fun create(request: CreateKycCaseRequest): KycCaseEntity {
         val party = partyService.findById(request.partyId)
+        accessService.ensureIsPartyOrAdmin(party.id)
         return create(party, request.identificationType)
     }
 

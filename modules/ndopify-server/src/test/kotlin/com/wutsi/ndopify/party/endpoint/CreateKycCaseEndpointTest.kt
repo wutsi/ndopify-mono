@@ -8,6 +8,7 @@ import com.wutsi.ndopify.party.dto.CreateKycCaseResponse
 import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.server.dao.KycCaseRepository
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
@@ -19,6 +20,11 @@ import kotlin.test.assertNull
 class CreateKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Autowired
     private lateinit var dao: KycCaseRepository
+
+    private var admin = false
+
+    override val roles: Array<String>
+        get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
 
     @Test
     fun `with payment method`() {
@@ -38,6 +44,46 @@ class CreateKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(IdentificationType.RESIDENT_CARD, case.identificationType)
         assertNull(case.score)
         assertNull(case.errorCode)
+    }
+
+    @Test
+    fun `another party - forbidden`() {
+        val request = CreateKycCaseRequest(
+            partyId = 200L,
+            identificationType = IdentificationType.RESIDENT_CARD,
+        )
+
+        val response = rest.postForEntity("/v1/kyc/cases", request, ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
+        assertEquals(0L, dao.count())
+    }
+
+    @Test
+    fun `admin creates for another party`() {
+        admin = true
+        val request = CreateKycCaseRequest(
+            partyId = 200L,
+            identificationType = IdentificationType.RESIDENT_CARD,
+        )
+
+        val response = rest.postForEntity("/v1/kyc/cases", request, CreateKycCaseResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(200L, dao.findById(response.body!!.caseId).orElseThrow().party.id)
+    }
+
+    @Test
+    fun `caller without a party - forbidden`() {
+        userId = 12L
+        val request = CreateKycCaseRequest(partyId = 100L)
+
+        val response = rest.postForEntity("/v1/kyc/cases", request, ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
+        assertEquals(0L, dao.count())
     }
 
     @Test
