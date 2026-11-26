@@ -8,6 +8,7 @@ import com.wutsi.ndopify.party.dto.IdentificationStatus
 import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.dto.KycImageType
 import com.wutsi.ndopify.party.server.dao.IdentificationRepository
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
@@ -18,6 +19,11 @@ import kotlin.test.assertEquals
 class CreateIdentificationEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Autowired
     private lateinit var dao: IdentificationRepository
+
+    private var admin = false
+
+    override val roles: Array<String>
+        get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
 
     @Test
     fun identifications() {
@@ -70,6 +76,55 @@ class CreateIdentificationEndpointTest : AuthorizationAwareEndpointIntegrationTe
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
+    }
+
+    @Test
+    fun `another party - forbidden`() {
+        val request = CreateIdentificationRequest(
+            partyId = 200L,
+            type = IdentificationType.NATIONAL_ID,
+            issuingCountryCode = "CM",
+            imageTypes = listOf(KycImageType.FRONT),
+        )
+
+        val response = rest.postForEntity("/v1/identifications", request, ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
+        assertEquals(0L, dao.count())
+    }
+
+    @Test
+    fun `admin creates for another party`() {
+        admin = true
+        val request = CreateIdentificationRequest(
+            partyId = 200L,
+            type = IdentificationType.NATIONAL_ID,
+            issuingCountryCode = "CM",
+            imageTypes = listOf(KycImageType.FRONT),
+        )
+
+        val response = rest.postForEntity("/v1/identifications", request, Void::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(1, dao.findAll().count { it.party.id == 200L })
+    }
+
+    @Test
+    fun `caller without a party - forbidden`() {
+        userId = 12L
+        val request = CreateIdentificationRequest(
+            partyId = 100L,
+            type = IdentificationType.NATIONAL_ID,
+            issuingCountryCode = "CM",
+            imageTypes = listOf(KycImageType.FRONT),
+        )
+
+        val response = rest.postForEntity("/v1/identifications", request, ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
+        assertEquals(0L, dao.count())
     }
 
     @Test
