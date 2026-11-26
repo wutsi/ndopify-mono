@@ -101,11 +101,16 @@ class KycEndpoints(
         service.attach(id, identificationType, imageType, request.path)
     }
 
+    /**
+     * The image's case's own party or an admin only ([KycAccessService]); 404 KYC_IMAGE_NOT_FOUND before 403, 404
+     * KYC_IMAGE_NO_CONTENT after.
+     */
     @GetMapping("/images/{id}/url")
     fun imageUrl(
         @PathVariable id: String,
     ): GetKycImageUrlResponse {
-        val url = service.getImageUrl(id)
-        return GetKycImageUrlResponse(url.toString())
+        val image = service.findImageById(id)
+        accessService.ensureCanRead(image)
+        return GetKycImageUrlResponse(service.getImageUrl(image).toString())
     }
 }

@@ -303,13 +303,13 @@ class KycService(
         }
     }
 
-    fun getImageUrl(imageId: String): URL {
-        val image = findImageById(imageId)
+    /** A short-lived URL of [image]; the endpoint has already checked who may read it. */
+    fun getImageUrl(image: KycImageEntity): URL {
         if (image.path == null) {
             throw NotFoundException(
                 error = Error(
                     code = ErrorCode.KYC_IMAGE_NO_CONTENT,
-                    message = "Image#$imageId has no content"
+                    message = "Image#${image.id} has no content"
                 )
             )
         }
