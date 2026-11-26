@@ -136,6 +136,8 @@ class AddMandateDocumentPageEndpointTest : AuthorizationAwareEndpointIntegration
         assertEquals(2, page.pageIndex)
         assertEquals(newPath, page.path)
         assertEquals(StorageType.S3, page.storageType)
+        // Generated at write, next to the attached original
+        verify(storage).store(eq("$newPath.preview-v1.jpg"), any(), eq("image/jpeg"))
         val document = documentDao.findById(1000).orElseThrow()
         assertEquals(DocumentStatus.UPLOADED, document.status)
         assertEquals(emptyList(), document.problemCodes)
@@ -180,6 +182,8 @@ class AddMandateDocumentPageEndpointTest : AuthorizationAwareEndpointIntegration
         assertEquals(2, page.pageIndex)
         assertTrue(page.path.startsWith("mandate/100/documents/"), page.path)
         verify(storage).store(argThat { startsWith("mandate/100/documents/") }, any(), eq("image/png"))
+        // Generated at write, next to the posted file
+        verify(storage).store(eq("${page.path}.preview-v1.jpg"), any(), eq("image/jpeg"))
     }
 
     @Test

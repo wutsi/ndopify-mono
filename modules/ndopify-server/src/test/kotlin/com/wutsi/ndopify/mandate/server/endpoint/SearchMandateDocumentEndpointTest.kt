@@ -17,6 +17,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 /** The documents of a mandate, newest first. */
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/GetMandateDocumentEndpoint.sql"])
@@ -40,6 +41,14 @@ class SearchMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
 
         assertEquals(listOf(11L, 10L), documents.map { it.id })
         assertEquals(listOf("Bulletin mars", "Titre foncier"), documents.map { it.title })
+    }
+
+    @Test
+    fun `search - the json body carries no path and no url`() {
+        val body = rest.getForEntity("/v1/mandates/100/documents", String::class.java).body!!
+
+        assertFalse(body.contains("\"path\""), body)
+        assertFalse(body.contains("\"url\""), body)
     }
 
     @Test

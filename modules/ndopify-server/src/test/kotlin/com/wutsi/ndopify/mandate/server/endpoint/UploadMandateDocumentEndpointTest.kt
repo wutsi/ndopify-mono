@@ -100,6 +100,8 @@ class UploadMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
         assertTrue(pages.all { it.storageType == StorageType.S3 })
         assertTrue(pages.all { it.path.startsWith("mandate/100/documents/") })
         verify(storage, times(2)).store(argThat { startsWith("mandate/100/documents/") }, any(), eq("image/png"))
+        // Two originals, and the preview generated next to each one at write
+        verify(storage, times(2)).store(argThat { endsWith(".preview-v1.jpg") }, any(), eq("image/jpeg"))
     }
 
     @Test

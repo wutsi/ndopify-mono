@@ -132,6 +132,9 @@ class CreateMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
         assertEquals(listOf(path1, path2), pages.map { it.path })
         assertEquals(StorageType.S3, pages[0].storageType)
         assertEquals(StorageType.S3, pages[1].storageType)
+        // Generated at write, next to each original
+        verify(storage).store(eq("$path1.preview-v1.jpg"), any(), eq("image/jpeg"))
+        verify(storage).store(eq("$path2.preview-v1.jpg"), any(), eq("image/jpeg"))
     }
 
     @Test
