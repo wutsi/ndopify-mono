@@ -14,6 +14,7 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import org.junit.jupiter.api.Test
 import java.time.Instant
+import java.time.LocalDate
 import java.util.Date
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -21,6 +22,10 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class MandateDocumentViewsTest {
+    private companion object {
+        val TODAY: LocalDate = LocalDate.of(2026, 11, 25)
+    }
+
     private val mandate = Mandate(
         id = 301,
         status = MandateStatus.APPROVED,
@@ -62,6 +67,7 @@ class MandateDocumentViewsTest {
                 doc(id = 2, createdAt = "2026-11-25T10:00:00Z", type = DocumentType.NATIONAL_ID, title = "Carte nationale d'identité"),
             ),
             FORMATTER,
+            TODAY,
         )
 
         assertFalse(section.unavailable)
@@ -92,14 +98,14 @@ class MandateDocumentViewsTest {
     fun `section - the tenant's date format, year included`() {
         val formatter = TenantFormatter(TENANT.copy(dateFormat = "dd/MM/yyyy"))
 
-        val section = MandateDocumentViews.section(mandate, listOf(doc()), formatter)
+        val section = MandateDocumentViews.section(mandate, listOf(doc()), formatter, TODAY)
 
         assertEquals("25/11/2026", section.rows.single().addedOn)
     }
 
     @Test
     fun `section - unavailable`() {
-        val section = MandateDocumentViews.section(mandate, null, FORMATTER)
+        val section = MandateDocumentViews.section(mandate, null, FORMATTER, TODAY)
 
         assertTrue(section.unavailable)
         assertTrue(section.rows.isEmpty())
@@ -107,7 +113,7 @@ class MandateDocumentViewsTest {
 
     @Test
     fun `section - empty`() {
-        val section = MandateDocumentViews.section(mandate, emptyList(), FORMATTER)
+        val section = MandateDocumentViews.section(mandate, emptyList(), FORMATTER, TODAY)
 
         assertFalse(section.unavailable)
         assertTrue(section.rows.isEmpty())
@@ -116,7 +122,7 @@ class MandateDocumentViewsTest {
     @Test
     fun `section - read-only once closed or cancelled`() {
         for (status in listOf(MandateStatus.CLOSED, MandateStatus.CANCELLED)) {
-            val section = MandateDocumentViews.section(mandate.copy(status = status), emptyList(), FORMATTER)
+            val section = MandateDocumentViews.section(mandate.copy(status = status), emptyList(), FORMATTER, TODAY)
             assertFalse(section.writable, status.name)
         }
     }
@@ -127,6 +133,7 @@ class MandateDocumentViewsTest {
             mandate.copy(listingType = ListingType.RENTAL),
             emptyList(),
             FORMATTER,
+            TODAY,
         )
         assertTrue(rentalListing.emptyHint.contains("du bailleur"), rentalListing.emptyHint)
         assertTrue(rentalListing.intro.contains("du bailleur"))
@@ -135,6 +142,7 @@ class MandateDocumentViewsTest {
             mandate.copy(mandateType = MandateType.SEARCH, listingType = ListingType.SALE),
             emptyList(),
             FORMATTER,
+            TODAY,
         )
         assertTrue(saleSearch.emptyHint.contains("de l'acheteur"), saleSearch.emptyHint)
         assertTrue(saleSearch.intro.contains("de financement de l'acheteur"), saleSearch.intro)
@@ -143,9 +151,27 @@ class MandateDocumentViewsTest {
             mandate.copy(mandateType = MandateType.SEARCH, listingType = ListingType.RENTAL),
             emptyList(),
             FORMATTER,
+            TODAY,
         )
         assertTrue(rentalSearch.emptyHint.contains("du client"), rentalSearch.emptyHint)
         assertTrue(rentalSearch.intro.contains("de financement du client"), rentalSearch.intro)
+    }
+
+    @Test
+    fun `section - an expired document is marked, a valid one is not`() {
+        val section = MandateDocumentViews.section(
+            mandate,
+            listOf(
+                doc(id = 1, createdAt = "2026-11-20T10:00:00Z").copy(expiresAt = LocalDate.of(2025, 1, 12)),
+                doc(id = 2, createdAt = "2026-11-25T10:00:00Z").copy(expiresAt = TODAY),
+                doc(id = 3, createdAt = "2026-11-24T10:00:00Z"),
+            ),
+            FORMATTER,
+            TODAY,
+        )
+
+        assertEquals(listOf(2L, 3L, 1L), section.rows.map { it.id })
+        assertEquals(listOf(false, false, true), section.rows.map { it.expired })
     }
 
     @Test
