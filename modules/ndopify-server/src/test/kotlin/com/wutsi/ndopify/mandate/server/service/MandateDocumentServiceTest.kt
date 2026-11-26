@@ -17,6 +17,7 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.mandate.dto.CreateMandateDocumentRequest
+import com.wutsi.ndopify.mandate.dto.DocumentSource
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.DocumentType
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -402,6 +403,21 @@ class MandateDocumentServiceTest {
     }
 
     @Test
+    fun `upload - images only is an image document`() {
+        writable()
+        doReturn(0L).whenever(documentDao).countByMandateId(100L)
+        doReturn("image/png").whenever(directUpload).check(any())
+        doReturn(MandateDocumentEntity(id = 2000L, mandateId = 100L)).whenever(documentDao).save(any())
+        doAnswer { it.getArgument<MandateDocumentPageEntity>(0) }.whenever(pageDao).save(any())
+
+        service.upload(100, DocumentType.LAND_TITLE, null, listOf(imageFile(), imageFile()))
+
+        val saved = argumentCaptor<MandateDocumentEntity>()
+        verify(documentDao).save(saved.capture())
+        assertEquals(DocumentSource.IMAGE, saved.firstValue.source)
+    }
+
+    @Test
     fun `upload - a pdf becomes its rendered pages in the pdf's order`() {
         val first = preview + 1
         val second = preview + 2
@@ -412,6 +428,9 @@ class MandateDocumentServiceTest {
 
         service.upload(100, DocumentType.LAND_TITLE, null, listOf(pdfFile()))
 
+        val saved = argumentCaptor<MandateDocumentEntity>()
+        verify(documentDao).save(saved.capture())
+        assertEquals(DocumentSource.PDF, saved.firstValue.source)
         val pages = argumentCaptor<MandateDocumentPageEntity>()
         verify(pageDao, times(2)).save(pages.capture())
         assertEquals(listOf(0, 1), pages.allValues.map { it.pageIndex })
@@ -427,45 +446,55 @@ class MandateDocumentServiceTest {
     }
 
     @Test
-    fun `upload - images and pdfs keep the order`() {
+    fun `upload - an image and a PDF is refused and nothing is stored`() {
         writable()
-        doReturn("image/png").whenever(directUpload).check(any())
-        doReturn(listOf(preview, preview)).whenever(pdfRasterizer).rasterize(any(), eq(MandateDocumentService.MAX_PAGES))
-        doReturn(MandateDocumentEntity(id = 2000L, mandateId = 100L)).whenever(documentDao).save(any())
-        doAnswer { it.getArgument<MandateDocumentPageEntity>(0) }.whenever(pageDao).save(any())
-
-        service.upload(100, DocumentType.LAND_TITLE, null, listOf(imageFile(), pdfFile(), imageFile()))
-
-        val pages = argumentCaptor<MandateDocumentPageEntity>()
-        verify(pageDao, times(4)).save(pages.capture())
-        assertEquals(listOf(0, 1, 2, 3), pages.allValues.map { it.pageIndex })
-        assertEquals(
-            listOf("image/png", "image/jpeg", "image/jpeg", "image/png"),
-            pages.allValues.map { it.mimeType },
-        )
-        val stored = argumentCaptor<String>()
-        verify(storage, times(4)).store(stored.capture(), any(), any())
-        // The pages reference the stored objects in the order they were written
-        assertEquals(stored.allValues, pages.allValues.map { it.path })
-    }
-
-    @Test
-    fun `upload - a pdf add over 10 pages is refused, and the pages already stored are deleted`() {
-        writable()
-        doReturn("image/png").whenever(directUpload).check(any())
-        doReturn(List(MandateDocumentService.MAX_PAGES) { preview }).whenever(pdfRasterizer)
-            .rasterize(any(), eq(MandateDocumentService.MAX_PAGES))
+        doReturn(0L).whenever(documentDao).countByMandateId(100L)
 
         val exception = assertFailsWith<BadRequestException> {
             service.upload(100, DocumentType.LAND_TITLE, null, listOf(imageFile(), pdfFile()))
         }
 
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_MIXED_SOURCES, exception.error.code)
+        assertEquals("files", exception.error.parameter?.name)
+        assertNull(exception.error.parameter?.value)
+        verifyNoInteractions(pdfRasterizer)
+        verify(storage, never()).store(any(), any(), any())
+        verify(documentDao, never()).save(any<MandateDocumentEntity>())
+        verify(pageDao, never()).save(any<MandateDocumentPageEntity>())
+    }
+
+    @Test
+    fun `upload - two PDFs are refused before any rendering`() {
+        writable()
+        doReturn(0L).whenever(documentDao).countByMandateId(100L)
+
+        val exception = assertFailsWith<BadRequestException> {
+            service.upload(100, DocumentType.LAND_TITLE, null, listOf(pdfFile("a.pdf"), pdfFile("b.pdf")))
+        }
+
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_MIXED_SOURCES, exception.error.code)
+        assertEquals("files", exception.error.parameter?.name)
+        verifyNoInteractions(pdfRasterizer)
+        verify(storage, never()).store(any(), any(), any())
+        verify(documentDao, never()).save(any<MandateDocumentEntity>())
+    }
+
+    @Test
+    fun `upload - 11 images is the page cap, and the pages already stored are deleted`() {
+        writable()
+        doReturn(0L).whenever(documentDao).countByMandateId(100L)
+        doReturn("image/png").whenever(directUpload).check(any())
+
+        val exception = assertFailsWith<BadRequestException> {
+            service.upload(100, DocumentType.LAND_TITLE, null, List(MandateDocumentService.MAX_PAGES + 1) { imageFile() })
+        }
+
         assertEquals(ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES, exception.error.code)
         assertEquals("files", exception.error.parameter?.name)
+        assertNull(exception.error.parameter?.value)
         val stored = argumentCaptor<String>()
-        verify(storage).store(stored.capture(), any(), eq("image/png"))
-        verify(storage).delete(stored.firstValue)
-        verify(previewService).deleteQuietly(100, stored.firstValue, StorageType.S3)
+        verify(storage, times(MandateDocumentService.MAX_PAGES)).store(stored.capture(), any(), eq("image/png"))
+        stored.allValues.forEach { path -> verify(storage).delete(path) }
         verify(documentDao, never()).save(any<MandateDocumentEntity>())
         verify(pageDao, never()).save(any<MandateDocumentPageEntity>())
     }
@@ -588,6 +617,41 @@ class MandateDocumentServiceTest {
         verify(documentDao, never()).save(any<MandateDocumentEntity>())
         verify(storage, never()).store(any(), any(), any())
         verify(previewService, never()).generate(any(), any(), any(), anyOrNull(), anyOrNull())
+    }
+
+    @Test
+    fun `create - the document is an image document`() {
+        writable()
+        doReturn(0L).whenever(documentDao).countByMandateId(100L)
+        doReturn("image/png").whenever(directUpload).verify(any(), any())
+        doReturn(null).whenever(pageDao).findByPath(any())
+        doReturn(MandateDocumentEntity(id = 2000L, mandateId = 100L)).whenever(documentDao).save(any())
+        doAnswer { it.getArgument<MandateDocumentPageEntity>(0) }.whenever(pageDao).save(any())
+
+        service.create(100, CreateMandateDocumentRequest(type = DocumentType.LAND_TITLE, paths = listOf(path1)))
+
+        val saved = argumentCaptor<MandateDocumentEntity>()
+        verify(documentDao).save(saved.capture())
+        assertEquals(DocumentSource.IMAGE, saved.firstValue.source)
+    }
+
+    @Test
+    fun `create - more than 10 paths is the page cap`() {
+        writable()
+        doReturn(0L).whenever(documentDao).countByMandateId(100L)
+
+        val paths = List(MandateDocumentService.MAX_PAGES + 1) { index ->
+            "mandate/100/documents/00000000-0000-0000-0000-${"%012d".format(index)}.png"
+        }
+        val exception = assertFailsWith<BadRequestException> {
+            service.create(100, CreateMandateDocumentRequest(type = DocumentType.LAND_TITLE, paths = paths))
+        }
+
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES, exception.error.code)
+        assertEquals("paths", exception.error.parameter?.name)
+        assertNull(exception.error.parameter?.value)
+        verify(storage, never()).store(any(), any(), any())
+        verify(documentDao, never()).save(any<MandateDocumentEntity>())
     }
 
     @Test

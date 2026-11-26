@@ -13,6 +13,7 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.mandate.dto.DocumentSource
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.DocumentType
 import com.wutsi.ndopify.mandate.server.dao.MandateDocumentPageRepository
@@ -137,6 +138,7 @@ class UploadMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
         assertEquals(HttpStatus.OK, response.statusCode)
         val document = documentDao.findByMandateIdOrderByIdDesc(100L).first()
         assertEquals(DocumentStatus.UPLOADED, document.status)
+        assertEquals(DocumentSource.IMAGE, document.source)
         assertEquals("Titre foncier", document.title)
         val pages = pageDao.findByDocumentIdOrderByPageIndex(document.id!!)
         assertEquals(listOf(0, 1), pages.map { it.pageIndex })
@@ -289,6 +291,7 @@ class UploadMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
 
         assertEquals(HttpStatus.OK, response.statusCode)
         val document = documentDao.findByMandateIdOrderByIdDesc(100L).first()
+        assertEquals(DocumentSource.PDF, document.source)
         val pages = pageDao.findByDocumentIdOrderByPageIndex(document.id!!)
         assertEquals(1, pages.size)
         assertEquals(0, pages[0].pageIndex)
@@ -302,32 +305,34 @@ class UploadMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
     }
 
     @Test
-    fun `upload - an image and a two-page pdf keep their order`() {
+    fun `upload - an image and a PDF is refused and nothing is stored`() {
         val response = rest.postForEntity(
             "/v1/mandates/100/documents/upload",
-            request(
-                DocumentType.LAND_TITLE,
-                image("page.png"),
-                document("scan.pdf", pdf(2)),
-                image("page.png"),
-            ),
-            Void::class.java,
+            request(DocumentType.LAND_TITLE, image("page.png"), document("scan.pdf", pdf(1))),
+            ErrorResponse::class.java,
         )
 
-        assertEquals(HttpStatus.OK, response.statusCode)
-        val document = documentDao.findByMandateIdOrderByIdDesc(100L).first()
-        val pages = pageDao.findByDocumentIdOrderByPageIndex(document.id!!)
-        assertEquals(listOf(0, 1, 2, 3), pages.map { it.pageIndex })
-        assertEquals(listOf("image/png", "image/jpeg", "image/jpeg", "image/png"), pages.map { it.mimeType })
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_MIXED_SOURCES, response.body?.error?.code)
+        assertEquals("files", response.body?.error?.parameter?.name)
+        verify(storage, never()).store(any(), any(), any())
+        assertTrue(documentDao.findByMandateIdOrderByIdDesc(100L).isEmpty())
+        assertTrue(pageDao.findByDocumentIdOrderByPageIndex(100L).isEmpty())
+    }
 
-        val storedPaths = argumentCaptor<String>()
-        val storedTypes = argumentCaptor<String>()
-        verify(storage, times(8)).store(storedPaths.capture(), any(), storedTypes.capture())
-        val originals = storedPaths.allValues.indices.filter { !storedPaths.allValues[it].endsWith(".preview-v1.jpg") }
-        assertEquals(
-            listOf("image/png", "image/jpeg", "image/jpeg", "image/png"),
-            originals.map { storedTypes.allValues[it] },
+    @Test
+    fun `upload - two PDFs are refused and nothing is stored`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/100/documents/upload",
+            request(DocumentType.LAND_TITLE, document("a.pdf", pdf(1)), document("b.pdf", pdf(1))),
+            ErrorResponse::class.java,
         )
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_MIXED_SOURCES, response.body?.error?.code)
+        assertEquals("files", response.body?.error?.parameter?.name)
+        verify(storage, never()).store(any(), any(), any())
+        assertTrue(documentDao.findByMandateIdOrderByIdDesc(100L).isEmpty())
     }
 
     @Test
@@ -395,22 +400,32 @@ class UploadMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
     }
 
     @Test
-    fun `upload - a refused pdf after an image deletes the image and its preview`() {
+    fun `upload - 11 images is the page cap and nothing is stored`() {
+        val body = LinkedMultiValueMap<String, Any>()
+        body.add("type", DocumentType.LAND_TITLE.name)
+        repeat(11) { index ->
+            val resource = object : ByteArrayResource(png()) {
+                override fun getFilename(): String = "page$index.png"
+            }
+            val fileHeaders = HttpHeaders()
+            fileHeaders.contentType = MediaType.IMAGE_PNG
+            body.add("files", HttpEntity(resource, fileHeaders))
+        }
+        val headers = HttpHeaders()
+        headers.contentType = MediaType.MULTIPART_FORM_DATA
+
         val response = rest.postForEntity(
             "/v1/mandates/100/documents/upload",
-            request(DocumentType.LAND_TITLE, image("page.png"), document("scan.pdf", encryptedPdf())),
+            HttpEntity(body, headers),
             ErrorResponse::class.java,
         )
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
-        assertEquals(ErrorCode.MANDATE_DOCUMENT_PDF_ENCRYPTED, response.body?.error?.code)
-        assertEquals("file", response.body?.error?.parameter?.name)
-        // The image was stored, and its preview generated, before the PDF was refused: both go with the refusal
-        val original = argumentCaptor<String>()
-        verify(storage).store(original.capture(), any(), eq("image/png"))
-        verify(storage).delete(original.firstValue)
-        verify(storage).delete("${original.firstValue}.preview-v1.jpg")
-        verify(storage, never()).store(argThat { endsWith(".pdf") }, any(), any())
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES, response.body?.error?.code)
+        assertEquals("files", response.body?.error?.parameter?.name)
+        // The ten images stored before the 11th, with their previews, are deleted
+        verify(storage, times(10)).store(argThat { startsWith("mandate/100/documents/") }, any(), eq("image/png"))
+        verify(storage, times(20)).delete(argThat { startsWith("mandate/100/documents/") })
         assertTrue(documentDao.findByMandateIdOrderByIdDesc(100L).isEmpty())
     }
 }
