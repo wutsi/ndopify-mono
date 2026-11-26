@@ -91,6 +91,8 @@ class MandateAssignedMailetTest {
 
     @Test
     fun `send assigned email to the customer`() {
+        doReturn("0101-abc@email.amazonses.com").whenever(mailService).send(any())
+
         mailet.send(mandate, customer, agent)
 
         val context = argumentCaptor<Map<String, Any?>>()
@@ -125,6 +127,7 @@ class MandateAssignedMailetTest {
                 "UTF-8",
             ),
         )
+        verify(conversationService).recordRoot(1L, "0101-abc@email.amazonses.com")
     }
 
     @Test

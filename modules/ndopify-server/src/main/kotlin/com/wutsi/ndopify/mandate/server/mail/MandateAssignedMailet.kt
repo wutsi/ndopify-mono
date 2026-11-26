@@ -37,7 +37,7 @@ class MandateAssignedMailet(
         val place = MandateMailLabels.place(mandate, city, locationService)
         val formatter = TenantFormatter(tenant)
         val conversation = conversationService.of(mandate.id!!)
-        mailService.send(
+        val sentMessageId = mailService.send(
             Email(
                 sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = party.email, displayName = fullName),
@@ -61,5 +61,8 @@ class MandateAssignedMailet(
                 )
             )
         )
+        if (conversation.inReplyTo == null) {
+            conversationService.recordRoot(mandate.id!!, sentMessageId)
+        }
     }
 }
