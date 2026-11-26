@@ -7,6 +7,7 @@ import tools.jackson.databind.json.JsonMapper
 import java.math.BigDecimal
 import java.time.LocalDate
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 
 class BankPreApprovalDataTest {
@@ -60,6 +61,19 @@ class BankPreApprovalDataTest {
 
         assertEquals(listOf("John Doe", "Jane Doe"), data.beneficiaries)
         assertEquals(preApproval, data)
+    }
+
+    @Test
+    fun `sanitized - an IBAN in the bank name or a beneficiary is masked`() {
+        val data = preApproval.copy(
+            bankName = "Afriland First Bank CM21 10005 00001 12345678901 23",
+            beneficiaries = listOf("John Doe 12345678901"),
+        ).sanitized()
+
+        assertEquals("Afriland First Bank •••• 0123", data.bankName)
+        assertEquals(listOf("John Doe •••• 8901"), data.beneficiaries)
+        assertFalse(data.beneficiaries!!.single().contains("12345678"), data.beneficiaries!!.single())
+        assertEquals(preApproval.fieldConfidences, data.fieldConfidences)
     }
 
     @Test

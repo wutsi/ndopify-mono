@@ -703,9 +703,9 @@ class MandateDocumentExtractionServiceTest {
     }
 
     @Test
-    fun `extractDue - a financial document doesn't fill the batch`() {
-        // A financial document older than the identity one: the batch of 1 must still pick the identity up
-        add(document(id = 9, type = DocumentType.PAY_SLIP), page(90, documentId = 9, path = "p0.png"))
+    fun `extractDue - a document without an extractor doesn't fill the batch`() {
+        // An unknown document older than the identity one: the batch of 1 must still pick the identity up
+        add(document(id = 9, type = DocumentType.UNKNOWN), page(90, documentId = 9, path = "p0.png"))
         add(document(DOCUMENT_ID), page(100, path = "p0.png"))
         val small = MandateDocumentExtractionService(
             mandateService = mandateService,
