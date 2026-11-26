@@ -19,10 +19,7 @@ object AgentMailContext {
         "agent_full_name" to agent.party.fullName(),
         "agent_photo_url" to agent.party.photoUrl?.ifBlank { null },
         "agent_whatsapp" to agent.whatsappNumber?.takeIf { it.isNotBlank() }?.let { formatter.phone(it) },
-        "agent_whatsapp_url" to agent.whatsappNumber
-            ?.filter { it.isDigit() }
-            ?.takeIf { it.isNotEmpty() }
-            ?.let { "https://wa.me/$it" },
+        "agent_whatsapp_url" to PhoneNumberUtils.whatsappUrlOrNull(agent.whatsappNumber),
     )
 
     /**

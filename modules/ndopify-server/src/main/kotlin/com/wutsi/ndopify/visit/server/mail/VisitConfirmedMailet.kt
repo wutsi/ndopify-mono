@@ -13,6 +13,7 @@ import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailImages
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
+import com.wutsi.ndopify.platform.util.PhoneNumberUtils
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
@@ -108,6 +109,7 @@ class VisitConfirmedMailet(
                         "recipient_name" to agentName,
                         "customer_name" to customerName,
                         "customer_whatsapp" to formatter.phone(customer.whatsappNumber),
+                        "customer_whatsapp_url" to PhoneNumberUtils.whatsappUrlOrNull(customer.whatsappNumber),
                         "listing_title" to listingTitle(listing),
                         "image_url" to imageUrl,
                         "visit_date" to formatter.date(visit.scheduledAt!!),

@@ -26,4 +26,11 @@ object PhoneNumberUtils {
             "$url?text=" + URLEncoder.encode(text, "utf-8")
         }
     }
+
+    /**
+     * The `https://wa.me/<digits>` chat link of [phone], or null when there is nothing to open: a null, blank or
+     * digit-less value. Only the digits are kept — a country code is never guessed — and no `?text=` is added.
+     */
+    fun whatsappUrlOrNull(phone: String?): String? =
+        phone?.filter { it.isDigit() }?.takeIf { it.isNotEmpty() }?.let { toWhatsappUrl(it) }
 }

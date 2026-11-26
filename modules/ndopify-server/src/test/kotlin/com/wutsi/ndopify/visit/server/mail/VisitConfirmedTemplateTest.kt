@@ -45,6 +45,7 @@ class VisitConfirmedTemplateTest {
 
     private val agentContext = onSite + mapOf(
         "recipient_name" to "Kim Possible",
+        "customer_whatsapp_url" to "https://wa.me/237600000001",
         "visit_url" to "https://partner.ndopify.com/visits/1",
     )
 
@@ -145,6 +146,7 @@ class VisitConfirmedTemplateTest {
         assertFalse(html.contains("1234"))
         // No agent signature footer on the agent's own copy
         assertFalse(html.contains("https://wa.me/237699000001"))
+        assertEquals("+237600000001", Jsoup.parse(html).selectFirst("""a[href="https://wa.me/237600000001"]""")?.text())
     }
 
     @Test
@@ -157,5 +159,14 @@ class VisitConfirmedTemplateTest {
         assertTrue(html.contains("appelez le client en vidéo sur WhatsApp"))
         assertTrue(html.contains("+237600000001"))
         assertFalse(html.contains("Demandez le code de visite"))
+        assertEquals("+237600000001", Jsoup.parse(html).selectFirst("""a[href="https://wa.me/237600000001"]""")?.text())
+    }
+
+    @Test
+    fun `agent - without the customer WhatsApp URL`() {
+        val html = resolver.resolve(VisitConfirmedMailet.TEMPLATE_AGENT, agentContext - "customer_whatsapp_url")
+
+        assertTrue(html.contains("+237600000001"))
+        assertTrue(Jsoup.parse(html).select("""a[href^="https://wa.me/"]""").isEmpty())
     }
 }

@@ -38,7 +38,7 @@
                         </li>
                         {{#customer_whatsapp}}
                         <li>
-                            <b>WhatsApp</b>&#160;: {{customer_whatsapp}}
+                            <b>WhatsApp</b>&#160;: {{#customer_whatsapp_url}}<a href="{{customer_whatsapp_url}}">{{customer_whatsapp}}</a>{{/customer_whatsapp_url}}{{^customer_whatsapp_url}}{{customer_whatsapp}}{{/customer_whatsapp_url}}
                         </li>
                         {{/customer_whatsapp}}
                         {{#note}}

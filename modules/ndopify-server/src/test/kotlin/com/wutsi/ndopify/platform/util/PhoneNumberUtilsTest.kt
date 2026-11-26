@@ -1,7 +1,8 @@
 package com.wutsi.ndopify.platform.util
 
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class PhoneNumberUtilsTest {
     @Test
@@ -30,5 +31,15 @@ class PhoneNumberUtilsTest {
             "https://wa.me/15147580102?text=I%27m+interested+in+your+car+for+sale",
             PhoneNumberUtils.toWhatsappUrl("+1514 758-01-02", "I'm interested in your car for sale")
         )
+    }
+
+    @Test
+    fun `whatsappUrlOrNull`() {
+        assertEquals("https://wa.me/237699000001", PhoneNumberUtils.whatsappUrlOrNull("+237 6 99 00 00 01"))
+        assertEquals("https://wa.me/237699000001", PhoneNumberUtils.whatsappUrlOrNull("237699000001"))
+        assertEquals("https://wa.me/237699000001", PhoneNumberUtils.whatsappUrlOrNull("+237-6-99-00-00-01"))
+        assertNull(PhoneNumberUtils.whatsappUrlOrNull(null))
+        assertNull(PhoneNumberUtils.whatsappUrlOrNull("   "))
+        assertNull(PhoneNumberUtils.whatsappUrlOrNull("N/A"))
     }
 }

@@ -88,6 +88,7 @@ class VisitRequestedMailetTest {
                 "recipient_name" to "Kim Possible",
                 "customer_name" to "Ray Sponsible",
                 "customer_whatsapp" to "+237 6 00 00 00 01",
+                "customer_whatsapp_url" to "https://wa.me/237600000001",
                 "listing_title" to "Nice apartment",
                 "image_url" to "https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg",
                 "requested_date" to "01/12/2026",
@@ -104,6 +105,14 @@ class VisitRequestedMailetTest {
         assertEquals("Kim Possible", email.firstValue.recipient.displayName)
         assertEquals("Ndopify: Ray Sponsible demande une visite", email.firstValue.subject)
         assertEquals("<html>requested</html>", email.firstValue.body)
+    }
+
+    @Test
+    fun `a customer without a WhatsApp number has no link`() {
+        mailet.send(visit, customer.copy(whatsappNumber = null), agent, listing)
+
+        assertNull(context()["customer_whatsapp"])
+        assertNull(context()["customer_whatsapp_url"])
     }
 
     @Test

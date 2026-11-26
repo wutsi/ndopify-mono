@@ -169,6 +169,7 @@ class VisitConfirmedMailetTest {
                 "recipient_name" to "Kim Possible",
                 "customer_name" to "Ray Sponsible",
                 "customer_whatsapp" to "+237 6 00 00 00 01",
+                "customer_whatsapp_url" to "https://wa.me/237600000001",
                 "listing_title" to "Nice apartment",
                 "image_url" to "https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg",
                 "visit_date" to "02/12/2026",
@@ -178,6 +179,15 @@ class VisitConfirmedMailetTest {
             ),
             agentContext(),
         )
+    }
+
+    @Test
+    fun `an agent copy without the customer number has no WhatsApp link`() {
+        mailet.send(visit, customer.copy(whatsappNumber = null), agent, listing)
+
+        val context = agentContext()
+        assertNull(context["customer_whatsapp"])
+        assertNull(context["customer_whatsapp_url"])
     }
 
     @Test

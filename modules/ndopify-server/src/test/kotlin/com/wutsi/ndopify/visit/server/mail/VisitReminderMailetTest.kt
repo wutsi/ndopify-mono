@@ -150,9 +150,19 @@ class VisitReminderMailetTest {
 
         val agentContext = context(VisitReminderMailet.TEMPLATE_AGENT)
         assertEquals("+237 6 00 00 00 01", agentContext["customer_whatsapp"])
+        assertEquals("https://wa.me/237600000001", agentContext["customer_whatsapp_url"])
         assertEquals("https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg", agentContext["image_url"])
         assertEquals("https://partner.ndopify.com/visits/1", agentContext["visit_url"])
         assertFalse(agentContext.containsKey("agent_whatsapp_reply_url"), "the agent copy has no reply button")
+    }
+
+    @Test
+    fun `an agent copy without the customer number has no WhatsApp link`() {
+        mailet.sendAgent(visit, customer.copy(whatsappNumber = null), agent, listing)
+
+        val context = context(VisitReminderMailet.TEMPLATE_AGENT)
+        assertNull(context["customer_whatsapp"])
+        assertNull(context["customer_whatsapp_url"])
     }
 
     @Test
