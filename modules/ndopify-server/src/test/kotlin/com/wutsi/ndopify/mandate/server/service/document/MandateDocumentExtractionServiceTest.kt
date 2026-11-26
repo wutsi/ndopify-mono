@@ -160,10 +160,11 @@ class MandateDocumentExtractionServiceTest {
             saved
         }.whenever(documentDao).save(any())
         doAnswer { invocation ->
-            val status = invocation.getArgument<DocumentStatus>(0)
-            val pageable = invocation.getArgument<Pageable>(1)
-            documents.values.filter { it.status == status }.sortedBy { it.id }.take(pageable.pageSize)
-        }.whenever(documentDao).findByStatusOrderByIdAsc(any(), any())
+            val types = invocation.getArgument<Collection<DocumentType>>(0)
+            val status = invocation.getArgument<DocumentStatus>(1)
+            val pageable = invocation.getArgument<Pageable>(2)
+            documents.values.filter { it.status == status && it.type in types }.sortedBy { it.id }.take(pageable.pageSize)
+        }.whenever(documentDao).findByTypeInAndStatusOrderByIdAsc(any(), any(), any())
         doAnswer { invocation ->
             val status = invocation.getArgument<DocumentStatus>(0)
             val cutoff = invocation.getArgument<Date>(1)
@@ -190,6 +191,7 @@ class MandateDocumentExtractionServiceTest {
             JPEG
         }.whenever(resizer).resize(any(), any())
 
+        doReturn(setOf(DocumentType.NATIONAL_ID)).whenever(extractors).types()
         doReturn(true).whenever(extractors).supports(DocumentType.NATIONAL_ID)
         doReturn(extractor).whenever(extractors).get(DocumentType.NATIONAL_ID)
         doAnswer { invocation ->
@@ -286,9 +288,15 @@ class MandateDocumentExtractionServiceTest {
     @Test
     fun `extract - a national id ends extracted with its fields and dates`() {
         add(document(DOCUMENT_ID), page(100, path = "p0.png"), page(101, index = 1, path = "p1.png"))
+        var statusWhileExtracting: DocumentStatus? = null
+        doAnswer { invocation ->
+            statusWhileExtracting = documents[DOCUMENT_ID]!!.status
+            nationalId()
+        }.whenever(extractor).extract(eq(DocumentType.NATIONAL_ID), any())
 
         val count = service.extractDue("UTC")
 
+        assertEquals(DocumentStatus.EXTRACTING, statusWhileExtracting)
         assertEquals(1, count)
         val extracted = documents[DOCUMENT_ID]!!
         assertEquals(DocumentStatus.EXTRACTED, extracted.status)
@@ -396,6 +404,7 @@ class MandateDocumentExtractionServiceTest {
 
         // Optional field at 0.3: the document is still extracted
         add(document(DOCUMENT_ID), page(100, path = "p0.png"))
+        doReturn(setOf(DocumentType.LAND_TITLE)).whenever(extractors).types()
         doReturn(true).whenever(extractors).supports(DocumentType.LAND_TITLE)
         doReturn(extractor).whenever(extractors).get(DocumentType.LAND_TITLE)
         doReturn(landTitle(surfaceConfidence = 0.3)).whenever(extractor).extract(eq(DocumentType.LAND_TITLE), any())
@@ -463,6 +472,58 @@ class MandateDocumentExtractionServiceTest {
         assertEquals(0, count)
         assertEquals(DocumentStatus.UPLOADED, documents[DOCUMENT_ID]!!.status)
         verify(extractor, never()).extract(any(), any())
+    }
+
+    @Test
+    fun `extractDue - a financial document doesn't fill the batch`() {
+        // A financial document older than the identity one: the batch of 1 must still pick the identity up
+        add(document(id = 9, type = DocumentType.PAY_SLIP), page(90, documentId = 9, path = "p0.png"))
+        add(document(DOCUMENT_ID), page(100, path = "p0.png"))
+        val small = MandateDocumentExtractionService(
+            mandateService = mandateService,
+            documentService = documentService,
+            documentDao = documentDao,
+            pageDao = pageDao,
+            storageProvider = storageProvider,
+            extractors = extractors,
+            resizer = resizer,
+            checks = DocumentChecks(0.7),
+            codec = DocumentDataCodec(JsonHelper(JsonMapper())),
+            tenantService = tenantService,
+            clock = clock,
+            tx = tx,
+            logger = logger,
+            batchSize = 1,
+            maxAttempts = 3,
+            inProgressTimeoutMinutes = 15,
+        )
+
+        small.extractDue("UTC")
+
+        verify(documentDao).findByTypeInAndStatusOrderByIdAsc(
+            eq(setOf(DocumentType.NATIONAL_ID)),
+            eq(DocumentStatus.UPLOADED),
+            any(),
+        )
+        assertEquals(DocumentStatus.EXTRACTED, documents[DOCUMENT_ID]!!.status)
+        assertEquals(DocumentStatus.UPLOADED, documents[9]!!.status)
+    }
+
+    @Test
+    fun `extract - the expiry is the tenant's today`() {
+        add(document(DOCUMENT_ID), page(100, path = "p0.png"))
+        doReturn(nationalId(expiryDate = "2026-11-25")).whenever(extractor).extract(any(), any())
+
+        // In Honolulu (UTC-10) it's still 2026-11-25 at 2026-11-26T00:00Z: the document isn't expired yet
+        service.extractDue("Pacific/Honolulu")
+
+        assertEquals(DocumentStatus.EXTRACTED, documents[DOCUMENT_ID]!!.status)
+        assertEquals(emptyList(), documents[DOCUMENT_ID]!!.problemCodes)
+
+        add(document(DOCUMENT_ID), page(100, path = "p0.png"))
+        service.extractDue("UTC")
+
+        assertEquals(listOf(DocumentProblemCodes.DOCUMENT_EXPIRED), documents[DOCUMENT_ID]!!.problemCodes)
     }
 
     @Test

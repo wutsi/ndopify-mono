@@ -16,4 +16,7 @@ class DocumentDataExtractorProvider(extractors: List<DocumentDataExtractor>) {
     fun get(type: DocumentType): DocumentDataExtractor? = byType[type]
 
     fun supports(type: DocumentType): Boolean = byType.containsKey(type)
+
+    /** Every type an extractor handles: the extraction job's batch only looks at those. */
+    fun types(): Set<DocumentType> = byType.keys
 }

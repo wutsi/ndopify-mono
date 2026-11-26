@@ -24,8 +24,16 @@ interface MandateDocumentRepository : CrudRepository<MandateDocumentEntity, Long
     @Query("SELECT d FROM MandateDocumentEntity d WHERE d.id = :id")
     fun findByIdForUpdate(id: Long): MandateDocumentEntity?
 
-    /** The documents of [status], oldest first, at most [pageable]'s size (the job's batch). */
-    fun findByStatusOrderByIdAsc(status: DocumentStatus, pageable: Pageable): List<MandateDocumentEntity>
+    /**
+     * The documents of [status] whose type is one of [types], oldest first, at most [pageable]'s size (the job's
+     * batch). The type filter keeps the batch free of the types nothing can extract yet: they stay `UPLOADED` and
+     * would otherwise fill every run's batch forever.
+     */
+    fun findByTypeInAndStatusOrderByIdAsc(
+        types: Collection<DocumentType>,
+        status: DocumentStatus,
+        pageable: Pageable,
+    ): List<MandateDocumentEntity>
 
     /** The [status] documents not written since [cutoff]: the extraction of them was interrupted. */
     fun findByStatusAndModifiedAtBefore(status: DocumentStatus, cutoff: Date): List<MandateDocumentEntity>

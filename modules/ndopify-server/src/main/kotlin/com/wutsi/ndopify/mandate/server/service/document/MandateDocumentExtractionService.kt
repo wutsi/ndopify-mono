@@ -75,13 +75,16 @@ class MandateDocumentExtractionService(
     /**
      * The extraction of one tenant's due documents: first the ones an interrupted run left `EXTRACTING` for more than
      * the timeout, then the oldest `UPLOADED` ones, up to `batch-size`. A document that fails doesn't stop the others.
-     * Returns how many documents were extracted (the financial ones are skipped and not counted).
+     * Returns how many documents were processed, extracted or failed (the types without an extractor aren't selected).
      */
     fun extractDue(timeZone: String): Int {
         recoverInterrupted()
         var count = 0
-        documentDao.findByStatusOrderByIdAsc(DocumentStatus.UPLOADED, OffsetLimitPageRequest(0, batchSize))
-            .forEach { document ->
+        documentDao.findByTypeInAndStatusOrderByIdAsc(
+            types = extractors.types(),
+            status = DocumentStatus.UPLOADED,
+            pageable = OffsetLimitPageRequest(0, batchSize),
+        ).forEach { document ->
                 try {
                     if (extract(document, timeZone, force = false)) {
                         count++
@@ -154,8 +157,9 @@ class MandateDocumentExtractionService(
                 pages.forEach { page ->
                     val jpeg = resizer.resize(ByteArrayInputStream(read(page)))
                     val file = File.createTempFile("mandate-document-", ".jpg")
-                    file.writeBytes(jpeg)
+                    // Registered before the write, so a failed write still has it deleted in the finally
                     files.add(file)
+                    file.writeBytes(jpeg)
                 }
             } catch (ex: ImageResizeException) {
                 // A valid answer: the page can't be read, a retry won't change it
