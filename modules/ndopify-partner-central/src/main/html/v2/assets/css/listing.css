@@ -13,6 +13,32 @@
     color: var(--color-fg);
 }
 
+/*
+ * #375: a VERIFIED listing waiting on its owner's verification. The hold label is a sentence, not a status word:
+ * the pill wraps inside the page (and takes its own line under the title at 390 px) instead of widening it.
+ */
+.status-tag--hold {
+    max-width: 100%;
+    white-space: normal;
+    line-height: 1.4;
+    text-align: left;
+}
+
+/* The publication block (#375): its title keeps the alert's body-face look while staying a real h2, at the same
+   level as the page's sections. */
+.listing-ownership__title {
+    font-family: var(--font-body);
+    font-size: var(--step-body);
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+/* Its one action never widens the page on a phone: the label wraps inside the button. */
+.listing-ownership .ownership__actions .btn {
+    max-width: 100%;
+    white-space: normal;
+}
+
 /* The public page's link and its share button, once the listing is published or closed. */
 .listing-public {
     display: flex;

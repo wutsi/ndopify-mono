@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Annonce — Ndopify Partner Central</title>
+    <title>Annonce · Villa, Bonamoussadi — Ndopify Partner Central</title>
     <meta name="description" content="L'annonce d'un bien sous mandat : la visite du bien, section par section, puis l'envoi pour vérification.">
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#ffffff">
@@ -16,6 +16,8 @@
     <link rel="stylesheet" href="assets/css/find-property.css">
     <link rel="stylesheet" href="assets/css/home.css">
     <link rel="stylesheet" href="assets/css/listing.css">
+    <link rel="stylesheet" href="assets/css/ownership.css">
+    <script src="assets/js/ownership-copy.js" defer></script>
     <script src="assets/js/partner-central.js" defer></script>
 </head>
 <!--
@@ -32,9 +34,27 @@
     the reason and the sections to fix. Published, it also shows its activity (page views, interested clients,
     visits of the property) and, on its mandate's page, its Propositions: the clients it was sent to and what they
     answered.
+
+    #375: a VERIFIED listing is published automatically (ListingJobs.publish) and waits on the owner's verification
+    (GET /v1/mandates/{id}/ownership, #297, which gates publication, #299). Its page says why instead of leaving
+    *Vérifiée* bare: the tag reads "Vérifiée — publication en attente" (warning), the *En vérification* panel gives
+    way to the owner-verification block (one per verdict: PENDING with its missing pieces, FAILED with one line per
+    reason, or unavailable when the verdict can't be read), and the one action opens the mandate's *Vérification du
+    propriétaire* section (/mandates/{id}#ownership-title), just before its Documents. Nothing to publish or retry
+    here, and the public page is untouched. Only the listing's own agent's VERIFIED listing: every other status and
+    the read-only lens render as today and make no ownership call. The wording is the mandate page's (#298), shared
+    through assets/js/ownership-copy.js.
+
     PROTOTYPE: ?id= of a listing created from mandate.html?id=203 (or 102 once accepted and signed); any other shows
     the locked view. The listing is kept in the session (KEYS.listings). "Simuler la publication" / "Simuler un refus"
     stand for the check, which ndopify-server doesn't have yet.
+    The static markup is ?id=706's render (seller 312's villa, VERIFIED, its owner's verdict PENDING with both
+    pieces missing), as the server would send it, so every state reads without JavaScript; the script switches the
+    samples and rebuilds the page for another id. ?ownership= (this prototype only):
+      pending[&reason=both|id-missing|document-missing|in-flight]   (both is the default)
+      failed[&reason=mixed|id-expired|id-unusable|id-name|document-unusable|document-name]   (mixed is the default)
+      verified      the unblocked page: tag *Vérifiée*, the *En vérification* panel, no block
+      unavailable   the verdict failed or answered UNKNOWN: the block alone
     Co-brokerage: ?id=5001 opens another agent's published listing, matched to search 204. It is read-only, hides the
     other agent's mandate and customer, and shows that agent's card (photo, name, WhatsApp, link to agent.html).
     Any agent: ?id=5001&back=… opens that same read-only sheet from the page named by back (an agent profile's
@@ -83,14 +103,14 @@
                 </div>
             </div>
 
-            <div class="stack" hidden data-listing>
+            <div class="stack" data-listing>
                 <div class="page-intro mandate-intro">
                     <div class="mandate-intro__head">
-                        <h1 data-listing-title>Annonce</h1>
-                        <p class="status-tag" data-listing-tag></p>
+                        <h1 data-listing-title>Annonce · Villa, Bonamoussadi</h1>
+                        <p class="status-tag status-tag--warning status-tag--hold" data-listing-tag>Vérifiée — publication en attente</p>
                     </div>
-                    <p class="mandate__meta" data-listing-meta>Mandat n° <span data-listing-mandate></span> · créée le
-                        <span data-listing-created></span></p>
+                    <p class="mandate__meta" data-listing-meta>Mandat n° <span data-listing-mandate>312</span> · créée le
+                        <span data-listing-created>23 nov. 2026</span></p>
                     <!-- Another agent's listing (co-brokerage): its mandate and customer stay hidden. -->
                     <p class="listing-origin" hidden data-listing-origin>
                         <span class="status-tag status-tag--info">Bien d'un autre agent</span>
@@ -143,7 +163,7 @@
                     <p data-listing-flash-text></p>
                 </div>
 
-                <!-- One panel per status but PUBLISHED (its date is in the tag), above the checklist. -->
+                <!-- One panel per status but PUBLISHED (its date is in the tag) and VERIFIED, above the checklist. -->
                 <div class="hint" hidden data-listing-panel="DRAFT">
                     <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
                     <p>Sur place, vérifiez chaque section et prenez les photos. Les réponses du propriétaire sont
@@ -173,10 +193,145 @@
                     </div>
                 </div>
 
+                <!--
+                    #375: a VERIFIED listing whose mandate's owner isn't verified. Publication is automatic
+                    (ListingJobs.publish) and waits on GET /v1/mandates/{id}/ownership (#297, the gate of #299), so the
+                    page says why instead of leaving *Vérifiée* bare. The *En vérification* panel gives way to this
+                    block while the wait is the owner's, and the tag reads the hold label in the warning style.
+
+                    One block per verdict, server-rendered; the wording is #298's (assets/js/ownership-copy.js here,
+                    MandateOwnershipViews in production, so that the mandate page and this one cannot drift). No
+                    action on this page: publication follows the verdict on its own, and the only link opens the
+                    mandate's *Vérification du propriétaire* section (/mandates/{id}#ownership-title), immediately
+                    before its Documents. The block names no customer, document id, type, title, page, path, storage
+                    URL nor extracted value, and carries no verdict JSON.
+
+                    PENDING: one line per missing piece, with what counts; with no reason (a piece UPLOADED or
+                    EXTRACTING) the reading is in progress — no error styling. FAILED: *Propriétaire non vérifié*, one
+                    block per reason: the check's kind, the wording, its action and, for *_UNUSABLE, the document's
+                    problem instructions as the document page words them; no manual review. UNAVAILABLE: the verdict
+                    read failed (5xx, network, 403/404) or answered UNKNOWN — this block only, every other section
+                    unchanged. VERIFIED: no block, the tag reads *Vérifiée* and the *En vérification* panel stays.
+                    A listing in any other status, and the read-only lens, render as today and make no ownership call.
+
+                    PROTOTYPE: the static markup is ?id=706's render (PENDING, both pieces missing), as the server
+                    would send it. partner-central.js switches the samples from ?ownership= and carries the switch in
+                    the link, so that the mandate page shows the verdict this block words; production links
+                    /mandates/{id}#ownership-title.
+                -->
+                <div class="alert alert--info listing-ownership" data-listing-ownership="PENDING">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <h2 class="alert__title listing-ownership__title">Publication en attente de la vérification du propriétaire</h2>
+                        <p class="ownership__intro">L'annonce est vérifiée. Sa publication attend que le propriétaire
+                            soit vérifié, à partir des pièces de la section Documents de son mandat&nbsp;; elle se fera
+                            alors d'elle-même.</p>
+                        <ul class="ownership__pieces" data-listing-ownership-pieces>
+                            <li>Il manque la pièce d'identité du propriétaire&nbsp;: une carte nationale d'identité
+                                (recto et verso) ou un passeport, à son nom.</li>
+                            <li>Il manque le document de propriété&nbsp;: un titre foncier ou un certificat de
+                                propriété, à son nom.</li>
+                        </ul>
+                        <p data-listing-ownership-reading hidden>La lecture des pièces est en cours&nbsp;: la
+                            vérification se fera d'elle-même dès qu'elles seront analysées.</p>
+                        <p class="ownership__actions">
+                            <a class="btn btn--outline btn--compact" href="mandate.html?id=312#ownership-title"
+                               data-listing-ownership-link>Vérifier le propriétaire dans le mandat</a>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="alert alert--warning listing-ownership" data-listing-ownership="FAILED" hidden>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <h2 class="alert__title listing-ownership__title">Propriétaire non vérifié</h2>
+                        <p class="ownership__intro">L'annonce est vérifiée, mais sa publication attend un propriétaire
+                            vérifié. La vérification n'a pas abouti&nbsp;:</p>
+                        <ul class="ownership__reasons" data-listing-ownership-reasons></ul>
+                        <p class="ownership__actions">
+                            <a class="btn btn--outline btn--compact" href="mandate.html?id=312&ownership=failed#ownership-title"
+                               data-listing-ownership-link>Vérifier le propriétaire dans le mandat</a>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="alert alert--warning listing-ownership" data-listing-ownership="UNAVAILABLE" hidden>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <h2 class="alert__title listing-ownership__title">Vérification du propriétaire indisponible</h2>
+                        <p>L'état de publication de l'annonce ne peut pas être lu pour le moment. Rechargez la page
+                            dans quelques instants&nbsp;; la vérification du propriétaire reprendra d'elle-même.</p>
+                        <p class="ownership__actions">
+                            <a class="btn btn--outline btn--compact" href="mandate.html?id=312#ownership-title"
+                               data-listing-ownership-link>Vérifier le propriétaire dans le mandat</a>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- One reason of a FAILED verdict: the check's kind, the wording, its details and its action. -->
+                <template data-listing-ownership-reason-template>
+                    <li class="ownership__reason">
+                        <p class="ownership__check" data-reason-check></p>
+                        <p data-reason-text></p>
+                        <ul class="ownership__problems" data-reason-problems hidden></ul>
+                        <p class="ownership__action" data-reason-action></p>
+                    </li>
+                </template>
+
                 <section class="home-section" aria-labelledby="checklist-title">
                     <h2 id="checklist-title">Détails de la propriété</h2>
-                    <p class="checklist__progress" data-checklist-progress></p>
-                    <ol class="checklist" data-checklist></ol>
+                    <p class="checklist__progress" data-checklist-progress>6 sections sur 6 vérifiées</p>
+                    <ol class="checklist" data-checklist>
+                        <li>
+                            <a class="checklist__row" href="listing/emplacement.html?id=706">
+                                <span class="checklist__title">Emplacement</span>
+                                <span class="status-tag status-tag--success">Vérifié</span>
+                                <span class="checklist__summary">Bonamoussadi · À 200 m du carrefour Bonamoussadi</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="checklist__row" href="listing/position.html?id=706">
+                                <span class="checklist__title">Position GPS</span>
+                                <span class="status-tag status-tag--success">Vérifié</span>
+                                <span class="checklist__summary">4.09215, 9.74120 (± 8 m)</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="checklist__row" href="listing/bien.html?id=706">
+                                <span class="checklist__title">Le bien</span>
+                                <span class="status-tag status-tag--success">Vérifié</span>
+                                <span class="checklist__summary">Villa · 4 chambres · 300 m²</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="checklist__row" href="listing/equipements.html?id=706">
+                                <span class="checklist__title">Eau, électricité, accès</span>
+                                <span class="status-tag status-tag--success">Vérifié</span>
+                                <span class="checklist__summary">Route bitumée · 6 équipements</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="checklist__row" href="listing/conditions.html?id=706">
+                                <span class="checklist__title">Prix et conditions</span>
+                                <span class="status-tag status-tag--success">Vérifié</span>
+                                <span class="checklist__summary">180M&nbsp;FCFA</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="checklist__row" href="listing/photos.html?id=706">
+                                <span class="checklist__title">Photos</span>
+                                <span class="status-tag status-tag--success">Vérifié</span>
+                                <span class="checklist__summary">5 photos</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="checklist__row" href="listing/remarques.html?id=706">
+                                <span class="checklist__title">Vos remarques</span>
+                                <span class="status-tag status-tag--success">Ajoutées</span>
+                                <span class="checklist__summary">Villa libre depuis le 1er décembre. Visites en semaine après 17 h.</span>
+                            </a>
+                        </li>
+                    </ol>
                     <!-- One row per section: a link while it's a draft, the values only once sent. -->
                     <template data-checklist-template>
                         <li>
@@ -187,7 +342,7 @@
                     </template>
                 </section>
 
-                <section class="home-section listing-send" aria-label="Envoi de l'annonce" data-listing-send>
+                <section class="home-section listing-send" aria-label="Envoi de l'annonce" data-listing-send hidden>
                     <button type="button" class="btn btn--primary btn--block" aria-describedby="listing-missing"
                             data-listing-submit>Envoyer pour vérification</button>
                     <p class="listing-send__missing" id="listing-missing" tabindex="-1" data-listing-missing></p>

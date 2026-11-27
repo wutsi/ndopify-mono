@@ -11,15 +11,16 @@
  * reason per missing piece (none while a piece is still UPLOADED or EXTRACTING); VERIFIED has no reason and no date;
  * FAILED carries one reason per failed check, named by its kind (*la pièce d'identité* / *le document de propriété*)
  * because a reason doesn't say which type or title it was, and a *_UNUSABLE reason carries the document's problem
- * codes as details, worded here as the document page words them (#331; production reads the same
- * document.problem.<code> bundle). UNAVAILABLE is the section's own state when the read fails or answers UNKNOWN.
+ * codes as details, worded as the document page words them (#331; the French wording is shared with the listing
+ * page's publication block in ownership-copy.js, and production reads the same document.problem.<code> bundle).
+ * UNAVAILABLE is the section's own state when the read fails or answers UNKNOWN.
  * The Documents rows just below the section are what name each piece's type, title and status.
  * The section is absent on a SEARCH mandate and on a CLOSED / CANCELLED one.
  *
  * Query switch (prototype only; production renders all of it server-side):
  *   ?ownership=pending[&reason=both|id-missing|document-missing|in-flight]   (both is the default)
  *   ?ownership=verified                      (301 with &listing=published shows the listing link)
- *   ?ownership=failed[&reason=id-expired|id-unusable|id-name|document-unusable|document-name]
+ *   ?ownership=failed[&reason=mixed|id-expired|id-unusable|id-name|document-unusable|document-name]
  *                                            (id-expired is the default; 301's own verdict)
  *   ?ownership=unavailable                   (the verdict read failed: only the section says so)
  *   ?ownership=none                          (the section as a SEARCH or CLOSED / CANCELLED page renders it: absent)
@@ -28,82 +29,9 @@
 (function () {
     "use strict";
 
-    /*
-     * A *_MISSING reason: the piece the verdict found missing, and what counts for it. No error styling: the check
-     * is in progress, and this is what the agent adds (AC 2).
-     */
-    var MISSING_PIECES = {
-        OWNERSHIP_ID_MISSING: "Il manque la pièce d'identité du propriétaire : une carte nationale d'identité " +
-            "(recto et verso) ou un passeport, à son nom.",
-        OWNERSHIP_DOCUMENT_MISSING: "Il manque le document de propriété : un titre foncier ou un certificat de " +
-            "propriété, à son nom."
-    };
-    var MISSING_OTHER = "Une pièce manque pour vérifier le propriétaire : vérifiez les documents du mandat.";
-
-    /*
-     * A decisive reason: its French wording and the one action it calls for — retake the photo, change the type, or
-     * upload a title. The reason carries no document type or title, so the block names the check's kind above this
-     * wording (checkKind below); the document's problem codes (*_UNUSABLE only) come under it. The action stays the
-     * same whatever the details are, since both the photo and the type are corrected from the same document row.
-     */
-    var REASON_WORDING = {
-        OWNERSHIP_ID_EXPIRED: {
-            text: "La pièce est expirée : elle ne peut plus servir à vérifier le propriétaire.",
-            action: "Reprenez la photo d'une pièce en cours de validité, puis ajoutez-la dans Documents."
-        },
-        OWNERSHIP_ID_UNUSABLE: {
-            text: "La pièce n'a pas pu être vérifiée.",
-            action: "Corrigez la pièce dans Documents : reprenez sa photo, ou changez son type."
-        },
-        OWNERSHIP_ID_NAME_MISMATCH: {
-            text: "La pièce ne porte pas le nom du propriétaire : elle ne peut pas l'identifier.",
-            action: "Ajoutez une pièce d'identité au nom du propriétaire."
-        },
-        OWNERSHIP_DOCUMENT_UNUSABLE: {
-            text: "Le document n'a pas pu être vérifié.",
-            action: "Corrigez le document dans Documents : reprenez sa photo, ou changez son type."
-        },
-        OWNERSHIP_DOCUMENT_NAME_MISMATCH: {
-            text: "Le document ne désigne pas le propriétaire du bien.",
-            action: "Ajoutez un titre foncier ou un certificat de propriété au nom du propriétaire."
-        }
-    };
-    // #298's decision 7: one label per code, and a generic line for a code the page doesn't know yet.
-    var REASON_OTHER = {
-        text: "La vérification du propriétaire a échoué sur ce document.",
-        action: "Vérifiez la pièce dans Documents."
-    };
-
-    // The check a reason belongs to: the verdict names no type or title, only the kind of piece it looked at.
-    function checkKind(code) {
-        code = String(code || "");
-        if (code.indexOf("OWNERSHIP_ID_") === 0) return "La pièce d'identité";
-        if (code.indexOf("OWNERSHIP_DOCUMENT_") === 0) return "Le document de propriété";
-        return "";
-    }
-
-    /*
-     * #331's problem instructions, verbatim: production words them once in messages.properties
-     * (document.problem.<code>), which both the document page and this section read. DOCUMENT_EXPIRED is a warning,
-     * never an instruction, and doesn't reach a verdict reason's details.
-     */
-    var PROBLEM_INSTRUCTIONS = {
-        DOCUMENT_TYPE_MISMATCH: "Le document ne correspond pas au type choisi. Supprimez-le, puis ajoutez-le avec " +
-            "le bon type.",
-        DOCUMENT_UNREADABLE: "Le document n'a pas pu être lu. Remplacez ses pages par des photos plus nettes, " +
-            "droites et sans reflet, ou supprimez-le et ajoutez-le de nouveau.",
-        DOCUMENT_PAGE_MISSING: "Il manque une page du document, son verso par exemple. Remplacez la page manquante " +
-            "par une photo, ou supprimez le document et ajoutez-le avec toutes ses pages.",
-        DOCUMENT_FIELD_LOW_CONFIDENCE: "Un champ obligatoire n'a pas pu être lu avec certitude. Vérifiez-le " +
-            "sur la pièce : si la photo est floue, remplacez la page ; sinon, supprimez le document et " +
-            "ajoutez-le de nouveau.",
-        EXPIRY_DATE_UNREADABLE: "La date d'expiration de la pièce n'a pas pu être lue. Remplacez la page où elle " +
-            "figure par une photo plus nette, ou supprimez le document et ajoutez-le de nouveau.",
-        EXTRACTION_FAILED: "La lecture du document a échoué. Remplacez ses pages, ou supprimez le document et " +
-            "ajoutez-le de nouveau pour relancer la lecture."
-    };
-    var PROBLEM_OTHER = "Un problème a été signalé sur ce document. Supprimez-le et ajoutez-le de nouveau pour " +
-        "relancer la lecture.";
+    // #375: the French wording is one source, shared with the listing page's publication block (ownership-copy.js,
+    // loaded before this file), so that the two pages cannot drift.
+    var copy = window.NdOwnership;
 
     /*
      * PROTOTYPE: the sample verdicts, as GET /v1/mandates/{id}/ownership would send them — a status and reasons, no
@@ -123,6 +51,13 @@
     };
 
     var FAILED_SAMPLES = {
+        // #375: the listing page's multi-reason sample (its default FAILED state), so that the link from a blocked
+        // listing opens the same verdict here.
+        mixed: [
+            { code: "OWNERSHIP_ID_EXPIRED" },
+            { code: "OWNERSHIP_DOCUMENT_UNUSABLE", details: ["DOCUMENT_TYPE_MISMATCH", "DOCUMENT_PAGE_MISSING"] },
+            { code: "OWNERSHIP_DOCUMENT_NAME_MISMATCH" }
+        ],
         "id-expired": [{ code: "OWNERSHIP_ID_EXPIRED" }],
         "id-unusable": [{ code: "OWNERSHIP_ID_UNUSABLE", details: ["DOCUMENT_UNREADABLE"] }],
         "id-name": [{ code: "OWNERSHIP_ID_NAME_MISMATCH" }],
@@ -208,7 +143,7 @@
         list.innerHTML = "";
         verdict.reasons.forEach(function (reason) {
             var item = document.createElement("li");
-            item.textContent = MISSING_PIECES[reason.code] || MISSING_OTHER;
+            item.textContent = copy.MISSING_PIECES[reason.code] || copy.MISSING_OTHER;
             list.appendChild(item);
         });
         // Without a reason, the piece is being read: the check runs on its own, and there is nothing to add.
@@ -226,17 +161,17 @@
         list.innerHTML = "";
         verdict.reasons.forEach(function (reason) {
             var item = template.content.firstElementChild.cloneNode(true);
-            var wording = REASON_WORDING[reason.code] || REASON_OTHER;
+            var wording = copy.REASON_WORDING[reason.code] || copy.REASON_OTHER;
             // The check's kind, never a document type, title, id, page, path, URL nor extracted value.
             var check = $("[data-reason-check]", item);
-            check.textContent = checkKind(reason.code);
+            check.textContent = copy.checkKind(reason.code);
             check.hidden = !check.textContent;
             $("[data-reason-text]", item).textContent = wording.text;
             var problems = $("[data-reason-problems]", item);
             problems.innerHTML = "";
             (reason.details || []).forEach(function (code) {
                 var problem = document.createElement("li");
-                problem.textContent = PROBLEM_INSTRUCTIONS[code] || PROBLEM_OTHER;
+                problem.textContent = copy.PROBLEM_INSTRUCTIONS[code] || copy.PROBLEM_OTHER;
                 problems.appendChild(problem);
             });
             problems.hidden = problems.children.length === 0;

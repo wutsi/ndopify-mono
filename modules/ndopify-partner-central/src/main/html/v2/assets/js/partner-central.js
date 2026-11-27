@@ -1952,6 +1952,35 @@
                 movingPeriod: "WITHIN_3_MONTHS",
                 comments: "Achat avec un prêt bancaire."
             }
+        },
+        // #375: a seller's villa (LISTING · SALE), signed, whose listing 706 is verified and waits on its owner's
+        // verification (#297, the gate of #299). No card on index.html: opened by URL, and through listing.html?id=706.
+        312: {
+            party: "bailleur",
+            listingType: "SALE",
+            createdAt: -6,
+            initial: { status: "APPROVED", acceptedAt: -6, requestedAt: -4, approvedAt: -3 },
+            contact: {
+                firstName: "Léonie",
+                lastName: "Ngo Bassong",
+                whatsapp: "+237699667788",
+                email: "l.ngobassong@example.com",
+                period: "Matin"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonamoussadi"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "VILLA",
+                rooms: "4",
+                parkings: "2",
+                area: 300,
+                amenities: ["dedicatedWaterMeter", "waterWell", "dedicatedElectricityMeter", "generatorSet",
+                    "roadPaved", "securedFenced", "securityGuard"],
+                price: 180000000,
+                movingPeriod: "WITHIN_1_MONTH",
+                comments: "Titre foncier disponible, visite en semaine après 17 h."
+            }
         }
     };
 
@@ -3538,9 +3567,11 @@
             text.textContent = tag === "PUBLISHED" ? "Annonce publiée le " + formatDate(listing.publishedAt) + "."
                 : tag === "PENDING" ? "Annonce envoyée le " + formatDate(listing.submittedAt) + ", en vérification."
                     : tag === "REJECTED" ? "Annonce à corriger : " + listing.rejection.reason
-                        : "Annonce en brouillon : " + (missingSections(listing).length
-                            ? "encore à faire, " + missingSections(listing).join(", ") + "."
-                            : "prête à être envoyée.");
+                        // #375: the line keeps the plain tag; the wait on the owner is explained on its own page only.
+                        : tag === "VERIFIED" ? "Annonce vérifiée."
+                            : "Annonce en brouillon : " + (missingSections(listing).length
+                                ? "encore à faire, " + missingSections(listing).join(", ") + "."
+                                : "prête à être envoyée.");
         }
 
         // PROTOTYPE: simulates POST /v1/listings { mandateId }, then opens the listing.
@@ -4716,6 +4747,12 @@
         DRAFT: ["Brouillon", "info"],
         REJECTED: ["À corriger", "warning"],
         PENDING: ["En vérification", "warning"],
+        // #375: verified, but published only once #297's verdict answers VERIFIED (#299's gate). The hold label is
+        // opt-in: the listing page only, when the owner isn't verified yet (see listingTag).
+        VERIFIED: ["Vérifiée", "success"],
+        VERIFIED_HOLD: ["Vérifiée — publication en attente", "warning"],
+        // Past the ownership gate: publication has started, today's "En vérification" tag and panel (as PENDING).
+        PUBLISHING: ["En vérification", "warning"],
         PUBLISHED: ["Publiée", "success"],
         RENTED: ["Loué", "warning"],
         SOLD: ["Vendu", "warning"]
@@ -4831,7 +4868,10 @@
             stateOf(mandateId).status === "APPROVED";
     }
 
-    function listingTag(listing) {
+    // The listing's status as a tag. #375: the hold variant is opt-in — only the listing page passes [blocked], when a
+    // VERIFIED listing's mandate owner isn't verified yet; every other page (and the mandate's line) keeps "Vérifiée".
+    function listingTag(listing, blocked) {
+        if (listing.status === "VERIFIED") return blocked ? "VERIFIED_HOLD" : "VERIFIED";
         return listing.status === "DRAFT" && listing.rejection ? "REJECTED" : listing.status;
     }
 
@@ -4962,6 +5002,38 @@
         "705": { mandateId: "309" }
     };
 
+    /*
+     * #375: a VERIFIED listing whose publication waits on its owner's verification (GET
+     * /v1/mandates/{id}/ownership, #297; the gate of #299). From seller 312, whose own mandate it is, so it never
+     * competes with the published 501 (203) nor the villa 601 (301). Every section was checked on site and its five
+     * photos verified, and the listing passed its own check: only the owner's verdict stands between it and
+     * publication. ?ownership= switches the verdict (see listingVerdict); production reads it on every page load.
+     */
+    var VERIFIED_LISTING_SAMPLE = { id: "706", mandateId: "312", createdDaysAgo: 4, submittedDaysAgo: 2 };
+
+    function ensureVerifiedSampleListing(id) {
+        if (String(id) !== VERIFIED_LISTING_SAMPLE.id || listings()[id]) return;
+        if (!ownsMandate(VERIFIED_LISTING_SAMPLE.mandateId)) return;
+        var listing = createListing(VERIFIED_LISTING_SAMPLE.mandateId, VERIFIED_LISTING_SAMPLE.id);
+        listing.createdAt = Date.now() - VERIFIED_LISTING_SAMPLE.createdDaysAgo * DAY_MS;
+        listing.status = "VERIFIED";
+        listing.submittedAt = Date.now() - VERIFIED_LISTING_SAMPLE.submittedDaysAgo * DAY_MS;
+        listing.fields.neighbourhood = "Bonamoussadi";
+        listing.fields.landmark = "À 200 m du carrefour Bonamoussadi";
+        listing.fields.accessDirections = "Portail vert, 3e maison à droite après la pharmacie.";
+        listing.fields.latitude = 4.09215;
+        listing.fields.longitude = 9.7412;
+        listing.fields.accuracy = 8;
+        listing.fields.agentRemarks = "Villa libre depuis le 1er décembre. Visites en semaine après 17 h.";
+        LISTING_SECTIONS.forEach(function (section) {
+            listing.checked[section.key] = listing.submittedAt;
+        });
+        listing.photos = [1, 2, 3, 4, 5].map(function (n) {
+            return { id: n, src: "assets/images/listing-" + n + ".jpg", status: "VERIFIED" };
+        });
+        saveListing(listing);
+    }
+
     function ensureBuildingSampleListing(id) {
         if (String(id) !== BUILDING_LISTING_SAMPLE.id || listings()[id]) return;
         if (!ownsMandate(BUILDING_LISTING_SAMPLE.mandateId)) return;
@@ -4994,10 +5066,11 @@
         saveListing(listing);
     }
 
-    // PROTOTYPE: ?id=701 / ?id=702 to 705 seed their sample listing on the first visit.
+    // PROTOTYPE: ?id=701 / ?id=702 to 705 seed their sample listing on the first visit; ?id=706 (#375) too.
     function ensureSampleListing(id) {
         ensureBuildingSampleListing(id);
         ensureLandSampleListing(id);
+        ensureVerifiedSampleListing(id);
     }
 
     function goodPhotos(listing) {
@@ -5107,6 +5180,8 @@
         var listing = readOnly ? CO_BROKERAGE_LISTING : listings()[id];
         if (!listing || (!readOnly && !ownsMandate(listing.mandateId))) {
             $("[data-listing-locked]").hidden = false;
+            // The static markup is ?id=706's render (#375): the locked view replaces it, as the script does everywhere.
+            $("[data-listing]").hidden = true;
             return;
         }
         // Another agent's listing belongs to another agent's mandate: never link to it. ?match= (a co-brokerage
@@ -5162,6 +5237,122 @@
         var submit = $("[data-listing-submit]");
         var missing = $("[data-listing-missing]");
 
+        /*
+         * #375 (prototype only): the verdict ?ownership= asks for, as GET /v1/mandates/{id}/ownership (#297) sends it
+         * — a status, then one reason per missing piece (PENDING) or per failed check (FAILED), a *_UNUSABLE one
+         * carrying the document's problemCodes. The static markup is the default (PENDING, both pieces missing), so
+         * no switch keeps it. Production reads the verdict for the listing's own agent's VERIFIED listing only, once
+         * per page load, and makes no call for any other status nor on the read-only lens.
+         */
+        var OWNERSHIP_PENDING = {
+            both: [{ code: "OWNERSHIP_ID_MISSING" }, { code: "OWNERSHIP_DOCUMENT_MISSING" }],
+            "id-missing": [{ code: "OWNERSHIP_ID_MISSING" }],
+            "document-missing": [{ code: "OWNERSHIP_DOCUMENT_MISSING" }],
+            // A piece still UPLOADED or EXTRACTING: no reason, the reading is in progress.
+            "in-flight": []
+        };
+        var OWNERSHIP_FAILED = {
+            // The story's example: several reasons, one of them *_UNUSABLE with the document's problem codes.
+            mixed: [
+                { code: "OWNERSHIP_ID_EXPIRED" },
+                { code: "OWNERSHIP_DOCUMENT_UNUSABLE", details: ["DOCUMENT_TYPE_MISMATCH", "DOCUMENT_PAGE_MISSING"] },
+                { code: "OWNERSHIP_DOCUMENT_NAME_MISMATCH" }
+            ],
+            "id-expired": [{ code: "OWNERSHIP_ID_EXPIRED" }],
+            "id-unusable": [{ code: "OWNERSHIP_ID_UNUSABLE", details: ["DOCUMENT_UNREADABLE"] }],
+            "id-name": [{ code: "OWNERSHIP_ID_NAME_MISMATCH" }],
+            "document-unusable": [{
+                code: "OWNERSHIP_DOCUMENT_UNUSABLE",
+                details: ["DOCUMENT_TYPE_MISMATCH", "DOCUMENT_PAGE_MISSING"]
+            }],
+            "document-name": [{ code: "OWNERSHIP_DOCUMENT_NAME_MISMATCH" }]
+        };
+
+        function listingVerdict() {
+            var choice = params.get("ownership");
+            if (choice === "unavailable") return { status: "UNAVAILABLE", reasons: [] };
+            if (choice === "verified") return { status: "VERIFIED", reasons: [] };
+            if (choice === "failed") {
+                return {
+                    status: "FAILED",
+                    reasons: OWNERSHIP_FAILED[params.get("reason")] || OWNERSHIP_FAILED.mixed
+                };
+            }
+            if (choice === "pending") {
+                return {
+                    status: "PENDING",
+                    reasons: OWNERSHIP_PENDING[params.get("reason")] || OWNERSHIP_PENDING.both
+                };
+            }
+            return { status: "PENDING", reasons: OWNERSHIP_PENDING.both };
+        }
+
+        var ownership = window.NdOwnership;
+
+        // The one action of the block: the mandate's *Vérification du propriétaire* section, immediately before its
+        // Documents (/mandates/{id}#ownership-title). PROTOTYPE: the switch is carried along, so that the mandate page
+        // shows the verdict this block words; production links the plain section.
+        function ownershipHref() {
+            var choice = params.get("ownership");
+            if (!choice || choice === "verified") {
+                return "mandate.html?id=" + encodeURIComponent(listing.mandateId) + "#ownership-title";
+            }
+            var reason = params.get("reason") || (choice === "failed" ? "mixed" : "");
+            return "mandate.html?id=" + encodeURIComponent(listing.mandateId) + "&ownership=" +
+                encodeURIComponent(choice) +
+                (reason ? "&reason=" + encodeURIComponent(reason) : "") +
+                "#ownership-title";
+        }
+
+        // One block per verdict, server-rendered in production: the *En vérification* panel gives way while the wait
+        // is the owner's, and only the verdict's own block shows. No verdict (VERIFIED, or any other status) shows none.
+        function renderOwnership(verdict) {
+            var shown = verdict && verdict.status !== "VERIFIED" ? verdict.status : "";
+            $all("[data-listing-ownership]").forEach(function (block) {
+                block.hidden = block.getAttribute("data-listing-ownership") !== shown;
+            });
+            if (!shown) return;
+            var block = $("[data-listing-ownership='" + shown + "']");
+            var link = $("[data-listing-ownership-link]", block);
+            if (link) link.href = ownershipHref();
+            if (shown === "PENDING") {
+                var pieces = $("[data-listing-ownership-pieces]", block);
+                pieces.textContent = "";
+                verdict.reasons.forEach(function (reason) {
+                    var item = document.createElement("li");
+                    item.textContent = ownership.MISSING_PIECES[reason.code] || ownership.MISSING_OTHER;
+                    pieces.appendChild(item);
+                });
+                // Without a reason, the piece is being read: nothing to add, and no error styling.
+                var reading = verdict.reasons.length === 0;
+                pieces.hidden = reading;
+                $("[data-listing-ownership-reading]", block).hidden = !reading;
+            }
+            if (shown === "FAILED") {
+                var reasons = $("[data-listing-ownership-reasons]", block);
+                var reasonTemplate = $("[data-listing-ownership-reason-template]");
+                reasons.textContent = "";
+                verdict.reasons.forEach(function (reason) {
+                    var item = reasonTemplate.content.firstElementChild.cloneNode(true);
+                    var wording = ownership.REASON_WORDING[reason.code] || ownership.REASON_OTHER;
+                    // The check's kind, never a document type, title, id, page, path, URL nor extracted value.
+                    var check = $("[data-reason-check]", item);
+                    check.textContent = ownership.checkKind(reason.code);
+                    check.hidden = !check.textContent;
+                    $("[data-reason-text]", item).textContent = wording.text;
+                    var problems = $("[data-reason-problems]", item);
+                    (reason.details || []).forEach(function (code) {
+                        var problem = document.createElement("li");
+                        problem.textContent = ownership.PROBLEM_INSTRUCTIONS[code] || ownership.PROBLEM_OTHER;
+                        problems.appendChild(problem);
+                    });
+                    problems.hidden = problems.children.length === 0;
+                    $("[data-reason-action]", item).textContent = wording.action;
+                    reasons.appendChild(item);
+                });
+            }
+        }
+
         function showFlash(text) {
             $("[data-listing-flash-text]").textContent = text;
             flash.hidden = false;
@@ -5170,7 +5361,11 @@
 
         function render() {
             listing = readOnly ? CO_BROKERAGE_LISTING : listings()[id];
-            var tag = listingTag(listing);
+            // #375: the ownership verdict, read only on the listing's own agent's VERIFIED page — no call for any
+            // other status, nor on the read-only lens (which never admits a VERIFIED listing).
+            var verdict = listing.status === "VERIFIED" && !readOnly ? listingVerdict() : null;
+            var blocked = !!verdict && verdict.status !== "VERIFIED";
+            var tag = listingTag(listing, blocked);
             var editable = listing.status === "DRAFT";
             var title = (readOnly ? "" : "Annonce · ") + listingTitle(listing);
             document.title = title + " — Ndopify Partner Central";
@@ -5181,11 +5376,17 @@
             var tagEl = $("[data-listing-tag]");
             tagEl.textContent = LISTING_TAGS[tag][0] +
                 (listing.status === "PUBLISHED" ? " le " + formatShortDate(listing.publishedAt) : "");
-            tagEl.className = "status-tag status-tag--" + LISTING_TAGS[tag][1];
+            // The hold label is a sentence: its pill wraps instead of widening the page on a phone.
+            tagEl.className = "status-tag status-tag--" + LISTING_TAGS[tag][1] +
+                (tag === "VERIFIED_HOLD" ? " status-tag--hold" : "");
 
+            // A VERIFIED listing keeps today's *En vérification* panel; blocked, the ownership block replaces it.
+            // PUBLISHING is past the gate (#299): today's panel too.
+            var panelTag = tag === "VERIFIED" || tag === "PUBLISHING" ? "PENDING" : tag;
             $all("[data-listing-panel]").forEach(function (panel) {
-                panel.hidden = readOnly || panel.getAttribute("data-listing-panel") !== tag;
+                panel.hidden = readOnly || blocked || panel.getAttribute("data-listing-panel") !== panelTag;
             });
+            renderOwnership(verdict);
             if (listing.rejection) $("[data-rejection-reason]").textContent = listing.rejection.reason;
             if (listing.submittedAt) $("[data-submitted-at]").textContent = formatDate(listing.submittedAt);
             // PROTOTYPE: no public portal here, the link goes to a stub
