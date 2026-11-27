@@ -40,8 +40,11 @@ context.
 ## Constraints
 
 - OpenCode `experimental.subagent_depth` defaults to 1: a subagent cannot dispatch `analyst`, `developer`, `reviewer`
-  or `deployer`. The run requires `2` in the project `opencode.json` (or `~/.config/opencode/opencode.json`).
-- `gh project item-list` carries no dependency or hierarchy data: use GraphQL (`blockedBy`, `parent`, `subIssues`).
+  or `deployer`. The sprint chain is `main → sprint child → phase agent → the phase's own subagents`, so the run
+  requires `3` in `opencode.jsonc` (`~/.config/opencode` for a global install). `2` lets the phase agents run but not
+  their own subagents, which the developer's `subagent-driven-development` and the analyst's `designer` need.
+- `gh project item-list` carries no dependency, hierarchy or custom-field data: use GraphQL (`blockedBy`, `parent`,
+  `subIssues`, the `Priority` field).
 - The story skill's `ship` already resolves a mid-flight start point, so a resumed sprint needs no special casing.
 - Profile values only: statuses from `tracker.statuses.*`, repository and default branch from
   `.claude/project-profile.md`.
@@ -72,15 +75,19 @@ skill.
 ### Queue construction
 
 1. **Snapshot** the project items whose status is `tracker.statuses.ready`, with `number`, `title`, `priority`,
-   `parent`, `subIssues` (total and open) and `blockedBy` (number, state).
+   `parent`, `subIssues` (total and open) and `blockedBy` (number, state). The board is resolved from
+   `tracker.project` (a new profile value) against `gh project list`; without it a run with no argument has no story to
+   start from.
 2. **Epics out.** An item with at least one open sub-issue is an epic: it is not queued, and it is reported as
    `#<id> — <done>/<total> children Done`. Its Ready children, if any, are queued normally.
-3. **Blockers.** Every `blockedBy` node must be Done/closed. A blocker in the queue is ordered before its dependent. A
-   blocker that is not Done and not in the queue stops the run with the `ship <blocker>` command to run first.
+3. **Blockers.** Every `blockedBy` node must be closed (the deployer closes a story at Done). A blocker in the queue is
+   ordered before its dependent. A blocker that is not closed and not in the queue stops the run with the
+   `ship <blocker>` command to run first.
 4. **Topological sort** on `blockedBy`; a cycle stops the run.
 5. **Tie-break:** Priority (`P0` → `P1` → `P2` → unset), then issue number ascending.
-6. **Explicit IDs** (`ship-sprint 360 375`) select a subset and override the tie-break, never an unmet blocker, never a
-   story that is not Ready.
+6. **Explicit IDs** (`ship-sprint 360 375`) are intersected with Ready **before** the blocker check, and their given
+   order wins among the selected stories except where `blockedBy` constrains them. They never bypass a blocker, never
+   add a story that is not Ready, and never make an excluded story's blocker stop the run.
 
 ### What "proper sequence" means
 
@@ -93,11 +100,13 @@ skill.
 
 ### Run file
 
-`docs/superpowers/sprints/YYYY-MM-DD-<slug>.md`, written before the first dispatch and updated after each story:
+`docs/superpowers/sprints/YYYY-MM-DD-<slug>.md` (gitignored — the developer stops on a dirty primary checkout, so the
+run file is never committed and never left untracked), written before the first dispatch and updated after each story
+**and before stopping on a gate or a block**:
 
-- the queue in order, with each story's reason (blocker, priority, number) and its parent;
-- per story: status, PR, outcome, notes;
-- the resume point.
+- the `Resume:` line;
+- the queue in order, with each story's reason (blocker, explicit order, priority, number) and its parent;
+- per story: status, PR, outcome, notes.
 
 A re-run reads the file, skips stories now Done, re-checks the blockers, and continues. Without a file, a run starts
 from a fresh snapshot.
@@ -112,12 +121,14 @@ developer, reviewer and deployer agents as it says, and relay its gates. End you
 
 SPRINT-STORY: #<id>
 OUTCOME: done|gate|blocked
+GATE: question|prototype|-
 PR: <number>|-
 STATUS: <board status>|-
-NOTES: <one line>
+NOTES: <one or more lines; for GATE, one question per line or the prototype paths>
 ```
 
-Keep the child session id: a gate is answered into the same session, never a new one.
+Keep the child session id: a gate is answered into the same session, never a new one. If the harness cannot resume the
+child, stop and ask — a new child would lose the question and the answers.
 
 ### Report handling
 
@@ -125,22 +136,23 @@ Keep the child session id: a gate is answered into the same session, never a new
 |---|---|
 | `OUTCOME: done`, `STATUS` = Done | record the PR and status, dispatch the next story |
 | `OUTCOME: done`, `STATUS` ≠ Done | stop: the report and the board disagree |
-| `OUTCOME: gate` | show the question(s) or prototype paths, wait for the user, send the answer to the same session, wait again |
+| `OUTCOME: gate` | show `NOTES` (the questions or the prototype paths), wait for the user, send the answer to the same session, wait again |
 | `OUTCOME: blocked` | record the reason, stop the whole run |
 | no report / unknown shape | stop; never guess the outcome |
 
 ### Before each dispatch
 
 - Re-read the story's status; Done → skip it.
-- Re-read its `blockedBy`; any blocker not Done → stop with the blocker id, its status and `ship <blocker>`.
+- Re-read its `blockedBy`; any blocker not closed → stop with the blocker id, its state and `ship <blocker>`.
 - A story that gained open sub-issues since the snapshot → skip and report it as an epic.
 
 ### Prerequisite check
 
 Before the first dispatch:
 
-- `experimental.subagent_depth` ≥ 2, read from the project `opencode.json`, then `~/.config/opencode/opencode.json`.
-  Missing or lower → stop with the exact line to add.
+- `experimental.subagent_depth` ≥ 3, read from the effective config (`opencode debug config`, last document wins) —
+  the chain is `main → sprint child → phase agent → the phase's own subagents`. Missing or lower → stop with the exact
+  line to add.
 - The `general` subagent must be able to load the `story` skill. If it reports it cannot, the child reads
   `.claude/skills/story/SKILL.md` and follows it; if that is unreadable too, stop.
 
@@ -151,7 +163,7 @@ deferred, the leftover work, the run file path and the command to resume.
 
 ## Out of scope
 
-- The story skill, the agents, the profile, the board schema, CI and deployment.
+- The story skill, the agents, the board schema, CI and deployment.
 - Parallelism, grooming, triage and closing epics.
 
 ## Verification
@@ -163,6 +175,10 @@ Then:
 
 - **Read-through:** every dependency and sub-issue rule appears once, in *Queue construction*; the report contract is
   exact; the skill contains no phase work (`gh project item-edit`, `gh pr merge`, `git push`, `mvn`, `feat/`).
-- **Dispatch probe:** one Ready story end to end; the child session id is kept and a gate is relayed into it.
+- **Dispatch probe:** one Ready story end to end; the child session id is kept and a gate is relayed into it. A live
+  probe needs the OpenCode service restarted after a `subagent_depth` change; until then the precondition check and
+  the depth-limit block are the evidence.
 - **Negative probes:** depth 1 → stop with the config line; a missing blocker and a cycle → stop; an epic in Ready →
   excluded and reported with its progress; a story moved to Done between snapshot and dispatch → skipped.
+- **Clean checkout:** after the run file is written, `git status --porcelain` still prints nothing (the sprint
+  directory is gitignored).

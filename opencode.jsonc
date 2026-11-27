@@ -27,9 +27,11 @@
     { "action": "shell", "resource": "git push --force*", "effect": "ask" }
   ],
 
-  // The story workflow nests one level: the analyst subagent dispatches the
-  // designer subagent. The default depth of 1 forbids that.
+  // The story workflow nests one level (the analyst dispatches the designer,
+  // the developer its implementers). The sprint workflow nests two: the sprint
+  // subagent dispatches the phase agents, which dispatch their own. The
+  // default depth of 1 forbids all of it.
   "experimental": {
-    "subagent_depth": 2
+    "subagent_depth": 3
   }
 }

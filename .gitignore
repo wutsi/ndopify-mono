@@ -48,4 +48,8 @@ chromedriver
 
 docs/reviews/
 
+# Sprint run files (read by the working tree, never committed: the developer
+# stops on a dirty primary checkout)
+docs/superpowers/sprints/
+
 .superpowers/

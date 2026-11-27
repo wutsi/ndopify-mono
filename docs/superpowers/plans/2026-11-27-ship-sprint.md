@@ -43,7 +43,7 @@ resume.
 **Interfaces:**
 - Produces: the verbatim baseline behavior that the skill must fix, and the synthetic board fixture reused in Task 4.
 
-- [ ] **Step 1: Fix the synthetic board scenario**
+- [x] **Step 1: Fix the synthetic board scenario**
 
 Use this fixture in the prompt (states are board statuses):
 
@@ -57,15 +57,15 @@ Use this fixture in the prompt (states are board statuses):
 #16 Ready, Priority P0, blockedBy #11
 ```
 
-- [ ] **Step 2: Dispatch a fresh `general` subagent without the skill**
+- [x] **Step 2: Dispatch a fresh `general` subagent without the skill**
 
 Prompt: *"Here is a GitHub project board: <fixture>. In what order would you ship these stories for a sprint, which
 would you skip, and when would you stop? Analysis only: do not run commands, do not modify files, do not dispatch
 agents."*
 
-- [ ] **Step 3: Record the answer verbatim under `## Baseline (RED)`**
+- [x] **Step 3: Record the answer verbatim under `## Baseline (RED)`**
 
-- [ ] **Step 4: Confirm it fails at least one of the Review Focus rules**
+- [x] **Step 4: Confirm it fails at least one of the Review Focus rules**
 
 Expected failures: #12 (epic) included, #15's out-of-sprint blocker ignored, or #16 ordered before #11. If it already
 satisfies every rule, stop and report that the skill has nothing to fix.
@@ -75,33 +75,33 @@ satisfies every rule, stop and report that the skill has nothing to fix.
 ### Task 2: Enable nested subagents
 
 **Files:**
-- Create: `opencode.json`
+- Modify: `opencode.jsonc` (the project already had `experimental.subagent_depth: 2`)
 
 **Interfaces:**
-- Produces: `experimental.subagent_depth: 2`, which lets a `general` subagent dispatch the story skill's phase agents.
+- Produces: `experimental.subagent_depth: 3`, so a `general` subagent can dispatch the story skill's phase agents,
+  which dispatch their own (`developer`'s implementers, `analyst`'s `designer`).
 
-- [ ] **Step 1: Create the project config**
+- [x] **Step 1: Raise the project config**
 
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "experimental": { "subagent_depth": 2 }
+```jsonc
+"experimental": {
+  "subagent_depth": 3
 }
 ```
 
-- [ ] **Step 2: Verify the file parses and holds the value**
+- [x] **Step 2: Verify the effective value**
 
-Run: `jq -e '.experimental.subagent_depth == 2' opencode.json`
-Expected: `true`
+Run: `opencode debug config | jq -r '[.[] | .info.experimental.subagent_depth // empty] | last'`
+Expected: `3`
 
-- [ ] **Step 3: Note the restart**
+- [x] **Step 3: Note the restart**
 
 The setting is read at startup; a running OpenCode service must restart before the nested dispatch works.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
-git add opencode.json
+git add opencode.jsonc
 git commit -m "chore(agents): allow subagents to dispatch the story agents"
 ```
 
@@ -117,7 +117,7 @@ git commit -m "chore(agents): allow subagents to dispatch the story agents"
 - Produces: the per-story dispatch prompt and report contract used by Task 4:
   `SPRINT-STORY: #<id>` / `OUTCOME: done|gate|blocked` / `PR: <n>|-` / `STATUS: <board status>|-` / `NOTES: <one line>`.
 
-- [ ] **Step 1: Write the frontmatter**
+- [x] **Step 1: Write the frontmatter**
 
 ```yaml
 ---
@@ -127,15 +127,15 @@ description: Use when asked to ship a whole sprint — every story in Ready, one
 ---
 ```
 
-- [ ] **Step 2: Write the body, in this order**
+- [x] **Step 2: Write the body, in this order**
 
 1. **Purpose** — orchestrates; never ships, reviews, merges, pushes or edits the board itself.
 2. **Arguments** — optional explicit story ids; none means every Ready story.
 3. **Read first** — `AGENTS.md`/`CLAUDE.md`, `MEMORY.md` when present, `.claude/project-profile.md`; stop if the
    profile is missing or its `platform` is not `github`.
-4. **Preconditions** — `subagent_depth` ≥ 2 read from `opencode.json` then `~/.config/opencode/opencode.json`; missing
-   or lower → stop with the exact JSON line to add. The `general` subagent must be able to load the `story` skill; if it
-   cannot, it reads `.claude/skills/story/SKILL.md` instead; if that is unreadable, stop.
+4. **Preconditions** — `subagent_depth` ≥ 3 read from `opencode debug config` (last document wins); missing or lower →
+   stop with the exact JSON line to add. The `general` subagent must be able to load the `story` skill; if it cannot,
+   it reads `.claude/skills/story/SKILL.md` instead; if that is unreadable, stop.
 5. **Snapshot** — `gh project item-list` for the Ready items, then one GraphQL read per item:
 
    ```bash
@@ -185,7 +185,7 @@ description: Use when asked to ship a whole sprint — every story in Ready, one
 12. **Done when** — every queued story is Done, or the run stopped on a gate/block with the run file naming the
     resume point.
 
-- [ ] **Step 3: Check the skill contains no phase work**
+- [x] **Step 3: Check the skill contains no phase work**
 
 Run: `grep -nE "gh project item-edit|gh pr merge|gh pr create|git push|mvn|feat/" .claude/skills/ship-sprint/SKILL.md`
 Expected: no output.
@@ -200,22 +200,22 @@ Expected: no output.
 **Interfaces:**
 - Consumes: `.claude/skills/ship-sprint/SKILL.md` from Task 3 and the fixture from Task 1.
 
-- [ ] **Step 1: Dispatch a fresh `general` subagent with the skill**
+- [x] **Step 1: Dispatch a fresh `general` subagent with the skill**
 
 Prompt: *"Read `.claude/skills/ship-sprint/SKILL.md` and apply its queue construction to this board: <fixture>. Do not
 execute anything; output the queue, the exclusions and any stop."*
 
-- [ ] **Step 2: Check the expected output**
+- [x] **Step 2: Check the expected output**
 
 Expected: `#14` (P0), `#10` (P1), `#13` (P2, before its dependent), `#11`, `#16` (P0 but blocked by #11); `#12`
 excluded as an epic (`0/2`); the run stops on `#15` blocked by `#99`. (The first draft of this step omitted `#10`,
 which is Ready and unblocked; the implementation output was right and the expectation wrong.)
 
-- [ ] **Step 3: If the output differs, fix the wording that failed and re-run Step 1**
+- [x] **Step 3: If the output differs, fix the wording that failed and re-run Step 1**
 
 Close the loophole in the skill, not in the test. Re-run until Step 2 matches.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add .claude/skills/ship-sprint/SKILL.md opencode.json docs/superpowers/plans/2026-11-27-ship-sprint.md
@@ -229,27 +229,27 @@ git commit -m "feat(agents): ship a sprint one story at a time in its own subage
 **Files:**
 - Modify: `.claude/skills/ship-sprint/SKILL.md` only if a probe exposes a gap.
 
-- [ ] **Step 1: Epic-only board**
+- [x] **Step 1: Epic-only board**
 
 Ask a fresh subagent with the skill: a board with a single Ready epic (3 open children). Expected: excluded, reported
 with `0/3`, no dispatch, no error.
 
-- [ ] **Step 2: Story moved to Done**
+- [x] **Step 2: Story moved to Done**
 
 Ask: the fixture plus "#13 moved to Done after the snapshot". Expected: #13 skipped, #11 and #16 still ordered after it
 in the queue.
 
-- [ ] **Step 3: Depth limit**
+- [x] **Step 3: Depth limit**
 
 Ask: "The first child reports `Subagent depth limit reached (1)`." Expected: the run stops and prints the exact
 `experimental.subagent_depth` line; no fallback to the main thread.
 
-- [ ] **Step 4: Gate relay**
+- [x] **Step 4: Gate relay**
 
 Ask: "The child reports `OUTCOME: gate` with a prototype path." Expected: the skill shows the path, waits for the user,
 and resumes the *same* session id.
 
-- [ ] **Step 5: Read-through against the spec**
+- [x] **Step 5: Read-through against the spec**
 
 Walk `docs/superpowers/specs/2026-11-27-ship-sprint-design.md` section by section; every decision must appear in the
 skill exactly once.
@@ -264,18 +264,18 @@ skill exactly once.
 **Interfaces:**
 - Produces: the README row that lets a human find the skill.
 
-- [ ] **Step 1: Add the row**
+- [x] **Step 1: Add the row**
 
 ```markdown
 | [`ship-sprint`](.claude/skills/ship-sprint/SKILL.md) | Ships every story in Ready, one at a time: dependency order from `blockedBy`, epics with open sub-issues excluded, one subagent per story running `story ship <id>`. |
 ```
 
-- [ ] **Step 2: Verify the badge block is untouched**
+- [x] **Step 2: Verify the badge block is untouched**
 
 Run: `git diff README.md`
 Expected: only the new table row.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add README.md docs/superpowers/specs/2026-11-27-ship-sprint-design.md
@@ -305,3 +305,33 @@ Observed failures against the spec:
 - **No report contract.** The child's final message shape was unspecified, so a report cannot be parsed reliably.
 
 The parts it got right — one story at a time, never an epic, sequential PRs, gates relayed — are kept.
+
+---
+
+## Fix pass (final review)
+
+The whole-branch review found two run-blocking defects and several correctness gaps; all Critical and Important
+findings were fixed in one pass.
+
+- **Run file dirtying the checkout (Critical).** `developer.md:71` requires `git status --porcelain` to print nothing,
+  and `docs/superpowers/sprints/` was not ignored. Added the directory to `.gitignore` (mirroring `docs/reviews/`), and
+  the skill now says never commit or leave the run file untracked.
+- **Board bootstrap (Critical).** `gh issue view --json projectItems` returns a title only, and a run with no arguments
+  has no story to start from. Added `tracker.project` to `.claude/project-profile.md`, resolved with
+  `gh project list`, and used the repository owner (not the project owner) for the GraphQL `repository(owner:)`.
+- **Priority (Important).** `gh project item-list --format json` omits custom fields. Priority now comes from the
+  issue's `projectItems.fieldValues`, filtered on `field.name == "Priority"`.
+- **Explicit ids (Important).** They are intersected with Ready before the blocker check, and their given order wins
+  among the selected stories except where `blockedBy` constrains them.
+- **Gate contract (Important).** Added `GATE: question|prototype|-` and allowed multi-line `NOTES`; an unresumable
+  child session is now a stop-and-ask, never a fresh child.
+- **Depth (Important).** The chain is `main → sprint child → phase agent → the phase's own subagents`, so the setting
+  is 3, not 2. Raised it in the existing `opencode.jsonc` and deleted the duplicate `opencode.json` the first draft
+  added.
+- **Config reading (Important).** The skill reads the effective value from `opencode debug config`, not one file.
+- **Live dispatch probe (Important, deferred).** A nested dispatch needs the OpenCode service restarted after the
+  depth change; this session cannot restart it. The precondition check and the depth-limit block are the evidence
+  until then; run the probe after the restart.
+- **Minors.** Profile status values in prose, a `Resume:` line in the run file, blocker checks on the closed issue
+  (the deployer closes at Done), `content.type == "Issue"` in the snapshot, a truncation stop, placeholder ids in the
+  template, the `ship-sprint 360 375` argument example, and the `general` agent named explicitly.
