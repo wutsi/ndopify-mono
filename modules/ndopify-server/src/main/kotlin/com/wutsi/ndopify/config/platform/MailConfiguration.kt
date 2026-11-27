@@ -19,6 +19,8 @@ import org.springframework.boot.health.contributor.HealthIndicator
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.mail.javamail.JavaMailSender
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sesv2.SesV2Client
 import java.time.Clock
@@ -34,6 +36,8 @@ import java.time.Duration
 open class MailConfiguration(
     private val mail: JavaMailSender,
     @param:Value("\${ndopify.mail.verification.ses.region}") private val region: String,
+    @param:Value("\${ndopify.mail.verification.ses.access-key}") private val accessKey: String,
+    @param:Value("\${ndopify.mail.verification.ses.secret-key}") private val secretKey: String,
     @param:Value("\${ndopify.mail.verification.timeout-seconds}") private val timeoutSeconds: Long,
     @param:Value("\${ndopify.mail.verification.health.up-ttl-minutes}") private val upTtlMinutes: Long,
     @param:Value("\${ndopify.mail.verification.health.down-ttl-seconds}") private val downTtlSeconds: Long,
@@ -73,11 +77,17 @@ open class MailConfiguration(
 
     @Bean
     @ConditionalOnProperty(name = ["ndopify.mail.verification.provider"], havingValue = "ses")
-    open fun sesV2Client(): SesV2Client =
-        SesV2Client.builder()
+    open fun sesV2Client(): SesV2Client {
+        val builder = SesV2Client.builder()
             .region(Region.of(region))
             .overrideConfiguration { it.apiCallTimeout(Duration.ofSeconds(timeoutSeconds)) }
-            .build()
+        if (accessKey.isNotBlank() && secretKey.isNotBlank()) {
+            builder.credentialsProvider(
+                StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)),
+            )
+        }
+        return builder.build()
+    }
 
     @Bean
     @ConditionalOnProperty(name = ["ndopify.mail.verification.provider"], havingValue = "ses")
