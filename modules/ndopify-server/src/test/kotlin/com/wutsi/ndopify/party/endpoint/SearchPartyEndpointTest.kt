@@ -1,8 +1,11 @@
 package com.wutsi.ndopify.party.endpoint
 
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.SearchPartyResponse
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
@@ -12,6 +15,19 @@ import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/SearchPartyEndpoint.sql"])
 class SearchPartyEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    private var admin = true
+
+    override val roles: Array<String>
+        get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
+
+    @Test
+    fun `non-admin - forbidden`() {
+        admin = false
+        val response = rest.getForEntity("/v1/parties", ErrorResponse::class.java)
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
+    }
+
     @Test
     fun search() {
         val response = rest.getForEntity("/v1/parties", SearchPartyResponse::class.java)
