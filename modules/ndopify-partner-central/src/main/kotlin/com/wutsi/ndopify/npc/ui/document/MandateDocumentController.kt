@@ -56,7 +56,8 @@ import java.time.ZoneOffset
  * (`/mandates/{id}/documents/{documentId}`).
  *
  * The add and the replacement are multipart forms, so every action works without JavaScript; the pages show no image
- * of a page, only a *Voir* link to its [preview] route, which streams the watermarked JPEG behind the agent's session.
+ * of a page, only a *Voir* link to its viewer ([previewPage]), whose image is the authenticated [preview] route that
+ * streams the watermarked JPEG behind the agent's session.
  * Each post is post-redirect-get back to the mandate
  * page (an add, a delete) or the document's page (a rename, a replacement) with a flash attribute, and the pages show
  * them: [OUTCOME] / [TITLE] on the mandate page, [RENAME_OUTCOME] and [PAGE] on the document's.
@@ -244,7 +245,7 @@ class MandateDocumentController(
     }
 
     /**
-     * A document's page, with its pages in order and each linked to this app's authenticated preview; `?delete=1`
+     * A document's page, with its pages in order and each linked to its viewer; `?delete=1`
      * opens the confirmation panel without JS (a GET, so a delete is never forced by a link).
      * `?replaceError=size&page={pageId}` is the size error of a replacement over the multipart limit
      * ([com.wutsi.ndopify.npc.ui.kyc.KycUploadErrorHandler]).
