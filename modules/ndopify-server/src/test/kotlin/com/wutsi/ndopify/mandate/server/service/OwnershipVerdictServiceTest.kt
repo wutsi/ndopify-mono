@@ -149,6 +149,36 @@ class OwnershipVerdictServiceTest {
     }
 
     @Test
+    fun `a valid ID next to a failed one verifies`() {
+        val verification = evaluate(
+            document(
+                DocumentType.NATIONAL_ID,
+                DocumentStatus.FAILED,
+                problemCodes = listOf(DocumentProblemCodes.DOCUMENT_UNREADABLE),
+            ),
+            document(DocumentType.NATIONAL_ID, DocumentStatus.EXTRACTED, nationalId("Jean Paul", "Mbarga", "2030-01-01")),
+            document(DocumentType.LAND_TITLE, DocumentStatus.EXTRACTED, landTitle("Jean Paul Mbarga")),
+        )
+
+        assertVerdict(verification, OwnershipVerificationStatus.VERIFIED)
+    }
+
+    @Test
+    fun `an extracting ID keeps the verdict pending despite a failed one`() {
+        val verification = evaluate(
+            document(
+                DocumentType.NATIONAL_ID,
+                DocumentStatus.FAILED,
+                problemCodes = listOf(DocumentProblemCodes.DOCUMENT_UNREADABLE),
+            ),
+            document(DocumentType.NATIONAL_ID, DocumentStatus.EXTRACTING),
+            document(DocumentType.LAND_TITLE, DocumentStatus.EXTRACTED, landTitle("Jean Paul Mbarga")),
+        )
+
+        assertVerdict(verification, OwnershipVerificationStatus.PENDING)
+    }
+
+    @Test
     fun `an unusable ID reports its problem codes`() {
         val verification = evaluate(
             document(
