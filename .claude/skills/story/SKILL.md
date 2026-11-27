@@ -74,8 +74,9 @@ handoff (`OUTCOME: handoff`, `NEXT: implement <id>`) reports the findings and th
 
 ### `merge <pr-number>`
 
-Dispatch `deployer <pr-number>`. Report the deployment outcome and `STATUS`. A red deployment leaves the story in
-`tracker.statuses.review` and the issue open; report the failing run.
+Dispatch `deployer <pr-number>`. Report the deployment outcome, `STATUS`, and the story's removed worktree and local
+branch. A red deployment leaves the story in `tracker.statuses.review` and the issue open; report the failing run. A
+branch the deployer could not delete is a block, reported with the branch name — never a done.
 
 ## Ship
 
@@ -119,7 +120,8 @@ Resolve the start point in this order; the first row that matches wins:
 | anything else | stop and ask |
 
 Then follow each report's `NEXT`: developer `NEXT: review <pr>` → reviewer; reviewer `NEXT: implement <id>` →
-developer; reviewer `NEXT: merge <pr>` → deployer; deployer `NEXT: none` → done. A developer
+developer; reviewer `NEXT: merge <pr>` → deployer; deployer `NEXT: none` → done, provided its report shows the story's
+worktree and local branch removed. A developer
 `STATUS: <tracker.statuses.done>` with `NEXT: none` is a library-only story: the chain ends there. A gate is relayed
 and the same session resumed; `blocked` stops the chain.
 
@@ -127,8 +129,8 @@ The main thread only orchestrates: no code, commit, push, review, merge or board
 
 ## Report
 
-Report the mode, the phases run, the outcome, the pull request and plan links, the story status, and what is left for
-the user. Do not repeat the agents' tool output.
+Report the mode, the phases run, the outcome, the pull request and plan links, the story status, the story's
+worktree/branch cleanup, and what is left for the user. Do not repeat the agents' tool output.
 
 ## Stop and ask
 
@@ -138,6 +140,7 @@ needs the user's answer. Never guess a story or a pull request.
 
 ## Done when
 
-The mode's agent reported `done` and the report names the next action — or the reviewer handed a pass to the developer
-and the chain is at the developer, or the chain stopped on `blocked`, on a `Final` review, or on a gate, and the user
-knows why.
+The mode's agent reported `done` and the report names the next action — after a `merge`, that report also shows the
+story's worktree and local branch removed — or the reviewer handed a pass to the developer and the chain is at the
+developer, or the chain stopped on `blocked` (including a branch the deployer could not delete), on a `Final` review,
+or on a gate, and the user knows why.

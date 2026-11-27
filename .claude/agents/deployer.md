@@ -153,31 +153,52 @@ gh api "repos/<owner>/<repo>/actions/runs?head_sha=<sha>&per_page=100" \
 
 ## 4. Close
 
-Only once every selected run is green:
+Only once every selected run is green. Resolve the story's branch first — a merged resume skips §1, so it was not read
+there:
+
+```bash
+gh pr view <pr> --json headRefName --jq .headRefName
+```
 
 1. Close the issue with the PR link and the deployment runs:
    `gh issue close <id> --comment "<PR link>\n\nDeployed: <run links>"` (`No deployment run started` when none).
 2. Move the card to `tracker.statuses.done` (*Story tracker*).
-3. From the main worktree — not from inside the story's — remove its worktree and local branch: `git worktree remove
-   <dir>`, then `git branch -D <branch>`. A dirty worktree is a stop; never remove it with `--force`.
+3. From the main worktree — not from inside the story's — remove the story's worktree and local branch, whichever
+   still exists, then prove both are gone:
+
+   ```bash
+   git worktree list                 # the worktree holding <branch>, if any
+   git worktree remove <dir>         # only when its directory exists
+   git worktree prune                # when git records it but the directory is gone
+   git branch -D <branch>            # fails while a worktree still uses the branch
+   git branch --list <branch>        # must print nothing
+   git worktree list                 # the main worktree only
+   ```
+
+   A dirty worktree is a stop; never remove it with `--force`. A `git branch -D` refusal, or a branch still listed
+   after it, is a stop too: report the branch and the worktree that holds it. Never report `done` while the local
+   branch exists.
 
 ## Report
 
 Your final message is the report itself, in the shape of `.claude/agent-report.md` — that file is a template; never
 edit or overwrite it. A successful run is `OUTCOME: done`, `GATE: -`,
-`STORY: #<id>`, `BRANCH`, `WORKTREE`, `PR`, `STATUS: <tracker.statuses.done>`, `APPROVAL: yes`, `NEXT: none`, with the
-deployment run links (or `no deployment run`) in `NOTES`. An error — a red check, a refused merge, a null merge
-commit, a red deployment run — is `OUTCOME: blocked`, the reason and the failing run in `NOTES`; a red deployment keeps
+`STORY: #<id>`, `BRANCH: <branch>`, `WORKTREE: -`, `PR`, `STATUS: <tracker.statuses.done>`, `APPROVAL: yes`,
+`NEXT: none`, with the deployment run links (or `no deployment run`) and the removed worktree and branch in `NOTES`.
+An error — a red check, a refused merge, a null merge commit, a red deployment run, a local branch that survives its
+deletion — is `OUTCOME: blocked`, the reason and the failing run or branch in `NOTES`; a red deployment keeps
 `STATUS: <tracker.statuses.review>` and `APPROVAL: yes`. A question is `OUTCOME: gate`, `GATE: question`.
 
 ## Stop and ask
 
 Stop instead of guessing when: no approved head, or the head moved after the approval; a check is red; the PR's base is
 not `repository.default_branch`; the merge is refused; the merge commit is null; a deployment run is red; the worktree
-is dirty before removal; the board is missing, ambiguous, or lacks the review/done status; `repository.merge_method` is
-absent or not `merge`, `squash` or `rebase`.
+is dirty before removal; the local branch cannot be deleted or is still listed after `git branch -D`; the board is
+missing, ambiguous, or lacks the review/done status; `repository.merge_method` is absent or not `merge`, `squash` or
+`rebase`.
 
-- An error above (red check, wrong base, refused merge, null commit, red deployment) ends with `OUTCOME: blocked`.
+- An error above (red check, wrong base, refused merge, null commit, red deployment, surviving branch) ends with
+  `OUTCOME: blocked`.
 - A decision only the user can make (no approved head, a dirty worktree, a missing or ambiguous board or profile
   value) ends with `OUTCOME: gate`, `GATE: question`, and the question in `NOTES` when you run as a subagent and cannot
   ask.
@@ -187,5 +208,7 @@ Never review, approve, open or close a PR, never edit or push code, and never fo
 ## Done when
 
 The PR is merged, every selected deployment run is green, the issue is closed, the card is in
-`tracker.statuses.done`, and the story's worktree and local branch are removed — or the deployer stopped and the report
-says why (no approved head, a red check or run, a refused merge, a null merge commit, a missing profile value).
+`tracker.statuses.done`, and the story's worktree and local branch are removed — `git branch --list <branch>` prints
+nothing and `git worktree list` shows only the main worktree — or the deployer stopped and the report says why (no
+approved head, a red check or run, a refused merge, a null merge commit, a dirty worktree, a surviving local branch, a
+missing profile value).
