@@ -74,6 +74,7 @@ class ListingMapper(private val imageService: ImageService) {
             errorMessage = entity.errorMessage,
             retries = entity.retries,
             verifiedAt = entity.verifiedAt,
+            ownershipVerified = entity.ownershipVerified,
             heroImageId = entity.heroImageId,
         )
     }

@@ -48,7 +48,7 @@ INSERT INTO T_LISTING(
     secured_fenced, security_guard, video_surveillance,
     price, currency_code, price_periodicity_type, security_deposit, advance_rent, lease_term, notice_period,
     available_from, agent_remarks, title, summary, description,
-    created_at, modified_at, published_at
+    created_at, modified_at, published_at, ownership_verified
 ) VALUES
     (100, 1, 3, 1, 20, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 111,
      'Near the embassy', 'Second street on the left', 11.5, 3.9,
@@ -59,7 +59,7 @@ INSERT INTO T_LISTING(
      true, true, false,
      150000, 'XAF', 'MONTHLY', 2, 3, 12, 1,
      '2026-11-01', 'Keys at the guard', 'Nice apartment', 'Two rooms in Bastos', 'A long description',
-     '2026-10-01 10:00:00', '2026-10-02 10:00:00', '2026-10-03 10:00:00'),
+     '2026-10-01 10:00:00', '2026-10-02 10:00:00', '2026-10-03 10:00:00', true),
     (101, 1, 0, 2, 20, 'RESIDENTIAL', 'RENTAL', 'DRAFT', 2370201, 222,
      null, null, null, null,
      'HOUSE', 'UNFURNISHED', 4, 2, 1, 1, 2, 200, 2, null,
@@ -69,7 +69,7 @@ INSERT INTO T_LISTING(
      false, false, false,
      300000, 'XAF', 'MONTHLY', null, null, null, null,
      null, null, null, null, null,
-     '2026-10-01 10:00:00', '2026-10-01 10:00:00', null),
+     '2026-10-01 10:00:00', '2026-10-01 10:00:00', null, false),
     (102, 1, 0, 3, 20, 'RESIDENTIAL', 'SALE', 'PUBLISHED', 2220957, null,
      null, null, null, null,
      'APARTMENT', null, 3, 1, 1, 1, null, 120, null, null,
@@ -79,7 +79,7 @@ INSERT INTO T_LISTING(
      false, false, false,
      80000000, 'XAF', 'NONE', null, null, null, null,
      '2027-03-01', null, null, null, null,
-     '2026-10-01 10:00:00', '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
+     '2026-10-01 10:00:00', '2026-10-01 10:00:00', '2026-10-01 10:00:00', false),
     (900, 2, 0, 9, 90, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 111,
      null, null, null, null,
      'APARTMENT', null, 2, 1, 1, 1, null, 70, null, null,
@@ -89,7 +89,7 @@ INSERT INTO T_LISTING(
      false, false, false,
      100000, 'XAF', 'MONTHLY', null, null, null, null,
      null, null, null, null, null,
-     '2026-10-01 10:00:00', '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
+     '2026-10-01 10:00:00', '2026-10-01 10:00:00', '2026-10-01 10:00:00', false),
     (103, 1, 0, 4, 20, 'RESIDENTIAL', 'SALE', 'SOLD', 2220957, null,
      null, null, null, null,
      'APARTMENT', null, 3, 1, 1, 1, null, 120, null, null,
@@ -99,7 +99,7 @@ INSERT INTO T_LISTING(
      false, false, false,
      80000000, 'XAF', 'NONE', null, null, null, null,
      '2027-03-01', null, null, null, null,
-     '2026-10-01 10:00:00', '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
+     '2026-10-01 10:00:00', '2026-10-01 10:00:00', '2026-10-01 10:00:00', false),
     (104, 1, 0, 5, 20, 'RESIDENTIAL', 'RENTAL', 'RENTED', 2370201, 111,
      null, null, null, null,
      'APARTMENT', null, 2, 1, 1, 1, null, 70, null, null,
@@ -109,7 +109,7 @@ INSERT INTO T_LISTING(
      false, false, false,
      150000, 'XAF', 'MONTHLY', null, null, null, null,
      null, null, null, null, null,
-     '2026-10-01 10:00:00', '2026-10-01 10:00:00', '2026-10-01 10:00:00');
+     '2026-10-01 10:00:00', '2026-10-01 10:00:00', '2026-10-01 10:00:00', false);
 
 -- 100: location and terms verified, 5 photos (none rejected), so photos verified too   101: 5 photos, one rejected
 INSERT INTO T_LISTING_SECTION(id, tenant_id, listing_id, section, verified_at) VALUES
