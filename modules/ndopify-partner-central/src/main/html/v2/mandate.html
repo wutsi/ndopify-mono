@@ -18,9 +18,11 @@
     <link rel="stylesheet" href="assets/css/listing.css">
     <link rel="stylesheet" href="assets/css/visit.css">
     <link rel="stylesheet" href="assets/css/documents.css?v=20261126d">
+    <link rel="stylesheet" href="assets/css/ownership.css?v=20261127a">
     <script src="assets/js/partner-central.js?v=20261125a" defer></script>
     <script src="assets/js/visit.js?v=20261118a" defer></script>
     <script src="assets/js/mandate-documents.js?v=20261126d" defer></script>
+    <script src="assets/js/mandate-ownership.js?v=20261127a" defer></script>
 </head>
 <!--
     v2: a SALE mandate (?id=301, a seller's villa, signed; ?id=302, a seller's plot of land whose criteria show its
@@ -572,6 +574,123 @@
                                     </a>
                                 </div>
                             </article>
+                        </li>
+                    </template>
+                </section>
+
+                <!--
+                    #298: the owner verification of a LISTING mandate (GET /v1/mandates/{id}/ownership), read on
+                    every page load and never cached. One section beside the Documents section: before it here, in
+                    the same block (after the day's work — contact, progress, visits, matches — and before
+                    *Sa recherche*), so that the verdict opens the block and the documents below it are where the
+                    agent acts on it. Only on an ASSIGNED, PENDING_APPROVAL or APPROVED LISTING mandate: absent on a
+                    SEARCH mandate (no ownership request is made) and on a CLOSED / CANCELLED one. The verdict is the
+                    server's (#297): this page only words it, it never re-derives it from the documents.
+
+                    PENDING: *Vérification du propriétaire en cours*, no error styling: one line per missing piece,
+                    with what counts (*une carte nationale d'identité (recto et verso) ou un passeport* / *un titre
+                    foncier ou un certificat de propriété*), and a link to the Documents section. With no reason (a
+                    piece still UPLOADED or EXTRACTING) the check is in progress and the section says so.
+                    VERIFIED: *Propriétaire vérifié*, the evidence date in the tenant's dateFormat with the year
+                    (25/11/2026, through TenantFormatter), the hint that a verified owner is what allows publication
+                    (#299), and a link to the mandate's listing (the *Actif* panel's read) — no link, and no dead
+                    one, when the mandate has no listing yet.
+                    FAILED: *Propriétaire non vérifié*, one line per reason code: the document's type and the
+                    agent's title (only when it differs from the type's name, as a Documents row), the reason in
+                    French, its action (reprendre la photo / changer le type / ajouter un titre), and for *_UNUSABLE
+                    the document's own problem codes, worded as the document page words them (#331). No manual
+                    review. Nothing of a reason is a document id, page, path, storage URL or extracted value: the
+                    type and the agent's own title only, and the action links to #documents-title, where the faulty
+                    row is. An unknown reason code reads the generic line.
+                    UNAVAILABLE: a failed read (5xx, network, 403/404) or an UNKNOWN status only makes this section
+                    say *Vérification indisponible*; every other section renders as before.
+
+                    PROTOTYPE: the static markup is ?id=301's render (its identity card is expired: FAILED), as the
+                    server would send it. mandate-ownership.js only switches the samples from ?ownership=:
+                    pending (default &reason=both; id-missing, document-missing, in-flight), verified (301 with
+                    &listing=published also shows the listing link), failed (&reason=id-expired (default),
+                    id-unusable, id-name, document-unusable, document-name), unavailable, none. A SEARCH mandate
+                    (?id=303, ?id=204) and a CLOSED / CANCELLED one (301 cancelled or closed from this page) hide the
+                    section whatever the switch. Production renders the state, the reasons and the date server-side;
+                    no state needs JavaScript.
+                -->
+                <section class="home-section ownership" aria-labelledby="ownership-title" data-ownership>
+                    <div class="ownership__head">
+                        <h2 id="ownership-title">Vérification du propriétaire</h2>
+                        <p class="status-tag status-tag--warning" data-ownership-tag>Non vérifié</p>
+                    </div>
+                    <p class="ownership__intro">Ndopify vérifie que <span data-ownership-party>le vendeur</span> est
+                        bien le propriétaire du bien, à partir des pièces de la section Documents.</p>
+
+                    <div class="alert alert--warning" hidden data-ownership-unavailable>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p class="alert__title">Vérification indisponible</p>
+                            <p>La vérification du propriétaire ne peut pas être affichée pour le moment. Rechargez la
+                                page dans quelques instants.</p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert--info" hidden data-ownership-pending>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p class="alert__title">Vérification du propriétaire en cours</p>
+                            <ul class="ownership__pieces" data-ownership-pending-reasons>
+                                <li>Il manque la pièce d'identité du propriétaire&nbsp;: une carte nationale
+                                    d'identité (recto et verso) ou un passeport, à son nom.</li>
+                                <li>Il manque le document de propriété&nbsp;: un titre foncier ou un certificat de
+                                    propriété, à son nom.</li>
+                            </ul>
+                            <p data-ownership-pending-text hidden>La lecture des pièces est en cours&nbsp;: la
+                                vérification se fera d'elle-même dès qu'elles seront analysées.</p>
+                            <p class="ownership__actions">
+                                <a class="btn btn--outline btn--compact" href="#documents-title"
+                                   data-ownership-pending-link>Ajouter ces pièces dans Documents</a>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Default (301): FAILED, its identity card expired. -->
+                    <div class="alert alert--warning" data-ownership-failed>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p class="alert__title">Propriétaire non vérifié</p>
+                            <ul class="ownership__reasons" data-ownership-reasons>
+                                <li class="ownership__reason">
+                                    <p class="ownership__document">Carte nationale d'identité</p>
+                                    <p>La pièce d'identité est expirée&nbsp;: elle ne peut plus servir à vérifier le
+                                        propriétaire.</p>
+                                    <p class="ownership__action">Reprenez la photo d'une pièce en cours de validité,
+                                        recto et verso, puis ajoutez-la dans Documents.</p>
+                                </li>
+                            </ul>
+                            <p class="ownership__actions">
+                                <a class="btn btn--outline btn--compact" href="#documents-title">Corriger dans les
+                                    documents</a>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert--success" hidden data-ownership-verified>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <div>
+                            <p class="alert__title">Propriétaire vérifié</p>
+                            <p>Pièces vérifiées le <strong data-ownership-date>25/11/2026</strong>.</p>
+                            <p>Un propriétaire vérifié est ce qui permet de publier l'annonce.</p>
+                            <p class="ownership__actions" hidden data-ownership-listing-actions>
+                                <a class="btn btn--primary btn--compact" data-ownership-listing>Voir l'annonce</a>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- One reason of a FAILED verdict: type and title, the wording, its details and its action. -->
+                    <template data-ownership-reason-template>
+                        <li class="ownership__reason">
+                            <p class="ownership__document"><strong data-reason-type></strong>
+                                <span class="ownership__document-title" data-reason-title hidden></span></p>
+                            <p data-reason-text></p>
+                            <ul class="ownership__problems" data-reason-problems hidden></ul>
+                            <p class="ownership__action" data-reason-action></p>
                         </li>
                     </template>
                 </section>
