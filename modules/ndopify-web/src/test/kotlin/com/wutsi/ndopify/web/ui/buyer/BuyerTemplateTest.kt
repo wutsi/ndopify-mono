@@ -119,11 +119,19 @@ class BuyerTemplateTest {
         listOf(
             "un même agent traite les locations et les ventes",
             "un pourcentage du prix de vente",
-            "Ndopify vérifie l'agent, pas les documents du bien",
+            "pièce d'identité du propriétaire",
+            "vérifie que le titre est à son nom",
+            "ne consulte pas le registre foncier",
+            "services des domaines",
             "Ndopify ne perçoit aucun paiement",
         ).forEach { assertTrue(text.contains(it), it) }
-        listOf("affichés nulle part", "spécialiste", "off-market", "catalogue")
-            .forEach { assertFalse(text.contains(it), it) }
+        listOf(
+            "affichés nulle part",
+            "spécialiste",
+            "off-market",
+            "catalogue",
+            "Ndopify vérifie l'agent, pas les documents du bien",
+        ).forEach { assertFalse(text.contains(it), it) }
     }
 
     @Test
