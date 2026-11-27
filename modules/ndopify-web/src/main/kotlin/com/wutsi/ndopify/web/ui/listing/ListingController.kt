@@ -1,5 +1,7 @@
 package com.wutsi.ndopify.web.ui.listing
 
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.refdata.dto.Tenant
 import com.wutsi.ndopify.web.client.ndopify.NdListingClient
@@ -45,6 +47,8 @@ class ListingController(
 ) {
     companion object {
         const val VIEW = "listing"
+
+        private const val INVALID_EMAIL = "Cette adresse email n'est pas valide."
     }
 
     @GetMapping(
@@ -77,8 +81,9 @@ class ListingController(
      * the interest to the search it already has (ndopify-server then records an accepted match), then shows the
      * confirmation. A filled honeypot or a rate-limited request (409 `MANDATE_RATE_LIMITED`) also shows it, without
      * anything created: the page never says which case it was. An invalid form or a 400 shows the page again, its
-     * popup open, with the French messages and the typed values. A missing moving period is worded as a purchase
-     * horizon on a sale listing, which costs one read of the listing — and only then.
+     * popup open, with the French messages and the typed values. A refused e-mail (400 `EMAIL_ADDRESS_INVALID`) reopens
+     * the popup on its e-mail field; any other 400 keeps the global message. A missing moving period is worded as a
+     * purchase horizon on a sale listing, which costs one read of the listing — and only then.
      */
     @PostMapping("/listings/{id}/interest")
     fun interest(@PathVariable id: Long, @ModelAttribute form: ListingInterestForm, model: Model): Any {
@@ -99,13 +104,12 @@ class ListingController(
         } catch (ex: HttpClientErrorException.Conflict) {
             confirmation(id) // Rate limited: the same screen, nothing created
         } catch (ex: HttpClientErrorException.BadRequest) {
-            page(
-                id = id,
-                model = model,
-                form = form,
-                errors = mapOf("global" to "Votre demande n'a pas pu être envoyée. Vérifiez vos informations."),
-                done = false,
-            )
+            val errors = if (errorCode(ex) == ErrorCode.EMAIL_ADDRESS_INVALID) {
+                mapOf("email" to INVALID_EMAIL)
+            } else {
+                mapOf("global" to "Votre demande n'a pas pu être envoyée. Vérifiez vos informations.")
+            }
+            page(id = id, model = model, form = form, errors = errors, done = false)
         }
     }
 
@@ -140,5 +144,12 @@ class ListingController(
             listingClient.get(id).listingType == ListingType.SALE
         } catch (ex: RestClientException) {
             false
+        }
+
+    private fun errorCode(ex: HttpClientErrorException): String? =
+        try {
+            ex.getResponseBodyAs(ErrorResponse::class.java)?.error?.code
+        } catch (ignored: Exception) {
+            null
         }
 }

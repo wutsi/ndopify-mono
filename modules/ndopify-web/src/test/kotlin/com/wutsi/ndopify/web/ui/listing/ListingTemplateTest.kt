@@ -363,6 +363,18 @@ class ListingTemplateTest {
     }
 
     @Test
+    fun `a refused e-mail flags the popup's e-mail field`() {
+        val doc = render(errors = mapOf("email" to "Cette adresse email n'est pas valide."))
+
+        assertTrue(doc.selectFirst("#visit")!!.hasClass("is-open"))
+        val email = doc.selectFirst("#email")!!
+        assertEquals("true", email.attr("aria-invalid"))
+        assertEquals("email-error", email.attr("aria-describedby"))
+        assertEquals("Cette adresse email n'est pas valide.", doc.selectFirst("#email-error")?.text())
+        assertFalse(doc.selectFirst("#visit")!!.text().contains("Votre demande n'a pas pu être envoyée"))
+    }
+
+    @Test
     fun `the confirmation replaces the form`() {
         val doc = render(done = true)
 
