@@ -12,6 +12,8 @@ import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /** The publication gate off: the verdict no longer refuses, the listing status still does. Fixture: see PublishListingEndpointTest. */
 @TestPropertySource(properties = ["ndopify.listing.publish.require-owner-verification=false"])
@@ -29,13 +31,16 @@ class PublishListingWithoutOwnerVerificationEndpointTest : AuthorizationAwareEnd
         val listing = dao.findById(103L).get()
         assertEquals(ListingStatus.PUBLISHING, listing.status)
         assertEquals(0, listing.retries)
+        assertFalse(listing.ownershipVerified)
     }
 
     @Test
     fun `a failed owner is published`() {
         assertEquals(HttpStatus.OK, publish(104L).statusCode)
 
-        assertEquals(ListingStatus.PUBLISHING, dao.findById(104L).get().status)
+        val listing = dao.findById(104L).get()
+        assertEquals(ListingStatus.PUBLISHING, listing.status)
+        assertFalse(listing.ownershipVerified)
     }
 
     @Test
@@ -43,6 +48,7 @@ class PublishListingWithoutOwnerVerificationEndpointTest : AuthorizationAwareEnd
         assertEquals(HttpStatus.OK, publish(100L).statusCode)
 
         assertEquals(ListingStatus.PUBLISHING, dao.findById(100L).get().status)
+        assertTrue(dao.findById(100L).get().ownershipVerified)
     }
 
     @Test

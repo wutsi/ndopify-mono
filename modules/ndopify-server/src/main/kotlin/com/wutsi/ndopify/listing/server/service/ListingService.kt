@@ -343,7 +343,7 @@ class ListingService(
      * Sends a VERIFIED listing for publication: PUBLISHING, its content being generated asynchronously
      * (`ListingJobs.publish`). 404 LISTING_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for an admin or its agent, then 409
      * LISTING_NOT_VERIFIED, then 409 LISTING_OWNERSHIP_NOT_VERIFIED while `ndopify.listing.publish.require-owner-verification`
-     * is on and the mandate's ownership verdict is not VERIFIED ([publish]).
+     * is on and the mandate's ownership verdict is not VERIFIED ([publish]); the same save freezes `ownershipVerified`.
      */
     @Transactional
     fun publish(id: Long): ListingEntity {
@@ -357,6 +357,11 @@ class ListingService(
      * LISTING_OWNERSHIP_NOT_VERIFIED while `ndopify.listing.publish.require-owner-verification` is on and the mandate's
      * ownership verdict (#297) is not VERIFIED: the verdict's reasons are in `error.data["reasons"]`, as `code` and
      * (for `*_UNUSABLE`) `details`, never a name, document, path or URL. The verdict is derived in both modes.
+     *
+     * The same save freezes `ownershipVerified` (`T_LISTING.ownership_verified`, `V22_0`) from the verdict just read:
+     * `true` only for `VERIFIED`, `false` otherwise, whichever the flag. Only this save writes it; the `PUBLISHING`
+     * second pass (`ListingPublisherService`) writes nothing there, and no read re-derives it; a refused publication
+     * saves nothing.
      */
     @Transactional
     fun publish(listing: ListingEntity): ListingEntity {
@@ -364,7 +369,8 @@ class ListingService(
             throw ConflictException(Error(ErrorCode.LISTING_NOT_VERIFIED))
         }
         val verification = ownershipVerdictService.verify(listing.mandate)
-        if (requireOwnerVerification && verification.status != OwnershipVerificationStatus.VERIFIED) {
+        val verified = verification.status == OwnershipVerificationStatus.VERIFIED
+        if (requireOwnerVerification && !verified) {
             throw ConflictException(
                 Error(
                     code = ErrorCode.LISTING_OWNERSHIP_NOT_VERIFIED,
@@ -378,6 +384,7 @@ class ListingService(
                 status = ListingStatus.PUBLISHING,
                 retries = 0, // The publication's own attempts (ListingPublisherService.MAX_RETRIES)
                 modifiedAt = Date(clock.millis()),
+                ownershipVerified = verified,
             )
         )
     }

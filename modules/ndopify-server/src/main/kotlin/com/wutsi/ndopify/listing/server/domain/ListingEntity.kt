@@ -111,6 +111,10 @@ data class ListingEntity(
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
     val verifiedAt: Date? = null,
+
+    /** Frozen when the publication gate saves the listing (#392): the verdict it read, true only for VERIFIED. Never re-derived. */
+    val ownershipVerified: Boolean = false,
+
     val publishedAt: Date? = null,
     val closedAt: Date? = null,
 

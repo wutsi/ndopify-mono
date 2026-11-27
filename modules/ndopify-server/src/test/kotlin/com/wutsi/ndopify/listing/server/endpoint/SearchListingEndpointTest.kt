@@ -10,6 +10,7 @@ import org.springframework.test.context.jdbc.Sql
 import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/listing/SearchListingEndpoint.sql"])
 class SearchListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
@@ -141,6 +142,14 @@ class SearchListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     fun paging() {
         assertEquals(listOf(102L, 101L), search("limit=2"))
         assertEquals(listOf(100L), search("limit=2&offset=2"))
+    }
+
+    @Test
+    fun `a summary carries no ownership flag`() {
+        val body = rest.getForEntity("/v1/listings?mandate-id=1", String::class.java).body!!
+
+        assertFalse(body.contains("ownershipVerified"), body)
+        assertEquals(listOf(100L), search("mandate-id=1"))
     }
 
     @Test

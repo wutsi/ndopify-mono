@@ -239,6 +239,7 @@ class ListingServiceTest {
 
         assertEquals(ListingStatus.PUBLISHING, result.status)
         assertEquals(0, result.retries)
+        assertTrue(result.ownershipVerified)
     }
 
     @Test
@@ -314,6 +315,7 @@ class ListingServiceTest {
 
         assertEquals(ListingStatus.PUBLISHING, result.status)
         assertEquals(0, result.retries)
+        assertFalse(result.ownershipVerified)
     }
 
     @Test
