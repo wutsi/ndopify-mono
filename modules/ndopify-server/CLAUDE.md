@@ -185,16 +185,17 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   not sign a contract sent to the old address); a closed or cancelled mandate is a 409 `MANDATE_ALREADY_CLOSED`, an
   e-mail another party owns a 409 `PARTY_EMAIL_ALREADY_EXISTS` with nothing written. Tenant-scoped.
 - **email** — the e-mail verification policy of the public forms, on a global hashed cache. The port, the model, the
-  default adapter, the throttle and the syntax check live in `platform.email` (see below); this domain keeps only the
-  policy (`EmailVerificationService`) and the `T_EMAIL_ADDRESS` cache (`EmailAddressEntity`, `EmailAddressRepository`).
+  default adapter, the throttle and the syntax check live in `platform.mail.verification` (see below); this domain
+  keeps only the policy (`EmailVerificationService`) and the `T_EMAIL_ADDRESS` cache (`EmailAddressEntity`,
+  `EmailAddressRepository`).
   The table (`V21_0`) keeps one row per distinct address (SHA-256 only, never the plaintext address) with its score, its
-  provider-neutral reason and the six SES verdicts, for `ndopify.email.verification.ttl.valid-days` (30) on a
+  provider-neutral reason and the six SES verdicts, for `ndopify.mail.verification.ttl.valid-days` (30) on a
   HIGH/MEDIUM and `.invalid-days` (7) on a LOW. `EmailVerificationService.ensureDeliverable` is the only entry point:
   it normalizes (`trim().lowercase()`), refuses a locally malformed address before any paid call, serves the cached
   verdict inside its TTL, asks the verifier on a miss, caches a definitive answer in its own `REQUIRES_NEW`
   transaction (so it survives the caller's rollback) and refuses a deliverability LOW (`400 EMAIL_ADDRESS_INVALID`).
   It fails open on any provider failure (accepted, nothing cached) and when its budget
-  (`ndopify.email.verification.throttle.*`: a per-IP hourly window and a daily global cap) is spent: a paid call is
+  (`ndopify.mail.verification.throttle.*`: a per-IP hourly window and a daily global cap) is spent: a paid call is
   never turned into a refusal. Not tenant-scoped.
 - **mandate** — a customer's SEARCH (tenant) or LISTING (owner) mandate (`MandateEntity`; `/v1/mandates`: get,
   search, create, update).
@@ -860,19 +861,21 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
   (`PdfRasterizationException.Reason`).
 - `platform/mail` — e-mail sending (`MailService`, `MailBodyResolver`, `MailFilter`); MJML templates under
   `src/main/resources/mail/`. E-mail listing images always go through `MailImages` (`COVER` 1200×800, `THUMBNAIL`
-  160×120, JPEG quality 75), never the cover's original URL; a missing cover still sends no image.
+  160×120, JPEG quality 75), never the cover's original URL; a missing cover still sends no image. Its
+  `mail/verification` subpackage is the e-mail verification capability: the `EmailVerifier` port, the
+  provider-neutral `EmailVerification` model with its `Verdict` / `VerificationReason` enums, the `EmailVerifierNone`
+  default adapter, the `EmailVerificationThrottle` paid-call budget guard and the local `EmailSyntax` check; and the
+  SES adapter (`EmailVerifierSES`, one `GetEmailAddressInsights` call through the AWS SDK v2 `sesv2`, beside the v1
+  S3 client) with its cached health indicator (`SesEmailVerifierHealthIndicator`, `GetAccount`, `sesEmailVerifier`).
+  `ndopify.mail.verification.provider` is the only switch: `none` by default (local, QA, the server's tests), `ses`
+  in TEST and PROD. `none` wires `EmailVerifierNone` (every address is valid) and no health component, so nothing
+  calls AWS. The SES client takes `ndopify.mail.verification.ses.access-key` / `secret-key`, which the deployment
+  fills from its Heroku `AWS_ACCESS_KEY` / `AWS_SECRET_KEY` — the names the v1 S3 client reads too — and an empty
+  value leaves the SDK's default chain in charge, so a local run and an IAM role both work.
 - `platform/logger` — key-value request logging (`KVLogger`, `KVLoggerFilter`).
 - `platform/tenant` — tenant resolution (see Multi-Tenancy below).
 - `platform/ai` — the two Spring AI `ChatClient`s (`ChatClients.VISION` for images, `ChatClients.TEXT` for text) and
   their cached health indicators, wired by `config/platform/AIConfiguration`.
-- `platform/email` — the e-mail verification capability: the `EmailVerifier` port, the provider-neutral
-  `EmailVerification` model with its `Verdict` / `VerificationReason` enums, the `EmailVerifierNone` default adapter,
-  the `EmailVerificationThrottle` paid-call budget guard and the local `EmailSyntax` check; and the SES adapter
-  (`EmailVerifierSES`, one `GetEmailAddressInsights` call through the AWS SDK v2 `sesv2`, beside the v1 S3 client)
-  with its cached health indicator (`SesEmailVerifierHealthIndicator`, `GetAccount`, `sesEmailVerifier`).
-  `ndopify.email.verification.provider` is the only switch: `none` by default (local, QA, the server's tests), `ses`
-  in TEST and PROD. `none` wires `EmailVerifierNone` (every address is valid) and no health component, so nothing
-  calls AWS.
 - `platform/util` — small helpers (`PhoneNumberUtils`, `MimeUtils`, `UrlUtils`, `KycUtils`, HTTP utilities).
   `platform/util/http`'s `Http` has `postMultipart` (a `multipart/form-data` POST — `String` fields written as-is, the
   others JSON-serialized, plus one `HttpFile`) beside its JSON `post`.
