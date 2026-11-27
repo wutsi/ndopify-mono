@@ -177,10 +177,10 @@ place when the groom ends on a gate or blocked, and name the worktree in the rep
 
 Before moving the story to Ready, record its story-level prerequisites as `blockedBy` links:
 
-- Link every story whose merged work the plan builds on, whatever its status:
-  `gh issue edit <id> --add-blocked-by <blocker>`.
+- Link every open story whose merged work the plan builds on: `gh issue edit <id> --add-blocked-by <blocker>`.
+  An open blocker does not keep the story out of Ready.
 - Never link a parent (`Part of #X`), a shared-code release (`Shared code: …`), a module prerequisite, a closed story,
-  or a story the plan only mentions (“blocks nothing”). An open blocker does not keep the story out of Ready.
+  or a story the plan only mentions (“blocks nothing”).
 - On a revised plan, the plan is authoritative: remove a link it no longer requires (`--remove-blocked-by`), and report
   every link added or removed.
 
