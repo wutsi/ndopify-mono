@@ -35,7 +35,8 @@ class IdentificationEndpoints(
     fun search(
         @ModelAttribute request: SearchIdentificationRequest,
     ): SearchIdentificationResponse {
-        val identifications = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
+        val restricted = accessService.restrict(request)
+        val identifications = service.search(restricted.copy(limit = OffsetLimitPageRequest.limit(restricted.limit)))
         return SearchIdentificationResponse(
             identifications = identifications.map { identification -> mapper.toIdentificationSummary(identification) },
         )

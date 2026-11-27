@@ -1,9 +1,12 @@
 package com.wutsi.ndopify.party.endpoint
 
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.IdentificationStatus
 import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.dto.SearchIdentificationResponse
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
@@ -12,6 +15,28 @@ import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/SearchIdentificationEndpoint.sql"])
 class SearchIdentificationEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    private var admin = true
+
+    override val roles: Array<String>
+        get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
+
+    @Test
+    fun `another partyId is ignored`() {
+        admin = false
+        userId = 11L
+        val response = rest.getForEntity("/v1/identifications?partyId=101", SearchIdentificationResponse::class.java)
+        assertEquals(setOf("id-100-a", "id-100-b"), response.body!!.identifications.map { it.id }.toSet())
+    }
+
+    @Test
+    fun `caller without a party - forbidden`() {
+        admin = false
+        userId = 13L
+        val response = rest.getForEntity("/v1/identifications", ErrorResponse::class.java)
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
+    }
+
     @Test
     fun search() {
         val response = rest.getForEntity(
