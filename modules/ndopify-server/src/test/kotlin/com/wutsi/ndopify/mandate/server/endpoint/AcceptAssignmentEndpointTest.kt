@@ -8,6 +8,7 @@ import com.wutsi.ndopify.mandate.dto.GetAssignmentResponse
 import com.wutsi.ndopify.mandate.dto.GetMandateResponse
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
@@ -21,6 +22,11 @@ import kotlin.test.assertTrue
 class AcceptAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Autowired
     private lateinit var mandateDao: MandateRepository
+
+    private var admin = false
+
+    override val roles: Array<String>
+        get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
 
     @Test
     fun accept() {
@@ -162,7 +168,13 @@ class AcceptAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest()
 
     private fun assertStatus(id: Long, status: AssignmentStatus) {
         anonymousUser = false // reading the assignment needs a token
-        val assignment = rest.getForEntity("/v1/assignments/$id", GetAssignmentResponse::class.java).body!!.assignment
-        assertEquals(status, assignment.status)
+        admin = true // the read only observes the state: the caller under test may no longer read it
+        try {
+            val assignment =
+                rest.getForEntity("/v1/assignments/$id", GetAssignmentResponse::class.java).body!!.assignment
+            assertEquals(status, assignment.status)
+        } finally {
+            admin = false
+        }
     }
 }

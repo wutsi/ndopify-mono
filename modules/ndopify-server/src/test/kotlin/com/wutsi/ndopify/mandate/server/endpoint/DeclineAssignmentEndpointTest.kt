@@ -8,6 +8,7 @@ import com.wutsi.ndopify.mandate.dto.GetAssignmentResponse
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.SearchAssignmentResponse
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
@@ -20,6 +21,11 @@ import kotlin.test.assertTrue
 class DeclineAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Autowired
     private lateinit var mandateDao: MandateRepository
+
+    private var admin = false
+
+    override val roles: Array<String>
+        get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
 
     @Test
     fun decline() {
@@ -47,9 +53,14 @@ class DeclineAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest(
         rest.postForEntity("/v1/assignments/1/decline", null, Any::class.java)
         awaitAsyncTasks() // Re-dispatched after commit
 
-        // Agent 20 declined it: never offered it again
-        val pending = rest.getForEntity("/v1/assignments?mandate-id=1&status=PENDING", SearchAssignmentResponse::class.java)
-            .body!!.assignments
+        // Agent 20 declined it: never offered it again. Read as an admin: the agent who declined it may no longer see it
+        admin = true
+        val pending = try {
+            rest.getForEntity("/v1/assignments?mandate-id=1&status=PENDING", SearchAssignmentResponse::class.java)
+                .body!!.assignments
+        } finally {
+            admin = false
+        }
         assertEquals(30L, pending.single().agentId)
         assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
         assertEquals("John Doe <john.doe@gmail.com>", smtp.receivedMessages.single().allRecipients.single().toString())
@@ -132,7 +143,13 @@ class DeclineAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest(
 
     private fun assertStatus(id: Long, status: AssignmentStatus) {
         anonymousUser = false // reading the assignment needs a token
-        val assignment = rest.getForEntity("/v1/assignments/$id", GetAssignmentResponse::class.java).body!!.assignment
-        assertEquals(status, assignment.status)
+        admin = true // the read only observes the state: the caller under test may no longer read it
+        try {
+            val assignment =
+                rest.getForEntity("/v1/assignments/$id", GetAssignmentResponse::class.java).body!!.assignment
+            assertEquals(status, assignment.status)
+        } finally {
+            admin = false
+        }
     }
 }
