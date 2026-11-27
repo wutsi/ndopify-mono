@@ -219,11 +219,54 @@ class MandateDocumentViewsTest {
         assertEquals(listOf(1, 2), view.pages.map { it.number })
         assertEquals(
             listOf(
-                "/mandates/301/documents/3103/pages/1/preview",
-                "/mandates/301/documents/3103/pages/2/preview",
+                "/mandates/301/documents/3103/pages/1",
+                "/mandates/301/documents/3103/pages/2",
             ),
             view.pages.map { it.href },
         )
+    }
+
+    @Test
+    fun `preview - the page's rank, count and routes`() {
+        val pages = listOf(
+            MandateDocumentPage(id = 1, index = 0),
+            MandateDocumentPage(id = 2, index = 1),
+            MandateDocumentPage(id = 3, index = 2),
+        )
+
+        val view = MandateDocumentViews.preview(mandate, doc(pages = pages), pages[1])
+
+        assertEquals("Titre foncier n° 4521", view.title)
+        assertEquals(2, view.number)
+        assertEquals(3, view.count)
+        assertEquals("/mandates/301/documents/3103/pages/2/preview", view.imageHref)
+        assertEquals("/mandates/301/documents/3103#pages-title", view.backHref)
+        assertEquals("Page 2 du document « Titre foncier n° 4521 »", view.alt)
+    }
+
+    @Test
+    fun `preview - a blank title reads as the type's name`() {
+        val page = MandateDocumentPage(id = 1, index = 0)
+
+        val view = MandateDocumentViews.preview(mandate, doc(title = "  ", pages = listOf(page)), page)
+
+        assertEquals("Titre foncier", view.title)
+        assertEquals("Page 1 du document « Titre foncier »", view.alt)
+    }
+
+    @Test
+    fun `preview - the rank follows the page index, not the list order`() {
+        val pages = listOf(
+            MandateDocumentPage(id = 1, index = 2),
+            MandateDocumentPage(id = 2, index = 0),
+            MandateDocumentPage(id = 3, index = 1),
+        )
+
+        val view = MandateDocumentViews.preview(mandate, doc(pages = pages), pages.first { it.id == 3L })
+
+        assertEquals(2, view.number)
+        assertEquals(3, view.count)
+        assertEquals("/mandates/301/documents/3103/pages/3/preview", view.imageHref)
     }
 
     @Test

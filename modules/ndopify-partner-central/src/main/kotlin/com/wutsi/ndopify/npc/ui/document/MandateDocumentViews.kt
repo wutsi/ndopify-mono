@@ -2,6 +2,7 @@ package com.wutsi.ndopify.npc.ui.document
 
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateDocument
+import com.wutsi.ndopify.mandate.dto.MandateDocumentPage
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
@@ -90,7 +91,7 @@ object MandateDocumentViews {
                     DocumentPageView(
                         id = page.id,
                         number = index + 1,
-                        href = "/mandates/${mandate.id}/documents/${document.id}/pages/${page.id}/preview",
+                        href = "/mandates/${mandate.id}/documents/${document.id}/pages/${page.id}",
                     )
                 },
             writable = MandateDocumentRules.writable(mandate),
@@ -99,6 +100,20 @@ object MandateDocumentViews {
             replaceAccept = MandateDocumentRules.accept(source),
             replaceHint = MandateDocumentRules.replaceHint(source),
             replaceRequired = MandateDocumentRules.replaceRequired(source),
+        )
+    }
+
+    /** The viewer of one page: its rank in the document's index order, the title (the type's name when blank). */
+    fun preview(mandate: Mandate, document: MandateDocument, page: MandateDocumentPage): DocumentPreviewView {
+        val title = document.title.trim().ifEmpty { MandateDocumentLabels.type(document.type) }
+        val number = document.pages.sortedBy { it.index }.indexOfFirst { it.id == page.id } + 1
+        return DocumentPreviewView(
+            title = title,
+            number = number,
+            count = document.pages.size,
+            imageHref = "/mandates/${mandate.id}/documents/${document.id}/pages/${page.id}/preview",
+            backHref = "/mandates/${mandate.id}/documents/${document.id}#pages-title",
+            alt = "Page $number du document « $title »",
         )
     }
 }
