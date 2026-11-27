@@ -30,7 +30,7 @@ logging:
 ndopify:
     database:
         pool-size: 16
-    email:
+    mail:
         verification:
             provider: ses
     image:

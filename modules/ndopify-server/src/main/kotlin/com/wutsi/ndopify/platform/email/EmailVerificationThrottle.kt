@@ -18,8 +18,8 @@ import java.util.ArrayDeque
 @Component
 class EmailVerificationThrottle(
     private val clock: Clock,
-    @param:Value("\${ndopify.email.verification.throttle.per-ip-per-hour}") private val perIpPerHour: Int,
-    @param:Value("\${ndopify.email.verification.throttle.daily-cap}") private val dailyCap: Int,
+    @param:Value("\${ndopify.mail.verification.throttle.per-ip-per-hour}") private val perIpPerHour: Int,
+    @param:Value("\${ndopify.mail.verification.throttle.daily-cap}") private val dailyCap: Int,
 ) {
     private val windows = mutableMapOf<String, ArrayDeque<Instant>>()
     private var day: LocalDate? = null

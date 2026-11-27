@@ -16,23 +16,23 @@ import java.time.Duration
 
 /**
  * Wires the e-mail verification: the `none` verifier by default, the SES client and its verifier when
- * `ndopify.email.verification.provider=ses`. The SDK's own call timeout bounds a slow SES, so it never holds a
- * submission past `ndopify.email.verification.timeout-seconds`.
+ * `ndopify.mail.verification.provider=ses`. The SDK's own call timeout bounds a slow SES, so it never holds a
+ * submission past `ndopify.mail.verification.timeout-seconds`.
  */
 @Configuration
 class EmailConfiguration(
-    @param:Value("\${ndopify.email.verification.ses.region}") private val region: String,
-    @param:Value("\${ndopify.email.verification.timeout-seconds}") private val timeoutSeconds: Long,
-    @param:Value("\${ndopify.email.verification.health.up-ttl-minutes}") private val upTtlMinutes: Long,
-    @param:Value("\${ndopify.email.verification.health.down-ttl-seconds}") private val downTtlSeconds: Long,
+    @param:Value("\${ndopify.mail.verification.ses.region}") private val region: String,
+    @param:Value("\${ndopify.mail.verification.timeout-seconds}") private val timeoutSeconds: Long,
+    @param:Value("\${ndopify.mail.verification.health.up-ttl-minutes}") private val upTtlMinutes: Long,
+    @param:Value("\${ndopify.mail.verification.health.down-ttl-seconds}") private val downTtlSeconds: Long,
     private val clock: Clock,
 ) {
     @Bean
-    @ConditionalOnProperty(name = ["ndopify.email.verification.provider"], havingValue = "none", matchIfMissing = true)
+    @ConditionalOnProperty(name = ["ndopify.mail.verification.provider"], havingValue = "none", matchIfMissing = true)
     fun emailVerifierNone(): EmailVerifier = EmailVerifierNone()
 
     @Bean
-    @ConditionalOnProperty(name = ["ndopify.email.verification.provider"], havingValue = "ses")
+    @ConditionalOnProperty(name = ["ndopify.mail.verification.provider"], havingValue = "ses")
     fun sesV2Client(): SesV2Client =
         SesV2Client.builder()
             .region(Region.of(region))
@@ -40,7 +40,7 @@ class EmailConfiguration(
             .build()
 
     @Bean
-    @ConditionalOnProperty(name = ["ndopify.email.verification.provider"], havingValue = "ses")
+    @ConditionalOnProperty(name = ["ndopify.mail.verification.provider"], havingValue = "ses")
     fun emailVerifierSes(client: SesV2Client): EmailVerifier = EmailVerifierSES(client)
 
     /**
@@ -49,7 +49,7 @@ class EmailConfiguration(
      * `TelegramConfiguration`).
      */
     @Bean
-    @ConditionalOnProperty(name = ["ndopify.email.verification.provider"], havingValue = "ses")
+    @ConditionalOnProperty(name = ["ndopify.mail.verification.provider"], havingValue = "ses")
     fun sesEmailVerifierHealthIndicator(client: SesV2Client): HealthIndicator =
         SesEmailVerifierHealthIndicator(
             client,

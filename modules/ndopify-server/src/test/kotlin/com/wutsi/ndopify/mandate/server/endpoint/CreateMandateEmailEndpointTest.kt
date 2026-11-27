@@ -42,9 +42,9 @@ import kotlin.test.assertNull
 
 @TestPropertySource(
     properties = [
-        "ndopify.email.verification.provider=ses",
-        "ndopify.email.verification.throttle.per-ip-per-hour=1000",
-        "ndopify.email.verification.throttle.daily-cap=1000",
+        "ndopify.mail.verification.provider=ses",
+        "ndopify.mail.verification.throttle.per-ip-per-hour=1000",
+        "ndopify.mail.verification.throttle.daily-cap=1000",
     ],
 )
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/CreateMandateEndpoint.sql"])

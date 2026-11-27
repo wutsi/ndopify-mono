@@ -33,9 +33,9 @@ class EmailVerificationService(
     private val dao: EmailAddressRepository,
     private val throttle: EmailVerificationThrottle,
     private val clock: Clock,
-    @param:Value("\${ndopify.email.verification.provider}") private val provider: String,
-    @param:Value("\${ndopify.email.verification.ttl.valid-days}") private val validTtlDays: Long,
-    @param:Value("\${ndopify.email.verification.ttl.invalid-days}") private val invalidTtlDays: Long,
+    @param:Value("\${ndopify.mail.verification.provider}") private val provider: String,
+    @param:Value("\${ndopify.mail.verification.ttl.valid-days}") private val validTtlDays: Long,
+    @param:Value("\${ndopify.mail.verification.ttl.invalid-days}") private val invalidTtlDays: Long,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(EmailVerificationService::class.java)
