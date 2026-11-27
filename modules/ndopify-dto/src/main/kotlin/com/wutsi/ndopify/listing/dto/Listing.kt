@@ -83,5 +83,8 @@ data class Listing(
     val modifiedAt: Date = Date(),
     val publishedAt: Date? = null,
     val verifiedAt: Date? = null,
+
+    /** True when the owner's identity and land title were verified before the listing was published (#297, #299). */
+    val ownershipVerified: Boolean = false,
     val closedAt: Date? = null,
 )
