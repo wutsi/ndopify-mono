@@ -258,14 +258,6 @@ class MandateViewsTest {
         assertEquals("237699123456", contact.whatsappDigits)
         assertEquals("+237699123456", contact.whatsapp)
         assertEquals("le matin", contact.period)
-        assertTrue(view(PENDING).customerEditable)
-    }
-
-    @Test
-    fun `customer editable - closed`() {
-        assertFalse(view(MANDATE.copy(status = MandateStatus.CLOSED)).customerEditable)
-        assertFalse(view(MANDATE.copy(status = MandateStatus.CANCELLED)).customerEditable)
-        assertTrue(view(MANDATE).customerEditable)
     }
 
     @Test

@@ -1,7 +1,7 @@
 /*
  * Ndopify Partner Central — the mandate page (templates/mandate.html), its edit page (templates/mandate/edit.html),
- * its customer edit page (templates/mandate/customer-edit.html), its contract page (templates/mandate/contract.html)
- * and the closing wizard (templates/mandate/close.html). All work without this file: the forms post to their
+ * its contract page (templates/mandate/contract.html) and the closing wizard (templates/mandate/close.html).
+ * All work without this file: the forms post to their
  * controllers, "Annuler" opens its form through ?end=cancel, the closing page parses "240 000" or "240000", and the
  * edit page shows every follow-up question. This script only enhances them:
  * - mandate page: "Annuler le mandat" opens its form in place, "Retour" closes it; the form is checked before posting,
@@ -15,8 +15,7 @@
  *   rate a sale's price makes (per m² for a plot, per unit for a building; display only);
  * - contract page: the visit fee formatted as typed, like the closing page's rent;
  * - closing page: the agreed rent formatted as typed, the same way.
- * Ported from the prototype (src/main/html/assets/js/partner-central.js: initMandate, initMandateEdit,
- * initCustomerEdit).
+ * Ported from the prototype (src/main/html/assets/js/partner-central.js: initMandate, initMandateEdit).
  */
 (function () {
     "use strict";
@@ -599,75 +598,11 @@
         bindAmount($("#visitFee"));
     }
 
-    /* ---------- mandate/customer-edit.html ---------- */
-
-    // libphonenumber's reason for an invalid number, as intl-tel-input's validationError code.
-    var PHONE_ERRORS = {
-        1: "Cet indicatif de pays n'existe pas. Choisissez votre pays dans la liste.",
-        2: "Ce numéro est trop court. Vérifiez qu'il ne manque pas de chiffre.",
-        3: "Ce numéro est trop long. Vérifiez qu'il n'y a pas de chiffre en trop."
-    };
-    var PHONE_INVALID = "Ce numéro n'est pas un numéro mobile valide. Exemple : 6 77 12 34 56";
-    var PHONE_UNAVAILABLE = "Impossible de vérifier le numéro pour le moment. Rechargez la page.";
-
-    /*
-     * The customer's WhatsApp number: intl-tel-input (util.js) formats it as it is typed and posts E.164 through a
-     * hidden input, like the join wizard and the profile page. Without this file the input posts its stored value as
-     * is; a number the library can't read never reaches the server empty.
-     */
-    function initCustomerEdit() {
-        var form = $("[data-customer-form]");
-        if (!form) return;
-        var input = $("#whatsappNumber", form);
-        var error = $("#whatsappNumber-error");
-        var submit = $("[data-customer-submit]", form);
-        var phone = null;
-
-        if (input && window.NdUtil && window.NdUtil.phoneReady) {
-            window.NdUtil.phoneReady().then(
-                function (i18n) {
-                    var name = input.getAttribute("name");
-                    var hidden = document.createElement("input");
-                    hidden.type = "hidden";
-                    hidden.name = name;
-                    input.removeAttribute("name");
-                    input.insertAdjacentElement("afterend", hidden);
-                    phone = window.NdUtil.bindPhone(input, {
-                        name: name,
-                        value: input.value.trim(),
-                        i18n: i18n
-                    });
-                },
-                function () {
-                    setFieldError(input, error, PHONE_UNAVAILABLE);
-                    if (submit) submit.setAttribute("aria-disabled", "true");
-                }
-            );
-        }
-
-        form.addEventListener("submit", function (event) {
-            if (!phone) {
-                if (submit && submit.getAttribute("aria-disabled") === "true") event.preventDefault();
-                return;
-            }
-            var message = "";
-            if (!phone.isEmpty() && !phone.e164()) {
-                message = PHONE_ERRORS[phone.validationError()] || PHONE_INVALID;
-            }
-            setFieldError(input, error, message);
-            if (message) {
-                event.preventDefault();
-                input.focus();
-            }
-        });
-    }
-
     document.addEventListener("DOMContentLoaded", function () {
         var page = document.body.getAttribute("data-page");
         if (page === "mandate") initMandate();
         if (page === "mandate-edit") initMandateEdit();
         if (page === "mandate-close") initMandateClose();
         if (page === "mandate-contract") initMandateContract();
-        if (page === "customer-edit") initCustomerEdit();
     });
 })();

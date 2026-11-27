@@ -1309,23 +1309,9 @@ class MandateControllerTest {
     }
 
     @Test
-    fun `outcome - customer saved`() {
-        val result = mvc.perform(get("/mandates/201").flashAttr("outcome", "customer-saved")).andReturn()
-
-        assertEquals("Coordonnées du client enregistrées.", model(result)["outcomeText"])
-        assertEquals("success", model(result)["outcomeStyle"])
-    }
-
-    @Test
-    fun `outcome - customer saved, out for signature`() {
-        val result = mvc.perform(get("/mandates/201").flashAttr("outcome", "customer-saved-unsent")).andReturn()
-
-        assertEquals(
-            "Coordonnées du client enregistrées. Le mandat est revenu à « Assigné » : envoyez-le à nouveau pour " +
-                "signature.",
-            model(result)["outcomeText"],
-        )
-        assertEquals("success", model(result)["outcomeStyle"])
+    fun `customer edit page - gone`() {
+        mvc.perform(get("/mandates/201/customer/edit"))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNotFound)
     }
 
     @Test

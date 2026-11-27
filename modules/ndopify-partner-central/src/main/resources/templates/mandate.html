@@ -87,8 +87,7 @@
                     <!--
                         Unboxed and compact: "Client"/"Bailleur" and the name with the best time to call on one line,
                         then the number (tel:, as phones expect of a number) with its WhatsApp button beside it, then
-                        the e-mail. "Modifier" corrects a mistyped detail until the mandate is closed: the correction
-                        shows on all of the customer's mandates.
+                        the e-mail.
                     -->
                     <div class="contact-card" th:if="${m.contact}" th:with="c=${m.contact}">
                         <p class="contact-card__headline">
@@ -112,13 +111,10 @@
                                     th:href="|mailto:${c.email}|" th:text="${c.email}">ray@gmail.com</a></span>
                         </p>
                         <p class="contact-card__actions" data-contact-actions
-                           th:if="${canScheduleVisit == true or m.customerEditable}">
+                           th:if="${canScheduleVisit == true}">
                             <a class="btn btn--primary btn--compact" th:if="${canScheduleVisit}" data-contact-schedule
                                th:href="@{/mandates/{id}/visits(id=${m.id})}"
                                th:attr="aria-label=|Planifier une visite pour ${c.name}|">Planifier une visite</a>
-                            <a class="btn btn--outline btn--compact" data-contact-edit th:if="${m.customerEditable}"
-                               th:href="@{/mandates/{id}/customer/edit(id=${m.id})}"
-                               th:attr="aria-label=|Modifier les coordonnées ${m.words.of}|">Modifier</a>
                         </p>
                     </div>
                     <p th:unless="${m.contact}" data-contact-unavailable>Les coordonnées <span th:text="${m.words.of}">du client</span>

@@ -366,7 +366,7 @@ class MandateTemplateTest {
         assertEquals("listing", page.selectFirst("h1 [data-mandate-kind]")?.attr("data-mandate-kind"))
         assertEquals("Le bailleur", page.selectFirst("#contact-title")?.text())
         assertEquals("Bailleur", page.selectFirst("[data-contact-role]")?.text())
-        assertEquals("Modifier les coordonnées du bailleur", page.selectFirst("[data-contact-edit]")?.attr("aria-label"))
+        assertNull(page.selectFirst("[data-contact-edit]"))
         assertEquals("Son bien", page.selectFirst("#search-title")?.text())
         assertTrue(page.text().contains("Présentez le bien aux locataires et organisez les visites."))
     }
@@ -712,7 +712,7 @@ class MandateTemplateTest {
         assertNull(page.selectFirst("h1 [data-deal-tag]"))
         assertEquals("Acheteur", page.selectFirst("[data-contact-role]")?.text())
         assertEquals("L'acheteur", page.selectFirst("#contact-title")?.text())
-        assertEquals("Modifier les coordonnées de l'acheteur", page.selectFirst("[data-contact-edit]")?.attr("aria-label"))
+        assertNull(page.selectFirst("[data-contact-edit]"))
         assertTrue(page.text().contains("Proposez des biens à l'acheteur et organisez les visites."))
         assertFalse(page.text().contains("Proposez des biens au client"))
         assertFalse(page.text().contains("au loyer de"))
@@ -727,7 +727,7 @@ class MandateTemplateTest {
         assertEquals("Vente", page.selectFirst(".mandate-intro__tags [data-deal-tag]")?.text())
         assertEquals("Vendeur", page.selectFirst("[data-contact-role]")?.text())
         assertEquals("Le vendeur", page.selectFirst("#contact-title")?.text())
-        assertEquals("Modifier les coordonnées du vendeur", page.selectFirst("[data-contact-edit]")?.attr("aria-label"))
+        assertNull(page.selectFirst("[data-contact-edit]"))
         assertTrue(page.text().contains("Présentez le bien aux acheteurs et organisez les visites."))
         assertFalse(page.text().contains("Présentez le bien aux locataires"))
         assertFalse(page.text().contains("bailleur"))
@@ -810,10 +810,9 @@ class MandateTemplateTest {
         assertEquals("Planifier une visite", action.text())
         assertEquals("/mandates/201/visits", action.attr("href"))
         assertEquals("Planifier une visite pour Ray Sponsible", action.attr("aria-label"))
-        // The primary action of the row, before the edit
         val actions = page.select("[data-contact-actions]").select("a")
+        assertEquals(1, actions.size)
         assertTrue(actions[0].hasAttr("data-contact-schedule"))
-        assertTrue(actions[1].hasAttr("data-contact-edit"))
     }
 
     @Test
@@ -823,7 +822,7 @@ class MandateTemplateTest {
         val page = render(APPROVED)
 
         assertNull(page.selectFirst("[data-contact-schedule]"))
-        assertNotNull(page.selectFirst("[data-contact-edit]"))
+        assertNull(page.selectFirst("[data-contact-actions]"))
     }
 
     @Test
@@ -888,15 +887,14 @@ class MandateTemplateTest {
         assertEquals("Écrire à Ray Sponsible sur WhatsApp", card.selectFirst("a[data-contact=whatsapp]")?.attr("aria-label"))
         assertTrue(card.selectFirst("a[data-contact=whatsapp]")!!.hasClass("btn"))
         assertFalse(card.selectFirst("a[data-contact=whatsapp]")!!.hasClass("btn--primary"))
-        // The e-mail, and the way to correct it
+        // The e-mail
         assertEquals("mailto:ray@gmail.com", card.selectFirst("a[data-contact=email]")?.attr("href"))
-        assertEquals("Modifier les coordonnées du client", card.selectFirst("[data-contact-edit]")?.attr("aria-label"))
-        assertEquals("/mandates/201/customer/edit", card.selectFirst("[data-contact-edit]")?.attr("href"))
+        assertNull(card.selectFirst("[data-contact-edit]"))
         assertNull(card.selectFirst(".listing-agent__photo"))
     }
 
     @Test
-    fun `contact - closed, no edit row`() {
+    fun `contact - closed, no action row`() {
         val page = render(APPROVED.copy(status = MandateStatus.CLOSED))
 
         assertNull(page.selectFirst("[data-contact-edit]"))

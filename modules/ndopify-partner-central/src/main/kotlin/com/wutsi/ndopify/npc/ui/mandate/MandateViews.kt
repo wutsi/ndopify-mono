@@ -133,7 +133,6 @@ object MandateViews {
                 mandate.listingType == ListingType.SALE &&
                 mandate.titleDocuments.any { it != TitleDocumentType.UNKNOWN },
             editable = status in MandateRules.EDITABLE,
-            customerEditable = status in MandateRules.CUSTOMER_EDITABLE,
             closable = status == MandateStatus.APPROVED,
             cancellable = status in MandateRules.ACTIVE,
             signatureTtlDays = MandateRules.signatureTtlDays(contract),
