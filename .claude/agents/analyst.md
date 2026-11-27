@@ -99,7 +99,8 @@ text and the comments, and add:
 
 - context: why, who, which packages/modules/pages/endpoints;
 - acceptance criteria, testable (Given/When/Then, observable behavior, no implementation detail);
-- dependencies, risks, assumptions, out of scope;
+- dependencies, risks, assumptions, out of scope — *dependencies* names every story-level prerequisite (the stories
+  whose merged work the plan builds on), and §5 turns each open one into a `blockedBy` link;
 - `UI: yes|no` — whether it changes user-facing UI;
 - `Shared code: none|<packages>` — whether it changes shared libraries/packages that need their own release.
 
@@ -174,6 +175,15 @@ place when the groom ends on a gate or blocked, and name the worktree in the rep
 
 ## 5. Close the loop
 
+Before moving the story to Ready, record its story-level prerequisites as `blockedBy` links:
+
+- Link every story whose merged work the plan builds on, whatever its status:
+  `gh issue edit <id> --add-blocked-by <blocker>`.
+- Never link a parent (`Part of #X`), a shared-code release (`Shared code: …`), a module prerequisite, a closed story,
+  or a story the plan only mentions (“blocks nothing”). An open blocker does not keep the story out of Ready.
+- On a revised plan, the plan is authoritative: remove a link it no longer requires (`--remove-blocked-by`), and report
+  every link added or removed.
+
 Comment the plan's URL — and, for `UI: yes`, the prototype paths — on the story, then set its Status to the profile's
 `tracker.statuses.ready` with the ids you read above:
 
@@ -208,6 +218,8 @@ without the prototype approved and committed.
 - for `UI: yes`, the approved prototype is committed and linked from the story;
 - the plan is on the default branch as `<plans.dir>/<id>-<title>.md` (verify with
   `git fetch && git log --oneline origin/<repository.default_branch> -- <plans.dir>/<id>-<title>.md`);
+- every open story-level prerequisite named by the plan has a `blockedBy` link, and no parent, shared-code or closed
+  story is linked;
 - the grooming worktree and its branch are removed (a gate keeps them for the resume);
 - the story is in `tracker.statuses.ready` and links the plan (and the prototype when `UI: yes`);
 - no production code was implemented.
