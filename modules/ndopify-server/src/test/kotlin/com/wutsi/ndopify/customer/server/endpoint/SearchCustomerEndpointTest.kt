@@ -2,6 +2,10 @@ package com.wutsi.ndopify.customer.server.endpoint
 
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.customer.dto.SearchCustomerResponse
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.refdata.dto.RoleCode
+import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -10,6 +14,11 @@ import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/customer/SearchCustomerEndpoint.sql"])
 class SearchCustomerEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    private var admin = true
+
+    override val roles: Array<String>
+        get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
+
     @Test
     fun all() {
         val response = rest.getForEntity("/v1/customers", SearchCustomerResponse::class.java)
@@ -83,5 +92,38 @@ class SearchCustomerEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         val response = rest.getForEntity("/v1/customers", SearchCustomerResponse::class.java)
 
         assertEquals(listOf(4L), response.body!!.customers.map { it.id })
+    }
+
+    @Test
+    fun `agent sees only the customers of its mandates`() {
+        admin = false
+        userId = 13L
+        val response = rest.getForEntity("/v1/customers", SearchCustomerResponse::class.java)
+        assertEquals(listOf(1L, 2L), response.body!!.customers.map { it.id })
+    }
+
+    @Test
+    fun `agent asking for another agent's customer gets none`() {
+        admin = false
+        userId = 13L
+        val response = rest.getForEntity("/v1/customers?id=3&party-id=102", SearchCustomerResponse::class.java)
+        assertTrue(response.body!!.customers.isEmpty())
+    }
+
+    @Test
+    fun `customer sees only itself`() {
+        admin = false
+        userId = 11L
+        val response = rest.getForEntity("/v1/customers", SearchCustomerResponse::class.java)
+        assertEquals(listOf(1L), response.body!!.customers.map { it.id })
+    }
+
+    @Test
+    fun `caller without a party - forbidden`() {
+        admin = false
+        userId = 14L
+        val response = rest.getForEntity("/v1/customers", ErrorResponse::class.java)
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
     }
 }

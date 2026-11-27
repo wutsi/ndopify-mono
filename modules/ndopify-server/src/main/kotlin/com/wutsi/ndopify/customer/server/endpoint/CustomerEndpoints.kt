@@ -30,11 +30,13 @@ class CustomerEndpoints(
         return GetCustomerResponse(customer = mapper.toCustomer(customer))
     }
 
+    /** A non-admin gets only its own customer and the customers of its mandates ([CustomerAccessService.restrict]). */
     @GetMapping
     fun search(
         @ModelAttribute request: SearchCustomerRequest,
     ): SearchCustomerResponse {
-        val customers = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
+        val restricted = accessService.restrict(request) ?: return SearchCustomerResponse()
+        val customers = service.search(restricted.copy(limit = OffsetLimitPageRequest.limit(restricted.limit)))
         return SearchCustomerResponse(customers = customers.map { customer -> mapper.toCustomerSummary(customer) })
     }
 }
