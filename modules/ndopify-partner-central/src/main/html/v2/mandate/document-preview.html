@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Page 2 — Titre foncier n° 4521 — Bonapriso — Ndopify Partner Central</title>
+    <meta name="description" content="Une page d'un document du mandat, en plein écran, avec le retour au document.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="apple-touch-icon" href="../assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="../assets/css/partner-central.css?v=20261126d">
+    <link rel="stylesheet" href="../assets/css/documents.css?v=20261126d">
+    <script src="../assets/js/mandate-documents.js?v=20261126d" defer></script>
+</head>
+<!--
+    PROTOTYPE (#372): a page of a mandate's document, full screen — GET
+    /mandates/{id}/documents/{documentId}/pages/{pageId} in production, rendered by
+    templates/mandate/document-preview.html, not a bare JPEG. It is a viewer, not a destination: one compact dark
+    bar over the page's image, centred on the overlay. The bar's whole left side is a single link — the decorative
+    arrow and the document's title, plus a visually hidden " — retour au document" that completes its accessible
+    name — and the page's rank ("Page 2 sur 2") stays at its right; both sit on ONE line at every width. No site
+    header, no account menu, no footer, no nav.
+    The way back is that link, to the document page's *Pages* heading
+    (/mandates/{id}/documents/{documentId}#pages-title): it does not rely on the browser's UI or history, which the
+    installed app (display: standalone) doesn't have.
+
+    Production renders all of it server-side and needs no JavaScript: the bar's link and the title come from the
+    document, the rank is the page's, and the image is this app's authenticated
+    …/pages/{pageId}/preview route (the route the document page's *Voir* used before this story) — never a storage
+    URL, a page path, a presigned URL nor the original bytes. The viewport keeps its default scaling, so pinch-zoom
+    still works. While the JPEG loads, or if it fails (a 502, a signed-out session), the bar and its way back stay:
+    no spinner nor dedicated image-error state (it would need JavaScript). A 404 is production's error page, out of
+    this prototype.
+
+    States: page 2 of 2 of 301/3103 (the static render; production's acceptance example is page 2 of a 3-page
+    document, "Page 2 sur 3" — the rank is the document's own), page 1 of 2, a single page (301/3101: "Page 1 sur
+    1"), a read-only mandate (311/3113, the same viewer). Empty is not a state (a document always has at least one
+    page). The bar is one line at 320, 390 and 1024 px: the link shrinks and its title truncates with an ellipsis,
+    the rank never truncates and never leaves the right; nothing scrolls sideways. Wide 1024: the same line, the
+    title whole when it fits, the image centred and never larger than the screen.
+
+    PROTOTYPE: mandate-documents.js's initPreview only picks the sample the document page linked to
+    (?id=&document=&page=), so every "Voir" opens its own document, rank and sample; without the script the page is
+    this default state. ?id=301&document=3103&page=2 (default), &page=1, ?id=301&document=3101&page=1 (one page),
+    ?id=311&document=3113&page=1 (a cancelled mandate).
+-->
+<body class="doc-preview" data-page="mandate-document-preview" data-assets="../assets/images/">
+    <header class="doc-preview__bar">
+        <a class="doc-preview__back" href="document.html?id=301&amp;document=3103#pages-title"
+           data-preview-back>
+            <span class="doc-preview__arrow" aria-hidden="true">←</span>
+            <h1 class="doc-preview__title"><span data-preview-title>Titre foncier n° 4521 — Bonapriso</span></h1>
+            <span class="visually-hidden"> — retour au document</span>
+        </a>
+        <p class="doc-preview__count" data-preview-count>Page 2 sur 2</p>
+    </header>
+    <main id="main" class="doc-preview__stage">
+        <img class="doc-preview__image" src="../assets/images/doc-sample-page.svg"
+             alt="Page 2 du document « Titre foncier n° 4521 — Bonapriso »" width="620" height="860"
+             data-preview-image>
+    </main>
+</body>
+</html>

@@ -1,12 +1,15 @@
 /*
- * Ndopify Partner Central — a mandate's documents (#329, #331), static prototype.
+ * Ndopify Partner Central — a mandate's documents (#329, #331, #366, #369, #372), static prototype.
  *   - mandate.html (data-page="mandate"): the *Documents* section, after partner-central.js has rendered the page;
  *   - mandate/document-new.html (data-page="mandate-document-new"): *Ajouter un document*;
  *   - mandate/document.html (data-page="mandate-document"): one document, what was read on it, its pages,
- *     Remplacer / Renommer / Supprimer.
+ *     Remplacer / Renommer / Supprimer;
+ *   - mandate/document-preview.html (data-page="mandate-document-preview", #372): a page of a document, opened by
+ *     "Voir" in the same tab, with its way back to the document page.
  * Every page is written to work without JavaScript (multipart forms, ?delete=1 confirmation): this script only
  * renders the prototype's sample data and enhances (the chosen files listed by name and size, shrink, upload
- * progress, the delete confirmation in place). No page image is ever shown inline: a page opens through "Voir". Server calls are simulated; every simulation is marked "PROTOTYPE".
+ * progress, the delete confirmation in place). No page image is shown inline on the document page: a page opens
+ * through "Voir", into its own preview page. Server calls are simulated; every simulation is marked "PROTOTYPE".
  * #331: the document page shows what was read (MandateDocument.fields, in the server's order, its French label
  * from FIELD_LABELS and its value formatted by kind), the hint while it reads, one instruction per problem code of a
  * FAILED document, and the notice of a piece whose expiresAt is before today; the mandate page's row adds the
@@ -23,12 +26,17 @@
  * is refused here before sending. The document page names the document's kind (a "PDF" / "Photos" tag) and its
  * Remplacer accepts that kind only (an image document a photo, a PDF document a one-page PDF); a document with no
  * recorded kind (grandfathered) accepts either.
+ * #372: "Voir" opens the page's preview page in the same tab — GET /mandates/{id}/documents/{documentId}/pages/{pageId},
+ * rendered by templates/mandate/document-preview.html — never a new browsing context (the installed app has no back
+ * button nor history to return with). This script only fills that page's bar, rank and sample from
+ * ?id=&document=&page=; production renders them server-side, so the page, its link and its image need no JavaScript.
  * Query switches: mandate.html ?docs=none|error, ?documentOutcome=added|deleted|changed; document-new.html
  * ?errors=missing|file|size|server|pdf-size|pdf-protected|pdf-unreadable|pdf-pages|mixed|pages|limit
  * (?errors=1 = missing); document.html ?delete=1, ?outcome=renamed|replaced&page=N, ?errors=blank|long, ?conflict=1,
  * ?replaceError=type|size|empty|mixed|pdf-size|pdf-protected|pdf-unreadable|pdf-pages&page=N,
- * ?codes=DOCUMENT_UNREADABLE[,CODE…] (a FAILED sample's codes replaced, in the order given); the reading states come
- * from the samples (?id=&document=, see DOCUMENTS). ?docs=reset (any page) forgets the session.
+ * ?codes=DOCUMENT_UNREADABLE[,CODE…] (a FAILED sample's codes replaced, in the order given); document-preview.html
+ * ?id=&document=&page=N; the reading states come from the samples (?id=&document=, see DOCUMENTS). ?docs=reset (any
+ * page) forgets the session.
  */
 (function () {
     "use strict";
@@ -187,8 +195,10 @@
         "relancer la lecture.";
 
     /*
-     * PROTOTYPE: GET /v1/mandates/{id}/documents, newest first; a page's "Voir" opens a sample asset
-     * (assets/images/doc-sample-*), production's is the page's presigned `url` (MandateDocumentPage.url), never a path.
+     * PROTOTYPE: GET /v1/mandates/{id}/documents, newest first; a page's "Voir" opens its preview page
+     * (mandate/document-preview.html?id=&document=&page=, #372), production's is
+     * /mandates/{id}/documents/{documentId}/pages/{pageId}; the sample asset
+     * (assets/images/doc-sample-*) is only that preview page's image.
      * #331's fields (`{ key, value, confidence }`, the type's own order, display-ready values), `problemCodes`
      * (server order) and the two dates come with each sample, so every reading state is one URL away. A page's
      * confidence is never rendered. EXPIRED is not a status: an expired piece is EXTRACTED + DOCUMENT_EXPIRED, or
@@ -1333,11 +1343,11 @@
         doc.pages.forEach(function (page, i) {
             var n = i + 1;
             var li = template.content.firstElementChild.cloneNode(true);
-            // Nothing is shown inline: "Voir" opens the page in a new tab (production: its presigned url; here, a
-            // sample asset).
+            // Nothing is shown inline: "Voir" opens the page's preview page in the same tab (#372; production:
+            // /mandates/{id}/documents/{documentId}/pages/{pageId}; here, mandate/document-preview.html).
             var view = $("[data-page-link]", li);
-            view.href = pageSrc(page);
-            view.innerHTML = "Voir<span class=\"visually-hidden\"> la page " + n + " (nouvel onglet)</span>";
+            view.href = "document-preview.html?id=" + id + "&document=" + doc.id + "&page=" + n;
+            view.innerHTML = "Voir<span class=\"visually-hidden\"> la page " + n + "</span>";
             $("[data-page-caption]", li).textContent = "Page " + n;
             var replace = $("[data-page-replace]", li);
             replace.hidden = readOnly;
@@ -1528,10 +1538,40 @@
         });
     }
 
+    /* ---------- mandate/document-preview.html (#372) ---------- */
+
+    /*
+     * A page of a document, full screen. Production renders the bar's link, the document's title, the page's rank and
+     * the image server-side (GET /mandates/{id}/documents/{documentId}/pages/{pageId}), so the page works without
+     * JavaScript. Here this only picks the sample the document page's "Voir" linked to: the same mandate, document
+     * and rank, and the same way back. An unknown document (another agent's, a deleted one) is production's 404; the
+     * prototype leaves its default state.
+     */
+    function initPreview() {
+        var id = params.get("id") || "301";
+        var doc = owns(id) ? findDocument(id, params.get("document")) : null;
+        if (!doc) return;
+
+        var rank = parseInt(params.get("page"), 10);
+        if (!rank || rank < 1 || rank > doc.pages.length) rank = 1;
+        var title = doc.title || TYPES[doc.type] || TYPES.OTHER;
+
+        $("[data-preview-back]").href = "document.html?id=" + id + "&document=" + doc.id + "#pages-title";
+        $("[data-preview-title]").textContent = title;
+        $("[data-preview-count]").textContent = "Page " + rank + " sur " + doc.pages.length;
+
+        var image = $("[data-preview-image]");
+        image.src = pageSrc(doc.pages[rank - 1]);
+        image.alt = "Page " + rank + " du document « " + title + " »";
+
+        document.title = "Page " + rank + " — " + title + " — Ndopify Partner Central";
+    }
+
     var pages = {
         mandate: initSection,
         "mandate-document-new": initNewDocument,
-        "mandate-document": initDocument
+        "mandate-document": initDocument,
+        "mandate-document-preview": initPreview
     };
     var init = pages[document.body.getAttribute("data-page")];
     if (init) init();

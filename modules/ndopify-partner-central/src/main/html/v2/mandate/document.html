@@ -15,26 +15,28 @@
     <link rel="stylesheet" href="../assets/css/rejoindre.css">
     <link rel="stylesheet" href="../assets/css/home.css">
     <link rel="stylesheet" href="../assets/css/listing.css">
-    <link rel="stylesheet" href="../assets/css/documents.css?v=20261126b">
+    <link rel="stylesheet" href="../assets/css/documents.css?v=20261126d">
     <script src="../assets/js/partner-central.js?v=20261125a" defer></script>
     <script src="../assets/js/mandate-documents.js?v=20261126d" defer></script>
 </head>
 <!--
-    PROTOTYPE (#329, #331, #366, #369): one document of a mandate (GET /mandates/{id}/documents/{documentId}),
-    opened from a row of the mandate page's Documents section. Its header: the title (the type's name when it has none
-    of its own), the status pill, the document's kind (#369: "PDF" / "Photos" / "Photos ou PDF" for a grandfathered
-    one), the type (when the title differs from it) and ONE upload date for the whole document ("Ajouté le
-    25/11/2026", the tenant's dateFormat with the year). No image, no preview, no thumbnail, no size anywhere on the
-    page.
+    PROTOTYPE (#329, #331, #366, #369, #372): one document of a mandate
+    (GET /mandates/{id}/documents/{documentId}), opened from a row of the mandate page's Documents section. Its
+    header: the title (the type's name when it has none of its own), the status pill, the document's kind (#369:
+    "PDF" / "Photos" / "Photos ou PDF" for a grandfathered one), the type (when the title differs from it) and ONE
+    upload date for the whole document ("Ajouté le 25/11/2026", the tenant's dateFormat with the year). No image, no
+    preview, no thumbnail, no size anywhere on the page.
     #331 adds, between the header and the pages, what was read on it (see the section's comment below): the fields,
     the hint while the reading runs, the instructions of a FAILED document and the notice of an expired one.
     Then the pages in order, one plain row each: "Page 1", "Voir" and the folded "Remplacer". A page rendered from a
     PDF is one of them, exactly like a photo page (#366): its rank, "Voir" and "Remplacer", nothing saying it came from
     a PDF.
-    PRIVACY: nothing is shown inline. Production's "Voir" href is the page's presigned `url`
-    (MandateDocumentPage.url, about an hour), opened in a new tab (target="_blank" rel="noopener"); no page path nor
-    public URL is ever in the HTML. Here "Voir" opens a sample asset (assets/images/doc-sample-*.svg). A page left open
-    longer than the URL lives gets an expired link: a reload mints new ones. The fields stay on this page only.
+    PRIVACY: nothing is shown inline. #372: "Voir" opens the page's new preview page
+    (/mandates/{id}/documents/{documentId}/pages/{pageId}) in the same tab, whose bar returns here at "#pages-title";
+    that page's image is the app's authenticated …/pages/{pageId}/preview route (where "Voir" pointed before this
+    story, in a new tab). No page path, storage URL nor presigned URL is ever in the HTML. Here "Voir" opens
+    mandate/document-preview.html, whose image is a sample asset (assets/images/doc-sample-*.svg). The fields stay on
+    this page only.
     Actions, each its own form so that the page works without JavaScript; all post-redirect-get back here with a flash:
       - Remplacer (per page row, folded): a file input (camera or gallery on a phone) and "Remplacer la page"
         (POST /mandates/{id}/documents/{documentId}/pages/{pageId}, multipart). #369: the file must be the document's
@@ -59,8 +61,8 @@
     outcome. Out of scope: adding or deleting a single page, changing the type (delete it and add it again), and any
     action on the extracted data (no re-analysis, no field correction: replacing a page restarts the reading).
     PROTOTYPE: ?id=301&document=3103 (Titre foncier, a 2-page PDF, EXTRACTED + its fields — the static markup), 3105
-    (Facture, photos, EXTRACTING), 3102 (CNI, photos, EXTRACTED + expired), 3104 (Procuration, PDF, EXTRACTED without
-    fields), 3101 (Plan de bornage, PDF, FAILED: missing page + doubtful required field); ?id=303&document=3305
+    (Facture, photos, EXTRACTING), 3102 (CNI, photos, EXTRACTED + expired), 3104 (Procuration, PDF, UPLOADED: the
+    reading is about to start), 3101 (Plan de bornage, PDF, FAILED: missing page + doubtful required field); ?id=303&document=3305
     (Procuration, PDF, EXTRACTED without fields), 3304 (Relevé de compte, PDF, EXTRACTED: amounts, "•••• 0123",
     "Solde"), 3302 (Bulletin de paie, photos: an unknown key), 3301 (CNI, photos, valid), 3303 (Accord de principe,
     PDF, EXTRACTED, expired since the reading); ?id=311&document=3113 (read-only fields), 3112 (read-only, expired)
@@ -239,9 +241,10 @@
                         <li class="doc-page">
                             <div class="doc-page__bar">
                                 <span class="doc-page__caption">Page 1</span>
-                                <!-- Production: href is the page's presigned url, nothing else; nothing is shown inline. -->
-                                <a class="doc-page__view" href="../assets/images/doc-sample-page.svg" target="_blank"
-                                   rel="noopener">Voir<span class="visually-hidden"> la page 1 (nouvel onglet)</span></a>
+                                <!-- #372: production's href is the preview page route, in the same tab; nothing is shown inline. -->
+                                <a class="doc-page__view"
+                                   href="document-preview.html?id=301&amp;document=3103&amp;page=1">Voir<span
+                                        class="visually-hidden"> la page 1</span></a>
                             </div>
                             <details class="doc-page__replace">
                                 <summary>Remplacer<span class="visually-hidden"> la page 1</span></summary>
@@ -262,8 +265,9 @@
                         <li class="doc-page">
                             <div class="doc-page__bar">
                                 <span class="doc-page__caption">Page 2</span>
-                                <a class="doc-page__view" href="../assets/images/doc-sample-page.svg" target="_blank"
-                                   rel="noopener">Voir<span class="visually-hidden"> la page 2 (nouvel onglet)</span></a>
+                                <a class="doc-page__view"
+                                   href="document-preview.html?id=301&amp;document=3103&amp;page=2">Voir<span
+                                        class="visually-hidden"> la page 2</span></a>
                             </div>
                             <details class="doc-page__replace">
                                 <summary>Remplacer<span class="visually-hidden"> la page 2</span></summary>
@@ -286,7 +290,7 @@
                         <li class="doc-page">
                             <div class="doc-page__bar">
                                 <span class="doc-page__caption" data-page-caption></span>
-                                <a class="doc-page__view" target="_blank" rel="noopener" data-page-link>Voir</a>
+                                <a class="doc-page__view" data-page-link>Voir</a>
                             </div>
                             <details class="doc-page__replace" data-page-replace>
                                 <summary data-page-replace-summary>Remplacer</summary>
