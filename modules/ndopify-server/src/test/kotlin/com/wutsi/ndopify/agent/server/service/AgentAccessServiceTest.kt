@@ -3,6 +3,7 @@ package com.wutsi.ndopify.agent.server.service
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.agent.dto.SearchAgentRequest
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.ForbiddenException
@@ -58,5 +59,21 @@ class AgentAccessServiceTest {
     fun `agent without a party id is denied`() {
         whenever(callerService.findPartyIdOrNull(principal)).thenReturn(null)
         assertDenied { service.ensureCanUpdate(AgentEntity(id = 11, party = PartyEntity())) }
+    }
+
+    @Test
+    fun `admin searches by mobile money number`() {
+        whenever(callerService.isAdmin(principal)).thenReturn(true)
+        service.ensureCanSearchByMobileMoneyNumber(SearchAgentRequest(mobileMoneyNumber = "+237600000000"))
+    }
+
+    @Test
+    fun `non-admin may not search by mobile money number`() {
+        assertDenied { service.ensureCanSearchByMobileMoneyNumber(SearchAgentRequest(mobileMoneyNumber = "+237600000000")) }
+    }
+
+    @Test
+    fun `non-admin may search without the mobile money filter`() {
+        service.ensureCanSearchByMobileMoneyNumber(SearchAgentRequest(cityId = 1L))
     }
 }

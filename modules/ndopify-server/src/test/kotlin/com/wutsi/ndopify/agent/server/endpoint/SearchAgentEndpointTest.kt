@@ -1,6 +1,10 @@
 package com.wutsi.ndopify.agent.server.endpoint
 
 import com.wutsi.ndopify.agent.dto.SearchAgentResponse
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.refdata.dto.RoleCode
+import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import java.net.URI
 import kotlin.test.Test
@@ -9,6 +13,11 @@ import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/agent/SearchAgentEndpoint.sql"])
 class SearchAgentEndpointTest : AbstractAgentEndpointTest() {
+    private var admin = false
+
+    override val roles: Array<String>
+        get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
+
     @Test
     fun all() {
         val response = rest.getForEntity("/v1/agents", SearchAgentResponse::class.java)
@@ -67,12 +76,21 @@ class SearchAgentEndpointTest : AbstractAgentEndpointTest() {
 
     @Test
     fun `by mobile money number`() {
+        admin = true
         val uri = URI.create("/v1/agents?mobile-money-number=%2B237600000000")
         val response = rest.getForEntity(uri, SearchAgentResponse::class.java)
 
         val agents = response.body!!.agents
         assertEquals(1, agents.size)
         assertEquals(2L, agents[0].id)
+    }
+
+    @Test
+    fun `mobile money search of a non-admin - forbidden`() {
+        val uri = URI.create("/v1/agents?mobile-money-number=%2B237600000000")
+        val response = rest.getForEntity(uri, ErrorResponse::class.java)
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
     }
 
     @Test
