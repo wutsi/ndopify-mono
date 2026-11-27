@@ -24,7 +24,8 @@ class PaymentMethodEndpoints(
     fun search(
         @ModelAttribute request: SearchPaymentMethodRequest,
     ): SearchPaymentMethodResponse {
-        val paymentMethods = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
+        val restricted = accessService.restrict(request)
+        val paymentMethods = service.search(restricted.copy(limit = OffsetLimitPageRequest.limit(restricted.limit)))
         return SearchPaymentMethodResponse(
             paymentMethods = paymentMethods.map { paymentMethod -> mapper.toPaymentMethodSummary(paymentMethod) },
         )

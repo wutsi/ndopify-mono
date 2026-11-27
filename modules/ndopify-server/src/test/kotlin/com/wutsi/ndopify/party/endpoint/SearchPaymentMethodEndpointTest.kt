@@ -1,8 +1,11 @@
 package com.wutsi.ndopify.party.endpoint
 
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.PaymentMethodStatus
 import com.wutsi.ndopify.party.dto.SearchPaymentMethodResponse
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
@@ -11,6 +14,28 @@ import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/SearchPaymentMethodEndpoint.sql"])
 class SearchPaymentMethodEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    private var admin = true
+
+    override val roles: Array<String>
+        get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
+
+    @Test
+    fun `another partyId is ignored`() {
+        admin = false
+        userId = 11L
+        val response = rest.getForEntity("/v1/payment-methods?partyId=101", SearchPaymentMethodResponse::class.java)
+        assertEquals(setOf("pm-100-a", "pm-100-b", "pm-100-c"), response.body!!.paymentMethods.map { it.id }.toSet())
+    }
+
+    @Test
+    fun `caller without a party - forbidden`() {
+        admin = false
+        userId = 13L
+        val response = rest.getForEntity("/v1/payment-methods", ErrorResponse::class.java)
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
+    }
+
     @Test
     fun search() {
         val response = rest.getForEntity(
