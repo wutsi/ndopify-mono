@@ -40,8 +40,11 @@ class EmailVerifierSESTest {
     }
 
     @Test
-    fun `a disposable address keeps its deliverability score`() {
-        respond(disposable = verdict(EmailAddressInsightsConfidenceVerdict.LOW))
+    fun `an overall invalid verdict with only a disposable LOW keeps the deliverability score`() {
+        respond(
+            isValid = verdict(EmailAddressInsightsConfidenceVerdict.LOW),
+            disposable = verdict(EmailAddressInsightsConfidenceVerdict.LOW),
+        )
 
         val result = verifier.verify("ray@mailinator.com")
 
@@ -77,16 +80,22 @@ class EmailVerifierSESTest {
     }
 
     @Test
-    fun `a role address keeps its deliverability score`() {
-        respond(role = verdict(EmailAddressInsightsConfidenceVerdict.LOW))
+    fun `an overall invalid verdict with only a role LOW keeps the deliverability score`() {
+        respond(
+            isValid = verdict(EmailAddressInsightsConfidenceVerdict.LOW),
+            role = verdict(EmailAddressInsightsConfidenceVerdict.LOW),
+        )
 
         assertEquals(1.0, verifier.verify("contact@example.com").score)
         assertEquals(VerificationReason.ROLE_ADDRESS, verifier.verify("contact@example.com").reason)
     }
 
     @Test
-    fun `a random input keeps its deliverability score`() {
-        respond(random = verdict(EmailAddressInsightsConfidenceVerdict.LOW))
+    fun `an overall invalid verdict with only a random-input LOW keeps the deliverability score`() {
+        respond(
+            isValid = verdict(EmailAddressInsightsConfidenceVerdict.LOW),
+            random = verdict(EmailAddressInsightsConfidenceVerdict.LOW),
+        )
 
         assertEquals(1.0, verifier.verify("a8f7d6s5@example.com").score)
         assertEquals(VerificationReason.RANDOM_INPUT, verifier.verify("a8f7d6s5@example.com").reason)
@@ -140,6 +149,7 @@ class EmailVerifierSESTest {
     }
 
     private fun respond(
+        isValid: EmailAddressInsightsVerdict = verdict(),
         syntax: EmailAddressInsightsVerdict = verdict(),
         dns: EmailAddressInsightsVerdict = verdict(),
         mailbox: EmailAddressInsightsVerdict = verdict(),
@@ -156,7 +166,7 @@ class EmailVerifierSESTest {
             .isRandomInput(random)
             .build()
         val response = GetEmailAddressInsightsResponse.builder()
-            .mailboxValidation(MailboxValidation.builder().evaluations(evaluations).build())
+            .mailboxValidation(MailboxValidation.builder().isValid(isValid).evaluations(evaluations).build())
             .build()
         doReturn(response).whenever(client).getEmailAddressInsights(any<GetEmailAddressInsightsRequest>())
     }
