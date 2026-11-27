@@ -43,6 +43,9 @@ chromedriver
 
 .impeccable/
 
+# Agent worktrees
+.worktrees/
+
 docs/reviews/
 
 .superpowers/

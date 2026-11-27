@@ -33,23 +33,23 @@ profile (`.claude/project-profile.md`). Their rules win over this instruction; t
 defaults here. If the profile is missing, its `platform` is not `github`, or a value this instruction needs is absent,
 stop and ask — never guess. A denied tool is a stop-and-report, never a workaround.
 
-## Start from a clean default branch
+## Start in a fresh grooming worktree
 
-The plan is written and published **from a clean `repository.default_branch` that matches GitHub** — never from a
-feature branch, a stale local `main`, or a checkout carrying someone else's work. Do this before reading the story:
+Grooming never touches the repository's primary checkout: its branch, dirtiness and lag are the user's, and they are
+neither inspected nor corrected. Do all the work in a throwaway worktree cut from GitHub's default branch, and publish
+from it, so a stale or dirty checkout cannot contaminate the plan.
 
 ```bash
 git fetch origin
-git branch --show-current   # must be repository.default_branch; else git switch it (dirty tree: stop)
-git status --porcelain      # must print nothing
-git rev-list --count HEAD..origin/<repository.default_branch>   # > 0: behind, fast-forward below
-git rev-list --count origin/<repository.default_branch>..HEAD   # > 0: ahead, stop and report
+git worktree add .worktrees/<id>-<topic> -b groom/<id>-<topic> origin/<repository.default_branch>
 ```
 
-Bring a behind-only branch up to date with `git merge --ff-only origin/<repository.default_branch>`. A local default
-branch that is ahead of GitHub or has diverged from it belongs to the user: stop and report it — never `rebase`,
-`reset`, `stash`, `--autostash`, `clean` or force anything. The publish step (§4) re-checks the same tree and pushes
-only from it.
+`<topic>` is a short slug of the story title — lowercase, accents removed, non-alphanumeric runs collapsed to `-`, at
+most 40 characters. Run every command and edit every file inside that worktree; the primary checkout only hosts the
+directory, through `git worktree add` and the removal in §4. When the directory or branch already exists (an
+interrupted groom), reuse it only when `git -C <worktree> status --porcelain` prints nothing and
+`git -C <worktree> merge-base --is-ancestor origin/<repository.default_branch> HEAD` succeeds; otherwise stop and
+report — never force-, reset or recreate it.
 
 ## Resolve the story and its board
 
@@ -112,6 +112,8 @@ Brief the `designer` subagent before writing the plan. The brief must contain:
 
 - the story id, title, and the enriched story body and acceptance criteria;
 - the prototype directory (the profile's `prototype.dir` for the affected module; ask the user when it is not obvious);
+- the absolute path of the grooming worktree, where the designer creates and edits the prototype — never in the primary
+  checkout;
 - which pages/modules are affected and which existing prototype pages and design tokens to follow;
 - the states the acceptance criteria imply: default, empty, error, loading, and a narrow/mobile viewport.
 
@@ -140,24 +142,35 @@ not offer to execute it.
 
 ## 4. Publish
 
-Work on the clean, GitHub-level `repository.default_branch` verified at the start, and only with a tree clean apart
-from the new plan and, for `UI: yes`, the prototype files. If `plans.publish` is not `push`, stop and ask: this agent
-publishes by pushing the plan to the default branch.
+Work in the grooming worktree from *Start in a fresh grooming worktree*, with a tree clean apart from the new plan and,
+for `UI: yes`, the prototype files. If `plans.publish` is not `push`, stop and ask: this agent publishes by pushing the
+plan to the default branch.
 
 ```bash
-git status --porcelain
+git -C <worktree> status --porcelain
 git fetch origin
-git rebase origin/<repository.default_branch>
-git add <plans.dir>/<id>-<title>.md
-git add <prototype-paths>          # UI: yes only, from the profile's prototype.dir
-git diff --cached --name-only      # must list only the plan and the prototype files
-git commit -m "docs(<scope>): add the <topic> plan and prototype" -m "Refs #<id>"   # repository.story_ref
-git push origin <repository.default_branch>
+git -C <worktree> rebase origin/<repository.default_branch>
+git -C <worktree> add <plans.dir>/<id>-<title>.md
+git -C <worktree> add <prototype-paths>          # UI: yes only, from the profile's prototype.dir
+git -C <worktree> diff --cached --name-only      # must list only the plan and the prototype files
+git -C <worktree> commit -m "docs(<scope>): add the <topic> plan and prototype" -m "Refs #<id>"   # repository.story_ref
+git -C <worktree> push origin HEAD:<repository.default_branch>
 ```
 
 For `UI: no`, omit the prototype add and commit only the plan (`docs(<scope>): add the <topic> plan`). If the tree
 has other changes, stop and report them: never `git add -A`, never `--autostash`. If the push is rejected,
-`git fetch origin && git rebase origin/<repository.default_branch>` and push again; if it fails a second time, stop.
+`git fetch origin && git -C <worktree> rebase origin/<repository.default_branch>` and push again; if it fails a second
+time, stop.
+
+After a successful push, remove the worktree and its branch, and never use them again:
+
+```bash
+git worktree remove .worktrees/<id>-<topic>
+git branch -D groom/<id>-<topic>
+```
+
+A worktree that will not remove cleanly is a stop-and-report — never `--force`. Leave the worktree and its branch in
+place when the groom ends on a gate or blocked, and name the worktree in the report so the resumed session reuses it.
 
 ## 5. Close the loop
 
@@ -176,15 +189,15 @@ If the board has no `tracker.statuses.ready` option, ask which status follows th
 ## Report
 
 Your final message is the report itself, in the shape of `.claude/agent-report.md` — that file is a template; never
-edit or overwrite it. A successful groom is `OUTCOME: done`, `PLAN: <URL>`,
-`PROTOTYPE: <paths>|-`, `STATUS: <tracker.statuses.ready>`, `NEXT: implement <id>`. When you need the user, return
-`OUTCOME: gate` with `GATE: question` or `GATE: prototype` and the details in `NOTES`.
+edit or overwrite it. A successful groom is `OUTCOME: done`, `PLAN: <URL>`, `PROTOTYPE: <paths>|-`, `WORKTREE: -`,
+`STATUS: <tracker.statuses.ready>`, `NEXT: implement <id>`. When you need the user, return `OUTCOME: gate` with
+`GATE: question` or `GATE: prototype` and the details in `NOTES`, and the worktree path as `WORKTREE`.
 
 ## Stop and ask
 
-Stop instead of guessing when a requirement is ambiguous, the story conflicts with a repository rule, the default branch
-is dirty or diverged from GitHub, the board or status cannot be resolved, or an irreversible step (a push to the default
-branch) does not match this instruction.
+Stop instead of guessing when a requirement is ambiguous, the story conflicts with a repository rule, the grooming
+worktree cannot be created or an existing one is dirty or not based on GitHub's default branch, the board or status
+cannot be resolved, or an irreversible step (a push to the default branch) does not match this instruction.
 When you run as a subagent and cannot ask, end with `OUTCOME: gate`, `GATE: question`, and the questions in `NOTES`.
 Never force-push. Never put unrelated changes in the commit. Never move a `UI: yes` story to `tracker.statuses.ready`
 without the prototype approved and committed.
@@ -195,5 +208,6 @@ without the prototype approved and committed.
 - for `UI: yes`, the approved prototype is committed and linked from the story;
 - the plan is on the default branch as `<plans.dir>/<id>-<title>.md` (verify with
   `git fetch && git log --oneline origin/<repository.default_branch> -- <plans.dir>/<id>-<title>.md`);
+- the grooming worktree and its branch are removed (a gate keeps them for the resume);
 - the story is in `tracker.statuses.ready` and links the plan (and the prototype when `UI: yes`);
 - no production code was implemented.
