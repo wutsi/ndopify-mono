@@ -51,7 +51,9 @@ class EmailVerificationThrottle(
         if (today != day) {
             day = today
             dailyCalls = 0
-            windows.clear() // Yesterday's entries are outside the last hour anyway
+            // The per-IP windows restart with the day too: right after midnight they still hold calls of the hour
+            // before, and a budget guard can afford that extra allowance
+            windows.clear()
         }
     }
 }
