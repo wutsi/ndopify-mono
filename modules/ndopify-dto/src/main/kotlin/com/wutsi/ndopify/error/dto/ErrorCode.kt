@@ -42,6 +42,12 @@ object ErrorCode {
 
     val CUSTOMER_NOT_FOUND = "$PREFIX:customer:not-found"
 
+    /**
+     * SES Email Validation rated the mandate's contact address undeliverable: the parameter is the `email` field, and
+     * neither the address nor the verdict is carried.
+     */
+    val EMAIL_ADDRESS_INVALID = "$PREFIX:email-address:invalid"
+
     val HTTP_MISSING_PARAMETER = "$PREFIX:http:missing-parameter"
     val HTTP_INVALID_PARAMETER = "$PREFIX:http:invalid-parameter"
     val HTTP_INTERNAL = "$PREFIX:http:unexpected-error"
