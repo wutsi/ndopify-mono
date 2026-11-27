@@ -68,7 +68,8 @@ ndopify:
     listing:
         min-images: 5                      # A listing must have at least 5 images to be published
         publish:
-            cron: "0 0 */1 * * ?"          # Every hour: publish listings that are VERIFIED or PUBLISHING
+            require-owner-verification: false  # The papers are hard to produce: publish whatever the owner verdict; the fact is still frozen
+            cron: "0 0 */1 * * ?"              # Every hour: publish listings that are VERIFIED or PUBLISHING
         verify:
             cron: "0 15 */1 * * ?"         # Every hour at 15 minutes: verify listings that are UNDER_VERIFICATION
         close:

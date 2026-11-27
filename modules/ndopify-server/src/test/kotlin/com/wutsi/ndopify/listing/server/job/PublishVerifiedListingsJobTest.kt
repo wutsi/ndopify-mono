@@ -67,6 +67,40 @@ class PublishVerifiedListingsJobTest : BaseEndpointIntegrationTest() {
         assertEquals("VERIFIED", status(102))
     }
 
+    @Test
+    fun `the gate freezes the ownership verification`() {
+        doReturn(ListingContentInfo(title = "Appartement à louer")).whenever(generator).generate(any())
+
+        jobs.publish()
+
+        assertEquals(1, frozen(100))
+        assertEquals(0, frozen(101))
+    }
+
+    @Test
+    fun `the second pass does not write the frozen fact`() {
+        // A PUBLISHING listing whose mandate has no ownership document: only the second pass sees it
+        // (one listing per mandate: free mandate 2, which has no ownership document)
+        jdbc.update("DELETE FROM T_LISTING WHERE id=101")
+        jdbc.update(
+            """
+            INSERT INTO T_LISTING(
+                id, tenant_id, mandate_id, agent_id, status, city_id, neighborhood_id, retries, modified_at,
+                ownership_verified
+            ) VALUES (103, 1, 2, 20, 'PUBLISHING', 2370201, 111, 0, '2026-01-01', 0)
+            """.trimIndent(),
+        )
+        doReturn(ListingContentInfo(title = "Appartement à louer")).whenever(generator).generate(any())
+
+        jobs.publish()
+
+        assertEquals("PUBLISHED", status(103))
+        assertEquals(0, frozen(103))
+    }
+
     private fun status(id: Long): String =
         jdbc.queryForObject("SELECT status FROM T_LISTING WHERE id=?", String::class.java, id)!!
+
+    private fun frozen(id: Long): Int =
+        jdbc.queryForObject("SELECT ownership_verified FROM T_LISTING WHERE id=?", Int::class.java, id)!!
 }

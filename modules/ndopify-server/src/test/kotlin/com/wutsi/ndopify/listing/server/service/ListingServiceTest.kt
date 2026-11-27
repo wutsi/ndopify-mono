@@ -68,6 +68,22 @@ class ListingServiceTest {
         locationService,
         accessService,
         ownershipVerdictService,
+        true,
+        clock,
+    )
+
+    private val openService = ListingService(
+        dao,
+        mandateService,
+        agentService,
+        customerService,
+        publishedNotifier,
+        sentBackNotifier,
+        sectionService,
+        locationService,
+        accessService,
+        ownershipVerdictService,
+        false,
         clock,
     )
 
@@ -223,6 +239,7 @@ class ListingServiceTest {
 
         assertEquals(ListingStatus.PUBLISHING, result.status)
         assertEquals(0, result.retries)
+        assertTrue(result.ownershipVerified)
     }
 
     @Test
@@ -284,6 +301,40 @@ class ListingServiceTest {
             .whenever(accessService).ensureCanUpdate(any())
 
         assertFailsWith<ForbiddenException> { service.publish(101L) }
+        verifyNoInteractions(ownershipVerdictService)
+    }
+
+    @Test
+    fun `a pending owner is published when the gate is off`() {
+        val verified = listing.copy(status = ListingStatus.VERIFIED)
+        doReturn(OwnershipVerification(status = OwnershipVerificationStatus.PENDING))
+            .whenever(ownershipVerdictService).verify(verified.mandate)
+        doAnswer { it.getArgument<ListingEntity>(0) }.whenever(dao).save(any())
+
+        val result = openService.publish(verified)
+
+        assertEquals(ListingStatus.PUBLISHING, result.status)
+        assertEquals(0, result.retries)
+        assertFalse(result.ownershipVerified)
+    }
+
+    @Test
+    fun `a failed owner is published when the gate is off`() {
+        val verified = listing.copy(status = ListingStatus.VERIFIED)
+        doReturn(OwnershipVerification(status = OwnershipVerificationStatus.FAILED))
+            .whenever(ownershipVerdictService).verify(verified.mandate)
+        doAnswer { it.getArgument<ListingEntity>(0) }.whenever(dao).save(any())
+
+        val result = openService.publish(verified)
+
+        assertEquals(ListingStatus.PUBLISHING, result.status)
+    }
+
+    @Test
+    fun `a listing not verified is refused without reading the verdict when the gate is off`() {
+        val ex = assertFailsWith<ConflictException> { openService.publish(listing) }
+
+        assertEquals(ErrorCode.LISTING_NOT_VERIFIED, ex.error.code)
         verifyNoInteractions(ownershipVerdictService)
     }
 

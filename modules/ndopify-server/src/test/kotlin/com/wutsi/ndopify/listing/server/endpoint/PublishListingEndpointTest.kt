@@ -37,6 +37,27 @@ class PublishListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `publish freezes the ownership verification`() {
+        assertEquals(HttpStatus.OK, publish(100L).statusCode)
+
+        assertTrue(dao.findById(100L).get().ownershipVerified)
+    }
+
+    @Test
+    fun `a refused publication freezes nothing`() {
+        assertEquals(HttpStatus.CONFLICT, publish(103L).statusCode)
+
+        val listing = dao.findById(103L).get()
+        assertEquals(ListingStatus.VERIFIED, listing.status)
+        assertFalse(listing.ownershipVerified)
+    }
+
+    @Test
+    fun `a listing inserted without the column reads false`() {
+        assertFalse(dao.findById(102L).get().ownershipVerified)
+    }
+
+    @Test
     fun `not verified - 409`() {
         val response = publish(101L)
 
