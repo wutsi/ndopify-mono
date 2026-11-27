@@ -74,6 +74,7 @@ object ErrorCode {
     val LISTING_VERSION_CONFLICT = "$PREFIX:listing:version-conflict"
     val LISTING_NOT_DRAFT = "$PREFIX:listing:not-draft"
     val LISTING_NOT_VERIFIED = "$PREFIX:listing:not-verified"
+    val LISTING_OWNERSHIP_NOT_VERIFIED = "$PREFIX:listing:ownership-not-verified"
     val LISTING_NOT_PUBLISHED = "$PREFIX:listing:not-published"
     val LISTING_INCOMPLETE = "$PREFIX:listing:incomplete"
     val LISTING_IMAGE_NOT_FOUND = "$PREFIX:listing-image:not-found"
