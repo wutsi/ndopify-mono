@@ -426,3 +426,29 @@ Run: `mvn verify` (root, per the project profile; `ndopify-server` needs MySQL).
 git add modules/ndopify-server/CLAUDE.md
 git commit -m "docs(server): document the ownership verdict" -m "Refs #297"
 ```
+
+---
+
+## Sample evaluation
+
+Run on 2026-11-27 against the local server (MySQL, local storage, DeepSeek `deepseek-flash`), one LISTING mandate per
+sample whose customer's party is named exactly as the document prints it:
+
+| Sample | Type | Extracted name / owners | Customer name | Score | Document status | Verdict | Reason |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| CM CNI (front + back) | `NATIONAL_ID` | not read | `DANIEL CHARLES AUGUSTINE TANDENT YANG AHANDA` | n/a | `FAILED` `DOCUMENT_UNREADABLE` | `FAILED` | `OWNERSHIP_ID_UNUSABLE(DOCUMENT_UNREADABLE)` |
+| CM passport | `PASSPORT` | not read | `SAMUEL ETO'O FILS` | n/a | `FAILED` `DOCUMENT_UNREADABLE` | `FAILED` | `OWNERSHIP_ID_UNUSABLE(DOCUMENT_UNREADABLE)` |
+| *Titre foncier* (expected on #297) | `LAND_TITLE` | — | — | n/a | — | not measured | — |
+| *Certificat de propriété* (expected on #297) | `CERTIFICATE_OF_OWNERSHIP` | — | — | n/a | — | not measured | — |
+
+- The two identity samples are the repository's (`src/test/resources/files/identity/cm/`). Each was uploaded on its
+  own mandate and read through the ops extraction; both came back `FAILED` `DOCUMENT_UNREADABLE` (the model judged the
+  document invalid), so no name-match score could be measured. That is the documents domain's reading (#327 / #330),
+  not the verdict's rule: the verdict reports it as `OWNERSHIP_ID_UNUSABLE` with the document's `problemCodes`, as
+  designed.
+- The *titre foncier* and the *certificat de propriété* were not attached to #297 when the evaluation ran, so the
+  ownership half could not be measured either.
+- **Decision:** `ndopify.mandate.ownership.name-threshold` keeps its 90 default (the KYC threshold). No sample with a
+  genuinely matching name scored below it — none scored at all — so lowering it would be unjustified. Re-run this
+  table when the two land documents are attached and the identity reading returns values; a matching sample below 90
+  then lowers the default to that score's floor.
