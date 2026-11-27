@@ -154,7 +154,7 @@ carries the questions or the prototype paths, one per line.
 | `OUTCOME: done`, `STATUS` is `tracker.statuses.done` | record the PR and status, dispatch the next story |
 | `OUTCOME: done`, any other status | stop: the report and the board disagree |
 | `OUTCOME: gate` | show `NOTES` — the question(s) or the prototype paths — wait for the user, send the answer to the same session, wait again |
-| `OUTCOME: blocked` | record the reason, stop the run |
+| `OUTCOME: blocked` | record the reason, stop the run; when the reason is an unmerged story prerequisite, name the exact `gh issue edit <story> --add-blocked-by <blocker>` command and record it in the run file |
 | missing, unreadable or no contract block | stop; never guess |
 
 If the harness cannot resume the child session, stop and ask. Never dispatch a new child to answer a gate: the
