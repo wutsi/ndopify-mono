@@ -38,6 +38,9 @@ ndopify:
         image-kit:
             origin-url: "https://${ndopify.storage.s3.bucket}.s3.amazonaws.com"
             endpoint-url: "${IMAGE_KIT_ENDPOINT_URL}"
+    listing:
+        publish:
+            require-owner-verification: false  # Same as PROD: publish whatever the owner verdict; the fact is still frozen
     security:
         jwt:
             secret: ${JWT_SECRET}          # No default: the server doesn't start without it

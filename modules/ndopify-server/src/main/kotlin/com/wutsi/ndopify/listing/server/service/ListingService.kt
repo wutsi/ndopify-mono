@@ -29,6 +29,8 @@ import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
+import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
@@ -49,8 +51,23 @@ class ListingService(
     private val locationService: LocationService,
     private val accessService: ListingAccessService,
     private val ownershipVerdictService: OwnershipVerdictService,
+    @param:Value("\${ndopify.listing.publish.require-owner-verification}")
+    private val requireOwnerVerification: Boolean,
     private val clock: Clock,
 ) {
+    companion object {
+        private val LOGGER = LoggerFactory.getLogger(ListingService::class.java)
+    }
+
+    init {
+        if (!requireOwnerVerification) {
+            LOGGER.warn(
+                "ndopify.listing.publish.require-owner-verification=false: the owner-verification publication gate is " +
+                    "disabled, a listing is published whatever the ownership verdict of its mandate",
+            )
+        }
+    }
+
     /** Newest first. */
     fun search(request: SearchListingRequest): List<ListingEntity> {
         val sort = Sort.by(Sort.Direction.DESC, "id")
@@ -325,8 +342,8 @@ class ListingService(
     /**
      * Sends a VERIFIED listing for publication: PUBLISHING, its content being generated asynchronously
      * (`ListingJobs.publish`). 404 LISTING_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for an admin or its agent, then 409
-     * LISTING_NOT_VERIFIED, then 409 LISTING_OWNERSHIP_NOT_VERIFIED while the mandate's ownership verdict is not
-     * VERIFIED ([publish]).
+     * LISTING_NOT_VERIFIED, then 409 LISTING_OWNERSHIP_NOT_VERIFIED while `ndopify.listing.publish.require-owner-verification`
+     * is on and the mandate's ownership verdict is not VERIFIED ([publish]).
      */
     @Transactional
     fun publish(id: Long): ListingEntity {
@@ -337,8 +354,9 @@ class ListingService(
 
     /**
      * Sends a VERIFIED [listing] for publication: PUBLISHING, retries reset. 409 LISTING_NOT_VERIFIED first, then 409
-     * LISTING_OWNERSHIP_NOT_VERIFIED when the mandate's ownership verdict (#297) is not VERIFIED: the verdict's reasons
-     * are in `error.data["reasons"]`, as `code` and (for `*_UNUSABLE`) `details`, never a name, document, path or URL.
+     * LISTING_OWNERSHIP_NOT_VERIFIED while `ndopify.listing.publish.require-owner-verification` is on and the mandate's
+     * ownership verdict (#297) is not VERIFIED: the verdict's reasons are in `error.data["reasons"]`, as `code` and
+     * (for `*_UNUSABLE`) `details`, never a name, document, path or URL. The verdict is derived in both modes.
      */
     @Transactional
     fun publish(listing: ListingEntity): ListingEntity {
@@ -346,7 +364,7 @@ class ListingService(
             throw ConflictException(Error(ErrorCode.LISTING_NOT_VERIFIED))
         }
         val verification = ownershipVerdictService.verify(listing.mandate)
-        if (verification.status != OwnershipVerificationStatus.VERIFIED) {
+        if (requireOwnerVerification && verification.status != OwnershipVerificationStatus.VERIFIED) {
             throw ConflictException(
                 Error(
                     code = ErrorCode.LISTING_OWNERSHIP_NOT_VERIFIED,
