@@ -23,7 +23,7 @@
     <script src="assets/js/visit.js?v=20261118a" defer></script>
     <script src="assets/js/mandate-documents.js?v=20261126d" defer></script>
     <script src="assets/js/ownership-copy.js" defer></script>
-    <script src="assets/js/mandate-ownership.js?v=20261127b" defer></script>
+    <script src="assets/js/mandate-ownership.js?v=20261127c" defer></script>
 </head>
 <!--
     v2: a SALE mandate (?id=301, a seller's villa, signed; ?id=302, a seller's plot of land whose criteria show its
@@ -601,6 +601,14 @@
                     VERIFIED: *Propriétaire vérifié* and the hint that a verified owner is what allows publication
                     (#299), with a link to the mandate's listing (the *Actif* panel's read) — no link, and no dead
                     one, when the mandate has no listing yet. No date, since the verdict has none.
+                    #377: the same VERIFIED verdict can come from an admin's override of the owner verification.
+                    That is a state of its own: the pill reads *Vérifiée par Ndopify*, the intro drops its "à partir
+                    des pièces de la section Documents" clause (the documents didn't decide it), and the block says
+                    Ndopify verified the owner after review (*Propriétaire vérifié* / *Ndopify a vérifié le
+                    propriétaire après examen de sa situation.*) — never that the documents passed — then keeps the
+                    publication hint and the listing link unchanged. It shows no date, no reason, no admin identity
+                    and no admin reason: the verdict carries none of them. The non-overridden VERIFIED state, and
+                    every other state, is unchanged.
                     FAILED: *Propriétaire non vérifié*, one block per reason code: the check's kind (*la pièce
                     d'identité* for OWNERSHIP_ID_*, *le document de propriété* for OWNERSHIP_DOCUMENT_*), the reason
                     in French, its action (reprendre la photo / changer le type / ajouter un titre), and for
@@ -614,7 +622,8 @@
                     PROTOTYPE: the static markup is ?id=301's render (its identity card is expired: FAILED), as the
                     server would send it. mandate-ownership.js only switches the samples from ?ownership=:
                     pending (default &reason=both; id-missing, document-missing, in-flight), verified (301 with
-                    &listing=published also shows the listing link), failed (&reason=id-expired (default),
+                    &listing=published also shows the listing link), overridden (the same link with
+                    &listing=published; the intro loses its documents clause), failed (&reason=id-expired (default),
                     id-unusable, id-name, document-unusable, document-name), unavailable, none. A SEARCH mandate
                     (?id=303, ?id=204) and a CLOSED / CANCELLED one (301 cancelled or closed from this page) hide the
                     section whatever the switch. Production renders the state and the reasons server-side; no state
@@ -626,7 +635,8 @@
                         <p class="status-tag status-tag--warning" data-ownership-tag>Non vérifié</p>
                     </div>
                     <p class="ownership__intro">Ndopify vérifie que <span data-ownership-party>le vendeur</span> est
-                        bien le propriétaire du bien, à partir des pièces de la section Documents.</p>
+                        bien le propriétaire du bien<span data-ownership-intro-documents>, à partir des pièces de la
+                        section Documents</span>.</p>
 
                     <div class="alert alert--warning" hidden data-ownership-unavailable>
                         <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
@@ -681,6 +691,25 @@
                         <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         <div>
                             <p class="alert__title">Propriétaire vérifié</p>
+                            <p>Un propriétaire vérifié est ce qui permet de publier l'annonce.</p>
+                            <p class="ownership__actions" hidden data-ownership-listing-actions>
+                                <a class="btn btn--primary btn--compact" data-ownership-listing>Voir l'annonce</a>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!--
+                        #377: the same VERIFIED verdict, overridden by Ndopify after review. A state of its own, never
+                        worded as a document check: the intro drops its "à partir des pièces" clause, and the block
+                        says Ndopify verified the owner after review — never that the documents passed. No date, no
+                        reason, no admin identity and no admin reason (the verdict carries none of them), and the
+                        publication hint and the listing link stay #298's.
+                    -->
+                    <div class="alert alert--success" hidden data-ownership-overridden>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <div>
+                            <p class="alert__title">Propriétaire vérifié</p>
+                            <p>Ndopify a vérifié le propriétaire après examen de sa situation.</p>
                             <p>Un propriétaire vérifié est ce qui permet de publier l'annonce.</p>
                             <p class="ownership__actions" hidden data-ownership-listing-actions>
                                 <a class="btn btn--primary btn--compact" data-ownership-listing>Voir l'annonce</a>

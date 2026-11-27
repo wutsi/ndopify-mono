@@ -15,11 +15,17 @@
  * page's publication block in ownership-copy.js, and production reads the same document.problem.<code> bundle).
  * UNAVAILABLE is the section's own state when the read fails or answers UNKNOWN.
  * The Documents rows just below the section are what name each piece's type, title and status.
+ * #377: a VERIFIED verdict may carry overridden: true (an admin overrode the owner verification). It is still
+ * VERIFIED, but it is its own state: the pill reads "Vérifiée par Ndopify", the intro loses its documents clause,
+ * and the block says Ndopify verified the owner after review — never that the documents passed; the publication
+ * hint and the listing link stay the verified ones. No date, reason, admin identity nor admin reason is shown.
  * The section is absent on a SEARCH mandate and on a CLOSED / CANCELLED one.
  *
  * Query switch (prototype only; production renders all of it server-side):
  *   ?ownership=pending[&reason=both|id-missing|document-missing|in-flight]   (both is the default)
  *   ?ownership=verified                      (301 with &listing=published shows the listing link)
+ *   ?ownership=overridden                    (the VERIFIED verdict of an admin's override, #377: its own pill and
+ *                                             wording; &listing=published gives it the same listing link)
  *   ?ownership=failed[&reason=mixed|id-expired|id-unusable|id-name|document-unusable|document-name]
  *                                            (id-expired is the default; 301's own verdict)
  *   ?ownership=unavailable                   (the verdict read failed: only the section says so)
@@ -108,6 +114,8 @@
         if (choice === "none") return null;
         if (choice === "unavailable") return { status: "UNAVAILABLE", reasons: [] };
         if (choice === "verified") return { status: "VERIFIED", reasons: [] };
+        // #377: VERIFIED by an admin's override — its own state, with the verdict's overridden flag.
+        if (choice === "overridden") return { status: "VERIFIED", overridden: true, reasons: [] };
         if (choice === "failed") {
             return { status: "FAILED", reasons: FAILED_SAMPLES[params.get("reason")] || FAILED_SAMPLES["id-expired"] };
         }
@@ -119,19 +127,26 @@
             : { status: "PENDING", reasons: PENDING_SAMPLES.both };
     }
 
+    // #377: the verified and overridden-verified verdicts are two blocks of the same section; both are shown one at a
+    // time, so the active one is what carries the listing link.
+    var BLOCKS = ["unavailable", "pending", "failed", "verified", "overridden"];
+
     function showBlock(section, name) {
-        ["unavailable", "pending", "failed", "verified"].forEach(function (state) {
+        BLOCKS.forEach(function (state) {
             $('[data-ownership-' + state + ']', section).hidden = state !== name;
         });
+        return $('[data-ownership-' + name + ']', section);
     }
 
-    function setTag(section, status) {
+    function setTag(section, verdict) {
         var tag = $("[data-ownership-tag]", section);
-        var entry = {
-            PENDING: ["info", "En cours"],
-            VERIFIED: ["success", "Vérifié"],
-            FAILED: ["warning", "Non vérifié"]
-        }[status];
+        var entry = verdict.overridden
+            ? ["success", "Vérifiée par Ndopify"]
+            : {
+                PENDING: ["info", "En cours"],
+                VERIFIED: ["success", "Vérifié"],
+                FAILED: ["warning", "Non vérifié"]
+            }[verdict.status];
         tag.hidden = !entry;
         if (!entry) return;
         tag.className = "status-tag status-tag--" + entry[0];
@@ -181,9 +196,10 @@
     }
 
     // VERIFIED has no date (the verdict carries none) and no reason: the hint, then the listing when there is one.
-    function renderVerified(section) {
-        var actions = $("[data-ownership-listing-actions]", section);
-        var link = $("[data-ownership-listing]", section);
+    // #377: scoped to the block the state shows, so the overridden state gets its own listing link.
+    function renderVerified(block) {
+        var actions = $("[data-ownership-listing-actions]", block);
+        var link = $("[data-ownership-listing]", block);
         var href = listingHref();
         actions.hidden = !href;
         if (href) link.href = href;
@@ -203,11 +219,15 @@
         if (!verdict) return;
 
         $("[data-ownership-party]", section).textContent = party === "sale" ? "le vendeur" : "le bailleur";
-        setTag(section, verdict.status);
-        showBlock(section, verdict.status.toLowerCase());
+        // #377: an overridden VERIFIED verdict is its own block, and its intro no longer says the documents decided
+        // it — the verdict came from Ndopify's review.
+        var overridden = verdict.status === "VERIFIED" && verdict.overridden;
+        $("[data-ownership-intro-documents]", section).hidden = overridden;
+        setTag(section, verdict);
+        var block = showBlock(section, overridden ? "overridden" : verdict.status.toLowerCase());
         if (verdict.status === "PENDING") renderPending(section, verdict);
         if (verdict.status === "FAILED") renderFailed(section, verdict);
-        if (verdict.status === "VERIFIED") renderVerified(section);
+        if (verdict.status === "VERIFIED") renderVerified(block);
     }
 
     /*
