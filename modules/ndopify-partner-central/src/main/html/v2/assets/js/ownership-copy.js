@@ -12,6 +12,9 @@
  * value. A *_MISSING reason is a piece to add, a decisive reason is a check that failed and the one action it calls
  * for; a *_UNUSABLE reason carries the document's problemCodes as details, worded as the document page words them
  * (#331). A reason never names a document id, page, path, URL, extracted value, type nor agent title.
+ * #376 adds the city comparison (OwnershipLocation: mandateCity, documentLocality, status) and its reason,
+ * OWNERSHIP_PROPERTY_MISMATCH: the two places are the verdict's only property data, the mandate page shows them, the
+ * listing page words the sentence alone.
  */
 (function () {
     "use strict";
@@ -54,6 +57,14 @@
         OWNERSHIP_DOCUMENT_NAME_MISMATCH: {
             text: "Le document ne désigne pas le propriétaire du bien.",
             action: "Ajoutez un titre foncier ou un certificat de propriété au nom du propriétaire."
+        },
+        // #376: the title names the customer, but its locality is a known city other than the mandate's. The two
+        // places are the comparison's only data; the mandate's page shows them above this wording, the listing page
+        // words the sentence alone. No document type, title, id, page, path, URL nor extracted value.
+        OWNERSHIP_PROPERTY_MISMATCH: {
+            text: "Le document désigne un bien dans une autre ville que celle du mandat : il ne justifie pas la " +
+                "propriété de ce bien.",
+            action: "Vérifiez le document dans Documents : il doit désigner un bien situé dans la ville du mandat."
         }
     };
     // #298's decision 7: one label per code, and a generic line for a code the page doesn't know yet.
@@ -63,9 +74,12 @@
     };
 
     // The check a reason belongs to: the verdict names no type or title, only the kind of piece it looked at.
+    // #376's OWNERSHIP_PROPERTY_MISMATCH is the ownership title's own check, hence the same kind as the *_DOCUMENT_
+    // codes.
     function checkKind(code) {
         code = String(code || "");
         if (code.indexOf("OWNERSHIP_ID_") === 0) return "La pièce d'identité";
+        if (code === "OWNERSHIP_PROPERTY_MISMATCH") return "Le document de propriété";
         if (code.indexOf("OWNERSHIP_DOCUMENT_") === 0) return "Le document de propriété";
         return "";
     }

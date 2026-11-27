@@ -18,12 +18,12 @@
     <link rel="stylesheet" href="assets/css/listing.css">
     <link rel="stylesheet" href="assets/css/visit.css">
     <link rel="stylesheet" href="assets/css/documents.css?v=20261126d">
-    <link rel="stylesheet" href="assets/css/ownership.css?v=20261127b">
+    <link rel="stylesheet" href="assets/css/ownership.css?v=20261127c">
     <script src="assets/js/partner-central.js?v=20261125a" defer></script>
     <script src="assets/js/visit.js?v=20261118a" defer></script>
     <script src="assets/js/mandate-documents.js?v=20261126d" defer></script>
     <script src="assets/js/ownership-copy.js" defer></script>
-    <script src="assets/js/mandate-ownership.js?v=20261127c" defer></script>
+    <script src="assets/js/mandate-ownership.js?v=20261127d" defer></script>
 </head>
 <!--
     v2: a SALE mandate (?id=301, a seller's villa, signed; ?id=302, a seller's plot of land whose criteria show its
@@ -618,13 +618,25 @@
                     reason code reads the generic line, with no kind.
                     UNAVAILABLE: a failed read (5xx, network, 403/404) or an UNKNOWN status only makes this section
                     say *Vérification indisponible*; every other section renders as before.
+                    #376: the verdict also carries the city comparison (location: the mandate's city, the title's
+                    locality and UNKNOWN / MATCH / MISMATCH / UNRESOLVED). UNKNOWN and MATCH show nothing. MISMATCH
+                    is the FAILED OWNERSHIP_PROPERTY_MISMATCH reason, worded with the two places (*Ville du mandat*,
+                    *Localité du titre*) inside its block — the only property data the verdict carries, no document
+                    id, type, title, page, path, URL nor other extracted value. UNRESOLVED is not a verdict: a neutral
+                    hint under the state's block, whatever the status (PENDING, VERIFIED or FAILED for another
+                    check), with the two places side by side (stacked on a phone), the sentence that the title's
+                    locality can't be matched to a known city and a link to #documents-title. It never changes the
+                    status, never blocks, and shows nothing when both places are blank; a blank place reads *non
+                    précisée*.
 
                     PROTOTYPE: the static markup is ?id=301's render (its identity card is expired: FAILED), as the
                     server would send it. mandate-ownership.js only switches the samples from ?ownership=:
-                    pending (default &reason=both; id-missing, document-missing, in-flight), verified (301 with
-                    &listing=published also shows the listing link), overridden (the same link with
-                    &listing=published; the intro loses its documents clause), failed (&reason=id-expired (default),
-                    id-unusable, id-name, document-unusable, document-name), unavailable, none. A SEARCH mandate
+                    pending (default &reason=both; id-missing, document-missing, in-flight), verified (a MATCH
+                    comparison, so no hint; 301 with &listing=published also shows the listing link), overridden (the
+                    same link with &listing=published; the intro loses its documents clause), hint (#376's UNRESOLVED
+                    comparison on &state=verified (default), pending or failed; &locality=none blanks the title's
+                    locality, &city=none the mandate's city), failed (&reason=id-expired (default), id-unusable,
+                    id-name, document-unusable, document-name, property-mismatch), unavailable, none. A SEARCH mandate
                     (?id=303, ?id=204) and a CLOSED / CANCELLED one (301 cancelled or closed from this page) hide the
                     section whatever the switch. Production renders the state and the reasons server-side; no state
                     needs JavaScript.
@@ -717,11 +729,48 @@
                         </div>
                     </div>
 
+                    <!--
+                        #376: the city comparison's neutral hint — UNRESOLVED only, whatever the status. The mandate's
+                        city and the title's locality side by side, the sentence that the locality can't be matched
+                        to a known city, and a way to the Documents section. A blank place reads "non précisée";
+                        both blank hides the hint. No error styling and no status change: the block above keeps its
+                        own. Production renders it server-side from the verdict's location (status UNRESOLVED).
+                    -->
+                    <div class="hint ownership__location" hidden data-ownership-location>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <dl class="ownership__places">
+                                <div class="ownership__place">
+                                    <dt>Ville du mandat</dt>
+                                    <dd data-location-mandate-city>Douala</dd>
+                                </div>
+                                <div class="ownership__place">
+                                    <dt>Localité du titre</dt>
+                                    <dd data-location-document-locality>Bonabéri</dd>
+                                </div>
+                            </dl>
+                            <p>La localité du titre n'a pas pu être rattachée à une ville connue&nbsp;: vérifiez que le
+                                titre et le mandat désignent le même bien.</p>
+                            <p><a href="#documents-title">Vérifier le titre dans Documents</a></p>
+                        </div>
+                    </div>
+
                     <!-- One reason of a FAILED verdict: the check's kind, the wording, its details and its action. -->
                     <template data-ownership-reason-template>
                         <li class="ownership__reason">
                             <p class="ownership__check" data-reason-check></p>
                             <p data-reason-text></p>
+                            <!-- #376: the mismatch's two places, above its action (the verdict's only property data). -->
+                            <dl class="ownership__places" data-reason-places hidden>
+                                <div class="ownership__place">
+                                    <dt>Ville du mandat</dt>
+                                    <dd data-place-mandate-city></dd>
+                                </div>
+                                <div class="ownership__place">
+                                    <dt>Localité du titre</dt>
+                                    <dd data-place-document-locality></dd>
+                                </div>
+                            </dl>
                             <ul class="ownership__problems" data-reason-problems hidden></ul>
                             <p class="ownership__action" data-reason-action></p>
                         </li>

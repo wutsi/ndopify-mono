@@ -15,6 +15,12 @@
  * page's publication block in ownership-copy.js, and production reads the same document.problem.<code> bundle).
  * UNAVAILABLE is the section's own state when the read fails or answers UNKNOWN.
  * The Documents rows just below the section are what name each piece's type, title and status.
+ * #376: the verdict also carries location { mandateCity, documentLocality, status }, the city comparison of the
+ * title's locality against the mandate's city. UNKNOWN (nothing to compare) and MATCH show nothing; UNRESOLVED
+ * shows the neutral hint under the verdict, whatever the status, with the two places and a link to the Documents
+ * section; MISMATCH is the FAILED OWNERSHIP_PROPERTY_MISMATCH reason, worded with the two places inside the failed
+ * block. The comparison never decides a verdict by itself beyond that one reason, and a missing place reads
+ * "non précisée".
  * #377: a VERIFIED verdict may carry overridden: true (an admin overrode the owner verification). It is still
  * VERIFIED, but it is its own state: the pill reads "Vérifiée par Ndopify", the intro loses its documents clause,
  * and the block says Ndopify verified the owner after review — never that the documents passed; the publication
@@ -23,11 +29,17 @@
  *
  * Query switch (prototype only; production renders all of it server-side):
  *   ?ownership=pending[&reason=both|id-missing|document-missing|in-flight]   (both is the default)
- *   ?ownership=verified                      (301 with &listing=published shows the listing link)
+ *   ?ownership=verified                      (a MATCH comparison — the title is in the mandate's city, so no hint;
+ *                                             301 with &listing=published shows the listing link)
  *   ?ownership=overridden                    (the VERIFIED verdict of an admin's override, #377: its own pill and
  *                                             wording; &listing=published gives it the same listing link)
- *   ?ownership=failed[&reason=mixed|id-expired|id-unusable|id-name|document-unusable|document-name]
- *                                            (id-expired is the default; 301's own verdict)
+ *   ?ownership=hint[&state=verified|pending|failed][&locality=none][&city=none]
+ *                                            (#376's UNRESOLVED comparison, on any status: the default is a VERIFIED
+ *                                             verdict of 301 with the title's locality "Bonabéri"; &locality=none blanks
+ *                                             it, &city=none blanks the mandate's city — both blank shows no hint)
+ *   ?ownership=failed[&reason=mixed|id-expired|id-unusable|id-name|document-unusable|document-name|property-mismatch]
+ *                                            (id-expired is the default; 301's own verdict; property-mismatch is
+ *                                             #376's OWNERSHIP_PROPERTY_MISMATCH, Douala against Yaoundé)
  *   ?ownership=unavailable                   (the verdict read failed: only the section says so)
  *   ?ownership=none                          (the section as a SEARCH or CLOSED / CANCELLED page renders it: absent)
  * The samples for 301 and 302 are the mandates' own: 301 has an expired identity card, 302 has no document.
@@ -71,8 +83,18 @@
             code: "OWNERSHIP_DOCUMENT_UNUSABLE",
             details: ["DOCUMENT_TYPE_MISMATCH", "DOCUMENT_PAGE_MISSING"]
         }],
-        "document-name": [{ code: "OWNERSHIP_DOCUMENT_NAME_MISMATCH" }]
+        "document-name": [{ code: "OWNERSHIP_DOCUMENT_NAME_MISMATCH" }],
+        // #376: the title's locality is a known city other than the mandate's (301 is in Douala, the title says
+        // Yaoundé). One reason only, and the two places are the comparison's only data.
+        "property-mismatch": [{ code: "OWNERSHIP_PROPERTY_MISMATCH" }]
     };
+
+    // #376: the city comparison of a MISMATCH verdict; every other sample has nothing to compare (UNKNOWN) but the
+    // ?ownership=hint ones, set below.
+    var MISMATCH_LOCATION = { mandateCity: "Douala", documentLocality: "Yaoundé", status: "MISMATCH" };
+
+    // A place the comparison carries as blank reads "non précisée" — never an empty cell.
+    var UNKNOWN_PLACE = "non précisée";
 
     var params = new URLSearchParams(window.location.search);
 
@@ -113,11 +135,39 @@
         var choice = params.get("ownership");
         if (choice === "none") return null;
         if (choice === "unavailable") return { status: "UNAVAILABLE", reasons: [] };
-        if (choice === "verified") return { status: "VERIFIED", reasons: [] };
+        // #376: a verified owner whose title resolves to the mandate's own city (MATCH): no hint, as today.
+        if (choice === "verified") {
+            return {
+                status: "VERIFIED",
+                reasons: [],
+                location: { mandateCity: "Douala", documentLocality: "Douala", status: "MATCH" }
+            };
+        }
         // #377: VERIFIED by an admin's override — its own state, with the verdict's overridden flag.
         if (choice === "overridden") return { status: "VERIFIED", overridden: true, reasons: [] };
+        // #376: the UNRESOLVED comparison on any of the section's statuses — the hint never changes the status.
+        if (choice === "hint") {
+            var state = params.get("state");
+            var verdict = state === "pending"
+                ? { status: "PENDING", reasons: [{ code: "OWNERSHIP_ID_MISSING" }] }
+                : state === "failed"
+                    ? { status: "FAILED", reasons: FAILED_SAMPLES["id-expired"] }
+                    : { status: "VERIFIED", reasons: [] };
+            verdict.location = {
+                mandateCity: params.get("city") === "none" ? "" : "Douala",
+                documentLocality: params.get("locality") === "none" ? "" : "Bonabéri",
+                status: "UNRESOLVED"
+            };
+            return verdict;
+        }
         if (choice === "failed") {
-            return { status: "FAILED", reasons: FAILED_SAMPLES[params.get("reason")] || FAILED_SAMPLES["id-expired"] };
+            var reason = params.get("reason");
+            return {
+                status: "FAILED",
+                reasons: FAILED_SAMPLES[reason] || FAILED_SAMPLES["id-expired"],
+                location: reason === "property-mismatch" ? MISMATCH_LOCATION :
+                    { mandateCity: "", documentLocality: "", status: "UNKNOWN" }
+            };
         }
         if (choice === "pending") {
             return { status: "PENDING", reasons: PENDING_SAMPLES[params.get("reason")] || PENDING_SAMPLES.both };
@@ -173,6 +223,7 @@
     function renderFailed(section, verdict) {
         var list = $("[data-ownership-reasons]", section);
         var template = $("[data-ownership-reason-template]", section);
+        var location = verdict.location || {};
         list.innerHTML = "";
         verdict.reasons.forEach(function (reason) {
             var item = template.content.firstElementChild.cloneNode(true);
@@ -182,6 +233,15 @@
             check.textContent = copy.checkKind(reason.code);
             check.hidden = !check.textContent;
             $("[data-reason-text]", item).textContent = wording.text;
+            // #376: the mismatch's two places — the only property data the verdict carries.
+            var places = $("[data-reason-places]", item);
+            var showPlaces = reason.code === "OWNERSHIP_PROPERTY_MISMATCH" &&
+                !!(location.mandateCity || location.documentLocality);
+            places.hidden = !showPlaces;
+            if (showPlaces) {
+                $("[data-place-mandate-city]", places).textContent = location.mandateCity || UNKNOWN_PLACE;
+                $("[data-place-document-locality]", places).textContent = location.documentLocality || UNKNOWN_PLACE;
+            }
             var problems = $("[data-reason-problems]", item);
             problems.innerHTML = "";
             (reason.details || []).forEach(function (code) {
@@ -193,6 +253,22 @@
             $("[data-reason-action]", item).textContent = wording.action;
             list.appendChild(item);
         });
+    }
+
+    /*
+     * #376: the city comparison, a neutral hint under the verdict. UNRESOLVED only — MATCH and UNKNOWN show nothing —
+     * and nothing either when the verdict carries no place at all. It never changes the section's status: the block
+     * above keeps its own styling.
+     */
+    function renderLocation(section, verdict) {
+        var block = $("[data-ownership-location]", section);
+        var location = verdict.location || {};
+        var city = location.mandateCity || "";
+        var locality = location.documentLocality || "";
+        block.hidden = location.status !== "UNRESOLVED" || (!city && !locality);
+        if (block.hidden) return;
+        $("[data-location-mandate-city]", block).textContent = city || UNKNOWN_PLACE;
+        $("[data-location-document-locality]", block).textContent = locality || UNKNOWN_PLACE;
     }
 
     // VERIFIED has no date (the verdict carries none) and no reason: the hint, then the listing when there is one.
@@ -228,6 +304,7 @@
         if (verdict.status === "PENDING") renderPending(section, verdict);
         if (verdict.status === "FAILED") renderFailed(section, verdict);
         if (verdict.status === "VERIFIED") renderVerified(block);
+        renderLocation(section, verdict);
     }
 
     /*

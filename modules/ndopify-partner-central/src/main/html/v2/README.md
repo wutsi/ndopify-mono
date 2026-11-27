@@ -56,6 +56,7 @@ rentals and sales (decided 2026-11-22): no mandate is filtered on a specialisati
 
 | `listing.html`, `assets/js/partner-central.js`, `assets/js/ownership-copy.js`, `assets/js/mandate-ownership.js`, `assets/css/listing.css` (#375) | A `VERIFIED` listing whose mandate's owner isn't verified explains the wait and links to the mandate. The tag reads *Vérifiée — publication en attente* (warning; the pill wraps inside the page on a phone) and the *En vérification* panel gives way to the owner verification: `PENDING` — *Publication en attente de la vérification du propriétaire*, one line per missing piece (#298's words and what counts), or with no reason the reading in progress, no error styling; `FAILED` — *Propriétaire non vérifié*, one block per reason (the check's kind, its wording, its action, and for `*_UNUSABLE` the document's problem instructions as the document page words them), no manual review; the verdict read failing (5xx, network, 403/404) or `UNKNOWN` — *Vérification du propriétaire indisponible*, every other section unchanged. One action, *Vérifier le propriétaire dans le mandat*, opens `/mandates/{id}#ownership-title`, immediately before the mandate's Documents; nothing to publish or retry here, and the public page is untouched. Every other status, and the read-only lens of another agent, render as today and make no ownership call. The wording is #298's, shared through `assets/js/ownership-copy.js` (production: `MandateOwnershipViews`, read by `ListingViews`), so the two pages can't drift; `LISTING_TAGS` gains `VERIFIED` (*Vérifiée*) and the hold label, while the mandate's line keeps the plain *Vérifiée* (decision 6). |
 | `mandate.html`, `assets/js/mandate-ownership.js` (#377) | A `VERIFIED` owner verdict **overridden by Ndopify** is a state of its own, never worded as a document check. The status pill reads *Vérifiée par Ndopify* (success) and the intro loses its *à partir des pièces de la section Documents* clause; the success block reads *Propriétaire vérifié*, then *Ndopify a vérifié le propriétaire après examen de sa situation.* — never that the documents passed — and keeps #298's publication hint (*Un propriétaire vérifié est ce qui permet de publier l'annonce.*) and *Voir l'annonce* when the mandate has a listing (same read, same no-dead-link rule). It shows no date, no reason, no admin identity and no admin reason (the verdict carries none of them). The non-overridden `VERIFIED` state reads exactly as today, every other state is untouched, and a SEARCH, `CLOSED` or `CANCELLED` mandate still has no section; every state stays server-rendered. |
+| `mandate.html`, `assets/js/mandate-ownership.js`, `assets/js/ownership-copy.js`, `assets/css/ownership.css` (#376) | The owner verdict's **city comparison**. The verdict gains `location` — the mandate's city, the title's locality, and `UNKNOWN` / `MATCH` / `MISMATCH` / `UNRESOLVED`. `UNKNOWN` and `MATCH` show nothing. `UNRESOLVED` is a **neutral hint** under the state's block, whatever the status (`PENDING`, `VERIFIED`, or `FAILED` for another check): the two places side by side (*Ville du mandat* / *Localité du titre*), *La localité du titre n'a pas pu être rattachée à une ville connue : vérifiez que le titre et le mandat désignent le même bien.* and *Vérifier le titre dans Documents* (`#documents-title`) — info styling, no status change, no blocking; a blank place reads *non précisée* and both blank hides the hint. `MISMATCH` is a `FAILED` `OWNERSHIP_PROPERTY_MISMATCH` reason: *Le document de propriété*, the same two places, *Le document désigne un bien dans une autre ville que celle du mandat : il ne justifie pas la propriété de ce bien.* and *Vérifiez le document dans Documents : il doit désigner un bien situé dans la ville du mandat.* — no document id, type, title, page, path, storage URL nor other extracted value, and the failed block's *Corriger dans les documents* stays. |
 
 To review #329 (a mandate's documents), with the session fresh (or `&docs=reset` once): `mandate.html?id=301` (a
 seller: *Titre foncier n° 4521 — Bonapriso* *Analysé*, *Facture d'eau — octobre 2026* *En cours d'analyse*, *Carte
@@ -302,6 +303,37 @@ is still `VERIFIED`, so the state is success-styled and carries no error styling
 situation* and never names the documents, the admin, a date nor the reason; the intro drops only its *à partir des
 pièces de la section Documents* clause, since the documents didn't decide this verdict; the publication hint and the
 listing link are #298's, unchanged; the public badge (#300) is out of this story.
+
+To review #376 (the owner verification's city comparison), the section is still #298's *Vérification du propriétaire*:
+301 is a seller in **Douala**, so its samples compare Douala with the title's locality. One URL per state:
+
+| URL | State |
+|---|---|
+| `mandate.html?id=301&ownership=hint` | `VERIFIED` + `UNRESOLVED`: the success block as today, then the **neutral hint** under it — *Ville du mandat* Douala, *Localité du titre* Bonabéri (a quarter, not a known city), the sentence and *Vérifier le titre dans Documents*. The pill stays *Vérifié*, the hint keeps the info hue: no error styling and no status change. |
+| `mandate.html?id=301&ownership=hint&locality=none` | The title states no locality: *Localité du titre* *non précisée*, with the mandate's city and the same sentence and link. |
+| `mandate.html?id=301&ownership=hint&city=none` | The mandate has no city: *Ville du mandat* *non précisée*, with the title's locality. |
+| `mandate.html?id=301&ownership=hint&locality=none&city=none` | Both places blank: no hint at all — the verdict alone, as #298 renders it. |
+| `mandate.html?id=301&ownership=hint&state=pending` | The hint under `PENDING` (the identity piece missing): the pending block and its action are unchanged, the hint sits below them. |
+| `mandate.html?id=301&ownership=hint&state=failed` | The hint under `FAILED` for another check (301's expired identity card): the failed block, its wording and its action are unchanged, the hint sits below them. |
+| `mandate.html?id=301&ownership=failed&reason=property-mismatch` | `FAILED` `OWNERSHIP_PROPERTY_MISMATCH`: *Propriétaire non vérifié*, *Le document de propriété*, the two places (Douala / Yaoundé), *Le document désigne un bien dans une autre ville que celle du mandat…*, its action, then *Corriger dans les documents*; no hint. |
+| `mandate.html?id=301&ownership=verified` | `MATCH`: the title resolves to the mandate's city, so *Propriétaire vérifié* as today and **no** hint. |
+| `mandate.html?id=301` / `mandate.html?id=301&ownership=failed&reason=id-expired` | `UNKNOWN`, and a `FAILED` for another reason: unchanged, no hint. |
+| `mandate.html?id=301&ownership=unavailable` | Unchanged: *Vérification indisponible*, no hint. |
+| `mandate.html?id=301&ownership=none` | Unchanged: no section at all. |
+
+The static markup is still 301's `FAILED` render and carries no hint (301's comparison is `UNKNOWN`); the hint and
+the mismatch are this prototype's `?ownership=` switches, while production renders them server-side from the same
+verdict (`location.status` `UNRESOLVED` or `MISMATCH`). At 390 px the two places stack one under the other inside the
+hint as in the failed reason, long city names wrap (`overflow-wrap: anywhere`) and the action link keeps its own line;
+from 480 px up they sit side by side, two equal columns, and the failed reason's action stays above the fold. Tab
+through the hint: *Vérifier le titre dans Documents* takes the global focus ring, after the state's own action.
+Assumptions: the hint shows under the state's block, so the status and its wording always read first and the neutral
+comparison second; it is the app's existing `.hint` (info tokens), never `.alert--warning`; the two places are the
+verdict's only property data — no document type, title, id, page, path, URL nor other extracted value — and the
+labels (*Ville du mandat* / *Localité du titre*) are static page wording, not server data; a sample's mandate city
+is 301's own (Douala) and the title's locality is this prototype's (Bonabéri for the hint, Yaoundé for the
+mismatch); `?ownership=overridden` and every #298 / #375 state are untouched, and the listing page's owner block
+words the new reason with the shared sentence alone (no hint, no places).
 
 To review the sale states: `index.html` (offer 104, card 301), `mandate.html?id=301` (a seller's villa) and
 `mandate.html?id=302` (a seller's plot of land, whose criteria show its *Document de propriété*), `mandate/close.html?id=301`;
