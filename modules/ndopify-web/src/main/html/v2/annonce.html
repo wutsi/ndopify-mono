@@ -444,6 +444,9 @@
   errors. annonce.js makes it a modal dialog, binds the WhatsApp number (E.164 in a hidden whatsappNumber) and shows
   the confirmation in place. Hidden field: website, the honeypot (always empty); movingPeriod, one of the three
   periods. Everything else — city, type, budget — comes from the listing.
+  #380: a 400 EMAIL_ADDRESS_INVALID answers this page again with the popup open and the e-mail field flagged
+  (aria-invalid, « Cette adresse email n'est pas valide. »); the global message above the honeypot stays for every
+  other refusal only.
 -->
 <div aria-labelledby="visit-title" class="modal" id="visit">
     <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
@@ -479,8 +482,10 @@
             </div>
             <div class="field">
                 <label for="email">E-mail</label>
-                <input autocomplete="email" id="email" name="email" required type="email">
-                <span aria-live="polite" class="field-error"></span>
+                <!-- #380: on 400 EMAIL_ADDRESS_INVALID the server renders the page again with this sentence and the
+                     field flagged; the script's ?state=email-invalid samples reveal the same static state. -->
+                <input aria-describedby="email-error" autocomplete="email" id="email" name="email" required type="email">
+                <span aria-live="polite" class="field-error" id="email-error" hidden>Cette adresse email n'est pas valide.</span>
             </div>
             <div class="field">
                 <label for="whatsapp">Numéro WhatsApp</label>
@@ -501,6 +506,10 @@
                 </div>
                 <span aria-live="polite" class="field-error"></span>
             </div>
+            <!-- #380: every other refusal keeps the popup's global message. This story's e-mail refusal does not show
+                 it; kept in the markup so the branch is reviewable, hidden in every sample of this state. -->
+            <p class="field-error" data-interest-global hidden>Votre demande n'a pas pu être envoyée. Vérifiez vos
+                informations.</p>
             <!--/* Honeypot: a bot fills it, a person never sees it. The server creates nothing when it isn't empty. */-->
             <div aria-hidden="true" class="visually-hidden">
                 <label for="website">Site web</label>

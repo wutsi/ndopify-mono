@@ -1,6 +1,7 @@
 // Ndopify — listing page: the "Être contacté par un agent" popup, the photo viewer and the share button; its
 // popups code is shared with proposition.html and visite.html. Everything only enhances: without JavaScript the popups
-// open with :target and their forms post, the photos are links.
+// open with :target and their forms post, the photos are links. #380's ?state=email-invalid / -empty samples are the
+// prototype's switch, like ?sale=1 and ?state=sold; production renders the same state server-side.
 (function () {
   'use strict';
 
@@ -25,7 +26,16 @@
   // v2 (#274): ?building=1 is a building sold as a whole (a sale); ?sale=1 alone is the villa.
   var isBuilding = params.get('building') === '1';
   var isSale = params.get('sale') === '1' || isBuilding;
-  var isSold = isSale && params.get('state') === 'sold';
+  var listingState = params.get('state');
+  var isSold = isSale && listingState === 'sold';
+  // #380: the interest popup's POST was refused on the e-mail (400 EMAIL_ADDRESS_INVALID). The page comes back with
+  // #visit open, the typed values and the shared sentence under the flagged e-mail; -empty leaves the other fields
+  // blank (the visitor only typed the e-mail). The global popup message is not shown for either. Only this listing
+  // page has the state: proposition.html and visite.html share this script but their #visit is another popup.
+  var isListingPage = !!document.querySelector('[data-listing-page]');
+  var isEmailInvalid = isListingPage &&
+    (listingState === 'email-invalid' || listingState === 'email-invalid-empty');
+  var isEmailInvalidEmpty = isEmailInvalid && listingState === 'email-invalid-empty';
 
   function showAll(selector, shown) {
     document.querySelectorAll(selector).forEach(function (node) {
@@ -71,6 +81,32 @@
     }
     var lightbox = document.querySelector('[data-lightbox]');
     if (lightbox) lightbox.setAttribute('aria-label', isBuilding ? "Photos de l'immeuble" : 'Photos du bien');
+  }
+
+  // ---------------------------------------------------------------- Interest error (#380)
+
+  // The values the server renders again on 400 EMAIL_ADDRESS_INVALID: everything the visitor typed, the e-mail
+  // flagged. The sentence itself is the field's static text; this only reveals it and fills the fields.
+  var EMAIL_INVALID_EMAIL = 'audrey.kemayou@gmial.com';
+
+  function initInterestError() {
+    if (!isEmailInvalid || isSold) return;
+    var visit = document.getElementById('visit');
+    var form = visit && visit.querySelector('[data-interest-form]');
+    if (!form) return;
+    var email = form.querySelector('#email');
+    if (!isEmailInvalidEmpty) {
+      form.querySelector('#first-name').value = 'Audrey';
+      form.querySelector('#last-name').value = 'Kemayou';
+      form.querySelector('#whatsapp').value = '6 90 33 44 55';
+      form.querySelector('[name="movingPeriod"][value="WITHIN_3_MONTHS"]').checked = true;
+    }
+    email.value = EMAIL_INVALID_EMAIL;
+    // The first edit replaces the server's verdict with the field's own check (initVisitForm).
+    email.dataset.serverValue = EMAIL_INVALID_EMAIL;
+    email.setAttribute('aria-invalid', 'true');
+    var error = form.querySelector('#email-error');
+    if (error) error.hidden = false;
   }
 
   // ---------------------------------------------------------------- Popups
@@ -153,7 +189,13 @@
     // Opened on load when the page comes back from the server with #visit, or from a shared link. A dialog the page
     // took out (a SOLD sale's #visit) never opens.
     var target = location.hash && document.getElementById(location.hash.slice(1));
-    if (target && !target.hidden && target.classList.contains('modal')) open(target, null);
+    if (target && !target.hidden && target.classList.contains('modal')) {
+      open(target, null);
+    } else if (isEmailInvalid && !isSold) {
+      // #380: the server's re-render answers the interest POST, so the popup is already open (production's is-open).
+      var visit = document.getElementById('visit');
+      if (visit && !visit.hidden) open(visit, null);
+    }
   }
 
   // ---------------------------------------------------------------- Visit form
@@ -215,6 +257,15 @@
     phoneInput.addEventListener('countrychange', refresh);
     refresh();
 
+    // #380: the server-rendered e-mail refusal goes away as soon as the visitor edits the address.
+    var emailInput = form.querySelector('#email');
+    var serverEmail = emailInput.dataset.serverValue;
+    if (serverEmail !== undefined) {
+      emailInput.addEventListener('input', function () {
+        if (emailInput.value.trim() !== serverEmail) showError(emailInput, '');
+      });
+    }
+
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       if (submit.getAttribute('aria-disabled') === 'true') return;
@@ -259,7 +310,10 @@
   function showError(control, message) {
     var error = control.closest('.field').querySelector('.field-error');
     control.setAttribute('aria-invalid', String(!!message));
-    if (error) error.textContent = message;
+    if (error) {
+      error.textContent = message;
+      error.hidden = !message;
+    }
     return !message;
   }
 
@@ -401,6 +455,7 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     initListingVariant();
+    initInterestError();
     initDialogs();
     var visit = document.getElementById('visit');
     // proposition.html's #visit popup has no contact fields (the mandate's): proposition.js does its form

@@ -483,6 +483,7 @@ fieldset.step h3 { margin-bottom: var(--space-xl); }
   margin-top: var(--space-sm);
   display: block;
 }
+.field-error[hidden],
 .field-error:empty { display: none; }
 
 /* Phone number: intl-tel-input wraps the input in .iti and puts the country button inside its left edge; these

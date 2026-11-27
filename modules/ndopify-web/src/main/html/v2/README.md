@@ -37,6 +37,23 @@ The DTOs already carry `listingType` (`SALE` / `RENTAL`) on `Mandate` and `Listi
 | `proposition.html` (#274) | A buyer's proposition of a building, opened with `?building=1` (or `?sale=1&building=1`): a 12-unit, 3-étages, 850 m² building at 240M FCFA for a search of a 12-unit, 3-étages building up to 250M. *Pourquoi ce logement ?* (sale wording: *Pourquoi ce bien ?*) lists the neighbourhood, the budget, "12 unités, comme demandé", "3 étages, comme demandé" — no bedroom, amenity, furniture or parking line; the search summary reads "immeuble de 12 unités sur 3 étages à Bonapriso, jusqu'à 250 000 000 FCFA" and the searched-amenities list is absent; the facts block and *Caractéristiques* read units, étages and surface. Every state stays reachable (`&state=accepted|accepted-no-visit|visit-requested|rejected|expired|unavailable`, `&type=video`). The villa's `?sale=1` and the rental page are unchanged. |
 | `assets/js/annonce.js`, `assets/js/proposition.js` (#274) | The building switch, next to the sale one: `[data-property-only]` (the villa's sale blocks) and `[data-building-only]` (the building's), plus `[data-no-building]` for the blocks a building never has (the *Équipements vérifiés* section, the searched amenities) — the text itself is in the markup, so every variant reads without JavaScript. `?building=1` implies the sale (`isSale`), picks `#listing-photos-building`, words the tab title and the description, and keeps the answer and the visit links on that variant. |
 
+A contact e-mail refused by ndopify-server (#380): the listing interest form's `POST /v1/mandates` answers
+`400 EMAIL_ADDRESS_INVALID` when SES rates the address's mailbox undeliverable. The page is rendered again with
+`#visit` open (`is-open`), the typed values kept, the e-mail flagged (`aria-invalid`) and the same sentence
+« Cette adresse email n'est pas valide. » under it; the popup's global *Votre demande n'a pas pu être envoyée…* is
+not shown for that code (it stays for every other refusal). The sentence is static markup; the `?state=` switch is
+`annonce.js`'s, like `?sale=1` / `?state=sold`, and it works on the rental page as on the villa and the building.
+
+| URL | State |
+|---|---|
+| `annonce.html?state=email-invalid` | The rental listing with `#visit` open and every field filled, the e-mail flagged. Also `annonce.html?sale=1&state=email-invalid` (the villa) and `annonce.html?building=1&state=email-invalid`. |
+| `annonce.html?state=email-invalid-empty` | The same with only the e-mail typed: the sentence stays above the fold inside the sheet at 320 px and 390 px. |
+
+The loading state doesn't apply (one full-page post, no in-page spinner); a valid submission is unchanged, and the
+prototype's submit stays simulated (it never posts — production answers again with the same refusal while the address
+is unchanged). At 320 px and 390 px the sentence wraps under the e-mail without pushing the fields; at 1024 px the
+popup is centred and the same line takes one row.
+
 ## Reviewing the sale states
 
 - Goal picker and landing pages: `index.html`, `louer.html`, `acheter.html`, `bailleur.html`, `vendre.html`,

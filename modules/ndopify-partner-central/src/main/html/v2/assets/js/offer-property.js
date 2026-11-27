@@ -68,6 +68,8 @@
     var MAX_AVAILABILITY_DAYS = 365;
     var CURRENCY = "XAF";
     var EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    // #380: the one sentence the three public forms show when ndopify-server refuses the contact e-mail.
+    var EMAIL_INVALID = "Cette adresse email n'est pas valide.";
     var NAME_PATTERN = /^[\p{L}][\p{L}' .-]*$/u;
 
     // The project of step 1 (ListingType, ndopify-dto).
@@ -85,7 +87,9 @@
     var KEYS = {
         answers: "npc.offer-property",
         done: "npc.offer-property.done",
-        sample: "npc.offer-property.sample"
+        sample: "npc.offer-property.sample",
+        // #380: set while the contact step shows the server's e-mail refusal, cleared on the first edit.
+        emailInvalid: "npc.offer-property.email-invalid"
     };
 
     // PROTOTYPE: rows the simulated GET /v1/locations serves, shaped like its Location DTO (ndopify-dto).
@@ -506,6 +510,31 @@
                 area: 850,
                 priceAmount: 250000000
             }
+        },
+        // #380: the review's POST refused the contact e-mail (400 EMAIL_ADDRESS_INVALID). The visitor comes back to
+        // the contact step with every answer kept, the e-mail flagged; "Suivant" reads "Revenir à la revue"
+        // (returning) and "Précédent" opens the review, so the wizard never posts from here.
+        "email-invalid": {
+            step: "contact",
+            returning: true,
+            emailInvalid: true,
+            // A complete villa sale, so the earlier steps stay answered and only the contact step is shown.
+            answers: {
+                propertyType: "HOUSE", rooms: "3", furnitureType: "UNFURNISHED", parkings: "1",
+                email: "aicha.ngobassong@gmial.com"
+            }
+        },
+        // The same refusal on a contact step whose other fields are blank (the visitor only typed the e-mail): the
+        // sentence wraps under the field at 320 px without pushing the layout.
+        "email-invalid-empty": {
+            step: "contact",
+            returning: true,
+            emailInvalid: true,
+            answers: {
+                propertyType: "HOUSE", rooms: "3", furnitureType: "UNFURNISHED", parkings: "1",
+                email: "aicha.ngobassong@gmial.com", firstName: "", lastName: "", whatsappNumber: null,
+                preferredContactPeriod: null
+            }
         }
     };
 
@@ -532,7 +561,8 @@
         }, chosen.answers || {});
     }
 
-    // Seeds a ?sample= (once), and returns the step it opens, or null without a known sample.
+    // Seeds a ?sample= (once), and returns the step it opens plus whether it is reached from the review (#380), or
+    // null without a known sample.
     function applySample() {
         var name = new URLSearchParams(window.location.search).get("sample");
         var answers = sampleAnswers(name);
@@ -542,7 +572,16 @@
             store.set(KEYS.sample, name);
             store.remove(KEYS.done);
         }
-        return activeSteps(loadAnswers()).indexOf(SAMPLES[name].step);
+        // #380: the refusal stays on screen until the address itself is corrected and saved.
+        if (SAMPLES[name].emailInvalid && loadAnswers().email === answers.email) {
+            store.set(KEYS.emailInvalid, "1");
+        } else {
+            store.remove(KEYS.emailInvalid);
+        }
+        return {
+            index: activeSteps(loadAnswers()).indexOf(SAMPLES[name].step),
+            returning: !!SAMPLES[name].returning
+        };
     }
 
     /* ---------- Helpers ---------- */
@@ -1448,7 +1487,18 @@
         email.value = answers.email || "";
         setChecked("preferredContactPeriod", answers.preferredContactPeriod);
 
+        // #380: the review's POST was refused on the e-mail (400 EMAIL_ADDRESS_INVALID): the step comes back with
+        // the field flagged and the one shared sentence. The first edit hands the field back to its own check.
+        function showServerEmailError() {
+            if (store.get(KEYS.emailInvalid) !== "1") return;
+            setFieldError(email, $("#email-error"), EMAIL_INVALID);
+        }
+        email.addEventListener("input", function () {
+            store.remove(KEYS.emailInvalid);
+        });
+
         return {
+            onShow: showServerEmailError,
             fields: [
                 textField(firstName, "Saisissez votre prénom.", nameValidity),
                 textField(lastName, "Saisissez votre nom.", nameValidity),
@@ -1612,7 +1662,8 @@
         var formParts = [$("[data-progress-block]"), $("[data-steps-title]"), form];
         var current = 0;
         // A ?sample= seeds the session before the steps read their answers, and names the step it opens.
-        var sampleStep = applySample();
+        var sample = applySample();
+        var sampleStep = sample ? sample.index : null;
         var whatsapp = lazyPhone($("#whatsappNumber"), { name: "whatsappNumber", value: loadAnswers().whatsappNumber });
 
         function resync() {
@@ -1885,7 +1936,8 @@
         } else {
             var target = sampleStep != null ? sampleStep : requestedStep();
             var start = allowed(target);
-            var returning = sampleStep == null && start === requestedStep() && !!state().returning;
+            // #380: a sample may say it is reached from the review, so Back and "Revenir à la revue" lead there.
+            var returning = sample ? sample.returning : (start === requestedStep() && !!state().returning);
             window.history.replaceState({ step: start, returning: returning, depth: state().depth || 0 }, "", urlFor(start));
             show(start, false);
         }

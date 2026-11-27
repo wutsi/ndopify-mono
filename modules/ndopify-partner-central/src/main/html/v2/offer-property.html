@@ -573,13 +573,15 @@
                     <label class="field__label" for="email">Adresse email</label>
                     <input aria-describedby="email-error" autocapitalize="off" autocomplete="email" class="input"
                            id="email" inputmode="email" name="email" required spellcheck="false" type="email">
+                    <!-- #380: the server's refusal (400 EMAIL_ADDRESS_INVALID) is the same sentence as the
+                         production template's errors['email']; the sample reveals this block and flags the input. -->
                     <p class="field__error" hidden id="email-error">
                         <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
                             <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
                             <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
                                   stroke-width="1.5"/>
                         </svg>
-                        <span data-error-text></span></p>
+                        <span data-error-text>Cette adresse email n'est pas valide.</span></p>
                 </div>
                 <div class="field">
                     <label class="field__label" for="whatsappNumber">Numéro WhatsApp</label>

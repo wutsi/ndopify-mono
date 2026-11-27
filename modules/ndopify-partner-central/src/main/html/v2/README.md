@@ -459,6 +459,22 @@ phone. `mandate.html?id=301` and `?id=302` show *Termes du contrat* with the com
 vente); `mandate.html?id=203` and `?id=204` a signed rental's terms, with no commission row, `?id=202` a rental's
 terms not signed yet (no *Signé le*), and `?id=104` no terms section at all (no contract).
 
+A contact e-mail refused by ndopify-server (#380): `POST /v1/mandates` answers `400 EMAIL_ADDRESS_INVALID` when SES
+rates the address's mailbox undeliverable. The two public wizards come back to their contact step, every answer kept,
+the e-mail flagged (`aria-invalid`, « Cette adresse email n'est pas valide. ») and *Suivant* reading *Revenir à la
+revue* — *Précédent* opens the review too, and the contact step never posts by itself. Every other refusal keeps the
+review's *Envoi impossible pour le moment.* line, which this prototype doesn't simulate (the valid submission is
+unchanged). Each `?sample=` seeds the session once, like every other one; the loading state doesn't apply (the form
+is one full-page post), and the submit stays the prototype's simulation (it never posts — production answers again
+with the same refusal while the address is unchanged):
+
+| URL | State |
+|---|---|
+| `find-property.html?sample=email-invalid` | The buyer's contact step after the refusal: all answers kept, the e-mail flagged, *Revenir à la revue*. |
+| `find-property.html?sample=email-invalid-empty` | The same with the name, WhatsApp and contact period blank (only the e-mail typed): the sentence wraps under the field at 320 px, nothing scrolls sideways. |
+| `offer-property.html?sample=email-invalid` | The seller's contact step after the refusal, the same state. |
+| `offer-property.html?sample=email-invalid-empty` | The same with only the e-mail typed. |
+
 ## Out of scope, never promised here
 
 As in the MVP, plus, for sales: title-deed checks, buyer vetting or solvency, valuation, the deed of sale and the
