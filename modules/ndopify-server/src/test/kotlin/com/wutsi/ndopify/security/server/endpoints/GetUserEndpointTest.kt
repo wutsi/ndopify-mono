@@ -3,6 +3,7 @@ package com.wutsi.ndopify.security.server.endpoints
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import com.wutsi.ndopify.security.dto.GetUserResponse
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
@@ -12,8 +13,15 @@ import kotlin.test.assertNull
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/security/GetUserEndpoint.sql"])
 class GetUserEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    private var admin = false
+
+    override val roles: Array<String>
+        get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
+
     @Test
     fun get() {
+        userId = 1L
+
         val response = rest.getForEntity("/v1/users/1", GetUserResponse::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
@@ -30,6 +38,7 @@ class GetUserEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
     @Test
     fun `party of the tenant of the request`() {
+        userId = 1L
         overrideTenantId = 2L
 
         val response = rest.getForEntity("/v1/users/1", GetUserResponse::class.java)
@@ -42,11 +51,27 @@ class GetUserEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
     @Test
     fun `user without party`() {
+        userId = 2L
+
         val response = rest.getForEntity("/v1/users/2", GetUserResponse::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(2L, response.body!!.user.id)
         assertNull(response.body!!.user.party)
+    }
+
+    @Test
+    fun `another user - forbidden`() {
+        userId = 2L
+        val response = rest.getForEntity("/v1/users/1", ErrorResponse::class.java)
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
+    }
+
+    @Test
+    fun `admin reads another user`() {
+        admin = true
+        assertEquals(HttpStatus.OK, rest.getForEntity("/v1/users/1", GetUserResponse::class.java).statusCode)
     }
 
     @Test
