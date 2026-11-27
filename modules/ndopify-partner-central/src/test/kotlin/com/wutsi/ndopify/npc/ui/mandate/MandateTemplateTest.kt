@@ -21,6 +21,9 @@ import com.wutsi.ndopify.mandate.dto.MandateDocument
 import com.wutsi.ndopify.mandate.dto.MandateDocumentPage
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.OwnershipVerification
+import com.wutsi.ndopify.mandate.dto.OwnershipVerificationReason
+import com.wutsi.ndopify.mandate.dto.OwnershipVerificationStatus
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
@@ -81,6 +84,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.ResourceAccessException
+import org.springframework.web.client.RestClientException
 import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
@@ -1975,5 +1979,91 @@ class MandateTemplateTest {
         render(get("/mandates/201"))
 
         verify(documentClient, never()).search(any())
+    }
+
+    // A LISTING mandate in flight (LAND_SALE's sale, approved): the owner verification only renders on those.
+    private val listingMandate = LAND_SALE.copy(mandateType = MandateType.LISTING)
+
+    private fun reason(code: String, details: List<String> = emptyList()) = OwnershipVerificationReason(code, details)
+
+    // The rendered owner verification of a LISTING mandate, any state stubbed before.
+    private fun verificationSection(mandate: Mandate = listingMandate): Element =
+        render(mandate).selectFirst("section.ownership")!!
+
+    @Test
+    fun `the owner verification renders its states`() {
+        doReturn(OwnershipVerification(OwnershipVerificationStatus.PENDING, listOf(reason("OWNERSHIP_ID_MISSING"))))
+            .whenever(mandateClient).ownership(201)
+        val pending = verificationSection()
+
+        assertTrue(pending.text().contains("Vérification du propriétaire"))
+        assertTrue(pending.text().contains("Vérification du propriétaire en cours"))
+        assertTrue(pending.text().contains("Il manque la pièce d'identité du propriétaire"))
+        assertEquals("#documents-title", pending.selectFirst("a[href='#documents-title']")!!.attr("href"))
+
+        doReturn(OwnershipVerification(OwnershipVerificationStatus.VERIFIED)).whenever(mandateClient).ownership(201)
+        val verified = verificationSection()
+        assertTrue(verified.text().contains("Propriétaire vérifié"))
+        assertTrue(verified.text().contains("Un propriétaire vérifié est ce qui permet de publier l'annonce."))
+        // No date, and no document of the Documents rows named here.
+        assertFalse(Regex("\\d{2}/\\d{2}/\\d{4}").containsMatchIn(verified.text()))
+
+        doReturn(
+            OwnershipVerification(
+                OwnershipVerificationStatus.FAILED,
+                listOf(reason("OWNERSHIP_ID_UNUSABLE", listOf("DOCUMENT_UNREADABLE"))),
+            ),
+        ).whenever(mandateClient).ownership(201)
+        val failed = verificationSection()
+        assertTrue(failed.text().contains("Propriétaire non vérifié"))
+        assertTrue(failed.text().contains("La pièce d'identité"))
+        assertTrue(failed.text().contains("Le document n'a pas pu être lu."))
+        assertFalse(failed.text().contains("Carte nationale d'identité"))
+    }
+
+    @Test
+    fun `the owner verification is absent on a search mandate`() {
+        val page = render(APPROVED)
+
+        assertNull(page.selectFirst("section.ownership"))
+    }
+
+    @Test
+    fun `the owner verification sits immediately before the Documents section`() {
+        doReturn(OwnershipVerification(OwnershipVerificationStatus.VERIFIED)).whenever(mandateClient).ownership(201)
+
+        val page = render(listingMandate)
+        val ownership = page.selectFirst("section.ownership")!!
+
+        assertEquals(page.selectFirst("section.documents"), ownership.nextElementSibling())
+    }
+
+    @Test
+    fun `a verified owner links the mandate's listing`() {
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
+        doReturn(OwnershipVerification(OwnershipVerificationStatus.VERIFIED)).whenever(mandateClient).ownership(201)
+
+        val verified = verificationSection()
+
+        assertEquals("/listings/501", verified.selectFirst("a[href='/listings/501']")!!.attr("href"))
+    }
+
+    @Test
+    fun `a verified owner without a listing has no dead link`() {
+        doReturn(OwnershipVerification(OwnershipVerificationStatus.VERIFIED)).whenever(mandateClient).ownership(201)
+
+        val verified = verificationSection()
+
+        assertTrue(verified.select("a[href^='/listings']").isEmpty())
+    }
+
+    @Test
+    fun `the owner verification says when it is unavailable`() {
+        doThrow(RestClientException("down")).whenever(mandateClient).ownership(201)
+
+        val section = verificationSection()
+
+        assertTrue(section.text().contains("Vérification indisponible"))
+        assertNull(section.selectFirst(".status-tag"))
     }
 }

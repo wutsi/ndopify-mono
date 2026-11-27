@@ -523,6 +523,16 @@
                 </section>
 
                 <!--
+                    The owner verification (#298): the verdict of a LISTING mandate's owner, immediately before its
+                    Documents section where the agent acts on it. "ownershipSection" is an OwnershipSectionView, null
+                    on a SEARCH or a CLOSED / CANCELLED mandate (the page asks for no verdict there), so the guarded
+                    block renders nothing at all.
+                -->
+                <th:block th:if="${ownershipSection}">
+                    <th:block th:replace="~{fragments/mandate-ownership :: ownership(${ownershipSection})}"></th:block>
+                </th:block>
+
+                <!--
                     Documents (#329): the mandate's documents, newest first, after its matches and before its criteria.
                     "documentSection" is a DocumentSectionView (null never: the section says when the documents can't be
                     read, the rest of the page unchanged), "documentOutcomeText" / "documentOutcomeStyle" the outcome of
