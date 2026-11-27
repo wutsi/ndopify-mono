@@ -60,6 +60,9 @@
 }
 .badge--info { background: var(--color-bg-info); color: var(--color-text-info); border-color: var(--color-border-info); }
 .badge--success { background: var(--color-bg-success); color: var(--color-text-success); border-color: var(--color-border-success); }
+/* #300: the audited badge of a listing audited before the owner-verification gate: same words, warning tokens. The
+   state is also spoken (a visually-hidden suffix in the badge), never colour alone. */
+.badge--warning { background: var(--color-bg-warning); color: var(--color-text-warning); border-color: var(--color-border-warning); }
 
 /* Gallery: swipeable strip on mobile, 1 + 4 grid from 768px */
 .gallery {
@@ -122,8 +125,38 @@
   padding: var(--space-xl);
   border-radius: var(--space-lg);
 }
+/* #300: audited before the owner-verification gate: the whole block takes the warning tokens, like the badge. */
+.audit-note--warning {
+  background: var(--color-bg-warning);
+  border-color: var(--color-border-warning);
+  color: var(--color-text-warning);
+}
 .audit-note p { margin: 0; }
 .audit-note p + p { margin-top: var(--space-sm); }
+/* #300: what was checked, one item per fact: one column on a phone, exactly two from 640px (the 1024px content
+   column keeps its pairs rather than collapsing to one), the limit spanning both. */
+.audit-note__list {
+  list-style: none;
+  margin: var(--space-md) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-md) var(--space-xl);
+  font-size: 0.875rem;
+}
+@media (min-width: 640px) {
+  .audit-note__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.audit-note__list li { display: flex; align-items: flex-start; gap: var(--space-md); }
+/* The switch hides this HTML wrapper, never the svg (see the [hidden] rules in styles.css). */
+.audit-note__icon { display: inline-flex; }
+.audit-note__list .icon { margin-top: 0.2em; }
+/* #300: the registry limit is a footnote, not a fact like the others: full width and set back, in both colour states. */
+.audit-note__limit {
+  grid-column: 1 / -1;
+  font-size: 0.8125rem;
+  opacity: 0.85;
+}
 
 .listing__section {
   padding-block: var(--space-xl) 0;

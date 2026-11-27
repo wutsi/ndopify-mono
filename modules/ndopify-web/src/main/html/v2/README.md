@@ -36,6 +36,7 @@ The DTOs already carry `listingType` (`SALE` / `RENTAL`) on `Mandate` and `Listi
 | `annonce.html` (#274) | A building sold as a whole, opened with `?building=1` (`?sale=1&building=1` works too): badge *À vendre*, 180M FCFA, the same *Prix et conditions* block and interest form as a sale; *En bref* reads **12 unités · 3 étages · 850 m²**, *Caractéristiques* *Type de bien* Immeuble, *Unités* 12, *Étages* 3, *Surface* 850 m² — no bedrooms, no bathrooms, no parking, no furniture; no *Équipements vérifiés* block (no water, electricity, road, security or access line anywhere); the description names the étages and the units. Its photos are a building set (`#listing-photos-building`). `?building=1&state=sold` is the SOLD page (badge *Vendu*, no conditions block, no form). The villa's `?sale=1` and the rental page are unchanged. |
 | `proposition.html` (#274) | A buyer's proposition of a building, opened with `?building=1` (or `?sale=1&building=1`): a 12-unit, 3-étages, 850 m² building at 240M FCFA for a search of a 12-unit, 3-étages building up to 250M. *Pourquoi ce logement ?* (sale wording: *Pourquoi ce bien ?*) lists the neighbourhood, the budget, "12 unités, comme demandé", "3 étages, comme demandé" — no bedroom, amenity, furniture or parking line; the search summary reads "immeuble de 12 unités sur 3 étages à Bonapriso, jusqu'à 250 000 000 FCFA" and the searched-amenities list is absent; the facts block and *Caractéristiques* read units, étages and surface. Every state stays reachable (`&state=accepted|accepted-no-visit|visit-requested|rejected|expired|unavailable`, `&type=video`). The villa's `?sale=1` and the rental page are unchanged. |
 | `assets/js/annonce.js`, `assets/js/proposition.js` (#274) | The building switch, next to the sale one: `[data-property-only]` (the villa's sale blocks) and `[data-building-only]` (the building's), plus `[data-no-building]` for the blocks a building never has (the *Équipements vérifiés* section, the searched amenities) — the text itself is in the markup, so every variant reads without JavaScript. `?building=1` implies the sale (`isSale`), picks `#listing-photos-building`, words the tab title and the description, and keeps the answer and the visit links on that variant. |
+| `annonce.html`, `proposition.html`, `acheter.html`, `vendre.html` (#300) | The owner's identity and title are read before publication (the gate shipped in #297/#299). A single head badge **Propriété auditée** (shield icon) carries the state, with the same words in every variant — rental, villa, building and SOLD alike: `badge--success` when the owner was verified at publication, `badge--warning` (same three warning tokens) when the listing was audited but the owner was not — the state is also spoken, a `visually-hidden` suffix « propriétaire non vérifié » inside the badge, never colour alone — and no badge at all when the listing was never audited (`verifiedAt` null). The audit note is the lead « Propriété auditée par Ndopify le … » followed by `ul.audit-note__list`, five items: the visit (« Un agent a visité le logement. » on a rental, « … a visité le bien. » on a sale or a building; the agent's name on the match page), « Position GPS contrôlée sur place. », « Identité du propriétaire vérifiée. », « Titre de propriété vérifié. », then, last with the info icon (a check would read as verified), « Ndopify ne consulte pas le registre foncier. » — the limit smaller (0.8125rem, opacity .85, still AA on both backgrounds) and spanning the grid's full width (`grid-column: 1 / -1`). The note replaces the old false « Ndopify vérifie l'agent, pas les documents du bien ». In the yellow state the block takes `audit-note--warning` (same three tokens), the two owner items read « Identité du propriétaire non vérifiée. » / « Titre de propriété non vérifié. » with the warning icon, and the lead stays. The list's items are 0.875rem; one column below 640 px, exactly two equal columns from 640 px (`repeat(2, minmax(0, 1fr))`, so the 1024 px content column keeps its pairs), the four facts pairing visit | GPS and identity | title. The note is the same on the public page and the match page (production's `fragments/listing-body.html`); `proposition.html` shows the same green badge and always the verified state (no ownership suffix; the switches do nothing there). `?owner=unverified` and `?audit=none` are the prototype's switches; the badge and the note read without JavaScript (the green state is the markup's). The buyer's title-deed FAQ and the seller's notarial FAQ start with the read fact and keep the limits (no land-registry check, no notarial act, no payment); the two mock descriptions lose their *« Ndopify ne les contrôle pas »* clause. |
 
 A contact e-mail refused by ndopify-server (#380): the listing interest form's `POST /v1/mandates` answers
 `400 EMAIL_ADDRESS_INVALID` when SES rates the address's mailbox undeliverable. The page is rendered again with
@@ -85,13 +86,27 @@ popup is centred and the same line takes one row.
   listing, 240M in the proposition) is this prototype's mock data; the building's photos reuse `picsum` seeds like the
   villa's. Two points settled with the requester: the count reads *étages* (its field stays `levels`), and a building
   shows no bathroom — neither in *En bref*, *Caractéristiques* nor the manager's *Le bien* — nor any parking.
+- Verified owner (#300): green state (the markup's) on `annonce.html` (rental), `annonce.html?sale=1`,
+  `annonce.html?building=1` and the SOLD pages `annonce.html?sale=1&state=sold` / `?building=1&state=sold` — the head
+  badge is *Propriété auditée* in green, the audit note opens on « Propriété auditée par Ndopify le … » and lists the
+  visit and the GPS check, then the verified identity and title, then the registry limit; at two columns the four facts
+  pair visit | GPS and identity | title, and the limit spans the full width in one column as in two;
+  `annonce.html?owner=unverified` (also `?sale=1`, `?building=1`, and `&state=sold`)
+  turns the same badge and the whole note warning-yellow, the two owner items reading « Identité du propriétaire non
+  vérifiée. » / « Titre de propriété non vérifié. »; `annonce.html?audit=none` (any variant) has no badge and no note,
+  every other block unchanged. `proposition.html?sale=1` and `?building=1` show the same green badge and always the
+  verified note (the switches do nothing there). At 390 px the note is one column and each item stays on its own line;
+  from 640 px it is always two equal columns (`repeat(2, minmax(0, 1fr))`) at 640, 768, 1024 and 1280 px, the facts
+  pairing visit | GPS and identity | title; the limit spans the full width below them, and the items (0.875rem) wrap to
+  two or three lines at the narrowest (1024 px, ~195 px per column) without falling to one word per line. The badge
+  never wraps.
 
 ## Out of scope, never promised here
 
 As in the MVP, plus, for sales:
 
-- Title-deed checks (the buyer FAQ says Ndopify verifies the agent, not the property's papers), buyer vetting or
-  solvency, valuation.
+- A land-registry check, or any title verification beyond reading the owner's ID and the title and matching the name
+  before publication (#300); buyer vetting or solvency, valuation.
 - The deed of sale, the notary as a service, any payment through the platform (the price is paid to the seller
   directly), an offer between the buyer and the seller.
 - A catalogue of properties for sale to browse, and off-market inventory: listing pages remain an entry point to a

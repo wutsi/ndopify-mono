@@ -42,6 +42,10 @@
   sale word is in the page itself.
   #292 — every displayed amount is already short ("175K FCFA / mois", "250M FCFA", "180M FCFA", "350K FCFA" for two
   months' caution); it stays so here, with a no-break space before the currency.
+  #300 — a single head badge ("Propriété auditée") and the audit note carry one state: success-green when the owner's
+  identity and title were verified at publication, warning-yellow when the listing was audited but the owner was not
+  (?owner=unverified), both out when it was never audited (?audit=none). The note lists what was checked, in two
+  columns from 640px. A SOLD page keeps the state frozen at publication.
 -->
 <body class="listing-page" data-listing-page>
 <a class="skip-link" href="#main">Aller au contenu principal</a>
@@ -74,6 +78,7 @@
     <symbol id="i-stairs" viewBox="0 0 24 24"><path d="M4 20h4v-4h4v-4h4V8h4V4"/></symbol>
     <symbol id="i-info" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5m0-8h.01"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5 10 17 19 7"/></symbol>
+    <symbol id="i-warning" viewBox="0 0 24 24"><path d="M12 4 3 20h18zM12 10v4m0 4h.01"/></symbol>
     <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6zM9 12l2 2 4-4"/></symbol>
     <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
@@ -98,11 +103,11 @@
                     <span class="badge badge--info" data-sale-only data-sale-badge data-property-only hidden>À vendre</span>
                     <span class="badge badge--info" data-sale-only data-sale-badge data-building-only hidden>À vendre</span>
                     <span class="badge badge--info" data-sold-only hidden>Vendu</span>
-                    <span class="badge badge--success" data-rental-only>
-                        <svg aria-hidden="true" class="icon"><use href="#i-shield"/></svg>Logement audité
-                    </span>
-                    <span class="badge badge--success" data-sale-only hidden>
-                        <svg aria-hidden="true" class="icon"><use href="#i-shield"/></svg>Bien audité
+                    <!-- #300: one badge, the same words on a rental, a villa, a building and their SOLD pages; the state
+                         lives in its colour and in the visually-hidden suffix, and ?audit=none takes it out. -->
+                    <span class="badge badge--success" data-audit-badge>
+                        <svg aria-hidden="true" class="icon"><use href="#i-shield"/></svg>Propriété auditée<span
+                            class="visually-hidden" data-owner-unverified hidden>, propriétaire non vérifié</span>
                     </span>
                 </p>
                 <button class="btn btn-outline listing__share" data-share hidden type="button">
@@ -217,20 +222,88 @@
                     <li><svg aria-hidden="true" class="icon"><use href="#i-area"/></svg><strong>850</strong> m²</li>
                 </ul>
 
-                <div class="audit-note" data-rental-only>
+                <!-- #300: what was audited is a list, compact in two columns from 640px. The owner item and the whole
+                     block turn warning-yellow when the owner was not verified (?owner=unverified: a listing published
+                     before the gate); ?audit=none takes the note and the head badge out (a listing never audited).
+                     Production renders the same states from verifiedAt / ownershipVerified. -->
+                <div class="audit-note" data-audit-note data-rental-only>
                     <svg aria-hidden="true" class="icon icon--lg"><use href="#i-shield"/></svg>
                     <div>
-                        <p><strong>Logement audité par Ndopify le 12 octobre 2026.</strong></p>
-                        <p>Un agent vérifié a visité ce logement : compteurs, photos et position GPS ont été contrôlés
-                            sur place.</p>
+                        <p><strong>Propriété auditée par Ndopify le 12 octobre 2026.</strong></p>
+                        <ul class="audit-note__list">
+                            <li>
+                                <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
+                                <span>Un agent a visité le logement.</span>
+                            </li>
+                            <li>
+                                <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
+                                <span>Position GPS contrôlée sur place.</span>
+                            </li>
+                            <li>
+                                <span class="audit-note__icon" data-owner-verified-icon>
+                                    <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
+                                </span>
+                                <span class="audit-note__icon" data-owner-unverified-icon hidden>
+                                    <svg aria-hidden="true" class="icon"><use href="#i-warning"/></svg>
+                                </span>
+                                <span data-owner-verified-text>Identité du propriétaire vérifiée.</span>
+                                <span data-owner-unverified-text hidden>Identité du propriétaire non vérifiée.</span>
+                            </li>
+                            <li>
+                                <span class="audit-note__icon" data-owner-verified-icon>
+                                    <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
+                                </span>
+                                <span class="audit-note__icon" data-owner-unverified-icon hidden>
+                                    <svg aria-hidden="true" class="icon"><use href="#i-warning"/></svg>
+                                </span>
+                                <span data-owner-verified-text>Titre de propriété vérifié.</span>
+                                <span data-owner-unverified-text hidden>Titre de propriété non vérifié.</span>
+                            </li>
+                            <li class="audit-note__limit">
+                                <svg aria-hidden="true" class="icon"><use href="#i-info"/></svg>
+                                <span>Ndopify ne consulte pas le registre foncier.</span>
+                            </li>
+                        </ul>
                     </div>
                 </div>
-                <div class="audit-note" data-sale-only hidden>
+                <div class="audit-note" data-audit-note data-sale-only hidden>
                     <svg aria-hidden="true" class="icon icon--lg"><use href="#i-shield"/></svg>
                     <div>
-                        <p><strong>Bien audité par Ndopify le 18 novembre 2026.</strong></p>
-                        <p>Un agent vérifié a visité ce bien : photos, surface et position GPS ont été contrôlés sur
-                            place. Ndopify vérifie l'agent, pas les documents du bien.</p>
+                        <p><strong>Propriété auditée par Ndopify le 18 novembre 2026.</strong></p>
+                        <ul class="audit-note__list">
+                            <li>
+                                <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
+                                <span>Un agent a visité le bien.</span>
+                            </li>
+                            <li>
+                                <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
+                                <span>Position GPS contrôlée sur place.</span>
+                            </li>
+                            <li>
+                                <span class="audit-note__icon" data-owner-verified-icon>
+                                    <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
+                                </span>
+                                <span class="audit-note__icon" data-owner-unverified-icon hidden>
+                                    <svg aria-hidden="true" class="icon"><use href="#i-warning"/></svg>
+                                </span>
+                                <span data-owner-verified-text>Identité du propriétaire vérifiée.</span>
+                                <span data-owner-unverified-text hidden>Identité du propriétaire non vérifiée.</span>
+                            </li>
+                            <li>
+                                <span class="audit-note__icon" data-owner-verified-icon>
+                                    <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
+                                </span>
+                                <span class="audit-note__icon" data-owner-unverified-icon hidden>
+                                    <svg aria-hidden="true" class="icon"><use href="#i-warning"/></svg>
+                                </span>
+                                <span data-owner-verified-text>Titre de propriété vérifié.</span>
+                                <span data-owner-unverified-text hidden>Titre de propriété non vérifié.</span>
+                            </li>
+                            <li class="audit-note__limit">
+                                <svg aria-hidden="true" class="icon"><use href="#i-info"/></svg>
+                                <span>Ndopify ne consulte pas le registre foncier.</span>
+                            </li>
+                        </ul>
                     </div>
                 </div>
 
@@ -250,7 +323,7 @@
                         terrasse et le jardin, cinq chambres dont une suite parentale, quatre salles de bains et une
                         cuisine équipée. Trois places de parking derrière le portail.</p>
                     <p>La maison est vendue vide, avec ses équipements fixes. Le titre foncier et les autres documents
-                        se vérifient chez le notaire, entre l'acheteur et le vendeur : Ndopify ne les contrôle pas.</p>
+                        se vérifient chez le notaire, entre l'acheteur et le vendeur, avant l'acte de vente.</p>
                 </section>
 
                 <!-- v2 (#274): the building's description, its levels and its units first. -->
@@ -262,7 +335,7 @@
                         loués à l'année. L'entrée, le hall et l'escalier sont communs ; chaque appartement a son
                         salon, sa cuisine et sa salle de bains.</p>
                     <p>L'immeuble est vendu en entier, avec ses baux en cours. Le titre foncier et les autres documents
-                        se vérifient chez le notaire, entre l'acheteur et le vendeur : Ndopify ne les contrôle pas.</p>
+                        se vérifient chez le notaire, entre l'acheteur et le vendeur, avant l'acte de vente.</p>
                 </section>
 
                 <section aria-labelledby="features-heading" class="listing__section" data-rental-only>

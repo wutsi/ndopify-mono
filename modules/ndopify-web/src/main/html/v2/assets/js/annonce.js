@@ -36,6 +36,11 @@
   var isEmailInvalid = isListingPage &&
     (listingState === 'email-invalid' || listingState === 'email-invalid-empty');
   var isEmailInvalidEmpty = isEmailInvalid && listingState === 'email-invalid-empty';
+  // #300: the head badge and the audit note have three states, production rendering them from verifiedAt /
+  // ownershipVerified: green (audited, owner verified), warning-yellow (audited, owner not verified) and none (never
+  // audited). ?owner=unverified and ?audit=none are the prototype's switches for the last two.
+  var isOwnerUnverified = params.get('owner') === 'unverified';
+  var isAuditNone = params.get('audit') === 'none';
 
   function showAll(selector, shown) {
     document.querySelectorAll(selector).forEach(function (node) {
@@ -81,6 +86,30 @@
     }
     var lightbox = document.querySelector('[data-lightbox]');
     if (lightbox) lightbox.setAttribute('aria-label', isBuilding ? "Photos de l'immeuble" : 'Photos du bien');
+  }
+
+  // ---------------------------------------------------------------- Audit state (#300)
+
+  // ?audit=none takes the head badge and the audit note out (a listing never audited). ?owner=unverified keeps them,
+  // in warning-yellow: the badge's words are the same, so it also speaks its state through its visually-hidden
+  // suffix, and the note's owner item says the owner was not verified (warning icon). Only the listing page reads
+  // these: the match page always shows the verified state, a proposed property having a verified owner.
+  function initAuditState() {
+    var unverified = isOwnerUnverified && isListingPage;
+    var noAudit = isAuditNone && isListingPage;
+    // Only ever hide: the variant switch above already showed the one badge and note this listing has.
+    if (noAudit) showAll('[data-audit-badge], [data-audit-note]', false);
+    document.querySelectorAll('[data-audit-badge]').forEach(function (badge) {
+      badge.classList.toggle('badge--success', !unverified);
+      badge.classList.toggle('badge--warning', unverified);
+    });
+    document.querySelectorAll('[data-audit-note]').forEach(function (note) {
+      note.classList.toggle('audit-note--warning', unverified);
+    });
+    if (!unverified) return;
+    showAll('[data-owner-unverified]', true);
+    showAll('[data-owner-verified-text], [data-owner-verified-icon]', false);
+    showAll('[data-owner-unverified-text], [data-owner-unverified-icon]', true);
   }
 
   // ---------------------------------------------------------------- Interest error (#380)
@@ -455,6 +484,7 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     initListingVariant();
+    initAuditState();
     initInterestError();
     initDialogs();
     var visit = document.getElementById('visit');

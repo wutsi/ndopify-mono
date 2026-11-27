@@ -693,4 +693,11 @@ fieldset.step h3 { margin-bottom: var(--space-xl); }
 [data-sale-only][hidden],
 [data-sold-only][hidden],
 [data-interest-cta][hidden],
-[data-price-terms][hidden] { display: none; }
+[data-price-terms][hidden],
+[data-audit-badge][hidden],
+[data-audit-note][hidden],
+[data-owner-unverified][hidden],
+[data-owner-verified-icon][hidden],
+[data-owner-unverified-icon][hidden],
+[data-owner-verified-text][hidden],
+[data-owner-unverified-text][hidden] { display: none; }
