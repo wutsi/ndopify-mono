@@ -83,6 +83,7 @@ class MandateDocumentController(
 
         const val VIEW_NEW = "mandate/document-new"
         const val VIEW_DOCUMENT = "mandate/document"
+        const val VIEW_PREVIEW = "mandate/document-preview"
 
         /** The mandate page's flash after an add or a delete (and its title, for an add). */
         const val OUTCOME = "documentOutcome"
@@ -278,6 +279,31 @@ class MandateDocumentController(
             deleting = delete == "1",
             model,
         )
+    }
+
+    /**
+     * The viewer of one page of a document (the approved prototype, #372): a bar whose left side links back to the
+     * document page's *Pages* heading, the page's rank, and the page's image from this app's authenticated [preview]
+     * route. A viewer, not a destination: no header nor account menu, and no JavaScript.
+     *
+     * Same access as the document page, except that anything ndopify-server can't return (an unknown mandate, a
+     * document or a page of another one, another agent's mandate) is a 404 here rather than the mandate page's
+     * `changed` redirect: this page has no way back to a document that isn't there.
+     */
+    @GetMapping("/{documentId}/pages/{pageId}")
+    fun previewPage(
+        @PathVariable id: String,
+        @PathVariable documentId: String,
+        @PathVariable pageId: String,
+        model: Model,
+    ): String {
+        currentAgent.get() ?: throw SignInRequiredException()
+        val mandate = shownMandate(id) ?: notFoundResponse()
+        val document = load(mandate.id, documentId) ?: notFoundResponse()
+        val page = document.pages.sortedBy { it.index }.firstOrNull { it.id == pageId.toLongOrNull() }
+            ?: notFoundResponse()
+        model.addAttribute("preview", MandateDocumentViews.preview(mandate, document, page))
+        return VIEW_PREVIEW
     }
 
     /**
