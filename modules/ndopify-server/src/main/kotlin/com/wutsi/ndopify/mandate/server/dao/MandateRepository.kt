@@ -99,6 +99,12 @@ interface MandateRepository : CrudRepository<MandateEntity, Long>, JpaSpecificat
         status: MandateStatus,
     ): List<MandateEntity>
 
+    // The customers of an agent's mandates, any status: the customer read rule (see CustomerAccessService)
+    @Query("SELECT DISTINCT m.customerId FROM MandateEntity m WHERE m.agentId = :agentId")
+    fun findCustomerIdsByAgentId(@Param("agentId") agentId: Long): List<Long>
+
+    fun existsByCustomerIdAndAgentId(customerId: Long, agentId: Long): Boolean
+
     // Ids only: each mandate is then loaded with its neighbourhoods. With an agent, oldest first
     @Query(
         "SELECT m.id FROM MandateEntity m WHERE m.mandateType = :mandateType AND m.status = :status " +

@@ -7,4 +7,6 @@ import org.springframework.data.repository.CrudRepository
 
 interface CustomerRepository : CrudRepository<CustomerEntity, Long>, JpaSpecificationExecutor<CustomerEntity> {
     fun findByParty(party: PartyEntity): CustomerEntity?
+
+    fun findByPartyId(partyId: Long): CustomerEntity?
 }

@@ -55,6 +55,10 @@ class CustomerService(
         return dao.findByParty(party)
     }
 
+    fun findByPartyIdOrNull(partyId: Long): CustomerEntity? {
+        return dao.findByPartyId(partyId)
+    }
+
     @Transactional
     fun findOrCreate(request: CreateCustomerRequest): CustomerEntity {
         val party = partyService.findOrCreate(
