@@ -1,5 +1,7 @@
 package com.wutsi.ndopify.npc.ui.offerproperty
 
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
@@ -27,6 +29,7 @@ import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClientException
 import java.time.Clock
 import java.time.LocalDate
@@ -72,6 +75,8 @@ class OfferPropertyController(
         const val STEP_CONFIRMATION = "confirmation"
         const val RETURN_TO_REVIEW = "review"
         const val SUBMITTED_ATTRIBUTE = "npc.submitted-listing"
+
+        private const val INVALID_EMAIL = "Cette adresse email n'est pas valide."
 
         val STEPS = OfferPropertyRules.STEPS
 
@@ -340,6 +345,10 @@ class OfferPropertyController(
         return save(STEP_CONTACT, answers, errors, returnTo, session, model)
     }
 
+    /**
+     * Submits the session to ndopify-server. A refused contact e-mail comes back to the contact step, the review
+     * would show a dead end; any other refusal keeps the review error.
+     */
     @PostMapping("/$STEP_REVIEW")
     fun submit(session: HttpSession, model: Model): String {
         val pending = pending(session)
@@ -349,6 +358,10 @@ class OfferPropertyController(
         try {
             mandateClient.create(pending.toCreateMandateRequest(tenantContext.getTenant().currencyCode))
         } catch (ex: RestClientException) {
+            // A refused address is the visitor's to fix: back to the contact step, with the answers kept
+            if (ex is HttpClientErrorException && errorCode(ex) == ErrorCode.EMAIL_ADDRESS_INVALID) {
+                return step(STEP_CONTACT, pending, RETURN_TO_REVIEW, mapOf("email" to INVALID_EMAIL), model)
+            }
             // 4xx, 5xx or unreachable: nothing the visitor can fix, except trying again.
             LOGGER.error("Unable to create the listing", ex)
             model.addAttribute("error", "Envoi impossible pour le moment. Réessayez dans quelques instants.")
@@ -665,6 +678,13 @@ class OfferPropertyController(
 
     private fun pending(session: HttpSession): PendingListing =
         session.getAttribute(PendingListing.SESSION_ATTRIBUTE) as PendingListing? ?: PendingListing()
+
+    private fun errorCode(ex: HttpClientErrorException): String? =
+        try {
+            ex.getResponseBodyAs(ErrorResponse::class.java)?.error?.code
+        } catch (ignored: Exception) {
+            null
+        }
 }
 
 // The category's detail text at step 1: a sale offers a plot to build on (prototype's choice__detail).
