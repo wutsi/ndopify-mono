@@ -25,7 +25,8 @@ class AssignmentEndpoints(
     // Ex: an agent's pending offers: GET /v1/assignments?agent-id=12&status=PENDING
     @GetMapping
     fun search(@ModelAttribute request: SearchAssignmentRequest): SearchAssignmentResponse {
-        val assignments = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
+        val restricted = accessService.restrict(request)
+        val assignments = service.search(restricted.copy(limit = OffsetLimitPageRequest.limit(restricted.limit)))
         return SearchAssignmentResponse(
             assignments = assignments.map { assignment -> mapper.toAssignmentSummary(assignment) }
         )

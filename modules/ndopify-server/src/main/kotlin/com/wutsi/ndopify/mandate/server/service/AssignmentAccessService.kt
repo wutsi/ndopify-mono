@@ -4,6 +4,7 @@ import com.wutsi.ndopify.agent.server.service.AgentService
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.ForbiddenException
+import com.wutsi.ndopify.mandate.dto.SearchAssignmentRequest
 import com.wutsi.ndopify.mandate.server.domain.AssignmentEntity
 import com.wutsi.ndopify.security.server.service.CallerService
 import org.springframework.stereotype.Service
@@ -48,6 +49,24 @@ class AssignmentAccessService(
             throw accessDenied()
         }
         return agent.id!!
+    }
+
+    /**
+     * The search the caller may run: an admin's as asked; an agent's restricted to its own offers (`agent-id` forced).
+     * 401 AUTH_UNAUTHORIZED without a token, 403 ASSIGNMENT_ACCESS_DENIED without an agent, or when the request names
+     * another agent.
+     */
+    fun restrict(request: SearchAssignmentRequest): SearchAssignmentRequest {
+        val principal = callerService.getPrincipal()
+        if (callerService.isAdmin(principal)) {
+            return request
+        }
+
+        val agentId = callerAgentId()
+        if (request.agentIds.any { id -> id != agentId }) {
+            throw accessDenied()
+        }
+        return request.copy(agentIds = listOf(agentId))
     }
 
     private fun accessDenied() = ForbiddenException(error = Error(code = ErrorCode.ASSIGNMENT_ACCESS_DENIED))
