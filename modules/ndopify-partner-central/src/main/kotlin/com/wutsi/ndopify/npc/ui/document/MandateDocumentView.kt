@@ -37,15 +37,31 @@ data class DocumentSectionView(
 )
 
 /**
- * One image page of a document: its rank, and the authenticated preview route *Voir* opens in a new tab. Never its
- * storage path nor a storage URL.
+ * One image page of a document: its rank, and the viewer page *Voir* opens in the same tab. Never its storage path
+ * nor a storage URL.
  */
 data class DocumentPageView(
     val id: Long,
     /** "Page 1" for the first. */
     val number: Int,
-    /** The Partner Central route that streams the page's watermarked JPEG. */
+    /** The Partner Central viewer page of this page (`/mandates/{id}/documents/{documentId}/pages/{pageId}`). */
     val href: String,
+)
+
+/**
+ * The viewer of one page of a document: its title, its rank and the document's page count, this app's authenticated
+ * JPEG route, and the way back to the document page's *Pages* heading. Never a storage path nor a storage URL.
+ */
+data class DocumentPreviewView(
+    val title: String,
+    /** "Page [number] sur [count]". */
+    val number: Int,
+    val count: Int,
+    /** This app's `/preview` route: the watermarked JPEG, behind the agent's session. */
+    val imageHref: String,
+    /** The document page's *Pages* heading. */
+    val backHref: String,
+    val alt: String,
 )
 
 /**

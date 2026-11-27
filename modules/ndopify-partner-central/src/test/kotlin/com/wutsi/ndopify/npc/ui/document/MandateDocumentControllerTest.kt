@@ -530,8 +530,8 @@ class MandateDocumentControllerTest {
         assertEquals("Titre foncier n° 4521", view.title)
         assertEquals(
             listOf(
-                "/mandates/301/documents/3103/pages/2001/preview",
-                "/mandates/301/documents/3103/pages/2002/preview",
+                "/mandates/301/documents/3103/pages/2001",
+                "/mandates/301/documents/3103/pages/2002",
             ),
             view.pages.map { it.href },
         )
@@ -887,6 +887,108 @@ class MandateDocumentControllerTest {
 
         doThrow(ResourceAccessException("down")).whenever(documentClient).preview(MANDATE_ID, DOCUMENT_ID, page1.id)
         assertEquals(502, mvc.perform(preview(page1.id)).andReturn().response.status)
+    }
+
+    @Test
+    fun `preview page`() {
+        val result = mvc.perform(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page2.id}")).andReturn()
+
+        assertEquals(MandateDocumentController.VIEW_PREVIEW, result.modelAndView?.viewName)
+        assertEquals(
+            DocumentPreviewView(
+                title = "Titre foncier n° 4521",
+                number = 2,
+                count = 2,
+                imageHref = "/mandates/301/documents/3103/pages/2002/preview",
+                backHref = "/mandates/301/documents/3103#pages-title",
+                alt = "Page 2 du document « Titre foncier n° 4521 »",
+            ),
+            model(result)["preview"],
+        )
+    }
+
+    @Test
+    fun `preview page - not signed in - signed out`() {
+        doReturn(null).whenever(currentAgent).get()
+
+        val result = mvc
+            .perform(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page1.id}"))
+            .andReturn()
+
+        assertEquals("redirect:/login", result.modelAndView?.viewName)
+        verify(mandateClient, never()).get(any())
+    }
+
+    @Test
+    fun `preview page - an unknown page - 404`() {
+        val result = mvc
+            .perform(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/9999"))
+            .andReturn()
+
+        assertEquals(404, result.response.status)
+    }
+
+    @Test
+    fun `preview page - an unknown document - 404`() {
+        doThrow(serverError(HttpStatus.NOT_FOUND, ErrorCode.MANDATE_DOCUMENT_NOT_FOUND))
+            .whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val result = mvc
+            .perform(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page1.id}"))
+            .andReturn()
+
+        assertEquals(404, result.response.status)
+    }
+
+    @Test
+    fun `preview page - a non-numeric page id - 404`() {
+        val result = mvc
+            .perform(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/abc"))
+            .andReturn()
+
+        assertEquals(404, result.response.status)
+    }
+
+    @Test
+    fun `preview page - a page of another document - 404`() {
+        doReturn(document.copy(pages = listOf(page1))).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val result = mvc
+            .perform(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page2.id}"))
+            .andReturn()
+
+        assertEquals(404, result.response.status)
+    }
+
+    @Test
+    fun `preview page - an unknown mandate - 404`() {
+        doThrow(serverError(HttpStatus.NOT_FOUND, ErrorCode.MANDATE_NOT_FOUND)).whenever(mandateClient).get(MANDATE_ID)
+
+        val result = mvc
+            .perform(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page1.id}"))
+            .andReturn()
+
+        assertEquals(404, result.response.status)
+    }
+
+    @Test
+    fun `preview page - another agent's mandate - 404`() {
+        doThrow(serverError(HttpStatus.FORBIDDEN)).whenever(mandateClient).get(MANDATE_ID)
+
+        val result = mvc
+            .perform(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page1.id}"))
+            .andReturn()
+
+        assertEquals(404, result.response.status)
+    }
+
+    @Test
+    fun `preview page - a cancelled mandate still renders`() {
+        doReturn(document).whenever(documentClient).get(311, DOCUMENT_ID)
+
+        val result = mvc.perform(get("/mandates/311/documents/$DOCUMENT_ID/pages/${page1.id}")).andReturn()
+
+        assertEquals(MandateDocumentController.VIEW_PREVIEW, result.modelAndView?.viewName)
     }
 
     private fun preview(pageId: Long, mandateId: Long = MANDATE_ID) =

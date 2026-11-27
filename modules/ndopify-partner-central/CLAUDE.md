@@ -349,9 +349,14 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   order and keeps no PDF (see ndopify-server's *Documents*), so an add holding one posts the whole multipart form.
   `spring.servlet.multipart` keeps 10 MB per file and goes to 55 MB per request, and `KycUploadErrorHandler` sends a
   request over them back to `?error=too-large`. A document's page is `/mandates/{id}/documents/{documentId}`: **no
-  image** of a page anywhere (no gallery, thumbnail nor size, never a page `path` nor a storage URL), its type, title,
-  status and one *Ajouté le …*, then its pages in order (*Page 1*…), each with a *Voir* link to this app's preview route
-  (`/mandates/{id}/documents/{documentId}/pages/{pageId}/preview`, new tab): the signed-in agent's route forwards the
+  image** of a page on that page (no gallery, thumbnail nor size, never a page `path` nor a storage URL), its type,
+  title, status and one *Ajouté le …*, then its pages in order (*Page 1*…), each with a *Voir* link to the page's
+  viewer (`/mandates/{id}/documents/{documentId}/pages/{pageId}`, same tab,
+  `templates/mandate/document-preview.html`): a one-line bar whose whole left side links back to the document page at
+  `#pages-title` — the arrow and the document's title, a visually hidden *— retour au document* completing the link's
+  name — and the rank *Page N sur M* at its right, the image below; no header, no account menu, no JavaScript. The
+  viewer's image is this app's preview route
+  (`/mandates/{id}/documents/{documentId}/pages/{pageId}/preview`): the signed-in agent's route forwards the
   token to ndopify-server and streams the watermarked JPEG (`image/jpeg`, `Content-Disposition: inline;
   filename="mandat-<id>-page-<n>.jpg"`, `Cache-Control: private, max-age=300`, `X-Content-Type-Options: nosniff`); a
   copied URL opens nothing without the agent's session (sign-in redirect), ndopify-server's 403/404 keep their status,

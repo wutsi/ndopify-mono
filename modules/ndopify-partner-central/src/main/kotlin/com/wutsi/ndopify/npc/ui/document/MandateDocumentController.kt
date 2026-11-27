@@ -56,7 +56,8 @@ import java.time.ZoneOffset
  * (`/mandates/{id}/documents/{documentId}`).
  *
  * The add and the replacement are multipart forms, so every action works without JavaScript; the pages show no image
- * of a page, only a *Voir* link to its [preview] route, which streams the watermarked JPEG behind the agent's session.
+ * of a page, only a *Voir* link to its viewer ([previewPage]), whose image is the authenticated [preview] route that
+ * streams the watermarked JPEG behind the agent's session.
  * Each post is post-redirect-get back to the mandate
  * page (an add, a delete) or the document's page (a rename, a replacement) with a flash attribute, and the pages show
  * them: [OUTCOME] / [TITLE] on the mandate page, [RENAME_OUTCOME] and [PAGE] on the document's.
@@ -83,6 +84,7 @@ class MandateDocumentController(
 
         const val VIEW_NEW = "mandate/document-new"
         const val VIEW_DOCUMENT = "mandate/document"
+        const val VIEW_PREVIEW = "mandate/document-preview"
 
         /** The mandate page's flash after an add or a delete (and its title, for an add). */
         const val OUTCOME = "documentOutcome"
@@ -243,7 +245,7 @@ class MandateDocumentController(
     }
 
     /**
-     * A document's page, with its pages in order and each linked to this app's authenticated preview; `?delete=1`
+     * A document's page, with its pages in order and each linked to its viewer; `?delete=1`
      * opens the confirmation panel without JS (a GET, so a delete is never forced by a link).
      * `?replaceError=size&page={pageId}` is the size error of a replacement over the multipart limit
      * ([com.wutsi.ndopify.npc.ui.kyc.KycUploadErrorHandler]).
@@ -278,6 +280,31 @@ class MandateDocumentController(
             deleting = delete == "1",
             model,
         )
+    }
+
+    /**
+     * The viewer of one page of a document (the approved prototype, #372): a bar whose left side links back to the
+     * document page's *Pages* heading, the page's rank, and the page's image from this app's authenticated [preview]
+     * route. A viewer, not a destination: no header nor account menu, and no JavaScript.
+     *
+     * Same access as the document page, except that anything ndopify-server can't return (an unknown mandate, a
+     * document or a page of another one, another agent's mandate) is a 404 here rather than the mandate page's
+     * `changed` redirect: this page has no way back to a document that isn't there.
+     */
+    @GetMapping("/{documentId}/pages/{pageId}")
+    fun previewPage(
+        @PathVariable id: String,
+        @PathVariable documentId: String,
+        @PathVariable pageId: String,
+        model: Model,
+    ): String {
+        currentAgent.get() ?: throw SignInRequiredException()
+        val mandate = shownMandate(id) ?: notFoundResponse()
+        val document = load(mandate.id, documentId) ?: notFoundResponse()
+        val page = document.pages.sortedBy { it.index }.firstOrNull { it.id == pageId.toLongOrNull() }
+            ?: notFoundResponse()
+        model.addAttribute("preview", MandateDocumentViews.preview(mandate, document, page))
+        return VIEW_PREVIEW
     }
 
     /**
