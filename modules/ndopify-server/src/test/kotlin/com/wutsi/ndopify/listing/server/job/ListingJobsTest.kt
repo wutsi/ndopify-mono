@@ -10,6 +10,9 @@ import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.error.dto.Error
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.SearchListingRequest
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
@@ -145,9 +148,7 @@ class ListingJobsTest {
     }
 
     private fun setUpPublishListings(verified: List<ListingEntity>, publishing: List<ListingEntity>) {
-        doReturn(verified).whenever(service).search(
-            SearchListingRequest(statuses = listOf(ListingStatus.VERIFIED), limit = 100)
-        )
+        doReturn(verified).whenever(service).findVerifiedAfter(any(), any())
         doReturn(publishing).whenever(service).search(
             SearchListingRequest(statuses = listOf(ListingStatus.PUBLISHING), limit = 100)
         )
@@ -160,12 +161,7 @@ class ListingJobsTest {
         jobs.publish()
 
         val order = inOrder(service)
-        order.verify(service).search(
-            SearchListingRequest(
-                statuses = listOf(ListingStatus.VERIFIED),
-                limit = 100,
-            )
-        )
+        order.verify(service).findVerifiedAfter(0L, 100)
         order.verify(service).search(
             SearchListingRequest(
                 statuses = listOf(ListingStatus.PUBLISHING),
@@ -213,6 +209,67 @@ class ListingJobsTest {
     }
 
     @Test
+    fun `publish - a blocked verified listing is skipped quietly and the scan continues`() {
+        val blocked = listing1.copy(status = ListingStatus.VERIFIED)
+        val publishable = listing2.copy(status = ListingStatus.VERIFIED)
+        setUpPublishListings(listOf(blocked, publishable), emptyList())
+        doThrow(ConflictException(Error(ErrorCode.LISTING_OWNERSHIP_NOT_VERIFIED)))
+            .whenever(service).publish(blocked)
+
+        jobs.publish()
+
+        verify(service).publish(blocked)
+        verify(service).publish(publishable)
+    }
+
+    @Test
+    fun `publish - a page of 100 blocked listings does not starve the next page`() {
+        val blocked = (1L..100L).map { id -> ListingEntity(id = id, status = ListingStatus.VERIFIED) }
+        val publishable = ListingEntity(id = 101L, status = ListingStatus.VERIFIED)
+        doReturn(blocked, listOf(publishable)).whenever(service).findVerifiedAfter(any(), any())
+        doReturn(emptyList<ListingEntity>()).whenever(service).search(any())
+        blocked.forEach { listing ->
+            doThrow(ConflictException(Error(ErrorCode.LISTING_OWNERSHIP_NOT_VERIFIED)))
+                .whenever(service).publish(listing)
+        }
+
+        jobs.publish()
+
+        verify(service).findVerifiedAfter(0L, 100)
+        verify(service).findVerifiedAfter(100L, 100)
+        verify(service).publish(publishable)
+    }
+
+    @Test
+    fun `publish - stops after 100 publications`() {
+        val publishable = (1L..100L).map { id -> ListingEntity(id = id, status = ListingStatus.VERIFIED) }
+        doReturn(publishable).whenever(service).findVerifiedAfter(any(), any())
+        doReturn(emptyList<ListingEntity>()).whenever(service).search(any())
+
+        jobs.publish()
+
+        verify(service).findVerifiedAfter(0L, 100)
+        verify(service, times(100)).publish(any<ListingEntity>())
+    }
+
+    @Test
+    fun `publish - stops at 100 publications when the 100th is mid-page`() {
+        val publishable = (1L..99L).map { id -> ListingEntity(id = id, status = ListingStatus.VERIFIED) }
+        val blocked = ListingEntity(id = 100L, status = ListingStatus.VERIFIED)
+        val next = (101L..200L).map { id -> ListingEntity(id = id, status = ListingStatus.VERIFIED) }
+        doReturn(publishable + blocked, next).whenever(service).findVerifiedAfter(any(), any())
+        doReturn(emptyList<ListingEntity>()).whenever(service).search(any())
+        doThrow(ConflictException(Error(ErrorCode.LISTING_OWNERSHIP_NOT_VERIFIED)))
+            .whenever(service).publish(blocked)
+
+        jobs.publish()
+
+        verify(service, times(101)).publish(any<ListingEntity>()) // 100 of the first page, the 100th transition is next[0]
+        verify(service, never()).publish(next[1])
+        verify(service, never()).publish(next[99])
+    }
+
+    @Test
     fun `publish - a failing listing doesn't stop the others`() {
         val verified = listOf(listing1, listing2, listing3).map { it.copy(status = ListingStatus.VERIFIED) }
         val publishing = listOf(listing1, listing2, listing3).map { it.copy(status = ListingStatus.PUBLISHING) }
@@ -229,6 +286,10 @@ class ListingJobsTest {
     @Test
     fun `publish - each tenant processed with its id in the tenant context`() {
         doReturn(listOf(tenant1, tenant2)).whenever(tenantService).search(true)
+        doAnswer {
+            val listing = if (TenantContext.get() == 1L) listing1 else listing2
+            listOf(listing.copy(status = ListingStatus.VERIFIED))
+        }.whenever(service).findVerifiedAfter(any(), any())
         doAnswer {
             val request = it.arguments[0] as SearchListingRequest
             val listing = if (TenantContext.get() == 1L) listing1 else listing2
@@ -255,6 +316,10 @@ class ListingJobsTest {
     @Test
     fun `publish - a failing tenant doesn't stop the others`() {
         doReturn(listOf(tenant1, tenant2)).whenever(tenantService).search(true)
+        doAnswer {
+            if (TenantContext.get() == 1L) throw RuntimeException("DB down")
+            listOf(listing2.copy(status = ListingStatus.VERIFIED))
+        }.whenever(service).findVerifiedAfter(any(), any())
         doAnswer {
             val request = it.arguments[0] as SearchListingRequest
             if (TenantContext.get() == 1L) throw RuntimeException("DB down")

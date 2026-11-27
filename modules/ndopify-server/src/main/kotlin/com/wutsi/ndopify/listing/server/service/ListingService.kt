@@ -20,8 +20,10 @@ import com.wutsi.ndopify.listing.dto.UpdateListingRequest
 import com.wutsi.ndopify.listing.server.dao.ListingRepository
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.dto.OwnershipVerificationStatus
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.service.MandateService
+import com.wutsi.ndopify.mandate.server.service.OwnershipVerdictService
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
@@ -46,6 +48,7 @@ class ListingService(
     private val sectionService: ListingSectionService,
     private val locationService: LocationService,
     private val accessService: ListingAccessService,
+    private val ownershipVerdictService: OwnershipVerdictService,
     private val clock: Clock,
 ) {
     /** Newest first. */
@@ -127,6 +130,10 @@ class ListingService(
 
     /** The listings of [ids] that exist in the tenant, in one read; a missing one is left out. */
     fun findAllByIds(ids: Collection<Long>): List<ListingEntity> = dao.findAllById(ids).toList()
+
+    /** The VERIFIED listings after [id], in id order: the publish job's keyset page. */
+    fun findVerifiedAfter(id: Long, limit: Int): List<ListingEntity> =
+        dao.findByStatusAndIdGreaterThanOrderByIdAsc(ListingStatus.VERIFIED, id, OffsetLimitPageRequest(0, limit))
 
     /**
      * Creates the DRAFT listing of a mandate, from its property: 404 MANDATE_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for
@@ -318,7 +325,8 @@ class ListingService(
     /**
      * Sends a VERIFIED listing for publication: PUBLISHING, its content being generated asynchronously
      * (`ListingJobs.publish`). 404 LISTING_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for an admin or its agent, then 409
-     * LISTING_NOT_VERIFIED.
+     * LISTING_NOT_VERIFIED, then 409 LISTING_OWNERSHIP_NOT_VERIFIED while the mandate's ownership verdict is not
+     * VERIFIED ([publish]).
      */
     @Transactional
     fun publish(id: Long): ListingEntity {
@@ -327,10 +335,24 @@ class ListingService(
         return publish(listing)
     }
 
+    /**
+     * Sends a VERIFIED [listing] for publication: PUBLISHING, retries reset. 409 LISTING_NOT_VERIFIED first, then 409
+     * LISTING_OWNERSHIP_NOT_VERIFIED when the mandate's ownership verdict (#297) is not VERIFIED: the verdict's reasons
+     * are in `error.data["reasons"]`, as `code` and (for `*_UNUSABLE`) `details`, never a name, document, path or URL.
+     */
     @Transactional
     fun publish(listing: ListingEntity): ListingEntity {
         if (listing.status != ListingStatus.VERIFIED) {
             throw ConflictException(Error(ErrorCode.LISTING_NOT_VERIFIED))
+        }
+        val verification = ownershipVerdictService.verify(listing.mandate)
+        if (verification.status != OwnershipVerificationStatus.VERIFIED) {
+            throw ConflictException(
+                Error(
+                    code = ErrorCode.LISTING_OWNERSHIP_NOT_VERIFIED,
+                    data = mapOf("reasons" to verification.reasons),
+                )
+            )
         }
 
         return dao.save(

@@ -5,13 +5,16 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.server.dao.ListingRepository
+import com.wutsi.ndopify.mandate.server.service.OwnershipReasonCodes
 import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import org.springframework.test.context.jdbc.Sql
 import java.text.SimpleDateFormat
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/listing/PublishListingEndpoint.sql"])
@@ -76,6 +79,67 @@ class PublishListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.LISTING_NOT_FOUND, response.body?.error?.code)
+    }
+
+    @Test
+    fun `owner not verified - 409 with the missing reasons`() {
+        val response = publish(103L)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.LISTING_OWNERSHIP_NOT_VERIFIED, response.body?.error?.code)
+        assertEquals(
+            listOf(OwnershipReasonCodes.ID_MISSING, OwnershipReasonCodes.DOCUMENT_MISSING),
+            reasons(response),
+        )
+        assertEquals(ListingStatus.VERIFIED, dao.findById(103L).get().status)
+    }
+
+    @Test
+    fun `failed owner - 409 with its reasons`() {
+        val response = publish(104L)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.LISTING_OWNERSHIP_NOT_VERIFIED, response.body?.error?.code)
+        assertEquals(
+            listOf(OwnershipReasonCodes.ID_EXPIRED, OwnershipReasonCodes.DOCUMENT_NAME_MISMATCH),
+            reasons(response),
+        )
+        assertEquals(ListingStatus.VERIFIED, dao.findById(104L).get().status)
+    }
+
+    @Test
+    fun `in-flight owner - 409 with no reason`() {
+        val response = publish(105L)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.LISTING_OWNERSHIP_NOT_VERIFIED, response.body?.error?.code)
+        assertTrue(reasons(response).isEmpty())
+        assertEquals(ListingStatus.VERIFIED, dao.findById(105L).get().status)
+    }
+
+    @Test
+    fun `not verified wins over the owner verdict`() {
+        // Listing 101 is UNDER_VERIFICATION and its mandate has no document: the status check answers first
+        val response = publish(101L)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.LISTING_NOT_VERIFIED, response.body?.error?.code)
+    }
+
+    @Test
+    fun `the ownership 409 carries no name, document nor path`() {
+        val body = rest.postForEntity("/v1/listings/104/publish", null, String::class.java).body!!
+
+        assertFalse(body.contains("Ray"), body)
+        assertFalse(body.contains("Pierre"), body)
+        assertFalse(body.contains("TF-"), body)
+        assertFalse(body.contains("mandate/"), body)
+        assertFalse(body.contains("1003"), body)
+    }
+
+    private fun reasons(response: ResponseEntity<ErrorResponse>): List<*> {
+        val reasons = response.body!!.error.data!!["reasons"] as List<*>
+        return reasons.map { reason -> (reason as Map<*, *>)["code"] }
     }
 
     private fun publish(id: Long) =

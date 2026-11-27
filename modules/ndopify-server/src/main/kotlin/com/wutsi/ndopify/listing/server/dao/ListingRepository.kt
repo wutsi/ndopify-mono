@@ -31,4 +31,11 @@ interface ListingRepository : CrudRepository<ListingEntity, Long>, JpaSpecificat
         mandateStatuses: List<MandateStatus>,
         pageable: Pageable,
     ): List<ListingEntity>
+
+    // The publish job's keyset page: the listings of a status after an id, in id order
+    fun findByStatusAndIdGreaterThanOrderByIdAsc(
+        status: ListingStatus,
+        id: Long,
+        pageable: Pageable,
+    ): List<ListingEntity>
 }
