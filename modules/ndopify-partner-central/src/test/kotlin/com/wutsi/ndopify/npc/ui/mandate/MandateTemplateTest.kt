@@ -34,6 +34,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
 import com.wutsi.ndopify.npc.config.Parallel
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
+import com.wutsi.ndopify.npc.ui.document.DocumentFieldLabels
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdviceTest
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest
@@ -70,6 +71,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 import org.mockito.ArgumentMatchers.anyLong
+import org.springframework.context.support.ResourceBundleMessageSource
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.test.web.servlet.MockMvc
@@ -109,6 +111,12 @@ class MandateTemplateTest {
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
     private val parallel = Parallel()
+    private val labels = DocumentFieldLabels(
+        ResourceBundleMessageSource().apply {
+            setBasename("messages")
+            setDefaultEncoding("UTF-8")
+        },
+    )
     private lateinit var mvc: MockMvc
 
     @BeforeEach
@@ -155,6 +163,7 @@ class MandateTemplateTest {
                     clock,
                     MandateDealCandidates(matchClient, mandateClient, customerClient, listingClient),
                     parallel,
+                    labels,
                 ),
             )
             .setControllerAdvice(SignedInAdvice())

@@ -28,6 +28,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
 import com.wutsi.ndopify.npc.config.Parallel
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
+import com.wutsi.ndopify.npc.ui.document.DocumentFieldLabels
 import com.wutsi.ndopify.npc.ui.document.MandateDocumentController
 import com.wutsi.ndopify.npc.ui.document.MandateDocumentViews
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
@@ -121,6 +122,7 @@ class MandateController(
     private val clock: Clock,
     private val dealCandidates: MandateDealCandidates,
     private val parallel: Parallel,
+    private val documentLabels: DocumentFieldLabels,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(MandateController::class.java)
@@ -366,6 +368,16 @@ class MandateController(
         val documents = parallel.async {
             lookup("documents of mandate ${mandate.id}") { documentClient.search(mandate.id) }
         }
+        // The owner verification (#298) starts with the page's other reads and is joined at the end: only a LISTING
+        // mandate in flight asks for it (a SEARCH mandate has no verdict, and the server would answer 400); failing,
+        // only its section says so. The verdict is never cached: every page load re-reads it.
+        val ownership = if (mandate.mandateType == MandateType.LISTING && mandate.status in MandateRules.ACTIVE) {
+            parallel.async {
+                lookup("ownership verdict of mandate ${mandate.id}") { mandateClient.ownership(mandate.id) }
+            }
+        } else {
+            null
+        }
         val matched = MatchRules.matched(mandate)
         val matches = if (matched) matches(mandate) else null
         val visits = if (matched) mandateVisits(agent, mandate) else null
@@ -486,6 +498,22 @@ class MandateController(
                 formatter(),
                 today(),
             ),
+        )
+        // Null unless the mandate qualifies: the template then renders no section at all (no empty block).
+        model.addAttribute(
+            "ownershipSection",
+            ownership?.let {
+                MandateOwnershipViews.section(
+                    mandate,
+                    try {
+                        it.join()
+                    } catch (ex: Exception) {
+                        null
+                    },
+                    listingId,
+                    documentLabels,
+                )
+            },
         )
         (model.getAttribute(MandateDocumentController.OUTCOME) as? String)?.let { outcome ->
             documentOutcome(outcome, model.getAttribute(MandateDocumentController.TITLE) as? String, model)
