@@ -929,6 +929,18 @@ class MandateDocumentControllerTest {
     }
 
     @Test
+    fun `preview page - an unknown document - 404`() {
+        doThrow(serverError(HttpStatus.NOT_FOUND, ErrorCode.MANDATE_DOCUMENT_NOT_FOUND))
+            .whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val result = mvc
+            .perform(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/${page1.id}"))
+            .andReturn()
+
+        assertEquals(404, result.response.status)
+    }
+
+    @Test
     fun `preview page - a non-numeric page id - 404`() {
         val result = mvc
             .perform(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/abc"))
