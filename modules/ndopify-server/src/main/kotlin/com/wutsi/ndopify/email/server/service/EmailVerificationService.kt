@@ -57,8 +57,12 @@ class EmailVerificationService(
             return
         }
 
-        // Past the budget the submission is accepted without a paid call, and nothing is cached (Review Focus 4)
-        if (!throttle.tryAcquire(clientIp)) return
+        // Past the budget the submission is accepted without a paid call, and nothing is cached. The log is the only
+        // signal an operator gets, and it carries the domain only, never the address.
+        if (!throttle.tryAcquire(clientIp)) {
+            LOGGER.info("E-mail verification skipped: budget spent ({})", domain(normalized))
+            return
+        }
 
         val verification = try {
             verifier.verify(normalized)
