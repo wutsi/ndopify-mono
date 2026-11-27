@@ -1,11 +1,14 @@
 /*
- * Ndopify Partner Central — a mandate's documents (#329, #331): the *Documents* section of mandate.html,
- * mandate/document-new.html and mandate/document.html.
+ * Ndopify Partner Central — a mandate's documents (#329, #331, #372): the *Documents* section of mandate.html,
+ * mandate/document-new.html, mandate/document.html and mandate/document-preview.html.
  * #331 adds what the AI read on the document page (its fields, the waiting hint, the problem instructions and the
  * expiry notice) and the "Expirée" marker of an expired document's row on mandate.html.
+ * #372 adds the viewer of a document's page, a full-screen page of the app: a compact bar (back to the document
+ * page's *Pages* heading, then the page's rank) over the page's image, centred on the overlay. The document page
+ * shows no image inline: "Voir" opens the page's viewer, in the same tab (#372).
  * Loaded after partner-central.css, home.css and listing.css; uses their tier-2 semantic tokens only, no new colours.
  * Reuses listing.css's .photo__delete / .photo-actions / .upload-progress for the pages chosen. No page image is
- * shown anywhere: a page opens through its "Voir" link.
+ * shown anywhere else: a page opens through its "Voir" link.
  */
 
 /* ---------- mandate.html › Documents ---------- */
@@ -293,7 +296,7 @@ a.doc-row:focus-visible {
     font-weight: 600;
 }
 
-/* "Voir": a 44px text link, opening the page in a new tab. */
+/* "Voir": a 44px text link, opening the page's viewer in the same tab (#372). */
 .doc-page__view {
     display: inline-flex;
     align-items: center;
@@ -415,4 +418,96 @@ a.doc-row:focus-visible {
 
 .doc-reading .doc-problems > li + li {
     margin-top: var(--space-2);
+}
+
+/* ---------- mandate/document-preview.html (#372) ---------- */
+
+/*
+ * A page of a document, full screen: a viewer, not a destination. No site header, account menu, footer nor nav. The
+ * bar is one line at every width: its whole left side is one link — back to the document page — carrying the
+ * document's title, and the page's rank sits at its right; the page's image is centred on the overlay below.
+ * Production renders all of it server-side; no JavaScript is needed for the link, the image or the page.
+ */
+body.doc-preview {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: var(--color-overlay);
+    color: var(--color-on-overlay);
+}
+
+/*
+ * One line at every width: the link shrinks and truncates its title, the rank keeps its whole width on the right.
+ * The bar never wraps, at 320 px as at 1024 px.
+ */
+.doc-preview__bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+}
+
+/*
+ * The page's only action, and the bar's whole left side: the decorative arrow and the document's title, the whole
+ * thing one link. The hidden suffix that follows the title gives the link its "retour au document"; the heading
+ * inside keeps the page's h1 outline without repeating it.
+ */
+.doc-preview__back {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: var(--space-1);
+    min-width: 0;
+    min-height: var(--target);
+    overflow: hidden;
+    color: inherit;
+    font-weight: 600;
+}
+
+.doc-preview__arrow {
+    flex: 0 0 auto;
+}
+
+/* The document's title: one line, truncated with an ellipsis; the whole title is on the document page. */
+.doc-preview__title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    font: 600 var(--step-body) / 1.6 var(--font-body);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* "Page N sur M": never truncated, never pushed off the bar. */
+.doc-preview__count {
+    flex: 0 0 auto;
+    font-size: var(--step-hint);
+    white-space: nowrap;
+}
+
+/* The page, centred in what the bar leaves: never wider nor taller than the screen. */
+.doc-preview__stage {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    padding: var(--space-2) var(--space-3) var(--space-4);
+}
+
+.doc-preview__image {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: calc(100vh - 8rem);
+    max-height: calc(100dvh - 8rem);
+    object-fit: contain;
+}
+
+/* The bar keeps its one line; the wider screen only gives it more room around the ends. */
+@media (min-width: 640px) {
+    .doc-preview__bar {
+        padding-inline: var(--space-4);
+    }
 }

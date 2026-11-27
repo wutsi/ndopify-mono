@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(|Page ${preview.number} — ${preview.title} — Ndopify Partner Central|, |Une page d'un document du mandat, en plein écran, avec le retour au document.|, false)}"></head>
+<!--/*
+  #372: a page of a mandate's document, full screen (GET /mandates/{id}/documents/{documentId}/pages/{pageId}),
+  opened by the document page's *Voir* in the same tab. A viewer, not a destination: no site header, no account menu,
+  no footer nor nav. One compact bar whose whole left side is a single link back to the document page's *Pages*
+  heading — the decorative arrow and the document's title, a visually hidden "— retour au document" completing its
+  accessible name — and the page's rank on its right, on ONE line at every width (the title ellipsizes, the rank
+  never). Then the page's image, this app's authenticated .../preview route, centred on the overlay: never a storage
+  URL, a page path nor a presigned URL. No JavaScript is needed; the viewport keeps its default scaling, so
+  pinch-zoom still works. "preview" is the DocumentPreviewView.
+*/-->
+<body class="doc-preview" data-page="mandate-document-preview">
+    <header class="doc-preview__bar">
+        <a class="doc-preview__back" th:href="${preview.backHref}" data-preview-back>
+            <span class="doc-preview__arrow" aria-hidden="true">←</span>
+            <h1 class="doc-preview__title"><span th:text="${preview.title}" data-preview-title>Titre foncier n° 4521</span></h1>
+            <span class="visually-hidden"> — retour au document</span>
+        </a>
+        <p class="doc-preview__count" th:text="|Page ${preview.number} sur ${preview.count}|" data-preview-count>Page 2 sur 2</p>
+    </header>
+    <main id="main" class="doc-preview__stage">
+        <img class="doc-preview__image" th:src="${preview.imageHref}" th:alt="${preview.alt}" data-preview-image>
+    </main>
+</body>
+</html>

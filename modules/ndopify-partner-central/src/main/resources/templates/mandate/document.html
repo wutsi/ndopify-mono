@@ -5,8 +5,8 @@
   One document of a mandate (MandateDocumentController, GET /mandates/{id}/documents/{documentId}), opened from a row
   of the mandate page's Documents section. Its header: the title, the status pill, the type and ONE upload date
   ("Ajouté le 25 nov. 2026", tenant dateFormat with the year), for the whole document. No image, no preview, no
-  thumbnail, no size anywhere: a page is a plain row "*Page 1*", its *Voir* link (this app's authenticated preview
-  route, a new tab) and its folded *Remplacer* form. Nothing of a page's path nor any storage URL is ever in the HTML.
+  thumbnail, no size anywhere: a page is a plain row "*Page 1*", its *Voir* link (the page's viewer, in the same
+  tab, #372) and its folded *Remplacer* form. Nothing of a page's path nor any storage URL is ever in the HTML.
   #331 adds what was read between the header and the pages: the fields it read (labelled and formatted, in the
   server's order), the hint while it reads, one instruction per problem code of a FAILED document and the notice of an
   expired piece (MandateDocumentReadingViews, the "reading" model attribute). No confidence is shown, and a
@@ -129,9 +129,8 @@
                         <li class="doc-page" th:each="page : ${d.pages}">
                             <div class="doc-page__bar">
                                 <span class="doc-page__caption" th:text="|Page ${page.number}|" data-page-caption>Page 1</span>
-                                <a class="doc-page__view" th:href="${page.href}" target="_blank" rel="noopener"
-                                   data-page-link>Voir<span class="visually-hidden"
-                                        th:text="| la page ${page.number} (nouvel onglet)|"> la page 1 (nouvel onglet)</span></a>
+                                <a class="doc-page__view" th:href="${page.href}" data-page-link>Voir<span
+                                        class="visually-hidden" th:text="| la page ${page.number}|"> la page 1</span></a>
                             </div>
                             <details class="doc-page__replace" th:if="${d.writable}"
                                      th:attr="open=${replaceErrors[page.id] != null ? 'open' : null}" data-page-replace>

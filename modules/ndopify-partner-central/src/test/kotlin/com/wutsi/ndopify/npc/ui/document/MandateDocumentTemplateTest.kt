@@ -311,13 +311,16 @@ class MandateDocumentTemplateTest {
         val links = rows.map { it.selectFirst("a.doc-page__view") }
         assertEquals(
             listOf(
-                "/mandates/301/documents/3103/pages/2001/preview",
-                "/mandates/301/documents/3103/pages/2002/preview",
+                "/mandates/301/documents/3103/pages/2001",
+                "/mandates/301/documents/3103/pages/2002",
             ),
             links.map { it?.attr("href") },
         )
-        assertEquals(listOf("_blank", "_blank"), links.map { it?.attr("target") })
-        assertEquals(listOf("noopener", "noopener"), links.map { it?.attr("rel") })
+        assertFalse(links[0]!!.hasAttr("target"))
+        assertFalse(links[0]!!.hasAttr("rel"))
+        assertEquals(listOf("la page 1", "la page 2"), links.map { it?.selectFirst(".visually-hidden")?.text() })
+        assertEquals(listOf("Voir la page 1", "Voir la page 2"), links.map { it?.text() })
+        assertFalse(page.html().contains("nouvel onglet"))
 
         val forms = page.select(".doc-page form")
         assertEquals(2, forms.size)
@@ -341,6 +344,42 @@ class MandateDocumentTemplateTest {
         assertEquals("/mandates/301/documents/3103?delete=1", page.selectFirst("[data-delete-open]")?.attr("href"))
         assertTrue(page.selectFirst("[data-delete-confirm]")!!.hasAttr("hidden"))
         assertNull(page.selectFirst("[data-rename-conflict]"))
+    }
+
+    @Test
+    fun `preview page`() {
+        val page = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/2002"))
+
+        assertEquals("Page 2 — Titre foncier n° 4521 — Ndopify Partner Central", page.title())
+        assertEquals("mandate-document-preview", page.body().attr("data-page"))
+        assertNull(page.selectFirst("header.site-header"))
+        assertNull(page.selectFirst("nav.user-menu"))
+
+        val bar = page.selectFirst("header.doc-preview__bar")!!
+        val back = bar.selectFirst("a.doc-preview__back")!!
+        assertEquals("/mandates/301/documents/3103#pages-title", back.attr("href"))
+        assertEquals("Titre foncier n° 4521", back.selectFirst("[data-preview-title]")?.text())
+        assertTrue(back.text().endsWith("— retour au document"), back.text())
+        assertEquals("Page 2 sur 2", bar.selectFirst("[data-preview-count]")?.text())
+
+        val image = page.selectFirst("img.doc-preview__image")!!
+        assertEquals("/mandates/301/documents/3103/pages/2002/preview", image.attr("src"))
+        assertEquals("Page 2 du document « Titre foncier n° 4521 »", image.attr("alt"))
+        assertEquals("width=device-width, initial-scale=1", page.selectFirst("meta[name=viewport]")?.attr("content"))
+        assertFalse(page.html().contains("https://s3"))
+        assertFalse(page.html().contains("signature"))
+        assertFalse(page.html().contains("presigned"))
+    }
+
+    @Test
+    fun `preview page - a blank title reads as the type's name`() {
+        doReturn(document.copy(title = " ")).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val page = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID/pages/2001"))
+
+        assertEquals("Page 1 — Titre foncier — Ndopify Partner Central", page.title())
+        assertEquals("Titre foncier", page.selectFirst("[data-preview-title]")?.text())
+        assertEquals("Page 1 du document « Titre foncier »", page.selectFirst("img.doc-preview__image")?.attr("alt"))
     }
 
     @Test
