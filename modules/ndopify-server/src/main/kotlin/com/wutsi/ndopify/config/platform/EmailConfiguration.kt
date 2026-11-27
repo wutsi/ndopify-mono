@@ -3,8 +3,10 @@ package com.wutsi.ndopify.config.platform
 import com.wutsi.ndopify.email.server.service.EmailVerifier
 import com.wutsi.ndopify.email.server.service.EmailVerifierNone
 import com.wutsi.ndopify.platform.email.EmailVerifierSES
+import com.wutsi.ndopify.platform.email.SesEmailVerifierHealthIndicator
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.boot.health.contributor.HealthIndicator
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import software.amazon.awssdk.regions.Region
@@ -40,4 +42,19 @@ class EmailConfiguration(
     @Bean
     @ConditionalOnProperty(name = ["ndopify.email.verification.provider"], havingValue = "ses")
     fun emailVerifierSes(client: SesV2Client): EmailVerifier = EmailVerifierSES(client)
+
+    /**
+     * Registered here, not by `management.health.<id>.enabled`: Spring Boot registers every `HealthIndicator` bean
+     * whatever that property says. With `none` there is no component and no AWS call at all (see
+     * `TelegramConfiguration`).
+     */
+    @Bean
+    @ConditionalOnProperty(name = ["ndopify.email.verification.provider"], havingValue = "ses")
+    fun sesEmailVerifierHealthIndicator(client: SesV2Client): HealthIndicator =
+        SesEmailVerifierHealthIndicator(
+            client,
+            clock,
+            Duration.ofMinutes(upTtlMinutes),
+            Duration.ofSeconds(downTtlSeconds),
+        )
 }

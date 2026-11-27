@@ -30,6 +30,9 @@ logging:
 ndopify:
     database:
         pool-size: 16
+    email:
+        verification:
+            provider: ses
     image:
         type: image-kit
         image-kit:
