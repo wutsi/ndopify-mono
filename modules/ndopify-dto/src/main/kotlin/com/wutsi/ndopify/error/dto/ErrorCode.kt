@@ -83,6 +83,9 @@ object ErrorCode {
 
     val MANDATE_ACCESS_DENIED = "$PREFIX:mandate:access-denied"
     val MANDATE_NOT_FOUND = "$PREFIX:mandate:not-found"
+
+    /** The ownership verdict only exists for a LISTING mandate (#297). */
+    val MANDATE_NOT_LISTING = "$PREFIX:mandate:not-listing"
     val MANDATE_NOT_ASSIGNED = "$PREFIX:mandate:not-assigned"
     val MANDATE_NOT_APPROVED = "$PREFIX:mandate:not-approved"
     val MANDATE_CANNOT_BE_APPROVED = "$PREFIX:mandate:cannot-be-approved"
