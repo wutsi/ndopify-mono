@@ -13,6 +13,8 @@ import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateResponse
 import com.wutsi.ndopify.mandate.dto.DispatchMandateResponse
 import com.wutsi.ndopify.mandate.dto.GetMandateResponse
+import com.wutsi.ndopify.mandate.dto.GetOwnershipVerificationResponse
+import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.RequestMandateApprovalRequest
 import com.wutsi.ndopify.mandate.dto.SearchMandateRequest
 import com.wutsi.ndopify.mandate.dto.SearchMandateResponse
@@ -23,6 +25,7 @@ import com.wutsi.ndopify.mandate.server.mapper.MandateMapper
 import com.wutsi.ndopify.mandate.server.service.MandateAccessService
 import com.wutsi.ndopify.mandate.server.service.MandateService
 import com.wutsi.ndopify.mandate.server.service.MandateStatsService
+import com.wutsi.ndopify.mandate.server.service.OwnershipVerdictService
 import com.wutsi.ndopify.platform.endpoint.OpsEndpoint
 import com.wutsi.ndopify.platform.util.http.ClientIp
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
@@ -47,6 +50,7 @@ class MandateEndpoints(
     private val access: MandateAccessService,
     private val mapper: MandateMapper,
     private val statsService: MandateStatsService,
+    private val ownershipService: OwnershipVerdictService,
 ) {
     @GetMapping
     fun search(@ModelAttribute request: SearchMandateRequest): SearchMandateResponse {
@@ -80,6 +84,21 @@ class MandateEndpoints(
         val mandate = service.findById(id)
         access.ensureCanReadAsCustomerOrAgent(mandate) // The customer reads its own mandate too
         return GetMandateResponse(mandate = mapper.toMandate(mandate, service.visitFee(mandate)))
+    }
+
+    /**
+     * Whether the owner of a LISTING mandate is verified, and why not (#297). Errors, in order: 404
+     * [ErrorCode.MANDATE_NOT_FOUND], 403 [ErrorCode.MANDATE_ACCESS_DENIED] (the assigned agent or an admin, never the
+     * customer nor the agent it's only offered to), 400 [ErrorCode.MANDATE_NOT_LISTING].
+     */
+    @GetMapping("/{id}/ownership")
+    fun getOwnership(@PathVariable id: Long): GetOwnershipVerificationResponse {
+        val mandate = service.findById(id)
+        access.ensureCanUpdate(mandate) // The assigned agent or an admin; never the customer nor the offered agent
+        if (mandate.mandateType != MandateType.LISTING) {
+            throw BadRequestException(error = Error(code = ErrorCode.MANDATE_NOT_LISTING))
+        }
+        return GetOwnershipVerificationResponse(verification = ownershipService.verify(mandate))
     }
 
     @PostMapping
