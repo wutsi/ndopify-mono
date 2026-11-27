@@ -4,6 +4,7 @@ import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
@@ -11,8 +12,11 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.agent.server.service.AgentService
 import com.wutsi.ndopify.customer.server.service.CustomerService
+import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.BadRequestException
+import com.wutsi.ndopify.error.server.exception.ConflictException
+import com.wutsi.ndopify.error.server.exception.ForbiddenException
 import com.wutsi.ndopify.listing.dto.CreateListingRequest
 import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingSectionStatus
@@ -24,8 +28,12 @@ import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.dto.UpdateListingRequest
 import com.wutsi.ndopify.listing.server.dao.ListingRepository
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
+import com.wutsi.ndopify.mandate.dto.OwnershipVerification
+import com.wutsi.ndopify.mandate.dto.OwnershipVerificationReason
+import com.wutsi.ndopify.mandate.dto.OwnershipVerificationStatus
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.service.MandateService
+import com.wutsi.ndopify.mandate.server.service.OwnershipVerdictService
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import org.mockito.Mockito.verifyNoInteractions
 import java.time.Clock
@@ -47,6 +55,7 @@ class ListingServiceTest {
     private val sectionService = mock<ListingSectionService>()
     private val locationService = mock<LocationService>()
     private val accessService = mock<ListingAccessService>()
+    private val ownershipVerdictService = mock<OwnershipVerdictService>()
     private val clock = mock<Clock>()
     private val service = ListingService(
         dao,
@@ -58,6 +67,7 @@ class ListingServiceTest {
         sectionService,
         locationService,
         accessService,
+        ownershipVerdictService,
         clock,
     )
 
@@ -200,6 +210,81 @@ class ListingServiceTest {
         val verified = service.verify(102L)
 
         assertEquals(ListingStatus.UNDER_VERIFICATION, verified.status)
+    }
+
+    @Test
+    fun `a verified listing with a verified owner is sent for publication`() {
+        val verified = listing.copy(status = ListingStatus.VERIFIED)
+        doReturn(OwnershipVerification(status = OwnershipVerificationStatus.VERIFIED))
+            .whenever(ownershipVerdictService).verify(verified.mandate)
+        doAnswer { it.getArgument<ListingEntity>(0) }.whenever(dao).save(any())
+
+        val result = service.publish(verified)
+
+        assertEquals(ListingStatus.PUBLISHING, result.status)
+        assertEquals(0, result.retries)
+    }
+
+    @Test
+    fun `a listing not verified is refused before the owner verdict`() {
+        val ex = assertFailsWith<ConflictException> { service.publish(listing) }
+
+        assertEquals(ErrorCode.LISTING_NOT_VERIFIED, ex.error.code)
+        verifyNoInteractions(ownershipVerdictService)
+    }
+
+    @Test
+    fun `a verified listing whose owner is not verified is refused with the reasons`() {
+        val verified = listing.copy(status = ListingStatus.VERIFIED)
+        val reasons = listOf(
+            OwnershipVerificationReason("OWNERSHIP_ID_MISSING"),
+            OwnershipVerificationReason("OWNERSHIP_DOCUMENT_MISSING"),
+        )
+        doReturn(OwnershipVerification(status = OwnershipVerificationStatus.PENDING, reasons = reasons))
+            .whenever(ownershipVerdictService).verify(verified.mandate)
+
+        val ex = assertFailsWith<ConflictException> { service.publish(verified) }
+
+        assertEquals(ErrorCode.LISTING_OWNERSHIP_NOT_VERIFIED, ex.error.code)
+        assertEquals(mapOf("reasons" to reasons), ex.error.data)
+        verify(dao, never()).save(any())
+    }
+
+    @Test
+    fun `an in-flight owner verdict with no reason is still refused`() {
+        val verified = listing.copy(status = ListingStatus.VERIFIED)
+        doReturn(OwnershipVerification(status = OwnershipVerificationStatus.PENDING))
+            .whenever(ownershipVerdictService).verify(verified.mandate)
+
+        val ex = assertFailsWith<ConflictException> { service.publish(verified) }
+
+        assertEquals(ErrorCode.LISTING_OWNERSHIP_NOT_VERIFIED, ex.error.code)
+        assertEquals(mapOf("reasons" to emptyList<OwnershipVerificationReason>()), ex.error.data)
+    }
+
+    @Test
+    fun `a failed owner verdict is refused with its reasons`() {
+        val verified = listing.copy(status = ListingStatus.VERIFIED)
+        val reasons = listOf(
+            OwnershipVerificationReason("OWNERSHIP_ID_UNUSABLE", listOf("DOCUMENT_UNREADABLE")),
+        )
+        doReturn(OwnershipVerification(status = OwnershipVerificationStatus.FAILED, reasons = reasons))
+            .whenever(ownershipVerdictService).verify(verified.mandate)
+
+        val ex = assertFailsWith<ConflictException> { service.publish(verified) }
+
+        assertEquals(ErrorCode.LISTING_OWNERSHIP_NOT_VERIFIED, ex.error.code)
+        assertEquals(mapOf("reasons" to reasons), ex.error.data)
+    }
+
+    @Test
+    fun `the access check comes before the owner verdict`() {
+        doReturn(Optional.of(listing.copy(status = ListingStatus.VERIFIED))).whenever(dao).findById(101L)
+        doThrow(ForbiddenException(Error(ErrorCode.HTTP_ACCESS_DENIED)))
+            .whenever(accessService).ensureCanUpdate(any())
+
+        assertFailsWith<ForbiddenException> { service.publish(101L) }
+        verifyNoInteractions(ownershipVerdictService)
     }
 
     private fun sections(): List<ListingSectionSummary> = listOf(
