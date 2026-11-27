@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { transform } from "esbuild";
 
 const CSS = ["partner-central", "join", "find-property", "offer-property", "home",
-             "listing", "visit", "profile", "agent", "telegram", "document"];
+             "listing", "visit", "profile", "agent", "telegram", "document", "ownership"];
 const JS = ["util", "direct-upload", "partner-central", "home", "join", "kyc",
             "listing", "mandate", "mandate-document", "visit", "find-property", "offer-property"];
 const out = process.argv[2] || "target/classes";

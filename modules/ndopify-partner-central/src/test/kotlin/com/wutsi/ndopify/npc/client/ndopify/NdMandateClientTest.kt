@@ -13,6 +13,7 @@ import com.wutsi.ndopify.mandate.dto.MandateStats
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.OwnershipVerificationStatus
 import com.wutsi.ndopify.mandate.dto.RequestMandateApprovalRequest
 import com.wutsi.ndopify.mandate.dto.SearchMandateResponse
 import com.wutsi.ndopify.mandate.dto.SearchMandateStatsResponse
@@ -120,6 +121,26 @@ class NdMandateClientTest {
         assertEquals(101L, mandate.id)
         assertEquals(MandateType.LISTING, mandate.mandateType)
         assertEquals(listOf(3001L), mandate.neighborhoodIds)
+    }
+
+    @Test
+    fun ownership() {
+        server.expect(requestTo("http://localhost:8080/v1/mandates/201/ownership"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    """
+                    {"verification":{"status":"FAILED","reasons":[{"code":"OWNERSHIP_ID_EXPIRED","details":[]}]}}
+                    """.trimIndent(),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val verdict = client.ownership(201)
+
+        assertEquals(OwnershipVerificationStatus.FAILED, verdict.status)
+        assertEquals(listOf("OWNERSHIP_ID_EXPIRED"), verdict.reasons.map { it.code })
+        server.verify()
     }
 
     @Test

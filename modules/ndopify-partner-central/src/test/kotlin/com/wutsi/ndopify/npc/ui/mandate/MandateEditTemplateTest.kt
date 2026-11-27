@@ -20,6 +20,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.config.Parallel
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
+import com.wutsi.ndopify.npc.ui.document.DocumentFieldLabels
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdviceTest
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.CONTRACT
@@ -42,6 +43,7 @@ import org.jsoup.nodes.Document
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.context.support.ResourceBundleMessageSource
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.test.web.servlet.MockMvc
@@ -72,6 +74,12 @@ class MandateEditTemplateTest {
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
+    private val labels = DocumentFieldLabels(
+        ResourceBundleMessageSource().apply {
+            setBasename("messages")
+            setDefaultEncoding("UTF-8")
+        },
+    )
     private lateinit var mvc: MockMvc
 
     @BeforeEach
@@ -116,6 +124,7 @@ class MandateEditTemplateTest {
                     clock,
                     MandateDealCandidates(mock(), mandateClient, customerClient, listingClient),
                     Parallel(),
+                    labels,
                 ),
             )
             .setControllerAdvice(SignedInAdvice())

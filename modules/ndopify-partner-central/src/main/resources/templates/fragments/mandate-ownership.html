@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/*
+  The *Vérification du propriétaire* section of a LISTING mandate's page (#298), immediately before *Documents*: the
+  verdict #297 decided, worded. "section" is the OwnershipSectionView; the whole section is included only for a LISTING
+  mandate in an in-flight status (the controller's model attribute is null otherwise), so the template never asks the
+  server for a SEARCH one.
+
+  The verdict carries no date and no document: the section shows neither, names the check's kind, and never renders a
+  document's id, type, title, page, path, storage URL or extracted value. PENDING is info-styled, with one line per
+  missing piece (or the reading-in-progress sentence when a piece is still being read) and a link to the Documents
+  section; VERIFIED is success-styled, says a verified owner is what allows publication (#299), and links the
+  mandate's listing when it has one (never a dead link); FAILED is warning-styled, with one block per reason and, for
+  *_UNUSABLE, the document's own problem instructions (#331), and links the Documents section where the agent fixes it.
+  UNAVAILABLE is a failed read (or an UNKNOWN status): only this section says so. Every state is server-rendered and
+  reads without JavaScript; the prototype's data-* switches and script have no production counterpart.
+*/-->
+<section th:fragment="ownership(section)" class="home-section ownership" aria-labelledby="ownership-title">
+    <div class="ownership__head">
+        <h2 id="ownership-title">Vérification du propriétaire</h2>
+        <p class="status-tag" th:if="${section.tagLabel}"
+           th:class="|status-tag status-tag--${section.tagStyle}|" th:text="${section.tagLabel}">En cours</p>
+    </div>
+    <p class="ownership__intro" th:text="${section.intro}">Ndopify vérifie que le vendeur est bien le propriétaire du
+        bien, à partir des pièces de la section Documents.</p>
+
+    <div class="alert alert--warning" th:if="${section.unavailable}" data-ownership-unavailable>
+        <svg th:replace="~{fragments/icon :: warning}"></svg>
+        <div>
+            <p class="alert__title">Vérification indisponible</p>
+            <p>La vérification du propriétaire ne peut pas être affichée pour le moment. Rechargez la page dans
+                quelques instants.</p>
+        </div>
+    </div>
+
+    <div class="alert alert--info" th:if="${section.status.name() == 'PENDING'}" data-ownership-pending>
+        <svg th:replace="~{fragments/icon :: info}"></svg>
+        <div>
+            <p class="alert__title">Vérification du propriétaire en cours</p>
+            <ul class="ownership__pieces" th:unless="${#lists.isEmpty(section.missing)}"
+                data-ownership-pending-reasons>
+                <li th:each="piece : ${section.missing}" th:text="${piece}">Il manque la pièce d'identité du
+                    propriétaire.</li>
+            </ul>
+            <p th:if="${section.waiting}" th:text="${section.waiting}">La lecture des pièces est en cours.</p>
+            <p class="ownership__actions" th:if="${section.documentsLabel}">
+                <a class="btn btn--outline btn--compact" href="#documents-title"
+                   th:text="${section.documentsLabel}">Ajouter ces pièces dans Documents</a>
+            </p>
+        </div>
+    </div>
+
+    <div class="alert alert--warning" th:if="${section.status.name() == 'FAILED'}" data-ownership-failed>
+        <svg th:replace="~{fragments/icon :: warning}"></svg>
+        <div>
+            <p class="alert__title">Propriétaire non vérifié</p>
+            <ul class="ownership__reasons" data-ownership-reasons>
+                <li class="ownership__reason" th:each="reason : ${section.reasons}">
+                    <p class="ownership__check" th:if="${reason.check}" th:text="${reason.check}">La pièce
+                        d'identité</p>
+                    <p th:text="${reason.text}">La pièce est expirée : elle ne peut plus servir à vérifier le
+                        propriétaire.</p>
+                    <ul class="ownership__problems" th:unless="${#lists.isEmpty(reason.problems)}">
+                        <li th:each="problem : ${reason.problems}" th:text="${problem}">Le document n'a pas pu être
+                            lu.</li>
+                    </ul>
+                    <p class="ownership__action" th:text="${reason.action}">Reprenez la photo d'une pièce en cours de
+                        validité, puis ajoutez-la dans Documents.</p>
+                </li>
+            </ul>
+            <p class="ownership__actions">
+                <a class="btn btn--outline btn--compact" href="#documents-title">Corriger dans les documents</a>
+            </p>
+        </div>
+    </div>
+
+    <div class="alert alert--success" th:if="${section.status.name() == 'VERIFIED'}" data-ownership-verified>
+        <svg th:replace="~{fragments/icon :: check('icon')}"></svg>
+        <div>
+            <p class="alert__title">Propriétaire vérifié</p>
+            <p>Un propriétaire vérifié est ce qui permet de publier l'annonce.</p>
+            <p class="ownership__actions" th:if="${section.listingId != null}">
+                <a class="btn btn--primary btn--compact"
+                   th:href="@{/listings/{id}(id=${section.listingId})}">Voir l'annonce</a>
+            </p>
+        </div>
+    </div>
+</section>
+</body>
+</html>

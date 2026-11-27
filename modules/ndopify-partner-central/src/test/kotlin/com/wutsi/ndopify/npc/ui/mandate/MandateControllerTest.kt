@@ -24,6 +24,8 @@ import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateDocument
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.OwnershipVerification
+import com.wutsi.ndopify.mandate.dto.OwnershipVerificationStatus
 import com.wutsi.ndopify.mandate.dto.TitleDocumentType
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.match.dto.Match
@@ -40,6 +42,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
 import com.wutsi.ndopify.npc.config.Parallel
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
+import com.wutsi.ndopify.npc.ui.document.DocumentFieldLabels
 import com.wutsi.ndopify.npc.ui.document.DocumentSectionView
 import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest
@@ -78,6 +81,7 @@ import com.wutsi.ndopify.web.core.service.TenantContext
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.anyLong
+import org.springframework.context.support.ResourceBundleMessageSource
 import org.springframework.http.HttpStatus
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.MvcResult
@@ -88,6 +92,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
 import org.springframework.web.client.ResourceAccessException
+import org.springframework.web.client.RestClientException
 import org.springframework.web.servlet.view.InternalResourceViewResolver
 import java.time.Clock
 import java.time.LocalDate
@@ -111,6 +116,15 @@ class MandateControllerTest {
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
+    private val labels = DocumentFieldLabels(
+        ResourceBundleMessageSource().apply {
+            setBasename("messages")
+            setDefaultEncoding("UTF-8")
+        },
+    )
+
+    // An APPROVED LISTING mandate: the owner verification only renders on a LISTING mandate in flight.
+    private val listingMandate = APPROVED.copy(mandateType = MandateType.LISTING, listingType = ListingType.SALE)
     private lateinit var mvc: MockMvc
 
     @BeforeEach
@@ -142,6 +156,7 @@ class MandateControllerTest {
             clock,
             MandateDealCandidates(matchClient, mandateClient, customerClient, listingClient),
             Parallel(),
+            labels,
         )
         mvc = MockMvcBuilders.standaloneSetup(controller)
             .setControllerAdvice(HttpClientErrorHandler(mock()))
@@ -1681,5 +1696,45 @@ class MandateControllerTest {
 
         assertEquals("redirect:/login", mvc.perform(get("/mandates/201/edit")).andReturn().modelAndView?.viewName)
         assertEquals("redirect:/login", mvc.perform(edit()).andReturn().modelAndView?.viewName)
+    }
+
+    @Test
+    fun `the owner verification is shown on an active listing mandate`() {
+        doReturn(listingMandate).whenever(mandateClient).get(201)
+        doReturn(OwnershipVerification(OwnershipVerificationStatus.VERIFIED)).whenever(mandateClient).ownership(201)
+
+        val result = mvc.perform(get("/mandates/201")).andReturn()
+
+        val section = model(result)["ownershipSection"] as OwnershipSectionView
+        assertEquals(OwnershipVerificationStatus.VERIFIED, section.status)
+    }
+
+    @Test
+    fun `a search mandate never asks for a verdict`() {
+        mvc.perform(get("/mandates/201")).andReturn()
+
+        verify(mandateClient, never()).ownership(anyLong())
+    }
+
+    @Test
+    fun `a closed listing mandate has no section and asks for no verdict`() {
+        doReturn(listingMandate.copy(status = MandateStatus.CLOSED)).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(get("/mandates/201")).andReturn()
+
+        assertNull(model(result)["ownershipSection"])
+        verify(mandateClient, never()).ownership(anyLong())
+    }
+
+    @Test
+    fun `a failed verdict read only makes the section unavailable`() {
+        doReturn(listingMandate).whenever(mandateClient).get(201)
+        doThrow(RestClientException("down")).whenever(mandateClient).ownership(201)
+
+        val result = mvc.perform(get("/mandates/201")).andReturn()
+
+        val section = model(result)["ownershipSection"] as OwnershipSectionView
+        assertTrue(section.unavailable)
+        assertEquals("mandate", result.modelAndView!!.viewName)
     }
 }

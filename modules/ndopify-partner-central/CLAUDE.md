@@ -326,6 +326,23 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `HttpClientErrorHandler` (`ui/layout/`), which answers the same status so that Spring Boot renders
   `templates/error/403.html` / `404.html` (also used for unknown URLs). These pages have no account menu: the signed-in
   agent isn't known in Spring Boot's error controller.
+- A LISTING mandate's **owner verification** (#298) is the page's *Vérification du propriétaire* section
+  (`fragments/mandate-ownership.html`, `ownershipSection` from `MandateOwnershipViews.section`), immediately before the
+  Documents section: the verdict `GET /v1/mandates/{id}/ownership` (#297) worded, never re-derived from the documents.
+  `NdMandateClient.ownership` reads it with the page's other reads (parallel, joined at the end) only on a LISTING
+  mandate in `MandateRules.ACTIVE`; a SEARCH mandate and a CLOSED / CANCELLED one make no call and render no section.
+  The status pill reads *En cours* (`PENDING`), *Vérifié* (`VERIFIED`) or *Non vérifié* (`FAILED`). `PENDING` shows one
+  line per missing piece (`OWNERSHIP_ID_MISSING` / `OWNERSHIP_DOCUMENT_MISSING`, the generic line for another code) or,
+  with no reason, the reading-in-progress sentence, and links to `#documents-title`; `VERIFIED` states that a verified
+  owner is what allows publication (#299) and links `/listings/{id}` when the mandate's listing exists (no dead link
+  otherwise); `FAILED` shows one block per reason — the check's kind (*La pièce d'identité* for `OWNERSHIP_ID_*`,
+  *Le document de propriété* for `OWNERSHIP_DOCUMENT_*`, none for an unknown code), its wording and its action, then
+  the `*_UNUSABLE` problem codes worded by `DocumentFieldLabels` as the document page words them (#331) — and links to
+  the documents. The verdict carries no date and no document, so the section shows neither: no document id, type,
+  title, page, path or storage URL. A failed read (5xx, network, 403/404) or an `UNKNOWN` status only makes the
+  section say *Vérification indisponible*; every other section renders as before. No script: every state is
+  server-rendered. `src/main/assets/css/ownership.css` (after `document.css` in `build-assets.mjs`) lays it out.
+  Prototype: `src/main/html/v2/mandate.html` (approved 2026-11-27).
 - A mandate's **documents** (`MandateDocumentController`, `ui/document/`, `templates/mandate/document-new.html` and
   `templates/mandate/document.html`) are the *Documents* section of the mandate page and a document's own page, on a
   LISTING and a SEARCH mandate alike, for every `MandateRules.SHOWN` status. The section (`fragments/mandate-documents.html`,
