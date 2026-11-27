@@ -131,6 +131,10 @@ class ListingService(
     /** The listings of [ids] that exist in the tenant, in one read; a missing one is left out. */
     fun findAllByIds(ids: Collection<Long>): List<ListingEntity> = dao.findAllById(ids).toList()
 
+    /** The VERIFIED listings after [id], in id order: the publish job's keyset page. */
+    fun findVerifiedAfter(id: Long, limit: Int): List<ListingEntity> =
+        dao.findByStatusAndIdGreaterThanOrderByIdAsc(ListingStatus.VERIFIED, id, OffsetLimitPageRequest(0, limit))
+
     /**
      * Creates the DRAFT listing of a mandate, from its property: 404 MANDATE_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for
      * an admin or the mandate's agent, 409 MANDATE_NOT_ASSIGNED for a
