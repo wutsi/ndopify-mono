@@ -60,6 +60,25 @@ class EmailAddressRepositoryTest : BaseEndpointIntegrationTest() {
         assertEquals(expiresAt.time / 1000, row.expiresAt.time / 1000)
     }
 
+    @Test
+    @Sql("/db/test/clean.sql")
+    fun `an unknown enum name reads the converter default`() {
+        val now = Date()
+        jdbc.update(
+            """
+                INSERT INTO T_EMAIL_ADDRESS(
+                    email_hash, score, reason, has_valid_syntax, has_valid_dns_records, mailbox_exists,
+                    is_role_address, is_disposable, is_random_input, checked_at, expires_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            HASH, 1.0, "ZZZ", "ZZZ", "HIGH", "HIGH", "HIGH", "HIGH", "HIGH", now, now,
+        )
+
+        val row = dao.findByEmailHash(HASH)!!
+        assertEquals(VerificationReason.NONE, row.reason)
+        assertEquals(Verdict.HIGH, row.hasValidSyntax)
+    }
+
     private fun count(): Long =
         jdbc.queryForObject("SELECT COUNT(*) FROM T_EMAIL_ADDRESS", Long::class.java)!!
 }

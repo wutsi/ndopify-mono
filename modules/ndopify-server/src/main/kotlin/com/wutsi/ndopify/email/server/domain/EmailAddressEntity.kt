@@ -1,8 +1,6 @@
 package com.wutsi.ndopify.email.server.domain
 
 import jakarta.persistence.Entity
-import jakarta.persistence.EnumType
-import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -27,25 +25,18 @@ data class EmailAddressEntity(
 
     val score: Double? = null,
 
-    @Enumerated(EnumType.STRING)
     val reason: VerificationReason = VerificationReason.NONE,
 
-    @Enumerated(EnumType.STRING)
     val hasValidSyntax: Verdict = Verdict.HIGH,
 
-    @Enumerated(EnumType.STRING)
     val hasValidDnsRecords: Verdict = Verdict.HIGH,
 
-    @Enumerated(EnumType.STRING)
     val mailboxExists: Verdict = Verdict.HIGH,
 
-    @Enumerated(EnumType.STRING)
     val isRoleAddress: Verdict = Verdict.HIGH,
 
-    @Enumerated(EnumType.STRING)
     val isDisposable: Verdict = Verdict.HIGH,
 
-    @Enumerated(EnumType.STRING)
     val isRandomInput: Verdict = Verdict.HIGH,
 
     val checkedAt: Date = Date(),
