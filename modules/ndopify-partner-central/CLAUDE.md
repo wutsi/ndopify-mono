@@ -161,6 +161,8 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   *Louer / Acheter*; `?type=SALE|RENTAL` preselects it. `GET /find-property` without a `step` is the entry point
   and starts a new run: it drops the session's `PendingMandate` and `SubmittedMandate`, so a previous run's answers
   are never shown (every in-run URL, *Précédent* included, carries its `step`).
+  A 400 `EMAIL_ADDRESS_INVALID` at the review comes back to the contact step, the e-mail field flagged with « Cette
+  adresse email n'est pas valide. » and every answer kept; any other refusal keeps *Envoi impossible pour le moment.*
   A purchase drops the *Chambre* type, offers *Terrain* under both usages (residential and commercial) with a required
   surface, asks the furniture of a residential type, reads *Budget total* (floor 1 000 000 FCFA, `PeriodicityType.NONE`),
   the buying horizon and a required financing answer, asks the title documents (*Titre foncier*, *Plan de bornage*,
@@ -183,7 +185,9 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   validates (`OfferPropertyRules`, the only validation a listing gets) into the session's `PendingListing`, and the
   review submits it as a LISTING mandate for the chosen project (`listingType`, required on the first step and
   preselected from `?type=SALE|RENTAL`) in the tenant's currency (`NdMandateClient` → `POST /v1/mandates`), then
-  shows the confirmation while a `SubmittedMandate` is in the session. `GET /offer-property` without a `step` is the
+  shows the confirmation while a `SubmittedMandate` is in the session. A 400 `EMAIL_ADDRESS_INVALID` at the review
+  comes back to the contact step, the e-mail field flagged with « Cette adresse email n'est pas valide. » and every
+  answer kept; any other refusal keeps *Envoi impossible pour le moment.* `GET /offer-property` without a `step` is the
   entry point and starts a new run, dropping the session's `PendingListing` and `SubmittedMandate` like *Trouver un
   bien*. A sale has a one-off price (`PeriodicityType.NONE`, at least 1 000 000 FCFA), no advance nor deposit,
   *Terrain* offered under both usages and no *Chambre*; a sold *Terrain* requires its surface, and a sale offers the

@@ -1,5 +1,7 @@
 package com.wutsi.ndopify.npc.ui.findproperty
 
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClientException
 import kotlin.math.roundToLong
 
@@ -66,6 +69,8 @@ class FindPropertyController(
         const val STEP_REVIEW = "review"
         const val STEP_CONFIRMATION = "confirmation"
         const val RETURN_TO_REVIEW = "review"
+
+        private const val INVALID_EMAIL = "Cette adresse email n'est pas valide."
 
         val STEPS = listOf(STEP_NEED, STEP_AREA, STEP_PROPERTY, STEP_AMENITIES, STEP_BUDGET, STEP_CONTACT, STEP_REVIEW)
 
@@ -311,6 +316,10 @@ class FindPropertyController(
         return save(STEP_CONTACT, answers, errors, returnTo, session, model)
     }
 
+    /**
+     * Submits the session to ndopify-server. A refused contact e-mail comes back to the contact step, the review
+     * would show a dead end; any other refusal keeps the review error.
+     */
     @PostMapping("/$STEP_REVIEW")
     fun submit(session: HttpSession, model: Model): String {
         val pending = pending(session)
@@ -319,6 +328,10 @@ class FindPropertyController(
         try {
             mandateClient.create(pending.toCreateMandateRequest(tenantContext.getTenant().currencyCode))
         } catch (ex: RestClientException) {
+            // A refused address is the visitor's to fix: back to the contact step, with the answers kept
+            if (ex is HttpClientErrorException && errorCode(ex) == ErrorCode.EMAIL_ADDRESS_INVALID) {
+                return step(STEP_CONTACT, pending, RETURN_TO_REVIEW, mapOf("email" to INVALID_EMAIL), model)
+            }
             // 4xx, 5xx or unreachable: nothing the visitor can fix, except trying again.
             LOGGER.error("Unable to create the mandate", ex)
             model.addAttribute("error", "Envoi impossible pour le moment. Réessayez dans quelques instants.")
@@ -576,4 +589,11 @@ class FindPropertyController(
 
     private fun submitted(session: HttpSession): SubmittedMandate? =
         session.getAttribute(SubmittedMandate.SESSION_ATTRIBUTE) as SubmittedMandate?
+
+    private fun errorCode(ex: HttpClientErrorException): String? =
+        try {
+            ex.getResponseBodyAs(ErrorResponse::class.java)?.error?.code
+        } catch (ignored: Exception) {
+            null
+        }
 }

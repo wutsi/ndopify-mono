@@ -284,6 +284,22 @@ ndopify:
             up-ttl-minutes: 5
             down-ttl-minutes: 1
 
+    email:
+        verification:
+            provider: none                    # none | ses; ses in TEST and PROD
+            ses:
+                region: us-east-1             # The storage region
+            ttl:
+                valid-days: 30                # HIGH / MEDIUM
+                invalid-days: 7               # LOW
+            timeout-seconds: 2                # A slow SES never holds a mandate submission
+            throttle:                         # A budget guard: past either, accept without verifying
+                per-ip-per-hour: 20
+                daily-cap: 500
+            health: # /actuator/health is public and SES throttles around one call per second: the result is cached
+                up-ttl-minutes: 1
+                down-ttl-seconds: 15
+
     agent:
         telegram:
             code-ttl-minutes: 15          # How long the 6-digit connection code stays valid

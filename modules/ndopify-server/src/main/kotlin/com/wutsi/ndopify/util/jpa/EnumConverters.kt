@@ -5,6 +5,8 @@ import com.wutsi.ndopify.agent.dto.ExperienceLevel
 import com.wutsi.ndopify.contract.dto.ContractPartyRole
 import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.contract.dto.ContractType
+import com.wutsi.ndopify.email.server.domain.Verdict
+import com.wutsi.ndopify.email.server.domain.VerificationReason
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ImageStatus
@@ -63,6 +65,14 @@ class ContractStatusConverter : EnumConverter<ContractStatus>(ContractStatus::cl
 
 @Converter(autoApply = true)
 class ContractTypeConverter : EnumConverter<ContractType>(ContractType::class.java, ContractType.UNKNOWN)
+
+// email. A missing or unknown verdict reads HIGH, so an unreadable row never refuses an address
+@Converter(autoApply = true)
+class VerdictConverter : EnumConverter<Verdict>(Verdict::class.java, Verdict.HIGH)
+
+@Converter(autoApply = true)
+class VerificationReasonConverter :
+    EnumConverter<VerificationReason>(VerificationReason::class.java, VerificationReason.NONE)
 
 // listing. PropertyType, FurnitureType and ContactPeriodType are optional (null when not set)
 @Converter(autoApply = true)

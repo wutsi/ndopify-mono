@@ -32,6 +32,7 @@ class MandateServiceCloseDealTest {
         assignmentDao = mock(),
         clock = clock,
         customerService = mock(),
+        emailVerification = mock(),
         partyService = mock(),
         agentService = mock(),
         eventPublisher = eventPublisher,

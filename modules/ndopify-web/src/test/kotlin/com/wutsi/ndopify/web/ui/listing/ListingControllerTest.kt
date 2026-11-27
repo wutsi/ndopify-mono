@@ -9,6 +9,9 @@ import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.error.dto.Error
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStatus
@@ -40,6 +43,7 @@ import java.time.ZoneOffset
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ListingControllerTest {
@@ -275,10 +279,53 @@ class ListingControllerTest {
     }
 
     @Test
+    fun `a refused e-mail re-renders the popup with its field error`() {
+        doThrow(badRequest(ErrorCode.EMAIL_ADDRESS_INVALID)).whenever(mandateClient).create(any())
+
+        val result = interest(
+            "firstName" to "Awa",
+            "lastName" to "Ndiaye",
+            "email" to "awa.ndiaye@gmail.com",
+            "whatsappNumber" to "+237650000001",
+            "movingPeriod" to "WITHIN_1_MONTH",
+        )
+
+        val errors = result.modelAndView?.model?.get("errors") as Map<*, *>
+        assertEquals("Cette adresse email n'est pas valide.", errors["email"])
+        assertNull(errors["global"])
+        assertNotNull(result.modelAndView?.model?.get("interestForm")) // The typed values are kept
+        assertEquals(false, result.modelAndView?.model?.get("done"))
+    }
+
+    @Test
+    fun `another 400 keeps the global message`() {
+        doThrow(badRequest(ErrorCode.HTTP_INVALID_PARAMETER)).whenever(mandateClient).create(any())
+
+        val result = interest(
+            "firstName" to "Awa",
+            "lastName" to "Ndiaye",
+            "email" to "awa.ndiaye@gmail.com",
+            "whatsappNumber" to "+237650000001",
+            "movingPeriod" to "WITHIN_1_MONTH",
+        )
+
+        val errors = result.modelAndView?.model?.get("errors") as Map<*, *>
+        assertNotNull(errors["global"])
+        assertNull(errors["email"])
+    }
+
+    @Test
     fun `the confirmation state of the page comes from the URL`() {
         val result = perform(get("/douala/bonapriso/listing/123/appartement").param("interest", "done"))
 
         assertEquals(ListingController.VIEW, result.modelAndView?.viewName)
         assertEquals(true, result.modelAndView?.model?.get("done"))
+    }
+
+    private fun badRequest(code: String): HttpClientErrorException.BadRequest {
+        val ex = HttpClientErrorException.create(HttpStatus.BAD_REQUEST, "Bad Request", HttpHeaders.EMPTY, null, null)
+            as HttpClientErrorException.BadRequest
+        ex.setBodyConvertFunction { ErrorResponse(Error(code = code)) }
+        return ex
     }
 }

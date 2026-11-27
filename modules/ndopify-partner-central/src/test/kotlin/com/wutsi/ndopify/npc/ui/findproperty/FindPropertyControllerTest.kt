@@ -9,6 +9,9 @@ import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.error.dto.Error
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
@@ -37,6 +40,7 @@ import org.springframework.test.web.servlet.MvcResult
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
+import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
 import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.servlet.view.InternalResourceViewResolver
@@ -1184,6 +1188,36 @@ class FindPropertyControllerTest {
     }
 
     @Test
+    fun `a refused e-mail comes back to the contact step`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
+        doThrow(badRequest(ErrorCode.EMAIL_ADDRESS_INVALID)).whenever(mandateClient).create(any())
+
+        val result = mvc.perform(post("/find-property/review").session(session)).andReturn()
+
+        assertEquals("find-property", result.modelAndView?.viewName)
+        assertEquals("contact", model(result)["step"])
+        assertEquals(true, model(result)["returning"])
+        assertEquals("review", model(result)["previous"])
+        assertEquals(mapOf("email" to "Cette adresse email n'est pas valide."), model(result)["errors"])
+        assertNull(model(result)["error"])
+        assertEquals(complete, pending())
+        assertNull(session.getAttribute(SubmittedMandate.SESSION_ATTRIBUTE))
+    }
+
+    @Test
+    fun `another refusal keeps the review error`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
+        doThrow(badRequest(ErrorCode.HTTP_INVALID_PARAMETER)).whenever(mandateClient).create(any())
+
+        val result = mvc.perform(post("/find-property/review").session(session)).andReturn()
+
+        assertEquals("review", model(result)["step"])
+        assertEquals("Envoi impossible pour le moment. Réessayez dans quelques instants.", model(result)["error"])
+        assertTrue(errors(result).isEmpty())
+        assertEquals(complete, pending())
+    }
+
+    @Test
     fun submitServerUnreachable() {
         session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
         doThrow(ResourceAccessException("Connection refused")).whenever(mandateClient).create(any())
@@ -1277,6 +1311,12 @@ class FindPropertyControllerTest {
         )
         val result = mvc.perform(get("/find-property?step=confirmation").session(session)).andReturn()
         assertEquals("Achat", model(result)["projectLabel"])
+    }
+
+    private fun badRequest(code: String): HttpClientErrorException {
+        val ex = HttpClientErrorException(HttpStatus.BAD_REQUEST)
+        ex.setBodyConvertFunction { ErrorResponse(Error(code = code)) }
+        return ex
     }
 
     private fun pending(): PendingMandate? = session.getAttribute(PendingMandate.SESSION_ATTRIBUTE) as PendingMandate?

@@ -1,5 +1,7 @@
 DELETE FROM T_VISIT;
 DELETE FROM T_MATCH;
+-- Global (no tenant): its rows outlive a tenant-scoped test
+DELETE FROM T_EMAIL_ADDRESS;
 DELETE FROM T_LISTING_SECTION;
 DELETE FROM T_LISTING_IMAGE;
 -- A mandate may reference a listing (its origin), and a listing references its mandate: the reference goes first

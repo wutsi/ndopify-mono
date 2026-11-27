@@ -39,7 +39,9 @@ Package `com.wutsi.ndopify.web`:
   match instead (no client change). Success, a filled honeypot and a 409 `MANDATE_RATE_LIMITED` all redirect to the
   same server-rendered confirmation (`{url}?interest=done#visit`: `Un agent vous contacte sous 24 h par WhatsApp ou par
   e-mail pour organiser la visite.`, no steps list); an invalid form or a 400 re-renders the page with the popup open
-  (`is-open`), the French messages and the typed values. No slot picker: the visit is organised with the agent. The "Poser une question" drawer is still the prototype's (no
+  (`is-open`), the French messages and the typed values. A 400 `EMAIL_ADDRESS_INVALID` flags the
+  popup's e-mail field with « Cette adresse email n'est pas valide. » (`aria-invalid`); any other 400 keeps the global
+  *Votre demande n'a pas pu être envoyée.* line. No slot picker: the visit is organised with the agent. The "Poser une question" drawer is still the prototype's (no
   trigger, canned answers); ndopify-server supports the visits themselves from the match page, not here.
 - `ui/match/` — `MatchController`, the link of the proposition e-mail (`/match/{id}?token=`): the token goes to the
   cookie and is stripped from the address (302); signed out or a 401 from ndopify-server (cookie cleared) → `match-link.html`

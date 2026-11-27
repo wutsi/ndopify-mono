@@ -5,6 +5,9 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.error.dto.Error
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
@@ -31,6 +34,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
+import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
 import org.springframework.web.client.ResourceAccessException
 import org.thymeleaf.spring6.SpringTemplateEngine
@@ -765,6 +769,22 @@ class FindPropertyTemplateTest {
     }
 
     @Test
+    fun `a refused e-mail comes back to the contact step with its error`() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
+        doThrow(badRequest(ErrorCode.EMAIL_ADDRESS_INVALID)).whenever(mandateClient).create(any())
+
+        val page = render(post("/find-property/review"))
+
+        assertEquals("contact", page.selectFirst("[data-step]")?.attr("data-step"))
+        val error = assertNotNull(page.selectFirst("#email-error"))
+        assertFalse(error.hasAttr("hidden"))
+        assertEquals("Cette adresse email n'est pas valide.", error.text())
+        assertEquals("true", page.selectFirst("#email")?.attr("aria-invalid"))
+        assertEquals("Revenir à la revue", page.selectFirst("[data-next]")?.text())
+        assertNull(page.selectFirst("[data-submit-error]"))
+    }
+
+    @Test
     fun reviewServerDown() {
         session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
         doThrow(ResourceAccessException("Connection refused")).whenever(mandateClient).create(any())
@@ -908,6 +928,12 @@ class FindPropertyTemplateTest {
             session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, step.second)
             ScriptFixtures.write(name, render(get("/find-property?step=${step.first}")))
         }
+    }
+
+    private fun badRequest(code: String): HttpClientErrorException {
+        val ex = HttpClientErrorException(HttpStatus.BAD_REQUEST)
+        ex.setBodyConvertFunction { ErrorResponse(Error(code = code)) }
+        return ex
     }
 
     private fun render(request: MockHttpServletRequestBuilder): Document {

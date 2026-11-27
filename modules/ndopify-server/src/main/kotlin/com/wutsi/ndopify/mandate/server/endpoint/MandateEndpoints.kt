@@ -24,7 +24,9 @@ import com.wutsi.ndopify.mandate.server.service.MandateAccessService
 import com.wutsi.ndopify.mandate.server.service.MandateService
 import com.wutsi.ndopify.mandate.server.service.MandateStatsService
 import com.wutsi.ndopify.platform.endpoint.OpsEndpoint
+import com.wutsi.ndopify.platform.util.http.ClientIp
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
@@ -83,8 +85,9 @@ class MandateEndpoints(
     @PostMapping
     fun create(
         @RequestBody @Valid request: CreateMandateRequest,
+        http: HttpServletRequest,
     ): CreateMandateResponse {
-        val mandate = service.create(request)
+        val mandate = service.create(request, ClientIp.of(http))
         return CreateMandateResponse(mandateId = mandate.id ?: -1)
     }
 

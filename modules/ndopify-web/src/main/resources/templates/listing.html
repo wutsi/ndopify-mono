@@ -113,9 +113,11 @@
             </div>
             <div class="field">
                 <label for="email">E-mail</label>
-                <input autocomplete="email" id="email" name="email" required type="email"
+                <input aria-describedby="email-error" autocomplete="email" id="email" name="email" required type="email"
+                       th:attr="aria-invalid=${errors?.get('email') != null ? 'true' : null}"
                        th:value="${interestForm?.email}">
-                <span aria-live="polite" class="field-error" th:text="${errors?.get('email')}"></span>
+                <span aria-live="polite" class="field-error" id="email-error"
+                      th:text="${errors?.get('email')}"></span>
             </div>
             <div class="field">
                 <label for="whatsapp">Numéro WhatsApp</label>
