@@ -349,6 +349,8 @@ ndopify:
                 max-attempts: 3                  # Technical failures retried in the run, then FAILED
                 min-confidence: 0.7              # A required field below this confidence fails the document
                 in-progress-timeout-minutes: 15  # An EXTRACTING document older is interrupted: it's retried
+        ownership:
+            name-threshold: 90             # 0..100: below it, an ID or a title does not name the customer (as KYC)
 
     match:
         price-tolerance: 0.10           # A listing up to 10% over the budget is still a match, scored down
