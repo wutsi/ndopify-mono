@@ -20,6 +20,7 @@ tracker:
   provider: github-projects
   statuses:
     backlog: Backlog
+    triaged: Triaged
     ready: Ready
     in_progress: In progress
     review: In review

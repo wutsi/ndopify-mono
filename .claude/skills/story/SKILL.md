@@ -57,8 +57,9 @@ supplies `tracker.statuses.*`, `repository.story_ref` and `repository.default_br
 
 ### `groom <story-id>`
 
-Dispatch `analyst <story-id>`. Relay its question and prototype gates. On done, report `PLAN`, `PROTOTYPE` and
-`STATUS`; the next action is `implement <id>`.
+Grooming starts from `tracker.statuses.triaged`, never from `tracker.statuses.backlog`: triage is a separate step, and
+the analyst stops on a freshly created story. Dispatch `analyst <story-id>`. Relay its question and prototype gates. On
+done, report `PLAN`, `PROTOTYPE` and `STATUS`; the next action is `implement <id>`.
 
 ### `implement <story-id>` and `push <story-id>`
 
@@ -104,7 +105,8 @@ Resolve the start point in this order; the first row that matches wins:
 | `tracker.statuses.done` | report done and stop |
 | a merged pull request, with the story in `tracker.statuses.review` | `deployer` |
 | a merged pull request in any other status | stop; the status and the merge disagree |
-| `tracker.statuses.backlog` | stop; ask the user to run `groom <id>` |
+| `tracker.statuses.backlog` | stop; ask the user to triage it (move it to `tracker.statuses.triaged`) first |
+| `tracker.statuses.triaged` | stop; ask the user to run `groom <id>` |
 | a closed pull request that is not merged | stop and ask |
 | an open pull request whose latest review is `Final — Changes requested` | stop; the three rounds are spent, the user fixes and reruns `review <pr>` |
 | an open pull request whose latest review is `Round n — Changes requested (author)` on its head | `developer` (address the review) |
