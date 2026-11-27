@@ -6,6 +6,7 @@ import com.wutsi.ndopify.common.dto.PresignUploadResponse
 import com.wutsi.ndopify.party.dto.SearchPartyRequest
 import com.wutsi.ndopify.party.dto.SearchPartyResponse
 import com.wutsi.ndopify.party.server.mapper.PartyMapper
+import com.wutsi.ndopify.party.server.service.PartyAccessService
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import org.springframework.web.bind.annotation.GetMapping
@@ -23,11 +24,13 @@ import org.springframework.web.multipart.MultipartFile
 class PartyEndpoints(
     private val service: PartyService,
     private val mapper: PartyMapper,
+    private val accessService: PartyAccessService,
 ) {
     @GetMapping
     fun search(
         @ModelAttribute request: SearchPartyRequest,
     ): SearchPartyResponse {
+        accessService.ensureCanSearch()
         val parties = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
         return SearchPartyResponse(
             parties = parties.map { party -> mapper.toPartySummary(party) },

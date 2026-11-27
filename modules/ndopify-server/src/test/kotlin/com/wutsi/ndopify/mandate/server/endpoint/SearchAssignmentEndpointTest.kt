@@ -1,8 +1,11 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.SearchAssignmentResponse
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import java.text.SimpleDateFormat
@@ -12,6 +15,11 @@ import kotlin.test.assertEquals
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/SearchAssignmentEndpoint.sql"])
 class SearchAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    private var admin = true
+
+    override val roles: Array<String>
+        get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
+
     @Test
     fun `all, newest first`() {
         val assignments = search("")
@@ -72,6 +80,33 @@ class SearchAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest()
     @Test
     fun `other tenant never returned`() {
         assertEquals(emptyList(), search("?id=9").map { it.id })
+    }
+
+    @Test
+    fun `agent sees only its own assignments`() {
+        admin = false
+        userId = 11L
+        assertEquals(listOf(4L, 3L, 1L), search("").map { it.id })
+        assertEquals(listOf(3L), search("?mandate-id=2").map { it.id })
+        assertEquals(listOf(4L), search("?status=PENDING").map { it.id })
+    }
+
+    @Test
+    fun `another agent's id - forbidden`() {
+        admin = false
+        userId = 11L
+        val response = rest.getForEntity("/v1/assignments?agent-id=30", ErrorResponse::class.java)
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.ASSIGNMENT_ACCESS_DENIED, response.body?.error?.code)
+    }
+
+    @Test
+    fun `caller without an agent - forbidden`() {
+        admin = false
+        userId = 13L
+        val response = rest.getForEntity("/v1/assignments", ErrorResponse::class.java)
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.ASSIGNMENT_ACCESS_DENIED, response.body?.error?.code)
     }
 
     private fun search(query: String) =

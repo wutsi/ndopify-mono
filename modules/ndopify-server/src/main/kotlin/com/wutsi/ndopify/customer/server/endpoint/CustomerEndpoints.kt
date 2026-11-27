@@ -4,6 +4,7 @@ import com.wutsi.ndopify.customer.dto.GetCustomerResponse
 import com.wutsi.ndopify.customer.dto.SearchCustomerRequest
 import com.wutsi.ndopify.customer.dto.SearchCustomerResponse
 import com.wutsi.ndopify.customer.server.mapper.CustomerMapper
+import com.wutsi.ndopify.customer.server.service.CustomerAccessService
 import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import org.springframework.web.bind.annotation.GetMapping
@@ -16,21 +17,26 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/v1/customers")
 class CustomerEndpoints(
     private val service: CustomerService,
+    private val accessService: CustomerAccessService,
     private val mapper: CustomerMapper,
 ) {
+    /** The customer itself, the agent of one of its assigned mandates, or an admin ([CustomerAccessService]). */
     @GetMapping("/{id}")
     fun get(
         @PathVariable id: Long,
     ): GetCustomerResponse {
         val customer = service.findById(id)
+        accessService.ensureCanRead(customer)
         return GetCustomerResponse(customer = mapper.toCustomer(customer))
     }
 
+    /** A non-admin gets only its own customer and the customers of its mandates ([CustomerAccessService.restrict]). */
     @GetMapping
     fun search(
         @ModelAttribute request: SearchCustomerRequest,
     ): SearchCustomerResponse {
-        val customers = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
+        val restricted = accessService.restrict(request) ?: return SearchCustomerResponse()
+        val customers = service.search(restricted.copy(limit = OffsetLimitPageRequest.limit(restricted.limit)))
         return SearchCustomerResponse(customers = customers.map { customer -> mapper.toCustomerSummary(customer) })
     }
 }

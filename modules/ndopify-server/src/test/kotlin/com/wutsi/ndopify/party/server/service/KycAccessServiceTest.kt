@@ -5,7 +5,12 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.ForbiddenException
+import com.wutsi.ndopify.party.dto.SearchIdentificationRequest
 import com.wutsi.ndopify.party.dto.SearchKycCaseRequest
+import com.wutsi.ndopify.party.dto.SearchPaymentMethodRequest
+import com.wutsi.ndopify.party.server.domain.IdentificationEntity
+import com.wutsi.ndopify.party.server.domain.PartyEntity
+import com.wutsi.ndopify.party.server.domain.PaymentMethodEntity
 import com.wutsi.ndopify.security.dto.JwtPrincipal
 import com.wutsi.ndopify.security.server.service.CallerService
 import org.junit.jupiter.api.BeforeEach
@@ -76,6 +81,43 @@ class KycAccessServiceTest {
     fun `admin search is not restricted`() {
         whenever(callerService.isAdmin(principal)).thenReturn(true)
         val request = SearchKycCaseRequest(partyId = 999L)
+        assertSame(request, service.restrict(request))
+    }
+
+    @Test
+    fun `party reads its own identification`() {
+        whenever(callerService.findPartyIdOrNull(principal)).thenReturn(100L)
+        service.ensureCanRead(IdentificationEntity(id = "id-1", party = PartyEntity(id = 100)))
+    }
+
+    @Test
+    fun `another party may not read the identification`() {
+        whenever(callerService.findPartyIdOrNull(principal)).thenReturn(100L)
+        assertDenied { service.ensureCanRead(IdentificationEntity(id = "id-1", party = PartyEntity(id = 200))) }
+    }
+
+    @Test
+    fun `admin reads another party's payment method`() {
+        whenever(callerService.isAdmin(principal)).thenReturn(true)
+        service.ensureCanRead(PaymentMethodEntity(id = "pm-1", party = PartyEntity(id = 200)))
+    }
+
+    @Test
+    fun `identification search is forced to the caller party`() {
+        whenever(callerService.findPartyIdOrNull(principal)).thenReturn(100L)
+        assertEquals(100L, service.restrict(SearchIdentificationRequest(partyId = 999L)).partyId)
+    }
+
+    @Test
+    fun `payment method search of a party-less caller is denied`() {
+        whenever(callerService.findPartyIdOrNull(principal)).thenReturn(null)
+        assertDenied { service.restrict(SearchPaymentMethodRequest()) }
+    }
+
+    @Test
+    fun `admin identification search is not restricted`() {
+        whenever(callerService.isAdmin(principal)).thenReturn(true)
+        val request = SearchIdentificationRequest(partyId = 999L)
         assertSame(request, service.restrict(request))
     }
 }

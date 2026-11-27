@@ -6,6 +6,7 @@ import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.GetAssignmentResponse
 import com.wutsi.ndopify.mandate.dto.SearchAssignmentResponse
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
@@ -14,6 +15,13 @@ import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/ExpireAssignmentEndpoint.sql"])
 class ExpireAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    // The fixture has no caller (user 11): the assertions are about the ops endpoint and the assignment's state,
+    // not about the caller, so run as an admin to read that state.
+    private var admin = true
+
+    override val roles: Array<String>
+        get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
+
     private fun assertStatus(id: Long, status: AssignmentStatus) {
         val assignment = rest.getForEntity("/v1/assignments/$id", GetAssignmentResponse::class.java).body!!.assignment
         assertEquals(status, assignment.status)

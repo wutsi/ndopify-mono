@@ -5,6 +5,7 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.GetAssignmentResponse
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import java.text.SimpleDateFormat
@@ -15,6 +16,11 @@ import kotlin.test.assertEquals
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/GetAssignmentEndpoint.sql"])
 class GetAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    private var admin = false
+
+    override val roles: Array<String>
+        get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
+
     @Test
     fun get() {
         val response = rest.getForEntity("/v1/assignments/1", GetAssignmentResponse::class.java)
@@ -30,6 +36,28 @@ class GetAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals("2024-06-10 10:00", format(assignment.createdAt))
         assertEquals("2024-06-10 10:30", format(assignment.modifiedAt))
         assertEquals("2024-06-10 11:00", format(assignment.expiresAt))
+    }
+
+    @Test
+    fun `another agent - forbidden`() {
+        userId = 12L
+        val response = rest.getForEntity("/v1/assignments/1", ErrorResponse::class.java)
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.ASSIGNMENT_ACCESS_DENIED, response.body?.error?.code)
+    }
+
+    @Test
+    fun `caller without an agent - forbidden`() {
+        userId = 13L
+        val response = rest.getForEntity("/v1/assignments/1", ErrorResponse::class.java)
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.ASSIGNMENT_ACCESS_DENIED, response.body?.error?.code)
+    }
+
+    @Test
+    fun `admin reads another agent's assignment`() {
+        admin = true
+        assertEquals(HttpStatus.OK, rest.getForEntity("/v1/assignments/1", GetAssignmentResponse::class.java).statusCode)
     }
 
     @Test

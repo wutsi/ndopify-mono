@@ -18,7 +18,6 @@ import com.wutsi.ndopify.mandate.server.event.AssignmentAcceptedEvent
 import com.wutsi.ndopify.mandate.server.event.AssignmentClosedEvent
 import com.wutsi.ndopify.mandate.server.mail.MandateAssignedMailet
 import com.wutsi.ndopify.platform.tenant.TenantContext
-import com.wutsi.ndopify.security.server.service.CallerService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
@@ -37,7 +36,7 @@ class AssignmentService(
     private val mandateDao: MandateRepository,
     private val agentService: AgentService,
     private val customerService: CustomerService,
-    private val callerService: CallerService,
+    private val accessService: AssignmentAccessService,
     private val eventPublisher: ApplicationEventPublisher,
     private val clock: Clock,
     private val mailet: MandateAssignedMailet,
@@ -82,7 +81,7 @@ class AssignmentService(
     @Transactional
     fun accept(id: Long): AssignmentEntity {
         findById(id) // 404 before 401 / 403, then 409 (see findPendingForAgent)
-        return acceptForAgent(callerAgentId(), id)
+        return acceptForAgent(accessService.callerAgentId(), id)
     }
 
     /**
@@ -139,7 +138,7 @@ class AssignmentService(
     @Transactional
     fun decline(id: Long): AssignmentEntity {
         findById(id) // 404 before 401 / 403, then 409 (see findPendingForAgent)
-        return declineForAgent(callerAgentId(), id)
+        return declineForAgent(accessService.callerAgentId(), id)
     }
 
     /**
@@ -244,19 +243,6 @@ class AssignmentService(
             throw ForbiddenException(error = Error(code = ErrorCode.ASSIGNMENT_ACCESS_DENIED))
         }
         return ensurePending(assignment)
-    }
-
-    /**
-     * The caller's agent: its user (JWT), through its membership of the current tenant, must have an agent account.
-     * 401 without a token, 403 otherwise.
-     */
-    private fun callerAgentId(): Long {
-        val partyId = callerService.findPartyIdOrNull(callerService.getPrincipal())
-        val agent = partyId?.let { agentService.findByPartyIdOrNull(it) }
-        if (agent == null) {
-            throw ForbiddenException(error = Error(code = ErrorCode.ASSIGNMENT_ACCESS_DENIED))
-        }
-        return agent.id!!
     }
 
     private fun ensurePending(assignment: AssignmentEntity, ignoreTtl: Boolean = false): AssignmentEntity {

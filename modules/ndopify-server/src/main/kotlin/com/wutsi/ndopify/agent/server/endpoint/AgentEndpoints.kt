@@ -7,6 +7,7 @@ import com.wutsi.ndopify.agent.dto.SearchAgentRequest
 import com.wutsi.ndopify.agent.dto.SearchAgentResponse
 import com.wutsi.ndopify.agent.dto.UpdateAgentRequest
 import com.wutsi.ndopify.agent.server.mapper.AgentMapper
+import com.wutsi.ndopify.agent.server.service.AgentAccessService
 import com.wutsi.ndopify.agent.server.service.AgentService
 import com.wutsi.ndopify.agent.server.service.AgentTelegramService
 import com.wutsi.ndopify.error.dto.Error
@@ -30,6 +31,7 @@ class AgentEndpoints(
     private val mapper: AgentMapper,
     private val callerService: CallerService,
     private val telegramService: AgentTelegramService,
+    private val accessService: AgentAccessService,
 ) {
     @GetMapping("/{id}")
     fun get(
@@ -56,6 +58,7 @@ class AgentEndpoints(
     fun search(
         @ModelAttribute request: SearchAgentRequest,
     ): SearchAgentResponse {
+        accessService.ensureCanSearchByMobileMoneyNumber(request)
         val agents = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
         return SearchAgentResponse(agents = agents.map { agent -> mapper.toAgentSummary(agent) })
     }

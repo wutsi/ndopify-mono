@@ -6,6 +6,7 @@ import com.wutsi.ndopify.party.dto.SearchIdentificationRequest
 import com.wutsi.ndopify.party.dto.SearchIdentificationResponse
 import com.wutsi.ndopify.party.server.mapper.IdentificationMapper
 import com.wutsi.ndopify.party.server.service.IdentificationService
+import com.wutsi.ndopify.party.server.service.KycAccessService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController
 class IdentificationEndpoints(
     private val service: IdentificationService,
     private val mapper: IdentificationMapper,
+    private val accessService: KycAccessService,
 ) {
     @PostMapping("")
     fun create(
@@ -33,7 +35,8 @@ class IdentificationEndpoints(
     fun search(
         @ModelAttribute request: SearchIdentificationRequest,
     ): SearchIdentificationResponse {
-        val identifications = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
+        val restricted = accessService.restrict(request)
+        val identifications = service.search(restricted.copy(limit = OffsetLimitPageRequest.limit(restricted.limit)))
         return SearchIdentificationResponse(
             identifications = identifications.map { identification -> mapper.toIdentificationSummary(identification) },
         )
@@ -44,6 +47,7 @@ class IdentificationEndpoints(
         @PathVariable id: String,
     ): GetIdentificationResponse {
         val identification = service.findById(id)
+        accessService.ensureCanRead(identification)
         return GetIdentificationResponse(identification = mapper.toIdentification(identification))
     }
 }

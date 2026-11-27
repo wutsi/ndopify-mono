@@ -116,9 +116,9 @@ Current domains:
   for signature (`ContractSignerService`), for the parties asked to sign, with `e-signature` access, and a match
   proposal e-mail (`MatchLinkTokenService`), for the customer, with `public-portal` access.
   `GET /v1/users/{id}` (`UserEndpoints`) returns the user with its party in the current tenant embedded, and 404
-  `USER_NOT_FOUND` for a user who isn't a member of it. It needs a token (see *Authentication* below) but
-  doesn't check whose user it is yet. A party's e-mail is its contact e-mail in the tenant, not synced to the user's (global) login
-  e-mail.
+  `USER_NOT_FOUND` for a user who isn't a member of it. It needs a token (see *Authentication* below) and is the
+  user itself or an admin (`UserAccessService`). A party's e-mail is its contact e-mail in the tenant, not synced
+  to the user's (global) login e-mail.
 - **party** — `Party`, `Identification` (+ uploaded `IdentificationImage`s), `KycCase` / `KycVerification`, and
   `PaymentMethod`. KYC cases are verified by pluggable `KycVerifier` strategies (`KycVerifierIdentification`,
   `KycVerifierMoMo`, `KycVerifierManual`) selected via `KycVerifierProvider`. Identity-document data is extracted
@@ -142,7 +142,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `HTTP_ACCESS_DENIED` → 400 `KYC_CASE_NOT_PENDING` → the upload's 400s. `get`, `submit`, `search` and `create` are
   for the case's own party or an admin (`KycAccessService`): a non-admin's search is forced to its own party (whatever
   `partyId` it passes), and a non-admin creates only for its own party; `POST /v1/identifications` follows the same
-  create rule.
+  create rule. `GET /v1/parties` is admin-only (`PartyAccessService`); `GET /v1/identifications/{id}` and
+  `GET /v1/payment-methods/{id}` are the record's own party or an admin, and their searches are forced to the
+  caller's own party (`KycAccessService`).
   **Direct upload** (#205, on #127's `DirectUploadService`): `POST /v1/kyc/cases/{id}/images/presign?identificationType=&imageType=`
   hands out a PUT URL for `kyc/{caseId}/images/{uuid}.{ext}` (`{url: null}` with local storage: the caller falls back to
   the multipart upload, which stays, and also stores each photo at a new `{uuid}.{ext}`; older photos at
@@ -159,8 +161,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
 - **agent** — mobile-money agents (`AgentEntity`; `/v1/agents`: get, search, me, create, update). `GET /v1/agents/me`
   resolves the caller's agent from its token (`CallerService`): 404 `AGENT_NOT_FOUND` when the caller has no party or
   isn't an agent. `POST /v1/agents/{id}` is the agent's own (its party, through the token's membership) or an admin's
-  (`AgentAccessService`): 404 `AGENT_NOT_FOUND` → 403 `HTTP_ACCESS_DENIED` → 409 `AGENT_VERSION_CONFLICT`. The reads
-  and `create` stay open to any token as they are. `WelcomeMailet` sends
+  (`AgentAccessService`): 404 `AGENT_NOT_FOUND` → 403 `HTTP_ACCESS_DENIED` → 409 `AGENT_VERSION_CONFLICT`. The other
+  reads and `create` stay open to any token as they are. `GET /v1/agents?mobile-money-number=` is admin-only
+  (`AgentAccessService`); its other filters stay open to any signed-in caller. `WelcomeMailet` sends
   a welcome e-mail on registration when the tenant has a `partnerCentralUrl`, asynchronously (see *Asynchronous
   e-mails* below). `AgentTelegramService.findByChatId` reads the bot link of a chat (#135's global `T_AGENT_TELEGRAM`):
   its row names the tenant and the agent, which is how a Telegram update — no JWT, no `X-Tenant-ID` — acts in them. `joinedAt` is set on the agent's first VERIFIED case by `AgentKycEventListener`, a
@@ -176,8 +179,11 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   tells a linked chat it is already connected (`AgentTelegramService.isLinked`). No reconnect nor disconnect.
   Tenant-scoped but for the link row.
 - **customer** — the people behind the mandates: tenants searching for a property and owners offering one
-  (`CustomerEntity`, linked to a `Party`; `/v1/customers`). `CustomerService.findOrCreate` reuses the party and
-  customer of an e-mail. `POST /v1/mandates/{id}/customer` (`MandateService.updateCustomer`) corrects the mandate's
+  (`CustomerEntity`, linked to a `Party`; `/v1/customers`). `GET /v1/customers/{id}` is the customer itself, the
+  agent a mandate of it is assigned to, or an admin (`CustomerAccessService`); a non-admin's
+  `GET /v1/customers` is limited to its own customer and the customers of its mandates (any status), and a
+  request naming only foreign ids returns none. `CustomerService.findOrCreate` reuses the party and customer of
+  an e-mail. `POST /v1/mandates/{id}/customer` (`MandateService.updateCustomer`) corrects the mandate's
   customer's own details: its party's names and e-mail, and its WhatsApp number — for that customer only
   (`MandateAccessService.ensureIsCustomer`; no admin bypass, no agent): 404 `MANDATE_NOT_FOUND` → 403
   `MANDATE_ACCESS_DENIED` → 409 `MANDATE_ALREADY_CLOSED` → 409 `PARTY_EMAIL_ALREADY_EXISTS`. A
@@ -375,7 +381,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `ASSIGNMENT_ACCESS_DENIED`), then 409 `ASSIGNMENT_NOT_PENDING` if not PENDING or past `expiresAt`. Accept sets the
   mandate's agent and `ASSIGNED`, and publishes `AssignmentAcceptedEvent`: `MandateAssignedMailet` e-mails the
   customer its agent's name, WhatsApp number and biography (`mail/mandate/assigned.mjml`); decline publishes
-  `AssignmentClosedEvent`.
+  `AssignmentClosedEvent`. `GET /v1/assignments/{id}` is the offer's agent or an admin, and a non-admin's
+  `GET /v1/assignments` is forced to its own agent (`AssignmentAccessService`); a request naming another
+  `agent-id` is 403 `ASSIGNMENT_ACCESS_DENIED`.
 
   **Dispatch.** `MandateDispatcher.dispatch(mandateId)` offers a `PENDING_ASSIGNMENT` mandate, exclusively and for
   `ttl-minutes`, to its best-scoring candidate (verified agents of its city; not the customer; not an agent who

@@ -21,6 +21,15 @@ INSERT INTO T_AGENT(id, tenant_id, party_id, city_id) VALUES
     (30, 1, 300, 2370201),
     (90, 2, 900, 2370201);
 
+-- User 11 is agent 20, 12 is agent 30, 13 has no membership.
+INSERT INTO T_USER(id, email, deleted, created_at) VALUES
+    (11, 'kim.possible@gmail.com', false, '2024-06-10 00:00:00'),
+    (12, 'john.doe@gmail.com', false, '2024-06-10 00:00:00'),
+    (13, 'no.party@gmail.com', false, '2024-06-10 00:00:00');
+INSERT INTO T_MEMBERSHIP(id, tenant_id, user_id, party_id, deleted) VALUES
+    (11, 1, 11, 200, false),
+    (12, 1, 12, 300, false);
+
 INSERT INTO T_MANDATE(
     id, tenant_id, customer_id, agent_id, status, mandate_type, listing_type, city_id, property_type,
     rooms, price, price_periodicity_type, currency_code, created_at, modified_at

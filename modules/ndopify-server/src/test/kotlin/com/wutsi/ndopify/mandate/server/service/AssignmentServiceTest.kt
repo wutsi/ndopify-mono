@@ -50,7 +50,7 @@ class AssignmentServiceTest {
         mandateDao = mandateDao,
         agentService = agentService,
         customerService = mock(),
-        callerService = mock(),
+        accessService = mock(),
         eventPublisher = eventPublisher,
         clock = clock,
         mailet = mock(),
