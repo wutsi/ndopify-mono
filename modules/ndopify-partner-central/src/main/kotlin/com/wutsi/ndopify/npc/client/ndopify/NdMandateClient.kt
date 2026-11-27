@@ -5,10 +5,12 @@ import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateResponse
 import com.wutsi.ndopify.mandate.dto.GetMandateResponse
+import com.wutsi.ndopify.mandate.dto.GetOwnershipVerificationResponse
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStats
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateSummary
+import com.wutsi.ndopify.mandate.dto.OwnershipVerification
 import com.wutsi.ndopify.mandate.dto.RequestMandateApprovalRequest
 import com.wutsi.ndopify.mandate.dto.SearchMandateResponse
 import com.wutsi.ndopify.mandate.dto.SearchMandateStatsResponse
@@ -53,6 +55,18 @@ class NdMandateClient(
             .body<GetMandateResponse>()
             ?.mandate
             ?: Mandate()
+
+    /**
+     * The ownership verdict of a LISTING mandate (#297): a status and its reason codes, read on every page view and
+     * never cached. A missing body is the DTO's default (`UNKNOWN`), which the page reads as unavailable.
+     */
+    fun ownership(id: Long): OwnershipVerification =
+        rest.get()
+            .uri("/v1/mandates/{id}/ownership", id)
+            .retrieve()
+            .body<GetOwnershipVerificationResponse>()
+            ?.verification
+            ?: OwnershipVerification()
 
     /** The agent's mandates in progress: assigned, waiting for the customer's signature, or signed. */
     fun active(agentId: Long): List<MandateSummary> =
