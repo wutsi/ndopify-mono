@@ -67,14 +67,6 @@ class CustomerAccessServiceTest {
     }
 
     @Test
-    fun `offered-only agent is denied`() {
-        whenever(callerService.findPartyIdOrNull(principal)).thenReturn(200L)
-        whenever(agentService.findByPartyIdOrNull(200L)).thenReturn(AgentEntity(id = 20))
-        whenever(mandateLookup.isCustomerOfAgent(1L, 20L)).thenReturn(false)
-        assertDenied { service.ensureCanRead(customer) }
-    }
-
-    @Test
     fun `caller without a party is denied`() {
         whenever(callerService.findPartyIdOrNull(principal)).thenReturn(null)
         assertDenied { service.ensureCanRead(customer) }

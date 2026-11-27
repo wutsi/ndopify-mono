@@ -52,7 +52,9 @@ class GetPaymentMethodEndpointTest : AuthorizationAwareEndpointIntegrationTest()
     @Test
     fun `caller without a party - forbidden`() {
         userId = 13L
-        assertEquals(HttpStatus.FORBIDDEN, rest.getForEntity("/v1/payment-methods/pm-100", ErrorResponse::class.java).statusCode)
+        val response = rest.getForEntity("/v1/payment-methods/pm-100", ErrorResponse::class.java)
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
     }
 
     @Test

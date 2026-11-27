@@ -104,7 +104,9 @@ class SearchAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest()
     fun `caller without an agent - forbidden`() {
         admin = false
         userId = 13L
-        assertEquals(HttpStatus.FORBIDDEN, rest.getForEntity("/v1/assignments", ErrorResponse::class.java).statusCode)
+        val response = rest.getForEntity("/v1/assignments", ErrorResponse::class.java)
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.ASSIGNMENT_ACCESS_DENIED, response.body?.error?.code)
     }
 
     private fun search(query: String) =

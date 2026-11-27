@@ -51,7 +51,9 @@ class GetIdentificationEndpointTest : AuthorizationAwareEndpointIntegrationTest(
     @Test
     fun `caller without a party - forbidden`() {
         userId = 13L
-        assertEquals(HttpStatus.FORBIDDEN, rest.getForEntity("/v1/identifications/id-100", ErrorResponse::class.java).statusCode)
+        val response = rest.getForEntity("/v1/identifications/id-100", ErrorResponse::class.java)
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
     }
 
     @Test
