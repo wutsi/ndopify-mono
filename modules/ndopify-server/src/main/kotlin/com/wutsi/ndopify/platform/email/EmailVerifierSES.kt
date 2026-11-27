@@ -1,9 +1,5 @@
 package com.wutsi.ndopify.platform.email
 
-import com.wutsi.ndopify.email.server.domain.Verdict
-import com.wutsi.ndopify.email.server.domain.VerificationReason
-import com.wutsi.ndopify.email.server.service.EmailVerification
-import com.wutsi.ndopify.email.server.service.EmailVerifier
 import software.amazon.awssdk.services.sesv2.SesV2Client
 import software.amazon.awssdk.services.sesv2.model.EmailAddressInsightsConfidenceVerdict
 import software.amazon.awssdk.services.sesv2.model.EmailAddressInsightsVerdict

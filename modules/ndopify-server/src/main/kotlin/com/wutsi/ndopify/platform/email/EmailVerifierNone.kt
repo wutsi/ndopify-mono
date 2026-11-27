@@ -1,6 +1,4 @@
-package com.wutsi.ndopify.email.server.service
-
-import com.wutsi.ndopify.email.server.domain.VerificationReason
+package com.wutsi.ndopify.platform.email
 
 /**
  * The default verifier, selected when `ndopify.email.verification.provider=none`: it accepts every address and never

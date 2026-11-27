@@ -1,8 +1,8 @@
 package com.wutsi.ndopify.email.server.dao
 
 import com.wutsi.ndopify.BaseEndpointIntegrationTest
-import com.wutsi.ndopify.email.server.domain.Verdict
-import com.wutsi.ndopify.email.server.domain.VerificationReason
+import com.wutsi.ndopify.platform.email.Verdict
+import com.wutsi.ndopify.platform.email.VerificationReason
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.jdbc.Sql

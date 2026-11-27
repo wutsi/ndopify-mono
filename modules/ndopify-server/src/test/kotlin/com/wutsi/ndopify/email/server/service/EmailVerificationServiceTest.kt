@@ -12,10 +12,13 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.email.server.dao.EmailAddressRepository
 import com.wutsi.ndopify.email.server.domain.EmailAddressEntity
-import com.wutsi.ndopify.email.server.domain.VerificationReason
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ParameterType
 import com.wutsi.ndopify.error.server.exception.BadRequestException
+import com.wutsi.ndopify.platform.email.EmailVerification
+import com.wutsi.ndopify.platform.email.EmailVerificationThrottle
+import com.wutsi.ndopify.platform.email.EmailVerifier
+import com.wutsi.ndopify.platform.email.VerificationReason
 import org.junit.jupiter.api.BeforeEach
 import java.time.Clock
 import java.time.Instant

@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.email.server.service
+package com.wutsi.ndopify.platform.email
 
 import org.apache.commons.validator.routines.EmailValidator
 

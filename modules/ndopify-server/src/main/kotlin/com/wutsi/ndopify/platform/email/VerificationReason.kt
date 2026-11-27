@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.email.server.domain
+package com.wutsi.ndopify.platform.email
 
 /**
  * The provider-neutral reason of an e-mail verdict, stored by name and never renamed.

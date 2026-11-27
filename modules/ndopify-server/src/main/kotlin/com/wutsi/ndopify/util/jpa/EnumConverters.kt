@@ -5,8 +5,6 @@ import com.wutsi.ndopify.agent.dto.ExperienceLevel
 import com.wutsi.ndopify.contract.dto.ContractPartyRole
 import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.contract.dto.ContractType
-import com.wutsi.ndopify.email.server.domain.Verdict
-import com.wutsi.ndopify.email.server.domain.VerificationReason
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ImageStatus
@@ -34,6 +32,8 @@ import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.KycVerificationType
 import com.wutsi.ndopify.party.dto.PaymentMethodStatus
 import com.wutsi.ndopify.party.dto.PaymentMethodType
+import com.wutsi.ndopify.platform.email.Verdict
+import com.wutsi.ndopify.platform.email.VerificationReason
 import com.wutsi.ndopify.refdata.dto.AuthType
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.PeriodicityType

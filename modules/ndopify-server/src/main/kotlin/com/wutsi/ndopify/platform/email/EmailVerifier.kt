@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.email.server.service
+package com.wutsi.ndopify.platform.email
 
 /**
  * The e-mail verification port: the only provider-specific code is its adapter (see `EmailVerifierSES`). It throws

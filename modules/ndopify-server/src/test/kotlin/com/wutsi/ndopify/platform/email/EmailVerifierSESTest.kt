@@ -6,8 +6,6 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
-import com.wutsi.ndopify.email.server.domain.Verdict
-import com.wutsi.ndopify.email.server.domain.VerificationReason
 import org.junit.jupiter.api.BeforeEach
 import software.amazon.awssdk.services.sesv2.SesV2Client
 import software.amazon.awssdk.services.sesv2.model.EmailAddressInsightsConfidenceVerdict

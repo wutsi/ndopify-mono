@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.email.server.service
+package com.wutsi.ndopify.platform.email
 
 import java.time.Clock
 import java.time.Duration
