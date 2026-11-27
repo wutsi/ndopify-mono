@@ -321,7 +321,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   The reasons (`OwnershipReasonCodes`) are plain strings, one per failed check (ID first), and `*_UNUSABLE` carries
   the documents' `problemCodes`; a page change resets a document to `UPLOADED` so the next read flips the verdict at
   once, since nothing is stored. The answer carries a status and codes only — never a document, a page, a path or a
-  name.
+  name. The verdict also gates publication (#299): a VERIFIED listing whose owner is not verified is not sent for
+  publication, by the endpoint nor by `ListingJobs.publish`.
   A search's `MandateSummary` has what a card shows (criteria, amenities, `movingPeriod`, `availableFrom`) and its
   `contractId` only (a client needing the contract's dates searches `/v1/contracts?id=`), not the terms nor the
   customer's comments. `GET /v1/mandates/{id}` carries `visitFee` (`Money`), read through from the mandate's signed
@@ -544,8 +545,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `{partnerCentralUrl}/listings/{id}` (none without a `partnerCentralUrl`); nothing is sent for a successful
   verification, a retry left UNDER_VERIFICATION, nor a listing no longer DRAFT with errors (resubmitted meanwhile).
   **Publish**: `POST /{id}/publish` moves a `VERIFIED` listing
-  to `PUBLISHING` (404 `LISTING_NOT_FOUND`, then 409 `LISTING_NOT_VERIFIED`), `retries` reset; `ListingJobs.publish`
-  then has `ListingPublisherService` generate its title, summary and description (`ListingContentGenerator`, text
+  to `PUBLISHING` (404 `LISTING_NOT_FOUND`, then 409 `LISTING_NOT_VERIFIED`, then 409
+  `LISTING_OWNERSHIP_NOT_VERIFIED` while the mandate's ownership verdict is not `VERIFIED`, its reasons in
+  `error.data["reasons"]`), `retries` reset. `ListingJobs.publish`'s first pass pages the VERIFIED listings by id,
+  applies the same gate, skips a blocked one quietly, sends at most 100 for publication per tenant and run, and
+  re-checks nothing on the `PUBLISHING` second pass; it then has `ListingPublisherService` generate its title,
+  summary and description (`ListingContentGenerator`, text
   LLM, `ChatClients.TEXT`, from the listing's details, verified images and agent remarks; a sold building is described
   by its units and étages instead of its bedrooms), and its hero image (the model's when that image is a verified
   `PHOTO`, else the verified `PHOTO` of highest quality, then largest: a plan or a map is never the hero, and only a
