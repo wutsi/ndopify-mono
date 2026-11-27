@@ -3,8 +3,10 @@ package com.wutsi.ndopify.email.server.service
 import org.apache.commons.validator.routines.EmailValidator
 
 /**
- * A local syntax check before any paid call: it only saves an obvious call, SES still decides. No DNS lookup and no
- * TLD check, so it costs nothing and never refuses on a network miss.
+ * A local syntax check before any paid call: it only saves an obvious call, SES still decides.
+ *
+ * It is offline — no DNS lookup, no MX probe — but the validator still checks the domain's TLD against
+ * commons-validator's bundled list, so an address at a TLD missing from that list is refused without a provider call.
  */
 object EmailSyntax {
     private val VALIDATOR = EmailValidator.getInstance(false, false)
