@@ -452,3 +452,10 @@ sample whose customer's party is named exactly as the document prints it:
   genuinely matching name scored below it — none scored at all — so lowering it would be unjustified. Re-run this
   table when the two land documents are attached and the identity reading returns values; a matching sample below 90
   then lowers the default to that score's floor.
+- **Accepted decision (review round 1, 2026-11-27):** the two land documents were never attached to #297 and the
+  identity samples are unreadable, so criterion 13's per-sample measurement cannot be completed before this PR
+  merges. The accepted decision is to merge with the 90 default unvalidated: lowering it without a measured
+  genuinely-matching score would be unjustified, and the KYC threshold remains the defensible default. The
+  measurement stays a follow-up, re-run when the two land documents are attached and the identity reading returns
+  values; a genuinely matching sample below 90 at that point lowers the default to that score's floor. #297's criterion
+  13 records the same exception.
