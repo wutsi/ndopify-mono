@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Consolidate e-mail under one umbrella in `modules/ndopify-server`: move the nine verification classes from `com.wutsi.ndopify.platform.email` to `com.wutsi.ndopify.platform.mail.verification`, fold `config/platform/EmailConfiguration` into `config/platform/MailConfiguration`, and rename the verification settings from `ndopify.email.verification.*` to `ndopify.mail.verification.*` — with no behavior, database, DTO or value change.
+**Goal:** Consolidate e-mail under one umbrella in `modules/ndopify-server`: move the nine verification classes from `com.wutsi.ndopify.platform.email` to `com.wutsi.ndopify.platform.mail.verification`, fold `config/platform/EmailConfiguration` into `config/platform/MailConfiguration`, rename the verification settings from `ndopify.email.verification.*` to `ndopify.mail.verification.*`, and give the SES client the deployment's credentials (`AWS_ACCESS_KEY` / `AWS_SECRET_KEY`) — with no behavior, database, DTO or value change beyond authenticating those calls.
 
-**Architecture:** Three edits that each keep the module compiling and its tests green, in this order: rename the settings (YAML, `@Value`/`@ConditionalOnProperty` strings, test overrides); merge the configuration (four `@Bean` methods and their constructor parameters move into `MailConfiguration`, `EmailConfiguration` is deleted); move the package (nine classes and their five tests change their `package` line, four main-tree callers and three test files change imports). The sending classes stay flat in `platform.mail`, the `email` domain keeps its policy and its `T_EMAIL_ADDRESS` cache, and every class keeps its fully qualified name but for the package segment. Both packages stay under the scanned `com.wutsi.ndopify` root, so Spring and JPA wiring is unchanged.
+**Architecture:** Four edits that each keep the module compiling and its tests green, in this order: rename the settings (YAML, `@Value`/`@ConditionalOnProperty` strings, test overrides); merge the configuration (four `@Bean` methods and their constructor parameters move into `MailConfiguration`, `EmailConfiguration` is deleted); move the package (nine classes and their five tests change their `package` line, four main-tree callers and three test files change imports); then wire the credentials (two new settings under `ses`, a `StaticCredentialsProvider` on the client when both are set, one new unit test). The sending classes stay flat in `platform.mail`, the `email` domain keeps its policy and its `T_EMAIL_ADDRESS` cache, and every class keeps its fully qualified name but for the package segment. Both packages stay under the scanned `com.wutsi.ndopify` root, so Spring and JPA wiring is unchanged.
 
 **Tech Stack:** Kotlin, Spring Boot 4, Spring Data JPA, Maven (ktlint, JaCoCo), JUnit 5 / `kotlin.test` / mockito-kotlin.
 
@@ -12,15 +12,17 @@
 
 ## Global Constraints
 
-- **No behavior change.** No threshold, TTL, budget, timeout or default value changes. The only edits inside a class are a moved class's `package` line, the `@Value` / `@ConditionalOnProperty` key strings, the two KDoc sentences naming a key, and the configuration merge itself. No Flyway migration, no `ndopify-dto` change, no `pom.xml` change.
+- **No change beyond the four outcomes.** No threshold, TTL, budget or timeout value changes; the one behavioral change is that SES calls now authenticate with the deployment's credentials. The only edits inside a class are a moved class's `package` line, the `@Value` / `@ConditionalOnProperty` key strings, the two KDoc sentences naming a key, the configuration merge and the conditional credentials provider. No Flyway migration, no `ndopify-dto` change, no `pom.xml` change.
 - **Target package:** `com.wutsi.ndopify.platform.mail.verification`, flat — no `model/`, `ses/` or `none/` subpackage. `com.wutsi.ndopify.platform.email` must not remain on disk.
 - **One configuration class.** `config/platform/MailConfiguration` is the only e-mail configuration; `config/platform/EmailConfiguration.kt` is deleted. The four verification bean names stay — `emailVerifierNone`, `sesV2Client`, `emailVerifierSes`, `sesEmailVerifierHealthIndicator` — because the `sesEmailVerifier` actuator health component's id derives from the last one. Every `@ConditionalOnProperty` stays, including `matchIfMissing = true` on the `none` bean.
-- **One settings namespace.** `ndopify.mail.verification.*` — the nine keys `provider`, `ses.region`, `timeout-seconds`, `ttl.valid-days`, `ttl.invalid-days`, `throttle.per-ip-per-hour`, `throttle.daily-cap`, `health.up-ttl-minutes`, `health.down-ttl-seconds`. Same leaf names, same values, same comments.
+- **One settings namespace.** `ndopify.mail.verification.*` — the nine renamed keys `provider`, `ses.region`, `timeout-seconds`, `ttl.valid-days`, `ttl.invalid-days`, `throttle.per-ip-per-hour`, `throttle.daily-cap`, `health.up-ttl-minutes`, `health.down-ttl-seconds`, plus the two new credential keys `ses.access-key` and `ses.secret-key`. Same leaf names, same values, same comments for the nine.
 - **`spring.mail.*` is untouched.** It is Spring Boot's SMTP configuration, read by `JavaMailSender` and by `mailService`'s `from`; it is not the verification namespace.
-- **No key gains a default.** Every one of the nine stays a required `@Value` placeholder: a one-sided rename must fail the context, never fall back silently.
+- **The nine renamed keys gain no default.** Each stays a required `@Value` placeholder: a one-sided rename must fail the context, never fall back silently. The two credential keys are the deliberate exception, empty by design.
+- **The credentials are the deployment's variables, not the SDK's.** Heroku holds `AWS_ACCESS_KEY` / `AWS_SECRET_KEY` (the v1 legacy names, read by the S3 client's chain); v2's environment provider reads `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`. The client gets the former explicitly. When either is blank the SDK's default chain stays in charge — the app must boot without credentials. Neither value is ever logged, echoed in a message or carried by the health payload.
+- **`none` builds no client.** `sesV2Client` stays `@ConditionalOnProperty(havingValue = "ses")`, so the `none` path constructs no client and cannot reach AWS.
 - **Sending stays flat.** `platform/mail` keeps `Email`, `Receipient`, `MailService`, `MailBodyResolver`, `MailFilter`, `MailImages`, `ServerMessageIdParser` and `mail/filter/` unchanged.
 - **The `email` domain keeps its FQNs:** `com.wutsi.ndopify.email.server.service.EmailVerificationService`, `com.wutsi.ndopify.email.server.domain.EmailAddressEntity`, `com.wutsi.ndopify.email.server.dao.EmailAddressRepository`, and its own behaviour.
-- **Tests keep their assertions.** Only `package`, `import` and `@TestPropertySource` lines change in the tests named below.
+- **Tests keep their assertions.** In the tests that move or are edited, only `package`, `import` and `@TestPropertySource` lines change. One unit-test class is added, `MailConfigurationTest`.
 - **Wiring stays as is.** `Application.kt`'s `@EntityScan` / `@EnableJpaRepositories` entries are not edited.
 - **Style:** ktlint runs in `mvn validate`; imports are one alphabetically sorted block, and no same-package import may remain in `platform.mail.verification`.
 - `cd modules/ndopify-server && mvn verify` is the gate (local MySQL required for the endpoint and integration tests).
@@ -28,10 +30,10 @@
 
 ## Review Focus
 
-1. **A one-sided rename cannot pass.** Every one of the nine keys is a `@Value` placeholder without a default, so the YAML key and the code key must agree or the context fails to start — in every integration test, `mvn verify` included. The likeliest slip is renaming a `@TestPropertySource` on one prefix and the code on the other; the assertions then fail on the other side (see *How the renamed keys are verified*, below).
-2. **The cached verdict still round-trips its enums.** `EmailAddressEntity` and the `@Converter(autoApply = true)` classes in `util/jpa/EnumConverters` must name the same `Verdict` / `VerificationReason` types (now `platform.mail.verification`); a converter left on another type makes a stored row read back as the converter's default. `EmailAddressRepositoryTest` round-trips both enums.
-3. **All four verification beans survived the merge, with their guards.** `emailVerifierNone` (`matchIfMissing = true`), `sesV2Client`, `emailVerifierSes` and `sesEmailVerifierHealthIndicator` (all `ses` only). Dropping one or its `@ConditionalOnProperty` leaves a context without a verifier, or with SES beans under `none`. `SesEmailVerifierHealthDisabledTest`, `SesEmailVerifierHealthEndpointTest` and `CreateMandateEmailEndpointTest` boot the context for real.
-4. **The health component id did not move.** `/actuator/health` must still report `sesEmailVerifier`; it is derived from the `sesEmailVerifierHealthIndicator` bean name, which is why that name stays.
+1. **The SES client actually carries the deployment's credentials.** The v2 default chain looks for `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`, and TEST/PROD set neither: without the static provider the client cannot sign, the call throws before reaching SES, the policy fails open and `sesEmailVerifier` goes DOWN. The client must use `AWS_ACCESS_KEY` / `AWS_SECRET_KEY` through the two settings when both are non-blank, and keep the default chain when either is blank — a half-configured pair must not build a static provider. `MailConfigurationTest` asserts the resolved access key id, no AWS call involved.
+2. **A one-sided rename cannot pass.** Each of the nine renamed keys is a `@Value` placeholder without a default, so the YAML key and the code key must agree or the context fails to start — in every integration test, `mvn verify` included. The likeliest slip is renaming a `@TestPropertySource` on one prefix and the code on the other; the assertions then fail on the other side.
+3. **All four verification beans survived the merge, with their guards, and `none` builds no client.** `emailVerifierNone` (`matchIfMissing = true`), `sesV2Client`, `emailVerifierSes` and `sesEmailVerifierHealthIndicator` (all `ses` only). Dropping one or its `@ConditionalOnProperty` leaves a context without a verifier, or with SES beans under `none`. `/actuator/health` must still report `sesEmailVerifier` — the id derives from `sesEmailVerifierHealthIndicator`'s bean name, which is why that name stays. `SesEmailVerifierHealthDisabledTest`, `SesEmailVerifierHealthEndpointTest` and `CreateMandateEmailEndpointTest` boot the context for real.
+4. **The cached verdict still round-trips its enums.** `EmailAddressEntity` and the `@Converter(autoApply = true)` classes in `util/jpa/EnumConverters` must name the same `Verdict` / `VerificationReason` types (now `platform.mail.verification`); a converter left on another type makes a stored row read back as the converter's default. `EmailAddressRepositoryTest` round-trips both enums.
 5. **The policy's behavior is unchanged.** `EmailVerificationServiceTest` pins cache, TTL, fail-open and budget; `CreateMandateEmailEndpointTest` pins `400 EMAIL_ADDRESS_INVALID` on a LOW verdict and acceptance with `provider=none`.
 
 ---
@@ -134,7 +136,7 @@ grep -rn "ndopify\.email\.verification" src
 ```
 
 Expected: no output. (The domain's packages are `com.wutsi.ndopify.email.server.*`; the search names the key prefix,
-which those packages do not contain.) `CLAUDE.md` still names the old keys until Task 4; Task 5 covers it.
+which those packages do not contain.) `CLAUDE.md` still names the old keys until Task 5; Task 6 covers it.
 
 - [ ] **Step 6: Compile, then run the unit tests that need no MySQL**
 
@@ -143,7 +145,7 @@ Expected: BUILD SUCCESS.
 
 Run: `cd modules/ndopify-server && mvn test -Dtest='EmailVerificationServiceTest,EmailVerificationThrottleTest,EmailVerifierSESTest,SesEmailVerifierHealthIndicatorTest'`
 Expected: BUILD SUCCESS, every test passes. Those four construct their objects directly, so they prove the rename did
-not disturb the classes; the `@Value` binding itself is proven by the integration tests in Task 5.
+not disturb the classes; the `@Value` binding itself is proven by the integration tests in Task 6.
 
 - [ ] **Step 7: Commit**
 
@@ -227,7 +229,7 @@ Run: `cd modules/ndopify-server && mvn test-compile`
 Expected: BUILD SUCCESS.
 
 Run: `cd modules/ndopify-server && mvn test -Dtest='EmailVerificationServiceTest,EmailVerificationThrottleTest'`
-Expected: PASS. The bean wiring itself is proven in Task 5, which boots the context with `none` and with `ses`.
+Expected: PASS. The bean wiring itself is proven in Task 6, which boots the context with `none` and with `ses`.
 
 - [ ] **Step 6: Commit**
 
@@ -341,7 +343,7 @@ Run: `cd modules/ndopify-server && mvn test-compile`
 Expected: BUILD SUCCESS — no unresolved reference to a moved class.
 
 Run: `cd modules/ndopify-server && mvn test -Dtest='EmailVerificationServiceTest,EmailVerificationThrottleTest,EmailVerifierSESTest,SesEmailVerifierHealthIndicatorTest'`
-Expected: PASS. The two `SesEmailVerifierHealth*` endpoint tests need MySQL and run in Task 5.
+Expected: PASS. The two `SesEmailVerifierHealth*` endpoint tests need MySQL and run in Task 6.
 
 - [ ] **Step 6: Commit**
 
@@ -352,14 +354,144 @@ git commit -m "refactor(server): nest e-mail verification under platform/mail/ve
 
 ---
 
-### Task 4: Update the module documentation
+### Task 4: Give the SES client the deployment's credentials
+
+**Files:**
+- Modify: `modules/ndopify-server/src/main/resources/application.yml` (two keys under `ndopify.mail.verification.ses`)
+- Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/config/platform/MailConfiguration.kt`
+- Test: `modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/config/platform/MailConfigurationTest.kt` (create)
+
+**Interfaces:**
+- Consumes: Task 2's `MailConfiguration` (with Task 3's `platform.mail.verification` imports).
+- Produces:
+  - settings `ndopify.mail.verification.ses.access-key` and `ndopify.mail.verification.ses.secret-key`, each a `String`,
+    empty by default;
+  - `MailConfiguration`'s constructor gains them right after `region`, before `timeoutSeconds`:
+    `@param:Value("\${ndopify.mail.verification.ses.access-key}") private val accessKey: String` and the same for
+    `secretKey`;
+  - `sesV2Client(): SesV2Client` unchanged in name, type and guard, now credential-aware.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `MailConfigurationTest` in `com.wutsi.ndopify.config.platform`, following `ImageConfigurationTest`: it builds the
+configuration directly, so it needs no Spring context, no MySQL and no network.
+
+```kotlin
+package com.wutsi.ndopify.config.platform
+
+import com.nhaarman.mockitokotlin2.mock
+import org.springframework.mail.javamail.JavaMailSender
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
+import software.amazon.awssdk.services.sesv2.SesV2Client
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+
+class MailConfigurationTest {
+    private val clock = Clock.fixed(Instant.ofEpochMilli(1_700_000_000_000L), ZoneOffset.UTC)
+
+    @Test
+    fun `the SES client uses the configured static credentials`() {
+        val client = configuration("AKIATEST", "secret").sesV2Client()
+
+        assertEquals("AKIATEST", client.credentials().resolveCredentials().accessKeyId())
+    }
+
+    @Test
+    fun `without both values the SES client keeps the SDK default chain`() {
+        assertFalse(configuration("", "").sesV2Client().credentials() is StaticCredentialsProvider)
+    }
+
+    @Test
+    fun `a half-configured pair keeps the SDK default chain`() {
+        assertFalse(configuration("AKIATEST", "").sesV2Client().credentials() is StaticCredentialsProvider)
+        assertFalse(configuration("", "secret").sesV2Client().credentials() is StaticCredentialsProvider)
+    }
+
+    private fun configuration(accessKey: String, secretKey: String) =
+        MailConfiguration(mock<JavaMailSender>(), "us-east-1", accessKey, secretKey, 2, 1, 15, clock)
+
+    @Suppress("UNCHECKED_CAST")
+    private fun SesV2Client.credentials() =
+        serviceClientConfiguration().credentialsProvider() as AwsCredentialsProvider
+}
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `cd modules/ndopify-server && mvn test -Dtest=MailConfigurationTest`
+Expected: test-compile FAILS — no `MailConfiguration` constructor takes two `String` credentials between `region` and
+`timeoutSeconds`. That is the only unresolved reference: the helper and the assertions are valid Kotlin already.
+
+- [ ] **Step 3: Add the two settings**
+
+In `application.yml`, under the `ses:` block Task 1 created, beside `region`:
+
+```yaml
+            ses:
+                region: us-east-1                        # The storage region
+                access-key: "${AWS_ACCESS_KEY:}"         # Heroku config var (v1's name); empty = SDK default chain
+                secret-key: "${AWS_SECRET_KEY:}"
+```
+
+The quotes keep YAML from reading `${AWS_ACCESS_KEY:}` as a mapping; the empty default is what lets local dev and CI
+boot without credentials. Do not add them to `application-test.yml` or `application-prod.yml`: those read the Heroku
+variables through `application.yml`.
+
+- [ ] **Step 4: Add the constructor parameters and the conditional provider**
+
+Add the two `@param:Value` parameters after `region`. In `sesV2Client()`, build the client through a local builder and
+add the provider only when both values are non-blank:
+
+```kotlin
+    @Bean
+    @ConditionalOnProperty(name = ["ndopify.mail.verification.provider"], havingValue = "ses")
+    fun sesV2Client(): SesV2Client {
+        val builder = SesV2Client.builder()
+            .region(Region.of(region))
+            .overrideConfiguration { it.apiCallTimeout(Duration.ofSeconds(timeoutSeconds)) }
+        if (accessKey.isNotBlank() && secretKey.isNotBlank()) {
+            builder.credentialsProvider(
+                StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)),
+            )
+        }
+        return builder.build()
+    }
+```
+
+Imports: `software.amazon.awssdk.auth.credentials.AwsBasicCredentials` and
+`software.amazon.awssdk.auth.credentials.StaticCredentialsProvider`. Nothing else in the class changes, and no log line,
+exception message or KDoc names either value.
+
+- [ ] **Step 5: Run the test to verify it passes**
+
+Run: `cd modules/ndopify-server && mvn test -Dtest=MailConfigurationTest`
+Expected: PASS — three tests, no network. If the machine has `AWS_ACCESS_KEY_ID` set, the default-chain assertions still
+hold: they assert the provider is not a `StaticCredentialsProvider`, not that it is empty.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add modules/ndopify-server/src/main/resources/application.yml \
+  modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/config/platform/MailConfiguration.kt \
+  modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/config/platform/MailConfigurationTest.kt
+git commit -m "feat(server): authenticate SES with the deployment's AWS_ACCESS_KEY and AWS_SECRET_KEY" -m "Refs #387"
+```
+
+---
+
+### Task 5: Update the module documentation
 
 **Files:**
 - Modify: `modules/ndopify-server/CLAUDE.md` (the `platform/mail` bullet, the `platform/email` bullet, the `email`
   domain bullet)
 
 **Interfaces:**
-- Consumes: Tasks 1–3's final tree, packages and key names.
+- Consumes: Tasks 1–4's final tree, packages, key names and credential settings.
 - Produces: nothing (documentation).
 
 - [ ] **Step 1: Fold the verification capability into the `platform/mail` bullet**
@@ -371,8 +503,11 @@ verification capability sits under `mail/verification`: the `EmailVerifier` port
 (`EmailVerifierSES`, one `GetEmailAddressInsights` call through the AWS SDK v2 `sesv2`, beside the v1 S3 client) with
 its cached health indicator (`SesEmailVerifierHealthIndicator`, `GetAccount`, `sesEmailVerifier`). Keep the sentence
 that `ndopify.mail.verification.provider` is the only switch — `none` by default (local, QA, the server's tests), `ses`
-in TEST and PROD — and that `none` wires `EmailVerifierNone` and no health component, so nothing calls AWS. Keep the
-existing sending text ahead of it.
+in TEST and PROD — and that `none` wires `EmailVerifierNone` and no health component, so nothing calls AWS. Add one
+sentence on the credentials: the SES client takes `ndopify.mail.verification.ses.access-key` / `secret-key`, which the
+deployment fills from its Heroku `AWS_ACCESS_KEY` / `AWS_SECRET_KEY` — the names the v1 S3 client reads too — and an
+empty value leaves the SDK's default chain in charge, so a local run and an IAM role both work. Keep the existing
+sending text ahead of it.
 
 - [ ] **Step 2: Delete the `platform/email` bullet**
 
@@ -394,17 +529,17 @@ any, stays untouched.
 
 ```bash
 git add modules/ndopify-server/CLAUDE.md
-git commit -m "docs(server): describe the e-mail configuration and settings under one mail umbrella" -m "Refs #387"
+git commit -m "docs(server): describe the e-mail configuration, settings and credentials under one mail umbrella" -m "Refs #387"
 ```
 
 ---
 
-### Task 5: Verify the tree, the settings, the wiring and the build
+### Task 6: Verify the tree, the settings, the credentials, the wiring and the build
 
 **Files:** none (verification only).
 
 **Interfaces:**
-- Consumes: Tasks 1–4.
+- Consumes: Tasks 1–5.
 
 - [ ] **Step 1: Assert the old package and the old key are gone**
 
@@ -431,7 +566,9 @@ Expected: eight bean methods, the four sending ones then `emailVerifierNone`, `s
 - [ ] **Step 3: Assert the settings, key by key**
 
 Run: `sed -n '/^    mail:/,/^    agent:/p' modules/ndopify-server/src/main/resources/application.yml` (or read the
-file) and check the nine keys are present with their old values.
+file) and check the eleven keys are present: the nine renamed ones with their old values, and under `ses:` the two
+credential keys reading `"${AWS_ACCESS_KEY:}"` and `"${AWS_SECRET_KEY:}"` — with no secret in the file, only the
+variable names.
 
 Run: `grep -n -A2 "mail:" modules/ndopify-server/src/main/resources/application-test.yml modules/ndopify-server/src/main/resources/application-prod.yml`
 Expected: in both, `mail:` → `verification:` → `provider: ses`.
@@ -452,22 +589,34 @@ Run: `ls modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/email/server/*
 Expected: `dao/EmailAddressRepository.kt`, `domain/EmailAddressEntity.kt`, `service/EmailVerificationService.kt`, and
 nothing else.
 
-- [ ] **Step 5: Run the full module gate**
+- [ ] **Step 5: Assert the credentials are wired and never echoed**
+
+Run: `grep -n "accessKey\|secretKey" modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/config/platform/MailConfiguration.kt`
+Expected: the two constructor parameters, the `isNotBlank()` checks and the `create(accessKey, secretKey)` call — and
+no other use.
+
+Run: `grep -n "LOGGER\|logger\|println" modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/config/platform/MailConfiguration.kt`
+Expected: no output. The class logs nothing, so neither value can reach a log through it.
+
+- [ ] **Step 6: Run the full module gate**
 
 Run: `cd modules/ndopify-server && mvn verify` (local MySQL must be running)
 Expected: BUILD SUCCESS — `validate` (ktlint), every test and the JaCoCo coverage gate pass. This is where the
 rename is proven at boot: `SesEmailVerifierHealthDisabledTest` (`none`, no `sesEmailVerifier` component),
 `SesEmailVerifierHealthEndpointTest` and `SesEmailVerifierHealthCacheTest` (`ses`, component present, cached),
 `CreateMandateEmailEndpointTest` (`ses`, `400 EMAIL_ADDRESS_INVALID` on a LOW) and `EmailAddressRepositoryTest` (the
-enum round-trip) each boot a context that resolves all nine `ndopify.mail.verification.*` keys.
+enum round-trip) each boot a context that resolves all eleven `ndopify.mail.verification.*` keys, and
+`MailConfigurationTest` proves the client carries the static credentials when both are set and the default chain when
+one is not.
 
-- [ ] **Step 6: Review the diff against `main`**
+- [ ] **Step 7: Review the diff against `main`**
 
 Run: `git diff --stat origin/main` and `git diff origin/main -- modules/ndopify-server/src`
 Expected: renames under `platform/email/` → `platform/mail/verification/` (main and test); import-only edits in the
-three import-only tests; the merged `MailConfiguration` and the deleted `EmailConfiguration`; the key rename in the
-three YAML files, three code files, two KDoc mentions and two test files; and `modules/ndopify-server/CLAUDE.md`. No
-change inside a moved class body but its `package` line, no migration, no DTO, no `pom.xml`, no `Application.kt`, no
-`spring.mail.*` change, and nothing under `docs/superpowers/plans/380-*.md` or `384-*.md`. Inside a moved class body,
-the only changes are its `package` line, the `ndopify.mail.verification.*` key strings it holds and its KDoc sentence
+three import-only tests; the merged `MailConfiguration` with the conditional credentials provider and the deleted
+`EmailConfiguration`; the key rename in the three YAML files, three code files, two KDoc mentions and two test files;
+the two new credential keys in `application.yml`; the new `config/platform/MailConfigurationTest.kt`; and
+`modules/ndopify-server/CLAUDE.md`. No migration, no DTO, no `pom.xml`, no `Application.kt`, no `spring.mail.*` change,
+no workflow change, and nothing under `docs/superpowers/plans/380-*.md` or `384-*.md`. Inside a moved class body, the
+only changes are its `package` line, the `ndopify.mail.verification.*` key strings it holds and its KDoc sentence
 naming a key.
