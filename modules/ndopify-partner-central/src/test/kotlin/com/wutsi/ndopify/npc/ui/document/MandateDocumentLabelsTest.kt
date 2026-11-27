@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.document
 
+import com.wutsi.ndopify.mandate.dto.DocumentSource
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.DocumentType
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -38,6 +39,13 @@ class MandateDocumentLabelsTest {
         assertEquals(MandateRules.Tag("Analysé", "success"), MandateDocumentLabels.status(DocumentStatus.EXTRACTED))
         assertEquals(MandateRules.Tag("À corriger", "warning"), MandateDocumentLabels.status(DocumentStatus.FAILED))
         assertEquals(MandateRules.Tag("Reçu", ""), MandateDocumentLabels.status(DocumentStatus.UNKNOWN))
+    }
+
+    @Test
+    fun `source names`() {
+        assertEquals("Photos", MandateDocumentLabels.source(DocumentSource.IMAGE))
+        assertEquals("PDF", MandateDocumentLabels.source(DocumentSource.PDF))
+        assertEquals("Photos ou PDF", MandateDocumentLabels.source(DocumentSource.UNKNOWN))
     }
 
     @Test

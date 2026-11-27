@@ -38,7 +38,9 @@ INSERT INTO T_MANDATE(
     (200, 1, 10, 30, 'ASSIGNED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', 'Not mine', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (300, 1, 10, 20, 'CLOSED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', 'Closed', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (301, 1, 10, 20, 'CANCELLED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', 'Cancelled', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    (400, 1, 10, null, 'PENDING_ASSIGNMENT', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', 'Offered', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
+    (400, 1, 10, null, 'PENDING_ASSIGNMENT', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', 'Offered', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (102, 1, 10, 20, 'ASSIGNED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', 'Five documents', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (103, 1, 10, 20, 'ASSIGNED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', 'Four documents', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
 INSERT INTO T_ASSIGNMENT(id, tenant_id, mandate_id, agent_id, status, score, created_at, modified_at, expires_at) VALUES
     (1, 1, 400, 20, 'PENDING', 0.8, '2024-06-10 00:00:00', '2024-06-10 00:00:00', '2099-01-01 00:00:00');
@@ -55,3 +57,16 @@ INSERT INTO T_MANDATE(
     rooms, price, price_periodicity_type, currency_code, comments, created_at, modified_at
 ) VALUES
     (500, 2, 50, null, 'ASSIGNED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', 'Other tenant', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
+
+-- 102: at the 5-document cap   103: one slot left (four documents)
+INSERT INTO T_MANDATE_DOCUMENT(id, tenant_id, mandate_id, type, title, status, version, created_at, modified_at) VALUES
+    (1001, 1, 102, 'OTHER', 'Document 1', 'UPLOADED', 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (1002, 1, 102, 'OTHER', 'Document 2', 'UPLOADED', 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (1003, 1, 102, 'OTHER', 'Document 3', 'UPLOADED', 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (1004, 1, 102, 'OTHER', 'Document 4', 'UPLOADED', 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (1005, 1, 102, 'OTHER', 'Document 5', 'UPLOADED', 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (1006, 1, 103, 'OTHER', 'Document 1', 'UPLOADED', 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (1007, 1, 103, 'OTHER', 'Document 2', 'UPLOADED', 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (1008, 1, 103, 'OTHER', 'Document 3', 'UPLOADED', 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (1009, 1, 103, 'OTHER', 'Document 4', 'UPLOADED', 0, '2024-06-10 00:00:00', '2024-06-10 00:00:00');
+

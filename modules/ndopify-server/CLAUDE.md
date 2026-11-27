@@ -222,14 +222,21 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `/{documentId}/pages/{pageId}/upload`) that post a `MultipartFile` instead of a presigned path. Those three also
   accept `application/pdf`: every PDF page is rendered by `platform/image`'s `PdfRasterizer` to a JPEG (200 DPI at
   most, 2000 px on the longest side) and stored as a page at the PDF's own place among the files, in the PDF's order,
-  the PDF never stored; a rendered page is an ordinary page downstream (preview, extraction). One `upload` has at most
-  10 pages once expanded when it holds a PDF (an image counts one page), `pages/upload` refuses a PDF over 10 pages,
-  and `pages/{pageId}/upload` takes a single-page PDF at most — 400 `MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES`, on `files`
-  for an add and `file` otherwise. A password-protected PDF is 400 `MANDATE_DOCUMENT_PDF_ENCRYPTED`, an empty or
-  corrupt one 400 `MANDATE_DOCUMENT_PDF_UNREADABLE`, a file over 5 MB or neither an image nor a PDF 400
-  `HTTP_INVALID_PARAMETER`; the PDF codes carry no message and no value, so no file name or path leaks. `presign` and
-  the JSON create / add / replace stay images-only (`DirectUploadService`), so a PDF is always posted through the
-  multipart form. Only the mandate's
+  the PDF never stored; a rendered page is an ordinary page downstream (preview, extraction). A mandate holds
+  **5 documents at most**, all types together (LISTING and SEARCH alike): the two create paths (`POST` and `upload`)
+  count the stored rows, re-checked under the mandate's lock, and the 6th is 400
+  `MANDATE_DOCUMENT_LIMIT_REACHED`. A document is **either 1–10 images, or exactly one PDF of 1–10 pages**: images and
+  a PDF, or two PDFs, in one create/add are 400 `MANDATE_DOCUMENT_MIXED_SOURCES` and store nothing; the kind is
+  recorded on the document (`source`: `IMAGE` / `PDF`, `V20_0`; a row from before it reads `UNKNOWN` and accepts
+  either kind on a page-level write). Every create/add has at most 10 pages once a PDF is expanded (an image counts
+  one); page-level writes keep the kind and the document's 10-page lifetime cap (a replacement checks neither the
+  count nor the number of pages) — 400 `MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES`, on `files` for an add's pages and
+  `file` otherwise. A password-protected PDF is 400 `MANDATE_DOCUMENT_PDF_ENCRYPTED`, an empty or corrupt one 400
+  `MANDATE_DOCUMENT_PDF_UNREADABLE`, a file over 5 MB or neither an image nor a PDF 400 `HTTP_INVALID_PARAMETER`; the
+  document codes carry no message and no value, so no file name or path leaks. Existing over-limit data is
+  grandfathered: a 6-document mandate or an 11-page document stays readable, previewable, extractable, replaceable and
+  deletable, but takes no new document or page, and nothing is migrated. `presign` and the JSON create / add / replace
+  stay images-only (`DirectUploadService`), so a PDF is always posted through the multipart form. Only the mandate's
   agent or an admin may use them — never the agent it's offered to, nor its customer — on the reads too: the search and
   get check `MandateAccessService.ensureCanUpdate` (`MandateDocumentEndpoints`), the writes through
   `MandateDocumentService.loadWritable`. The customer reads its mandate via `GET /v1/mandates/{id}` alone, which carries

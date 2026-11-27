@@ -18,12 +18,17 @@
     "use strict";
 
     var MAX_PAGES = 10;
+    // #369: the mandate's cap, all types together, LISTING and SEARCH alike.
+    var MAX_DOCUMENTS = 5;
     var MAX_FILE_BYTES = 5 * 1024 * 1024;
     var MAX_TITLE = 100;
     var MAX_SIDE = 2000;
     var IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
     var PDF_TYPE = "application/pdf";
     var ACCEPTED_TYPES = IMAGE_TYPES.concat([PDF_TYPE]);
+    // #369: one document is photos or one PDF, never both nor two PDFs.
+    var MIXED_SOURCES = "Un document contient soit des photos, soit un PDF, jamais les deux : choisissez de nouveau " +
+        "les pages.";
 
     function $(selector, root) {
         return (root || document).querySelector(selector);
@@ -67,15 +72,46 @@
         return file.type === PDF_TYPE;
     }
 
-    function fileError(file) {
+    // #369: a selection holding more than one PDF, or a PDF with any other file.
+    function mixedProblem(files) {
+        var pdfs = files.filter(isPdf).length;
+        return pdfs > 1 || (pdfs === 1 && files.length > 1) ? MIXED_SOURCES : "";
+    }
+
+    // #369: the replacement of the other kind, by the document's source (UNKNOWN takes either).
+    function mixedReplace(source) {
+        if (source === "PDF") {
+            return "Ce document a été créé à partir d'un PDF : remplacez cette page par un PDF d'une page, pas par " +
+                "une photo.";
+        }
+        if (source === "IMAGE") {
+            return "Ce document a été créé à partir de photos : remplacez cette page par une photo JPEG, PNG ou " +
+                "WEBP, pas par un PDF.";
+        }
+        return "Ce document accepte une photo ou un PDF d'une page : vérifiez le fichier.";
+    }
+
+    // #369: the replacement form's no-file error, by the document's source.
+    function replaceRequired(source) {
+        if (source === "PDF") return "Choisissez un PDF d'une page pour cette page.";
+        if (source === "IMAGE") return "Choisissez une photo pour cette page.";
+        return "Choisissez la nouvelle page : une photo ou un PDF.";
+    }
+
+    function fileError(file, source) {
         if (ACCEPTED_TYPES.indexOf(file.type) === -1) {
             return "« " + file.name + " » n'est ni une photo ni un PDF : choisissez une photo JPEG, PNG ou WEBP, " +
                 "ou un PDF.";
         }
         if (file.size > MAX_FILE_BYTES) {
-            return isPdf(file)
-                ? "« " + file.name + " » dépasse 5 Mo : choisissez un PDF plus léger, ou envoyez ses pages en photos."
-                : "« " + file.name + " » dépasse 5 Mo : reprenez la photo, ou choisissez une image plus légère.";
+            if (isPdf(file)) {
+                // #369: a PDF document refuses a photo, so its PDF refusal never suggests one.
+                return source === "PDF"
+                    ? "« " + file.name + " » dépasse 5 Mo : choisissez un PDF plus léger."
+                    : "« " + file.name + " » dépasse 5 Mo : choisissez un PDF plus léger, ou envoyez ses pages en " +
+                        "photos.";
+            }
+            return "« " + file.name + " » dépasse 5 Mo : reprenez la photo, ou choisissez une image plus légère.";
         }
         return "";
     }
@@ -133,6 +169,10 @@
         var title = $("#documentTitle", form);
         var titleError = $("#documentTitle-error", form);
         var titleCounter = $("[data-title-counter]", form);
+        var limitError = $("[data-new-limit-error]");
+        // #369: the mandate's stored document count, from the server; a stale tab below the cap still sees it here.
+        var documentCount = parseInt(form.getAttribute("data-documents-count"), 10);
+        if (isNaN(documentCount)) documentCount = 0;
         var chosen = [];
         var sending = false;
 
@@ -192,6 +232,8 @@
                     chosen.splice(i, 1);
                     sync();
                     render();
+                    // Removing the PDF (or the last photo) lifts the mixed-selection refusal.
+                    showError(error, mixedProblem(chosen));
                     inputs[0].focus();
                 });
                 list.appendChild(row);
@@ -223,11 +265,12 @@
                     }
                 });
                 input.value = "";
-                showError(error, refused.join(" "));
+                var mixed = mixedProblem(chosen);
+                showError(error, refused.concat(mixed ? [mixed] : []).join(" "));
                 sync();
                 render();
-                // A refused file keeps the document from being added until a valid one is chosen.
-                setActive(submit, !sending && !refused.length);
+                // A refused or mixed selection keeps the document from being added until a valid one is chosen.
+                setActive(submit, !sending && !refused.length && !mixed);
             });
         });
 
@@ -244,6 +287,20 @@
         /** Every error of the form at once; false when it can't be sent. */
         function validate() {
             var ok = true;
+            // #369: a tab left open below the cap while another tab added the 5th: the 6th is refused here (the
+            // server would answer MANDATE_DOCUMENT_LIMIT_REACHED). The form's attribute is read again on submit, so a
+            // count refreshed by the page counts too.
+            var count = parseInt(form.getAttribute("data-documents-count"), 10);
+            if (isNaN(count)) count = documentCount;
+            if (count >= MAX_DOCUMENTS) {
+                if (limitError) {
+                    limitError.hidden = false;
+                    limitError.focus();
+                }
+                ok = false;
+            } else if (limitError) {
+                limitError.hidden = true;
+            }
             if (!type.value) {
                 showError($("#documentType-error", form), "Choisissez le type de document.");
                 setInvalid(type, true);
@@ -261,7 +318,9 @@
                 showError(error, "Ajoutez au moins une page.");
                 ok = false;
             } else {
-                showError(error, "");
+                var mixed = mixedProblem(chosen);
+                showError(error, mixed);
+                if (mixed) ok = false;
             }
             return ok;
         }
@@ -272,7 +331,8 @@
             event.preventDefault();
             if (sending || submit.getAttribute("aria-disabled") === "true") return;
             if (!validate()) {
-                (form.querySelector('[aria-invalid="true"]') || inputs[0]).focus();
+                (form.querySelector('[aria-invalid="true"]') || (limitError && !limitError.hidden && limitError) ||
+                    inputs[0]).focus();
                 return;
             }
             var action = form.getAttribute("action");
@@ -373,6 +433,10 @@
         var documentRoot = $("[data-document]");
         if (!documentRoot) return;
 
+        // #369: the kind the document was created from, which decides the files its Remplacer takes.
+        var documentSource = $("[data-document-source]", documentRoot);
+        var source = documentSource ? documentSource.getAttribute("data-source") : "UNKNOWN";
+
         var title = $("#documentTitle", documentRoot);
         var counter = $("[data-title-counter]", documentRoot);
         if (title && counter) {
@@ -396,7 +460,13 @@
             form.addEventListener("submit", function (event) {
                 if (event.defaultPrevented) return;
                 var file = input.files && input.files[0];
-                var problem = !file ? "Choisissez la nouvelle page : une photo ou un PDF." : fileError(file);
+                var problem = !file ? replaceRequired(source) : "";
+                // #369: the file must be the document's kind (the server's MANDATE_DOCUMENT_MIXED_SOURCES).
+                if (!problem && source === "PDF" && !isPdf(file) && ACCEPTED_TYPES.indexOf(file.type) !== -1) {
+                    problem = mixedReplace(source);
+                }
+                if (!problem && source === "IMAGE" && isPdf(file)) problem = mixedReplace(source);
+                if (!problem && file) problem = fileError(file, source);
                 showError(error, problem);
                 setInvalid(input, !!problem);
                 if (problem) {

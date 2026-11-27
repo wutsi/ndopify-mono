@@ -17,6 +17,10 @@
   count), the images shrunk to 2000 px and sent straight to the storage, falling back to this form.
   "form" keeps the type and the title when the form comes back; "errors" are per field (type, title, files) and
   "error" is the generic one (a 5xx). "mandate" (MandateView) gives the number and the back link.
+  #369: a mandate holds 5 documents at most, a document 10 pages at most and is either photos or one PDF. The hint
+  names all three. At the cap ("atLimit") the page shows the notice and a way back instead of the form (nothing is
+  posted); the server's 400 MANDATE_DOCUMENT_LIMIT_REACHED ("limitError") renders the form again with the cap error
+  and the type/title kept. "documentsCount" travels on the form for the script's stale-tab check.
 */-->
 <body data-page="mandate-document-new">
     <th:block th:replace="~{fragments/site-header :: header(@{/}, true)}"></th:block>
@@ -30,13 +34,39 @@
                 <p class="mandate__meta">Mandat n° <span th:text="${mandate.id}">301</span></p>
             </div>
 
-            <div class="alert alert--error" role="alert" th:if="${error}" data-new-error>
-                <svg th:replace="~{fragments/icon :: close}"></svg>
-                <p th:text="${error}">Le document n'a pas pu être ajouté.</p>
+            <!-- At the cap: the notice in place of the form, so a stale tab or a bookmark posts nothing. -->
+            <div class="alert alert--info" th:if="${atLimit}" data-new-limit>
+                <svg th:replace="~{fragments/icon :: info}"></svg>
+                <div>
+                    <p class="alert__title">Un mandat peut avoir 5 documents au plus.</p>
+                    <p>Supprimez un document du mandat pour en ajouter un autre.</p>
+                    <p><a class="alert__link" th:href="@{/mandates/{id}#documents-title(id=${mandate.id})}"
+                          data-back-link>Voir les documents du mandat</a></p>
+                </div>
             </div>
 
-            <form class="form" method="post" enctype="multipart/form-data" novalidate
-                  th:action="@{/mandates/{id}/documents(id=${mandate.id})}" data-new-form>
+            <div th:unless="${atLimit}">
+                <!-- The 6th document refused by ndopify-server (400 MANDATE_DOCUMENT_LIMIT_REACHED): the form again,
+                     the type and title kept. -->
+                <div class="alert alert--error" role="alert" tabindex="-1" th:hidden="${!limitError}"
+                     data-new-limit-error>
+                    <svg th:replace="~{fragments/icon :: close}"></svg>
+                    <div>
+                        <p class="alert__title">Un mandat peut avoir 5 documents au plus.</p>
+                        <p>Le document n'a pas été ajouté. Supprimez un document du mandat pour en ajouter un autre.</p>
+                        <p><a class="alert__link" th:href="@{/mandates/{id}#documents-title(id=${mandate.id})}"
+                              data-back-link>Voir les documents du mandat</a></p>
+                    </div>
+                </div>
+
+                <div class="alert alert--error" role="alert" th:if="${error}" data-new-error>
+                    <svg th:replace="~{fragments/icon :: close}"></svg>
+                    <p th:text="${error}">Le document n'a pas pu être ajouté.</p>
+                </div>
+
+                <form class="form" method="post" enctype="multipart/form-data" novalidate
+                      th:action="@{/mandates/{id}/documents(id=${mandate.id})}"
+                      th:attr="data-documents-count=${documentsCount}" data-new-form>
                 <div class="field">
                     <label class="field__label" for="documentType">Type de document</label>
                     <select class="input select" id="documentType" name="type" required
@@ -73,9 +103,9 @@
 
                 <fieldset class="doc-pages-field" aria-describedby="pages-hint pages-error">
                     <legend id="pages-legend">Pages</legend>
-                    <p class="field__hint" id="pages-hint">Une photo par page, dans l'ordre (recto, puis verso). JPEG,
-                        PNG, WEBP ou PDF, 5&nbsp;Mo par fichier, 10&nbsp;pages au plus. Les pages d'un PDF sont ajoutées
-                        à sa place, dans son ordre.</p>
+                    <p class="field__hint" id="pages-hint">5&nbsp;documents par mandat, 10&nbsp;pages au plus, soit des
+                        photos soit un PDF. Une photo par page, dans l'ordre (recto, puis verso)&nbsp;: JPEG, PNG, WEBP
+                        ou PDF, 5&nbsp;Mo par fichier. Les pages d'un PDF sont ajoutées à sa place, dans son ordre.</p>
 
                     <!-- Without JS: the native input (the phone offers its camera or its gallery), PDFs included. -->
                     <div data-pages-native>
@@ -124,12 +154,13 @@
                     </div>
                 </fieldset>
 
-                <div class="form__actions">
-                    <a class="btn btn--outline" th:href="@{/mandates/{id}#documents-title(id=${mandate.id})}"
-                       data-back-link>Annuler</a>
-                    <button type="submit" class="btn btn--primary" data-new-submit>Ajouter le document</button>
-                </div>
-            </form>
+                    <div class="form__actions">
+                        <a class="btn btn--outline" th:href="@{/mandates/{id}#documents-title(id=${mandate.id})}"
+                           data-back-link>Annuler</a>
+                        <button type="submit" class="btn btn--primary" data-new-submit>Ajouter le document</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </main>
 </body>

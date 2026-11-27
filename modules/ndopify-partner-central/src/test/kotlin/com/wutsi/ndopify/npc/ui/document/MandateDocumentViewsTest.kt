@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.ui.document
 
 import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.mandate.dto.DocumentSource
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.DocumentType
 import com.wutsi.ndopify.mandate.dto.Mandate
@@ -95,6 +96,21 @@ class MandateDocumentViewsTest {
     }
 
     @Test
+    fun `section - the count against the cap`() {
+        val three = MandateDocumentViews.section(mandate, List(3) { doc(id = it.toLong()) }, FORMATTER, TODAY)
+        assertEquals(3, three.count)
+        assertFalse(three.atLimit)
+
+        val five = MandateDocumentViews.section(mandate, List(5) { doc(id = it.toLong()) }, FORMATTER, TODAY)
+        assertEquals(5, five.count)
+        assertTrue(five.atLimit)
+
+        val unavailable = MandateDocumentViews.section(mandate, null, FORMATTER, TODAY)
+        assertEquals(0, unavailable.count)
+        assertFalse(unavailable.atLimit)
+    }
+
+    @Test
     fun `section - the tenant's date format, year included`() {
         val formatter = TenantFormatter(TENANT.copy(dateFormat = "dd/MM/yyyy"))
 
@@ -125,6 +141,20 @@ class MandateDocumentViewsTest {
             val section = MandateDocumentViews.section(mandate.copy(status = status), emptyList(), FORMATTER, TODAY)
             assertFalse(section.writable, status.name)
         }
+    }
+
+    @Test
+    fun `section - a closed mandate at the cap shows no cap notice`() {
+        val section = MandateDocumentViews.section(
+            mandate.copy(status = MandateStatus.CLOSED),
+            List(5) { index -> doc(id = index.toLong()) },
+            FORMATTER,
+            TODAY,
+        )
+
+        assertEquals(5, section.count)
+        assertFalse(section.atLimit)
+        assertFalse(section.writable)
     }
 
     @Test
@@ -194,6 +224,24 @@ class MandateDocumentViewsTest {
             ),
             view.pages.map { it.href },
         )
+    }
+
+    @Test
+    fun `document - its kind and the replacement it accepts`() {
+        val pdf = MandateDocumentViews.document(mandate, doc().copy(source = DocumentSource.PDF), FORMATTER)
+        assertEquals(DocumentSource.PDF, pdf.source)
+        assertEquals("PDF", pdf.sourceLabel)
+        assertEquals("application/pdf", pdf.replaceAccept)
+        assertEquals(MandateDocumentRules.replaceHint(DocumentSource.PDF), pdf.replaceHint)
+        assertEquals(MandateDocumentRules.replaceRequired(DocumentSource.PDF), pdf.replaceRequired)
+
+        val image = MandateDocumentViews.document(mandate, doc().copy(source = DocumentSource.IMAGE), FORMATTER)
+        assertEquals("Photos", image.sourceLabel)
+        assertEquals("image/jpeg,image/png,image/webp", image.replaceAccept)
+
+        val legacy = MandateDocumentViews.document(mandate, doc().copy(source = DocumentSource.UNKNOWN), FORMATTER)
+        assertEquals("Photos ou PDF", legacy.sourceLabel)
+        assertEquals("image/jpeg,image/png,image/webp,application/pdf", legacy.replaceAccept)
     }
 
     @Test

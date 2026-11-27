@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.document
 
+import com.wutsi.ndopify.mandate.dto.DocumentSource
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.DocumentType
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -57,6 +58,13 @@ object MandateDocumentLabels {
 
     /** A type's French name; [DocumentType.UNKNOWN] is never offered, and reads as the generic "Document". */
     fun type(type: DocumentType): String = TYPES[type] ?: TYPES.getValue(DocumentType.OTHER)
+
+    /** The kind pill: the files the document was created from; a legacy one accepts either. */
+    fun source(source: DocumentSource): String = when (source) {
+        DocumentSource.IMAGE -> "Photos"
+        DocumentSource.PDF -> "PDF"
+        DocumentSource.UNKNOWN -> "Photos ou PDF"
+    }
 
     /** An unknown status reads as "Reçu": the extraction pipeline's states (#330) come later. */
     fun status(status: DocumentStatus): MandateRules.Tag =

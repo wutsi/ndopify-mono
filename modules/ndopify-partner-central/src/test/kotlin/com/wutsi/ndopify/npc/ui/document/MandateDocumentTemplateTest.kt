@@ -1,12 +1,17 @@
 package com.wutsi.ndopify.npc.ui.document
 
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.anyOrNull
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.error.dto.Error
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.DocumentField
+import com.wutsi.ndopify.mandate.dto.DocumentSource
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.DocumentType
 import com.wutsi.ndopify.mandate.dto.Mandate
@@ -31,6 +36,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.context.support.ResourceBundleMessageSource
 import org.springframework.http.HttpStatus
+import org.springframework.mock.web.MockMultipartFile
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
@@ -91,6 +97,9 @@ class MandateDocumentTemplateTest {
         modifiedAt = Date.from(Instant.parse("2026-11-25T10:00:00Z")),
     )
 
+    private fun documents(count: Int): List<MandateDocument> =
+        List(count) { index -> document.copy(id = 4000L + index, title = "Document ${index + 1}") }
+
     private val landTitleFields = listOf(
         DocumentField("titleNumber", "4521", 0.97),
         DocumentField("owners", "Rodrigue Essomba, Carine Mbarga", 0.93),
@@ -109,6 +118,7 @@ class MandateDocumentTemplateTest {
         doReturn(Date.from(Instant.parse("2026-11-26T10:00:00Z")).time).whenever(clock).millis()
         doReturn(mandate).whenever(mandateClient).get(MANDATE_ID)
         doReturn(document).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+        doReturn(emptyList<MandateDocument>()).whenever(documentClient).search(MANDATE_ID)
 
         val engine = SpringTemplateEngine().apply {
             setTemplateResolver(
@@ -139,6 +149,12 @@ class MandateDocumentTemplateTest {
 
     private fun render(request: org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder<*>): Document =
         Jsoup.parse(mvc.perform(request).andReturn().response.contentAsString)
+
+    private fun serverError(status: HttpStatus, code: String): HttpClientErrorException {
+        val ex = HttpClientErrorException(status)
+        ex.setBodyConvertFunction { ErrorResponse(Error(code = code)) }
+        return ex
+    }
 
     @Test
     fun `add form`() {
@@ -184,6 +200,58 @@ class MandateDocumentTemplateTest {
     }
 
     @Test
+    fun `add form - at the cap shows the notice instead of the form`() {
+        doReturn(documents(5)).whenever(documentClient).search(MANDATE_ID)
+
+        val page = render(get("/mandates/$MANDATE_ID/documents/new"))
+
+        val notice = page.selectFirst("[data-new-limit]")!!
+        assertTrue(notice.text().contains("Un mandat peut avoir 5 documents au plus."), notice.text())
+        assertTrue(notice.text().contains("Supprimez un document du mandat pour en ajouter un autre."), notice.text())
+        assertEquals("/mandates/301#documents-title", notice.selectFirst("a")?.attr("href"))
+        assertNull(page.selectFirst("form[data-new-form]"))
+    }
+
+    @Test
+    fun `add form - the hint names the caps`() {
+        val hint = render(get("/mandates/$MANDATE_ID/documents/new")).selectFirst("#pages-hint")!!.text()
+
+        assertTrue(hint.contains("5 documents par mandat"), hint)
+        assertTrue(hint.contains("10 pages au plus"), hint)
+        assertTrue(hint.contains("soit des photos soit un PDF"), hint)
+    }
+
+    @Test
+    fun `add form - the server refused the 6th document - the form again with the cap error`() {
+        doReturn(documents(4)).whenever(documentClient).search(MANDATE_ID)
+        doThrow(serverError(HttpStatus.BAD_REQUEST, ErrorCode.MANDATE_DOCUMENT_LIMIT_REACHED))
+            .whenever(documentClient).upload(any(), any(), anyOrNull(), any())
+
+        val page = Jsoup.parse(
+            mvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .multipart("/mandates/$MANDATE_ID/documents")
+                    .file(
+                        MockMultipartFile(
+                            "files",
+                            "page.jpg",
+                            "image/jpeg",
+                            byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte()) + ByteArray(64),
+                        ),
+                    )
+                    .param("type", DocumentType.PASSPORT.name)
+                    .param("title", "Mon passeport"),
+            ).andReturn().response.contentAsString,
+        )
+
+        val alert = page.selectFirst("[data-new-limit-error]")!!
+        assertTrue(alert.text().contains("Un mandat peut avoir 5 documents au plus."), alert.text())
+        assertNotNull(page.selectFirst("form[data-new-form]"))
+        assertEquals("selected", page.selectFirst("option[value=PASSPORT]")?.attr("selected"))
+        assertEquals("Mon passeport", page.selectFirst("input[name=title]")?.attr("value"))
+    }
+
+    @Test
     fun `add form - over the multipart limit`() {
         val page = render(get("/mandates/$MANDATE_ID/documents/new").param("error", "too-large"))
 
@@ -206,7 +274,7 @@ class MandateDocumentTemplateTest {
             ).andReturn().response.contentAsString,
         )
 
-        assertEquals("selected", page.selectFirst("option[value=PASSPORT]")?.attr("selected"))
+        assertEquals("selected", page.selectFirst("option[value=PASSPORT]")?.attr("selected"), page.outerHtml())
         assertEquals("Mon passeport", page.selectFirst("input[name=title]")?.attr("value"))
         assertEquals("Ajoutez au moins une page.", page.selectFirst("#pages-error [data-error-text]")?.text())
     }
@@ -287,6 +355,48 @@ class MandateDocumentTemplateTest {
         assertFalse(Regex("""\bIA\b""").containsMatchIn(html), "the page names the AI")
         assertFalse(Regex("""\bAI\b""").containsMatchIn(html), "the page names the AI")
         assertFalse(html.contains("intelligence artificielle", ignoreCase = true), "the page names the AI")
+    }
+
+    @Test
+    fun `document - a PDF document shows the PDF pill and takes a PDF`() {
+        doReturn(document.copy(source = DocumentSource.PDF)).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val page = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID"))
+        ScriptFixtures.write("mandate-document-pdf", page)
+
+        val pill = page.selectFirst("[data-document-source]")!!
+        assertEquals("PDF", pill.text().replace("Créé à partir de : ", ""))
+        assertEquals("PDF", pill.attr("data-source"))
+        assertEquals("application/pdf", page.selectFirst(".doc-page input[type=file]")?.attr("accept"))
+        assertTrue(
+            page.selectFirst(".doc-page .field__hint")!!.text().contains("seul un PDF d'une page remplace cette page"),
+        )
+    }
+
+    @Test
+    fun `document - an image document shows the Photos pill and takes a photo`() {
+        doReturn(document.copy(source = DocumentSource.IMAGE)).whenever(documentClient).get(MANDATE_ID, DOCUMENT_ID)
+
+        val page = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID"))
+        ScriptFixtures.write("mandate-document-image", page)
+
+        val pill = page.selectFirst("[data-document-source]")!!
+        assertEquals("Photos", pill.text().replace("Créé à partir de : ", ""))
+        assertEquals("image/jpeg,image/png,image/webp", page.selectFirst(".doc-page input[type=file]")?.attr("accept"))
+        assertTrue(page.selectFirst(".doc-page .field__hint")!!.text().contains("une photo remplace cette page"))
+    }
+
+    @Test
+    fun `document - a grandfathered document accepts either kind`() {
+        val page = render(get("/mandates/$MANDATE_ID/documents/$DOCUMENT_ID"))
+
+        val pill = page.selectFirst("[data-document-source]")!!
+        assertEquals("Photos ou PDF", pill.text().replace("Créé à partir de : ", ""))
+        assertEquals("UNKNOWN", pill.attr("data-source"))
+        assertEquals(
+            "image/jpeg,image/png,image/webp,application/pdf",
+            page.selectFirst(".doc-page input[type=file]")?.attr("accept"),
+        )
     }
 
     @Test

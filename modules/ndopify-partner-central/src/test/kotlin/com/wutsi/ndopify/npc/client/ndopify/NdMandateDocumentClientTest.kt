@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.client.ndopify
 
 import com.wutsi.ndopify.mandate.dto.CreateMandateDocumentRequest
+import com.wutsi.ndopify.mandate.dto.DocumentSource
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.DocumentType
 import com.wutsi.ndopify.mandate.dto.UpdateMandateDocumentRequest
@@ -37,8 +38,8 @@ class NdMandateDocumentClientTest {
             .andRespond(
                 withSuccess(
                     """{"documents":[
-                        {"id":12,"mandateId":100,"type":"LAND_TITLE","title":"Titre foncier","status":"UPLOADED","problemCodes":[],"fields":[],"pages":[],"version":0,"createdAt":0,"modifiedAt":0},
-                        {"id":11,"mandateId":100,"type":"NATIONAL_ID","title":"CNI","status":"EXTRACTED","problemCodes":[],"fields":[],"pages":[],"version":1,"createdAt":0,"modifiedAt":0}
+                        {"id":12,"mandateId":100,"type":"LAND_TITLE","title":"Titre foncier","status":"UPLOADED","source":"PDF","problemCodes":[],"fields":[],"pages":[],"version":0,"createdAt":0,"modifiedAt":0},
+                        {"id":11,"mandateId":100,"type":"NATIONAL_ID","title":"CNI","status":"EXTRACTED","source":"IMAGE","problemCodes":[],"fields":[],"pages":[],"version":1,"createdAt":0,"modifiedAt":0}
                     ]}""",
                     MediaType.APPLICATION_JSON,
                 ),
@@ -49,6 +50,7 @@ class NdMandateDocumentClientTest {
         assertEquals(listOf(12L, 11L), documents.map { it.id })
         assertEquals(listOf(DocumentType.LAND_TITLE, DocumentType.NATIONAL_ID), documents.map { it.type })
         assertEquals(listOf(DocumentStatus.UPLOADED, DocumentStatus.EXTRACTED), documents.map { it.status })
+        assertEquals(listOf(DocumentSource.PDF, DocumentSource.IMAGE), documents.map { it.source })
         server.verify()
     }
 
@@ -78,7 +80,7 @@ class NdMandateDocumentClientTest {
             .andExpect(method(HttpMethod.GET))
             .andRespond(
                 withSuccess(
-                    """{"document":{"id":12,"mandateId":100,"type":"LAND_TITLE","title":"Titre foncier","status":"EXTRACTED","problemCodes":[],"fields":[],
+                    """{"document":{"id":12,"mandateId":100,"type":"LAND_TITLE","title":"Titre foncier","status":"EXTRACTED","source":"PDF","problemCodes":[],"fields":[],
                         "version":3,"createdAt":0,"modifiedAt":0,
                         "pages":[{"id":21,"index":0,"contentType":"image/png","createdAt":0,"modifiedAt":0}]}}""",
                     MediaType.APPLICATION_JSON,
@@ -90,6 +92,7 @@ class NdMandateDocumentClientTest {
         assertEquals(12, document.id)
         assertEquals(DocumentType.LAND_TITLE, document.type)
         assertEquals(3, document.version)
+        assertEquals(DocumentSource.PDF, document.source)
         assertEquals("image/png", document.pages.single().contentType)
         server.verify()
     }

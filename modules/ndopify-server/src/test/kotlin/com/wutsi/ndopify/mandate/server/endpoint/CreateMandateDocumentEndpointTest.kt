@@ -13,6 +13,7 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.mandate.dto.CreateMandateDocumentRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateDocumentResponse
+import com.wutsi.ndopify.mandate.dto.DocumentSource
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.DocumentType
 import com.wutsi.ndopify.mandate.server.dao.MandateDocumentPageRepository
@@ -149,6 +150,55 @@ class CreateMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationT
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals("Bulletin mars", documentDao.findById(response.body!!.documentId).orElseThrow().title)
+    }
+
+    @Test
+    fun `create - a 6th document is refused`() {
+        val path = "mandate/102/documents/0f8fad5b-d9cb-469f-a165-70867728950e.png"
+        uploaded(path)
+
+        val response = createError(102, CreateMandateDocumentRequest(type = DocumentType.LAND_TITLE, paths = listOf(path)))
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_LIMIT_REACHED, response.body?.error?.code)
+        assertNull(response.body?.error?.parameter)
+        assertEquals(5, documentDao.findByMandateIdOrderByIdDesc(102L).size)
+        verify(storage, never()).store(any(), any(), any())
+    }
+
+    @Test
+    fun `create - the 5th document is created`() {
+        val path = "mandate/103/documents/0f8fad5b-d9cb-469f-a165-70867728950e.png"
+        uploaded(path)
+
+        val response = create(103, CreateMandateDocumentRequest(type = DocumentType.LAND_TITLE, paths = listOf(path)))
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(5, documentDao.findByMandateIdOrderByIdDesc(103L).size)
+    }
+
+    @Test
+    fun `create - the document is an image document`() {
+        uploaded(path1)
+
+        val response = create(100, CreateMandateDocumentRequest(type = DocumentType.LAND_TITLE, paths = listOf(path1)))
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val document = documentDao.findById(response.body!!.documentId).orElseThrow()
+        assertEquals(DocumentSource.IMAGE, document.source)
+    }
+
+    @Test
+    fun `create - more than 10 paths is the page cap`() {
+        val paths = List(11) { index -> "mandate/100/documents/00000000-0000-0000-0000-${"%012d".format(index)}.png" }
+
+        val response = createError(100, CreateMandateDocumentRequest(type = DocumentType.LAND_TITLE, paths = paths))
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_DOCUMENT_PDF_TOO_MANY_PAGES, response.body?.error?.code)
+        assertEquals("paths", response.body?.error?.parameter?.name)
+        verify(storage, never()).store(any(), any(), any())
+        assertTrue(documentDao.findByMandateIdOrderByIdDesc(100L).isEmpty())
     }
 
     @Test

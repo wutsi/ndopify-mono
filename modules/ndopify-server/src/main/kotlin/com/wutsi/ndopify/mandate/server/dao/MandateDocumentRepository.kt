@@ -16,6 +16,9 @@ interface MandateDocumentRepository : CrudRepository<MandateDocumentEntity, Long
     // A mandate's documents, newest first
     fun findByMandateIdOrderByIdDesc(mandateId: Long): List<MandateDocumentEntity>
 
+    /** The documents currently stored for [mandateId] (the tenant filter applies, like the other derived queries). */
+    fun countByMandateId(mandateId: Long): Long
+
     /**
      * The document under a write lock, for the extraction's claim, save and requeue: a page change and an extraction
      * can't overwrite each other. The tenant filter still applies (JPQL, not native).

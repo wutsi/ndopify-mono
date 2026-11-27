@@ -62,3 +62,25 @@ INSERT INTO T_MANDATE_DOCUMENT(id, tenant_id, mandate_id, type, title, status, p
      1, NULL, '2021-01-01', 0, '2024-06-12 00:00:00', '2024-06-12 00:00:00'),
     (15, 1, 100, 'OTHER', 'Autre', 'UPLOADED', NULL, NULL, NULL, NULL, NULL, 0, '2024-06-12 00:00:00', '2024-06-12 00:00:00'),
     (16, 1, 100, 'OTHER', 'Autre', 'EXTRACTED', NULL, '[]', 1, NULL, NULL, 0, '2024-06-12 00:00:00', '2024-06-12 00:00:00');
+
+-- 17: created from a PDF   18: a row written before the kind was recorded (source NULL)
+INSERT INTO T_MANDATE_DOCUMENT(id, tenant_id, mandate_id, type, title, status, source, version, created_at, modified_at) VALUES
+    (17, 1, 101, 'LAND_TITLE', 'Titre foncier', 'UPLOADED', 'PDF', 0, '2024-06-13 00:00:00', '2024-06-13 00:00:00'),
+    (18, 1, 101, 'LAND_TITLE', 'Titre foncier', 'UPLOADED', NULL, 0, '2024-06-14 00:00:00', '2024-06-14 00:00:00');
+
+-- 19: a grandfathered 11-page document (source NULL) on mandate 101
+INSERT INTO T_MANDATE_DOCUMENT(id, tenant_id, mandate_id, type, title, status, source, version, created_at, modified_at) VALUES
+    (19, 1, 101, 'LAND_TITLE', 'Onze pages', 'UPLOADED', NULL, 0, '2024-06-15 00:00:00', '2024-06-15 00:00:00');
+
+INSERT INTO T_MANDATE_DOCUMENT_PAGE(id, tenant_id, document_id, page_index, path, storage_type, mime_type, created_at, modified_at) VALUES
+    (2100, 1, 19, 0, 'mandate/101/documents/page-19-0.png', 'S3', 'image/png', '2024-06-15 00:00:00', '2024-06-15 00:00:00'),
+    (2101, 1, 19, 1, 'mandate/101/documents/page-19-1.png', 'S3', 'image/png', '2024-06-15 00:00:00', '2024-06-15 00:00:00'),
+    (2102, 1, 19, 2, 'mandate/101/documents/page-19-2.png', 'S3', 'image/png', '2024-06-15 00:00:00', '2024-06-15 00:00:00'),
+    (2103, 1, 19, 3, 'mandate/101/documents/page-19-3.png', 'S3', 'image/png', '2024-06-15 00:00:00', '2024-06-15 00:00:00'),
+    (2104, 1, 19, 4, 'mandate/101/documents/page-19-4.png', 'S3', 'image/png', '2024-06-15 00:00:00', '2024-06-15 00:00:00'),
+    (2105, 1, 19, 5, 'mandate/101/documents/page-19-5.png', 'S3', 'image/png', '2024-06-15 00:00:00', '2024-06-15 00:00:00'),
+    (2106, 1, 19, 6, 'mandate/101/documents/page-19-6.png', 'S3', 'image/png', '2024-06-15 00:00:00', '2024-06-15 00:00:00'),
+    (2107, 1, 19, 7, 'mandate/101/documents/page-19-7.png', 'S3', 'image/png', '2024-06-15 00:00:00', '2024-06-15 00:00:00'),
+    (2108, 1, 19, 8, 'mandate/101/documents/page-19-8.png', 'S3', 'image/png', '2024-06-15 00:00:00', '2024-06-15 00:00:00'),
+    (2109, 1, 19, 9, 'mandate/101/documents/page-19-9.png', 'S3', 'image/png', '2024-06-15 00:00:00', '2024-06-15 00:00:00'),
+    (2110, 1, 19, 10, 'mandate/101/documents/page-19-10.png', 'S3', 'image/png', '2024-06-15 00:00:00', '2024-06-15 00:00:00');

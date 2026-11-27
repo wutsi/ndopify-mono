@@ -33,6 +33,7 @@ class MandateDocumentMapper(private val codec: DocumentDataCodec) {
             type = entity.type,
             title = entity.title,
             status = entity.status,
+            source = entity.source,
             problemCodes = entity.problemCodes,
             fields = toFields(entity),
             issuedAt = entity.issuedAt,

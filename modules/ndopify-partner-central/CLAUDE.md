@@ -336,7 +336,9 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   from the type's name, the status pill (*Reçu* `UPLOADED`, *En cours d'analyse* `EXTRACTING`, *Analysé* `EXTRACTED`,
   *À corriger* `FAILED`) and *Ajouté le 25 nov. 2026 · 2 pages* (tenant `dateFormat` through `TenantFormatter`); an
   `expiresAt` before the tenant's today adds the *Expirée* pill beside the status, since the status doesn't say it
-  (`MandateDocumentViews.section` takes the page's `today`); with
+  (`MandateDocumentViews.section` takes the page's `today`); a compact `n/5` count sits beside the title (its
+  accessible label reads *n documents sur 5*), and at 5 the section hides *Ajouter un document* and shows *Un mandat
+  peut avoir 5 documents au plus.* instead; with
   none, its hint says what to add for a landlord's listing or a client's search; failing to load, only the section says
   so. *Ajouter un document* (`btn btn--secondary btn--compact`) opens `/mandates/{id}/documents/new`
   (`GET|POST /mandates/{id}/documents`, multipart `type`, `title`, `files`): the type picker is a native select whose
@@ -384,7 +386,14 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   is never presigned nor attached: an add holding one shrinks its images then posts the form, a PDF replacement posts
   its form, and `MandateDocumentRules`'s checks mirror the server's three PDF codes as this page's French field errors
   (*Un PDF est protégé par un mot de passe…*, *… est vide ou endommagé…*, *… fait plus de 10 pages…* on an add, *Ce PDF
-  fait plusieurs pages…* on a replacement). The JSON proxies answer 401 without a signed-in agent (never the sign-in
+  fait plusieurs pages…* on a replacement). #369: the add page opened at the cap (a stale tab, a bookmark) shows *Un
+  mandat peut avoir 5 documents au plus.* and the way back instead of the form (nothing posted); its hint names the
+  caps (*5 documents par mandat, 10 pages au plus, soit des photos soit un PDF*); a mixed selection (photos + a PDF, or
+  two PDFs) is refused before sending, as is a 6th document on a stale tab. A document's page carries the kind pill
+  (*PDF* / *Photos* / *Photos ou PDF* for a grandfathered one) and its folded *Remplacer* takes only that kind (a
+  one-page PDF for a PDF document, a photo for an image one, either for an `UNKNOWN`); the server's new codes word the
+  approved French errors (`MANDATE_DOCUMENT_LIMIT_REACHED`, `MANDATE_DOCUMENT_MIXED_SOURCES`, the page cap), and
+  without JS the same 400 renders them on the form. The JSON proxies answer 401 without a signed-in agent (never the sign-in
   redirect, which `fetch` would follow), 404 for an unknown or another agent's mandate, 409 once it isn't ACTIVE,
   ndopify-server's status and error body when it refuses, 502 when it can't be reached; `NdDirectUpload.store` is
   `direct-upload.js`'s presign + PUT only. Prototype: `src/main/html/v2/mandate.html` (Documents),
