@@ -253,6 +253,23 @@ class ListingJobsTest {
     }
 
     @Test
+    fun `publish - stops at 100 publications when the 100th is mid-page`() {
+        val publishable = (1L..99L).map { id -> ListingEntity(id = id, status = ListingStatus.VERIFIED) }
+        val blocked = ListingEntity(id = 100L, status = ListingStatus.VERIFIED)
+        val next = (101L..200L).map { id -> ListingEntity(id = id, status = ListingStatus.VERIFIED) }
+        doReturn(publishable + blocked, next).whenever(service).findVerifiedAfter(any(), any())
+        doReturn(emptyList<ListingEntity>()).whenever(service).search(any())
+        doThrow(ConflictException(Error(ErrorCode.LISTING_OWNERSHIP_NOT_VERIFIED)))
+            .whenever(service).publish(blocked)
+
+        jobs.publish()
+
+        verify(service, times(101)).publish(any<ListingEntity>()) // 100 of the first page, the 100th transition is next[0]
+        verify(service, never()).publish(next[1])
+        verify(service, never()).publish(next[99])
+    }
+
+    @Test
     fun `publish - a failing listing doesn't stop the others`() {
         val verified = listOf(listing1, listing2, listing3).map { it.copy(status = ListingStatus.VERIFIED) }
         val publishing = listOf(listing1, listing2, listing3).map { it.copy(status = ListingStatus.PUBLISHING) }

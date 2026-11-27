@@ -73,7 +73,7 @@ class ListingJobs(
             if (listings.isEmpty()) {
                 break
             }
-            listings.forEach { listing ->
+            for (listing in listings) {
                 lastId = listing.id!!
                 try {
                     service.publish(listing)
@@ -85,7 +85,7 @@ class ListingJobs(
                     errors++
                 }
                 if (published >= LIMIT) {
-                    return@forEach
+                    break // The limit stops the page: the listings after it wait for the next run
                 }
             }
             if (listings.size < LIMIT) {
