@@ -6,22 +6,28 @@ INSERT INTO T_TENANT(id, name, domain_name, locales, country_code) VALUES
 INSERT INTO T_LOCATION(id, parent_fk, type, country, name, ascii_name) VALUES
     (2370201, NULL, 'CITY', 'CM', 'Yaounde', 'Yaounde');
 
--- 100: customer Ray Sponsible   101: another party owning taken@example.com
--- 200: agent 20 (user 11, the caller)   300: agent 30 (user 12)   900: tenant 2
+-- 100: customer Ray Sponsible (user 13, the caller)   101: another party owning taken@example.com
+-- 102: a party that is neither the customer nor an agent (user 14)
+-- 200: agent 20 (user 11)   300: agent 30 (user 12)   900: tenant 2
 INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name) VALUES
     (100, 1, 'ray.sponsible@gmail.com', 'Ray', 'Sponsible'),
     (101, 1, 'taken@example.com', 'Taken', 'Address'),
+    (102, 1, 'another.party@example.com', 'Another', 'Party'),
     (200, 1, 'kim.possible@gmail.com', 'Kim', 'Possible'),
     (300, 1, 'john.doe@gmail.com', 'John', 'Doe'),
     (900, 2, 'other.tenant@example.com', 'Other', 'Tenant');
 
 INSERT INTO T_USER (id, email, deleted, created_at) VALUES
     (11, 'kim.possible@gmail.com', false, '2024-06-10 00:00:00'),
-    (12, 'john.doe@gmail.com', false, '2024-06-10 00:00:00');
+    (12, 'john.doe@gmail.com', false, '2024-06-10 00:00:00'),
+    (13, 'ray.sponsible@gmail.com', false, '2024-06-10 00:00:00'),
+    (14, 'another.party@example.com', false, '2024-06-10 00:00:00');
 
 INSERT INTO T_MEMBERSHIP (id, tenant_id, user_id, party_id, deleted) VALUES
     (11, 1, 11, 200, false),
-    (12, 1, 12, 300, false);
+    (12, 1, 12, 300, false),
+    (13, 1, 13, 100, false),
+    (14, 1, 14, 102, false);
 
 INSERT INTO T_CUSTOMER(id, tenant_id, party_id, whatsapp_number) VALUES
     (10, 1, 100, '+237699123456'),

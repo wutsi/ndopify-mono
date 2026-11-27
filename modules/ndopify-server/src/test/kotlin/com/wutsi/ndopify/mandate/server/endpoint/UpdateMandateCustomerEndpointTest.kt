@@ -10,7 +10,9 @@ import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.party.server.dao.PartyRepository
+import com.wutsi.ndopify.refdata.dto.ApplicationCode
 import com.wutsi.ndopify.refdata.dto.RoleCode
+import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
@@ -19,10 +21,25 @@ import kotlin.test.assertEquals
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/UpdateMandateCustomerEndpoint.sql"])
 class UpdateMandateCustomerEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
-    override val roles: Array<String>
-        get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
+    private enum class Caller { CUSTOMER, AGENT, OTHER_PARTY, ADMIN }
 
-    private var admin = false
+    private var caller = Caller.CUSTOMER
+
+    override val application: String
+        get() = when (caller) {
+            Caller.CUSTOMER, Caller.OTHER_PARTY -> ApplicationCode.PUBLIC_PORTAL
+            Caller.ADMIN -> ApplicationCode.ADMIN_CONSOLE
+            Caller.AGENT -> ApplicationCode.PARTNER_CENTRAL
+        }
+
+    override val roles: Array<String>
+        get() = if (caller == Caller.ADMIN) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
+
+    @BeforeEach
+    fun signInAsCustomer() {
+        caller = Caller.CUSTOMER
+        userId = 13L
+    }
 
     @Autowired
     private lateinit var mandateDao: MandateRepository
@@ -108,6 +125,9 @@ class UpdateMandateCustomerEndpointTest : AuthorizationAwareEndpointIntegrationT
 
     @Test
     fun `another agent's mandate - 403, nothing saved`() {
+        caller = Caller.AGENT
+        userId = 11L
+
         val response = rest.postForEntity("/v1/mandates/2/customer", request, ErrorResponse::class.java)
 
         assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
@@ -116,13 +136,49 @@ class UpdateMandateCustomerEndpointTest : AuthorizationAwareEndpointIntegrationT
     }
 
     @Test
-    fun `admin - updates another agent's mandate`() {
-        admin = true
+    fun `admin - 403, nothing saved`() {
+        caller = Caller.ADMIN
+        userId = 11L
 
+        val response = rest.postForEntity("/v1/mandates/2/customer", request, ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_ACCESS_DENIED, response.body?.error?.code)
+        assertEquals("Ray", partyDao.findById(100L).get().firstName)
+    }
+
+    @Test
+    fun `its own agent - 403, nothing saved`() {
+        caller = Caller.AGENT
+        userId = 11L // party 200, agent 20: the mandate's agent
+
+        val response = rest.postForEntity("/v1/mandates/1/customer", request, ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_ACCESS_DENIED, response.body?.error?.code)
+        assertEquals("Ray", partyDao.findById(100L).get().firstName)
+        assertEquals("+237699123456", customerDao.findById(10L).get().whatsappNumber)
+    }
+
+    @Test
+    fun `a party that is neither the customer nor an agent - 403, nothing saved`() {
+        caller = Caller.OTHER_PARTY
+        userId = 14L
+
+        val response = rest.postForEntity("/v1/mandates/1/customer", request, ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_ACCESS_DENIED, response.body?.error?.code)
+        assertEquals("Ray", partyDao.findById(100L).get().firstName)
+    }
+
+    @Test
+    fun `another agent's mandate - the customer updates its own details`() {
         val response = rest.postForEntity("/v1/mandates/2/customer", request, Any::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals("Raymond", partyDao.findById(100L).get().firstName)
+        assertEquals("+237699000111", customerDao.findById(10L).get().whatsappNumber)
     }
 
     @Test
