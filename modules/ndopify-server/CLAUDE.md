@@ -178,7 +178,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
 - **customer** — the people behind the mandates: tenants searching for a property and owners offering one
   (`CustomerEntity`, linked to a `Party`; `/v1/customers`). `CustomerService.findOrCreate` reuses the party and
   customer of an e-mail. `POST /v1/mandates/{id}/customer` (`MandateService.updateCustomer`) corrects the mandate's
-  customer: its party's names and e-mail, and its WhatsApp number, for the mandate's agent or an admin. A
+  customer's own details: its party's names and e-mail, and its WhatsApp number — for that customer only
+  (`MandateAccessService.ensureIsCustomer`; no admin bypass, no agent): 404 `MANDATE_NOT_FOUND` → 403
+  `MANDATE_ACCESS_DENIED` → 409 `MANDATE_ALREADY_CLOSED` → 409 `PARTY_EMAIL_ALREADY_EXISTS`. A
   `PENDING_APPROVAL` mandate whose e-mail changes cancels its contract and returns to `ASSIGNED` (the customer must
   not sign a contract sent to the old address); a closed or cancelled mandate is a 409 `MANDATE_ALREADY_CLOSED`, an
   e-mail another party owns a 409 `PARTY_EMAIL_ALREADY_EXISTS` with nothing written. Tenant-scoped.
@@ -213,7 +215,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   get it, not change it. An agent's search is restricted to its own mandates (`agent-id` forced; another agent's is a
   403), or with `offered-to` (its own id only, else 403) to the mandates with a PENDING offer to it: those it may get.
   `GET /{id}` is also open to the mandate's customer (`ensureCanReadAsCustomerOrAgent`, any application, any
-  status), for its match proposal page.
+  status), for its match proposal page. `POST /{id}/customer` is its customer's only (`ensureIsCustomer`), with no
+  admin nor agent.
   **Documents.** A mandate's documents (`MandateDocumentEntity` + `MandateDocumentPageEntity`, `V19_0`) are its agent's
   private papers: identity cards, payslips, land titles. `/v1/mandates/{id}/documents`: `GET` (search, newest first),
   `GET /{documentId}`, `POST` (create from presigned `paths`), `POST /presign`, `POST /{documentId}` (rename), `POST

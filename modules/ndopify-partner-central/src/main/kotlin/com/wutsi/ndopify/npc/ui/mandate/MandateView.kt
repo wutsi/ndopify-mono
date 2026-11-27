@@ -53,8 +53,6 @@ data class MandateView(
     /** A purchase requiring at least one title document, whatever its type: the page shows the documents-filter note. */
     val titleDocumentsRequired: Boolean,
     val editable: Boolean,
-    /** "Modifier" on the contact block: the customer's details can still be corrected. */
-    val customerEditable: Boolean,
     val closable: Boolean,
     val cancellable: Boolean,
     val signatureTtlDays: Int?, // Null without a request for signature

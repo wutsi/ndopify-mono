@@ -4,7 +4,6 @@ import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.customer.dto.GetCustomerResponse
 import com.wutsi.ndopify.customer.dto.SearchCustomerResponse
-import com.wutsi.ndopify.customer.dto.UpdateCustomerRequest
 import com.wutsi.ndopify.party.dto.Party
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -12,7 +11,6 @@ import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.test.web.client.MockRestServiceServer
-import org.springframework.test.web.client.match.MockRestRequestMatchers.content
 import org.springframework.test.web.client.match.MockRestRequestMatchers.method
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
 import org.springframework.test.web.client.response.MockRestResponseCreators.withStatus
@@ -63,22 +61,6 @@ class NdCustomerClientTest {
             .andRespond(withStatus(HttpStatus.NOT_FOUND))
 
         assertFailsWith<HttpClientErrorException> { client.get(5) }
-    }
-
-    @Test
-    fun update() {
-        server.expect(requestTo("http://localhost:8080/v1/mandates/7/customer"))
-            .andExpect(method(HttpMethod.POST))
-            .andExpect(
-                content().json(
-                    """{"firstName":"Ray","lastName":"Sponsible","email":"ray@x.com","whatsappNumber":"+237699123456"}""",
-                ),
-            )
-            .andRespond(withSuccess())
-
-        client.update(7, UpdateCustomerRequest("Ray", "Sponsible", "ray@x.com", "+237699123456"))
-
-        server.verify()
     }
 
     @Test

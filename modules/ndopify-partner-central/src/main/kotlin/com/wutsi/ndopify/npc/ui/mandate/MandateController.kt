@@ -144,10 +144,6 @@ class MandateController(
         // Saved while out for signature: ndopify-server cancelled its contract, the mandate is ASSIGNED again
         const val SAVED_UNSENT = "saved-unsent"
 
-        // The customer's details, corrected from the contact block (CustomerEditController)
-        const val CUSTOMER_SAVED = "customer-saved"
-        const val CUSTOMER_SAVED_UNSENT = "customer-saved-unsent"
-
         // Booking a visit for an accepted match (MandateVisitController)
         const val VISIT_OUTCOME = "visitOutcome"
         const val VISIT_SCHEDULED = "scheduled"
@@ -666,11 +662,6 @@ class MandateController(
             SAVED_UNSENT ->
                 "Mandat modifié. L'ancienne version ne peut plus être signée : envoyez-le à nouveau pour que " +
                     "${view.words.the} signe la nouvelle."
-
-            CUSTOMER_SAVED -> "Coordonnées ${view.words.of} enregistrées."
-            CUSTOMER_SAVED_UNSENT ->
-                "Coordonnées ${view.words.of} enregistrées. Le mandat est revenu à « Assigné » : envoyez-le à nouveau " +
-                    "pour signature."
 
             CHANGED -> "Ce mandat a changé entre-temps : vérifiez son état avant de recommencer."
             EMAIL_CONFLICT ->

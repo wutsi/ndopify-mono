@@ -303,18 +303,12 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   questions (`FindPropertyRules`), shows a sale's *Document de propriété* / *Documents exigés* (pre-filled, optional)
   and the sale's rate under the price (per m² for a *Terrain*, per unit for an *Immeuble*); a question it doesn't show
   keeps the mandate's stored answer, and a stored rental land or building keeps its type and answers while it stays
-  checked. The customer's contact block (`.contact-card`) is unboxed: role ("Client" / "Bailleur"), full name, "à appeler"
-  when the mandate has a call window, the number as a `tel:` link with a compact WhatsApp button beside it, and the
-  e-mail as a `mailto:` link. Its "Modifier" (only while `MandateRules.CUSTOMER_EDITABLE`, so not on a closed or
-  cancelled mandate) opens the customer edit page (`GET|POST /mandates/{id}/customer/edit`,
-  `templates/mandate/customer-edit.html`, `CustomerEditController`, `CustomerEditForm` / `CustomerEditRules`): first
-  name, last name, e-mail and WhatsApp number, the phone through intl-tel-input / `util.js` and posted E.164, saved
-  through `NdCustomerClient.update` (`POST /v1/mandates/{id}/customer`) so the correction shows on all of the
-  customer's mandates. Its outcomes are `customer-saved` and, when the e-mail of a PENDING_APPROVAL mandate changed,
-  `customer-saved-unsent` (ndopify-server cancelled the contract and put the mandate back to ASSIGNED); an e-mail
-  another party owns is the e-mail field's error, a 403/404/409 `changed`, a 5xx the form again with a generic error.
-  `src/main/assets/js/mandate.js` only enhances both pages (`data-page` `mandate` / `mandate-edit`), and the customer
-  edit one (`data-page` `customer-edit`). When a signed search has an ACCEPTED match without an open visit
+  checked. The customer's contact block (`.contact-card`) is unboxed and read-only: role ("Client" / "Bailleur"), full
+  name, "à appeler" when the mandate has a call window, the number as a `tel:` link with a compact WhatsApp button
+  beside it, and the e-mail as a `mailto:` link. It has no "Modifier" link and no edit page: only the customer updates
+  its own details (`POST /v1/mandates/{id}/customer`), so an agent who spots a typo can only ask it.
+  `src/main/assets/js/mandate.js` only enhances the mandate and its edit page (`data-page` `mandate` / `mandate-edit`).
+  When a signed search has an ACCEPTED match without an open visit
   (`MatchView.schedulable`, `MandateController`'s `canScheduleVisit`), the contact block also shows *Planifier une
   visite*, opening its own page (`GET /mandates/{id}/visits`, `MandateVisitController`, `mandate/visit.html`): the
   accepted property (a picker when several), the day and the time (the same `VisitSlots` as the visit page) and the type

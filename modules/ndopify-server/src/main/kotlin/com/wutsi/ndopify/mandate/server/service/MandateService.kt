@@ -394,7 +394,8 @@ class MandateService(
     }
 
     /**
-     * Corrects the details of its customer, which every one of that customer's mandate pages shows: 404
+     * Corrects the mandate's customer's own details, which every one of that customer's mandate pages shows, for that
+     * customer and nobody else ([MandateAccessService.ensureIsCustomer]: no admin bypass, no agent): 404
      * MANDATE_NOT_FOUND, 403 MANDATE_ACCESS_DENIED, 409 MANDATE_ALREADY_CLOSED (closed or cancelled), then 409
      * PARTY_EMAIL_ALREADY_EXISTS when another party already owns the e-mail. A PENDING_APPROVAL mandate whose e-mail
      * changes goes back to ASSIGNED and its contract is cancelled: the customer mustn't sign a contract sent to the
@@ -407,7 +408,7 @@ class MandateService(
         contractId?.let { contractService.findByIdForUpdate(it) }
 
         val mandate = findByIdForUpdate(id)
-        access.ensureCanUpdate(mandate)
+        access.ensureIsCustomer(mandate)
         ensureNotClosed(mandate)
 
         val customer = customerService.findById(mandate.customerId)

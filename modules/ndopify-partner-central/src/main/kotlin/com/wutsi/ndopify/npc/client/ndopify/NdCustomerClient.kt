@@ -4,7 +4,6 @@ import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.customer.dto.GetCustomerResponse
 import com.wutsi.ndopify.customer.dto.SearchCustomerResponse
-import com.wutsi.ndopify.customer.dto.UpdateCustomerRequest
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
@@ -31,15 +30,6 @@ class NdCustomerClient(
             .body<GetCustomerResponse>()
             ?.customer
             ?: Customer()
-
-    /** Corrects the customer's details through its mandate: `POST /v1/mandates/{id}/customer`. */
-    fun update(mandateId: Long, request: UpdateCustomerRequest) {
-        rest.post()
-            .uri("/v1/mandates/{id}/customer", mandateId)
-            .body(request)
-            .retrieve()
-            .toBodilessEntity()
-    }
 
     /** The customers [ids], in one call (none without [ids]). */
     fun search(ids: List<Long>): List<CustomerSummary> {
