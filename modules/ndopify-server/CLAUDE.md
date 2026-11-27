@@ -305,6 +305,20 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   /v1/mandate-documents/extract?type=` (a whole type back to `UPLOADED`, 400 for a type without an extractor). A page
   change during a run wins through the document's version, and an `EXTRACTING` document older than the timeout goes
   back to `UPLOADED`. An extracted value never reaches the logs.
+  **Ownership verdict.** `GET /v1/mandates/{id}/ownership` (`MandateEndpoints`, the assigned agent or an admin like
+  the document reads; 400 `MANDATE_NOT_LISTING` for a SEARCH mandate) derives `PENDING` / `VERIFIED` / `FAILED`
+  through `OwnershipVerdictService` from the mandate's `EXTRACTED` documents — an ID (`NATIONAL_ID` / `PASSPORT`) not
+  expired in the tenant's time zone and naming `customer.party.fullName()` (`KycUtils.verifyName`,
+  `ndopify.mandate.ownership.name-threshold` 90), and a `LAND_TITLE` / `CERTIFICATE_OF_OWNERSHIP` whose `owners` name
+  the same customer; `UTILITY_BILL`, `LEASE_CONTRACT`, `TAX_RECEIPT`, `SURVEY_PLAN`, `POWER_OF_ATTORNEY` and the rest
+  are not ownership evidence. An `EXTRACTED` document is trusted, so the verdict never re-runs `DocumentChecks` (the
+  `DOCUMENT_EXPIRED` warning alone never decides; the date does), and a decisive failure (expired, unusable, naming
+  another person) on either check makes the verdict `FAILED` even while the other check is missing or still
+  extracting; otherwise a missing or in-flight check makes it `PENDING`.
+  The reasons (`OwnershipReasonCodes`) are plain strings, one per failed check (ID first), and `*_UNUSABLE` carries
+  the documents' `problemCodes`; a page change resets a document to `UPLOADED` so the next read flips the verdict at
+  once, since nothing is stored. The answer carries a status and codes only — never a document, a page, a path or a
+  name.
   A search's `MandateSummary` has what a card shows (criteria, amenities, `movingPeriod`, `availableFrom`) and its
   `contractId` only (a client needing the contract's dates searches `/v1/contracts?id=`), not the terms nor the
   customer's comments. `GET /v1/mandates/{id}` carries `visitFee` (`Money`), read through from the mandate's signed
