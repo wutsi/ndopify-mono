@@ -9,6 +9,7 @@ INSERT INTO T_LOCATION(id, parent_fk, type, country, name, ascii_name) VALUES
 INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name) VALUES
     (100, 1, 'ray.sponsible@gmail.com', 'Ray', 'Sponsible'),
     (200, 1, 'kim.possible@gmail.com', 'Kim', 'Possible'),
+    (300, 1, 'john.doe@gmail.com', 'John', 'Doe'),
     (900, 2, 'other.tenant@example.com', 'Other', 'Tenant');
 
 INSERT INTO T_CUSTOMER(id, tenant_id, party_id) VALUES
@@ -17,7 +18,17 @@ INSERT INTO T_CUSTOMER(id, tenant_id, party_id) VALUES
 
 INSERT INTO T_AGENT(id, tenant_id, party_id, city_id) VALUES
     (20, 1, 200, 2370201),
+    (30, 1, 300, 2370201),
     (90, 2, 900, 2370201);
+
+-- User 11 is agent 20 (the assignment's), 12 is agent 30, 13 has no membership.
+INSERT INTO T_USER(id, email, deleted, created_at) VALUES
+    (11, 'kim.possible@gmail.com', false, '2024-06-10 00:00:00'),
+    (12, 'john.doe@gmail.com', false, '2024-06-10 00:00:00'),
+    (13, 'no.party@gmail.com', false, '2024-06-10 00:00:00');
+INSERT INTO T_MEMBERSHIP(id, tenant_id, user_id, party_id, deleted) VALUES
+    (11, 1, 11, 200, false),
+    (12, 1, 12, 300, false);
 
 INSERT INTO T_MANDATE(
     id, tenant_id, customer_id, agent_id, status, mandate_type, listing_type, city_id, property_type,

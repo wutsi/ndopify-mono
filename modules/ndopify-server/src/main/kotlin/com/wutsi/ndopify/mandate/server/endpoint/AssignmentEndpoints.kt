@@ -4,6 +4,7 @@ import com.wutsi.ndopify.mandate.dto.GetAssignmentResponse
 import com.wutsi.ndopify.mandate.dto.SearchAssignmentRequest
 import com.wutsi.ndopify.mandate.dto.SearchAssignmentResponse
 import com.wutsi.ndopify.mandate.server.mapper.AssignmentMapper
+import com.wutsi.ndopify.mandate.server.service.AssignmentAccessService
 import com.wutsi.ndopify.mandate.server.service.AssignmentService
 import com.wutsi.ndopify.platform.endpoint.OpsEndpoint
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController
 class AssignmentEndpoints(
     private val service: AssignmentService,
     private val mapper: AssignmentMapper,
+    private val accessService: AssignmentAccessService,
 ) {
     // Ex: an agent's pending offers: GET /v1/assignments?agent-id=12&status=PENDING
     @GetMapping
@@ -32,6 +34,7 @@ class AssignmentEndpoints(
     @GetMapping("/{id}")
     fun get(@PathVariable id: Long): GetAssignmentResponse {
         val assignment = service.findById(id)
+        accessService.ensureCanRead(assignment)
         return GetAssignmentResponse(assignment = mapper.toAssignment(assignment))
     }
 
