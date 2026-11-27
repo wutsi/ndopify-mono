@@ -1,7 +1,4 @@
-package com.wutsi.ndopify.email.server.service
-
-import com.wutsi.ndopify.email.server.domain.Verdict
-import com.wutsi.ndopify.email.server.domain.VerificationReason
+package com.wutsi.ndopify.platform.email
 
 /**
  * The verdict on an address: [score] is 1.0 for a HIGH deliverability, 0.5 for a MEDIUM, 0.0 for a LOW, and `null`

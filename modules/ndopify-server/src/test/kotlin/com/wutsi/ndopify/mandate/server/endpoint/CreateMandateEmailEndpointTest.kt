@@ -10,9 +10,6 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.customer.server.dao.CustomerRepository
 import com.wutsi.ndopify.email.server.dao.EmailAddressRepository
-import com.wutsi.ndopify.email.server.domain.VerificationReason
-import com.wutsi.ndopify.email.server.service.EmailVerification
-import com.wutsi.ndopify.email.server.service.EmailVerifier
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.error.dto.ParameterType
@@ -27,6 +24,9 @@ import com.wutsi.ndopify.mandate.dto.CreateMandateResponse
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.party.server.dao.PartyRepository
+import com.wutsi.ndopify.platform.email.EmailVerification
+import com.wutsi.ndopify.platform.email.EmailVerifier
+import com.wutsi.ndopify.platform.email.VerificationReason
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import org.springframework.beans.factory.annotation.Autowired

@@ -1,7 +1,7 @@
 package com.wutsi.ndopify.config.platform
 
-import com.wutsi.ndopify.email.server.service.EmailVerifier
-import com.wutsi.ndopify.email.server.service.EmailVerifierNone
+import com.wutsi.ndopify.platform.email.EmailVerifier
+import com.wutsi.ndopify.platform.email.EmailVerifierNone
 import com.wutsi.ndopify.platform.email.EmailVerifierSES
 import com.wutsi.ndopify.platform.email.SesEmailVerifierHealthIndicator
 import org.springframework.beans.factory.annotation.Value

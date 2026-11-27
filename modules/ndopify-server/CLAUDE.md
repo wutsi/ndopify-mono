@@ -184,8 +184,10 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `PENDING_APPROVAL` mandate whose e-mail changes cancels its contract and returns to `ASSIGNED` (the customer must
   not sign a contract sent to the old address); a closed or cancelled mandate is a 409 `MANDATE_ALREADY_CLOSED`, an
   e-mail another party owns a 409 `PARTY_EMAIL_ALREADY_EXISTS` with nothing written. Tenant-scoped.
-- **email** — the e-mail verification policy of the public forms, on a global hashed cache: `T_EMAIL_ADDRESS`
-  (`V21_0`) keeps one row per distinct address (SHA-256 only, never the plaintext address) with its score, its
+- **email** — the e-mail verification policy of the public forms, on a global hashed cache. The port, the model, the
+  default adapter, the throttle and the syntax check live in `platform.email` (see below); this domain keeps only the
+  policy (`EmailVerificationService`) and the `T_EMAIL_ADDRESS` cache (`EmailAddressEntity`, `EmailAddressRepository`).
+  The table (`V21_0`) keeps one row per distinct address (SHA-256 only, never the plaintext address) with its score, its
   provider-neutral reason and the six SES verdicts, for `ndopify.email.verification.ttl.valid-days` (30) on a
   HIGH/MEDIUM and `.invalid-days` (7) on a LOW. `EmailVerificationService.ensureDeliverable` is the only entry point:
   it normalizes (`trim().lowercase()`), refuses a locally malformed address before any paid call, serves the cached
@@ -863,11 +865,14 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
 - `platform/tenant` — tenant resolution (see Multi-Tenancy below).
 - `platform/ai` — the two Spring AI `ChatClient`s (`ChatClients.VISION` for images, `ChatClients.TEXT` for text) and
   their cached health indicators, wired by `config/platform/AIConfiguration`.
-- `platform/email` — the SES Email Validation adapter (`EmailVerifierSES`, one `GetEmailAddressInsights` call through
-  the AWS SDK v2 `sesv2`, beside the v1 S3 client) and its cached health indicator (`SesEmailVerifierHealthIndicator`,
-  `GetAccount`, `sesEmailVerifier`). `ndopify.email.verification.provider` is the only switch: `none` by default
-  (local, QA, the server's tests), `ses` in TEST and PROD. `none` wires `EmailVerifierNone` (every address is valid)
-  and no health component, so nothing calls AWS.
+- `platform/email` — the e-mail verification capability: the `EmailVerifier` port, the provider-neutral
+  `EmailVerification` model with its `Verdict` / `VerificationReason` enums, the `EmailVerifierNone` default adapter,
+  the `EmailVerificationThrottle` paid-call budget guard and the local `EmailSyntax` check; and the SES adapter
+  (`EmailVerifierSES`, one `GetEmailAddressInsights` call through the AWS SDK v2 `sesv2`, beside the v1 S3 client)
+  with its cached health indicator (`SesEmailVerifierHealthIndicator`, `GetAccount`, `sesEmailVerifier`).
+  `ndopify.email.verification.provider` is the only switch: `none` by default (local, QA, the server's tests), `ses`
+  in TEST and PROD. `none` wires `EmailVerifierNone` (every address is valid) and no health component, so nothing
+  calls AWS.
 - `platform/util` — small helpers (`PhoneNumberUtils`, `MimeUtils`, `UrlUtils`, `KycUtils`, HTTP utilities).
   `platform/util/http`'s `Http` has `postMultipart` (a `multipart/form-data` POST — `String` fields written as-is, the
   others JSON-serialized, plus one `HttpFile`) beside its JSON `post`.
