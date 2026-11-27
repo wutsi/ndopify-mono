@@ -54,7 +54,9 @@ class ControllerErrorHandler(private val logger: KVLogger) {
             status = status(e),
             e = e,
             parameter = error?.parameter,
-            message = error?.message ?: e.message,
+            // A WutsiException's own Error is passed through: a code that carries no message answers none, instead of
+            // echoing the internal "error-code=…" in the payload
+            message = if (error != null) error.message else e.message,
             data = error?.data,
             downstreamCode = error?.downstreamCode,
         )

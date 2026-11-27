@@ -13,6 +13,7 @@ import com.wutsi.ndopify.contract.server.service.ContractService
 import com.wutsi.ndopify.customer.dto.CreateCustomerRequest
 import com.wutsi.ndopify.customer.dto.UpdateCustomerRequest
 import com.wutsi.ndopify.customer.server.service.CustomerService
+import com.wutsi.ndopify.email.server.service.EmailVerificationService
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
@@ -68,6 +69,7 @@ class MandateService(
     private val assignmentDao: AssignmentRepository,
     private val clock: Clock,
     private val customerService: CustomerService,
+    private val emailVerification: EmailVerificationService,
     private val partyService: PartyService,
     private val agentService: AgentService,
     private val eventPublisher: ApplicationEventPublisher,
@@ -166,14 +168,17 @@ class MandateService(
     }
 
     /**
-     * Creates the mandate. The purchase answers are the buyer's brief: a rental keeps no financing, and a sale of any
+     * Creates the mandate. The contact e-mail is checked first (`EMAIL_ADDRESS_INVALID` when SES rates it
+     * undeliverable, before `LISTING_NOT_FOUND` and `MANDATE_RATE_LIMITED`), so a refused address writes nothing. The
+     * purchase answers are the buyer's brief: a rental keeps no financing, and a sale of any
      * type keeps its documents (empty is a valid answer). The seller's ownership documents are the seller's brief in
      * the same way: any sale keeps them, a rental has none, and they filter nothing. A building sold as a whole
      * keeps its storeys and its units; any other mandate stores neither. The implied price per m² is
      * computed on the page and never stored.
      */
     @Transactional
-    fun create(request: CreateMandateRequest): MandateEntity {
+    fun create(request: CreateMandateRequest, clientIp: String? = null): MandateEntity {
+        emailVerification.ensureDeliverable(request.email, clientIp)
         validateRentalTerms(request.securityDeposit, request.advanceRent)
         // A mandate seeded from a listing takes its criteria and budget from the listing, never from the request: the
         // public page can't be turned into an arbitrary search
