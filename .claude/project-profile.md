@@ -18,6 +18,7 @@ repository:
 
 tracker:
   provider: github-projects
+  project: ndopify             # board title, matched exactly by `gh project list`
   statuses:
     backlog: Backlog
     triaged: Triaged
