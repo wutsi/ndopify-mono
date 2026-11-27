@@ -3,13 +3,13 @@ package com.wutsi.ndopify.config.platform
 import com.github.mustachejava.DefaultMustacheFactory
 import com.github.mustachejava.MustacheFactory
 import com.github.mustachejava.resolver.ClasspathResolver
-import com.wutsi.ndopify.platform.email.EmailVerifier
-import com.wutsi.ndopify.platform.email.EmailVerifierNone
-import com.wutsi.ndopify.platform.email.EmailVerifierSES
-import com.wutsi.ndopify.platform.email.SesEmailVerifierHealthIndicator
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.filter.HtmlEscapeFilter
+import com.wutsi.ndopify.platform.mail.verification.EmailVerifier
+import com.wutsi.ndopify.platform.mail.verification.EmailVerifierNone
+import com.wutsi.ndopify.platform.mail.verification.EmailVerifierSES
+import com.wutsi.ndopify.platform.mail.verification.SesEmailVerifierHealthIndicator
 import dev.jcputney.mjml.ClasspathIncludeResolver
 import dev.jcputney.mjml.MjmlConfiguration
 import dev.jcputney.mjml.MjmlRenderer

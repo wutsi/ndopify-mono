@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.platform.email
+package com.wutsi.ndopify.platform.mail.verification
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component

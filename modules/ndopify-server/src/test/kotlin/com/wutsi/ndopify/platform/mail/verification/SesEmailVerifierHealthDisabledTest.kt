@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.platform.email
+package com.wutsi.ndopify.platform.mail.verification
 
 import com.wutsi.ndopify.BaseEndpointIntegrationTest
 import kotlin.test.Test

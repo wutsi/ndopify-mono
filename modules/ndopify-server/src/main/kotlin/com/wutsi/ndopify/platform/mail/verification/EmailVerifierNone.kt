@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.platform.email
+package com.wutsi.ndopify.platform.mail.verification
 
 /**
  * The default verifier, selected when `ndopify.mail.verification.provider=none`: it accepts every address and never

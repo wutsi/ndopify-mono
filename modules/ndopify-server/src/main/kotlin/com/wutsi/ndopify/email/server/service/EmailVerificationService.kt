@@ -6,10 +6,10 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
 import com.wutsi.ndopify.error.dto.ParameterType
 import com.wutsi.ndopify.error.server.exception.BadRequestException
-import com.wutsi.ndopify.platform.email.EmailSyntax
-import com.wutsi.ndopify.platform.email.EmailVerification
-import com.wutsi.ndopify.platform.email.EmailVerificationThrottle
-import com.wutsi.ndopify.platform.email.EmailVerifier
+import com.wutsi.ndopify.platform.mail.verification.EmailSyntax
+import com.wutsi.ndopify.platform.mail.verification.EmailVerification
+import com.wutsi.ndopify.platform.mail.verification.EmailVerificationThrottle
+import com.wutsi.ndopify.platform.mail.verification.EmailVerifier
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service

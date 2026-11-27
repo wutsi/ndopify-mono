@@ -1,7 +1,7 @@
 package com.wutsi.ndopify.email.server.domain
 
-import com.wutsi.ndopify.platform.email.Verdict
-import com.wutsi.ndopify.platform.email.VerificationReason
+import com.wutsi.ndopify.platform.mail.verification.Verdict
+import com.wutsi.ndopify.platform.mail.verification.VerificationReason
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
