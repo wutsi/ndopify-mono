@@ -70,6 +70,7 @@
 
         <amqp-client.version>5.28.0</amqp-client.version>
         <aws.version>1.12.797</aws.version>
+        <aws-sdk-v2.version>2.57.3</aws-sdk-v2.version>
         <commons-cli.version>1.9.0</commons-cli.version>
         <commons-codec.version>1.17.1</commons-codec.version>
         <commons-csv.version>1.14.1</commons-csv.version>
