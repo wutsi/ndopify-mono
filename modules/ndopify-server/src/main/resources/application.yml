@@ -284,11 +284,13 @@ ndopify:
             up-ttl-minutes: 5
             down-ttl-minutes: 1
 
-    email:
+    mail:
         verification:
             provider: none                    # none | ses; ses in TEST and PROD
             ses:
-                region: us-east-1             # The storage region
+                region: us-east-1                        # The storage region
+                access-key: "${AWS_ACCESS_KEY:}"         # Heroku config var (v1's name); empty = SDK default chain
+                secret-key: "${AWS_SECRET_KEY:}"
             ttl:
                 valid-days: 30                # HIGH / MEDIUM
                 invalid-days: 7               # LOW

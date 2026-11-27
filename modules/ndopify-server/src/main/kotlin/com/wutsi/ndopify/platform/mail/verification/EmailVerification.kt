@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.platform.email
+package com.wutsi.ndopify.platform.mail.verification
 
 /**
  * The verdict on an address: [score] is 1.0 for a HIGH deliverability, 0.5 for a MEDIUM, 0.0 for a LOW, and `null`

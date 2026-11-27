@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.platform.email
+package com.wutsi.ndopify.platform.mail.verification
 
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doReturn
@@ -19,9 +19,9 @@ import kotlin.test.assertTrue
 
 @TestPropertySource(
     properties = [
-        "ndopify.email.verification.provider=ses",
-        "ndopify.email.verification.health.up-ttl-minutes=0",
-        "ndopify.email.verification.health.down-ttl-seconds=0",
+        "ndopify.mail.verification.provider=ses",
+        "ndopify.mail.verification.health.up-ttl-minutes=0",
+        "ndopify.mail.verification.health.down-ttl-seconds=0",
     ],
 )
 class SesEmailVerifierHealthEndpointTest : BaseEndpointIntegrationTest() {
@@ -69,9 +69,9 @@ class SesEmailVerifierHealthEndpointTest : BaseEndpointIntegrationTest() {
 
 @TestPropertySource(
     properties = [
-        "ndopify.email.verification.provider=ses",
-        "ndopify.email.verification.health.up-ttl-minutes=1",
-        "ndopify.email.verification.health.down-ttl-seconds=0",
+        "ndopify.mail.verification.provider=ses",
+        "ndopify.mail.verification.health.up-ttl-minutes=1",
+        "ndopify.mail.verification.health.down-ttl-seconds=0",
     ],
 )
 class SesEmailVerifierHealthCacheTest : BaseEndpointIntegrationTest() {

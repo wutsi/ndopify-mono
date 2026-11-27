@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.platform.email
+package com.wutsi.ndopify.platform.mail.verification
 
 import org.slf4j.LoggerFactory
 import org.springframework.boot.health.contributor.Health

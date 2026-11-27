@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.platform.email
+package com.wutsi.ndopify.platform.mail.verification
 
 /**
  * The provider-neutral reason of an e-mail verdict, stored by name and never renamed.

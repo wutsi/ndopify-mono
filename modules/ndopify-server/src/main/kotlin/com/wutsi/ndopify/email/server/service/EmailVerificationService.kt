@@ -6,10 +6,10 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
 import com.wutsi.ndopify.error.dto.ParameterType
 import com.wutsi.ndopify.error.server.exception.BadRequestException
-import com.wutsi.ndopify.platform.email.EmailSyntax
-import com.wutsi.ndopify.platform.email.EmailVerification
-import com.wutsi.ndopify.platform.email.EmailVerificationThrottle
-import com.wutsi.ndopify.platform.email.EmailVerifier
+import com.wutsi.ndopify.platform.mail.verification.EmailSyntax
+import com.wutsi.ndopify.platform.mail.verification.EmailVerification
+import com.wutsi.ndopify.platform.mail.verification.EmailVerificationThrottle
+import com.wutsi.ndopify.platform.mail.verification.EmailVerifier
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
@@ -33,9 +33,9 @@ class EmailVerificationService(
     private val dao: EmailAddressRepository,
     private val throttle: EmailVerificationThrottle,
     private val clock: Clock,
-    @param:Value("\${ndopify.email.verification.provider}") private val provider: String,
-    @param:Value("\${ndopify.email.verification.ttl.valid-days}") private val validTtlDays: Long,
-    @param:Value("\${ndopify.email.verification.ttl.invalid-days}") private val invalidTtlDays: Long,
+    @param:Value("\${ndopify.mail.verification.provider}") private val provider: String,
+    @param:Value("\${ndopify.mail.verification.ttl.valid-days}") private val validTtlDays: Long,
+    @param:Value("\${ndopify.mail.verification.ttl.invalid-days}") private val invalidTtlDays: Long,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(EmailVerificationService::class.java)

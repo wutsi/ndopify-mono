@@ -32,8 +32,8 @@ import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.KycVerificationType
 import com.wutsi.ndopify.party.dto.PaymentMethodStatus
 import com.wutsi.ndopify.party.dto.PaymentMethodType
-import com.wutsi.ndopify.platform.email.Verdict
-import com.wutsi.ndopify.platform.email.VerificationReason
+import com.wutsi.ndopify.platform.mail.verification.Verdict
+import com.wutsi.ndopify.platform.mail.verification.VerificationReason
 import com.wutsi.ndopify.refdata.dto.AuthType
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.PeriodicityType

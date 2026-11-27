@@ -24,9 +24,9 @@ import com.wutsi.ndopify.mandate.dto.CreateMandateResponse
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.party.server.dao.PartyRepository
-import com.wutsi.ndopify.platform.email.EmailVerification
-import com.wutsi.ndopify.platform.email.EmailVerifier
-import com.wutsi.ndopify.platform.email.VerificationReason
+import com.wutsi.ndopify.platform.mail.verification.EmailVerification
+import com.wutsi.ndopify.platform.mail.verification.EmailVerifier
+import com.wutsi.ndopify.platform.mail.verification.VerificationReason
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import org.springframework.beans.factory.annotation.Autowired
@@ -42,9 +42,9 @@ import kotlin.test.assertNull
 
 @TestPropertySource(
     properties = [
-        "ndopify.email.verification.provider=ses",
-        "ndopify.email.verification.throttle.per-ip-per-hour=1000",
-        "ndopify.email.verification.throttle.daily-cap=1000",
+        "ndopify.mail.verification.provider=ses",
+        "ndopify.mail.verification.throttle.per-ip-per-hour=1000",
+        "ndopify.mail.verification.throttle.daily-cap=1000",
     ],
 )
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/CreateMandateEndpoint.sql"])
