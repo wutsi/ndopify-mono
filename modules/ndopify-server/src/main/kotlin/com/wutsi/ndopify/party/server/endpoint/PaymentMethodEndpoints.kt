@@ -4,6 +4,7 @@ import com.wutsi.ndopify.party.dto.GetPaymentMethodResponse
 import com.wutsi.ndopify.party.dto.SearchPaymentMethodRequest
 import com.wutsi.ndopify.party.dto.SearchPaymentMethodResponse
 import com.wutsi.ndopify.party.server.mapper.PaymentMethodMapper
+import com.wutsi.ndopify.party.server.service.KycAccessService
 import com.wutsi.ndopify.party.server.service.PaymentMethodService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import org.springframework.web.bind.annotation.GetMapping
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController
 class PaymentMethodEndpoints(
     private val service: PaymentMethodService,
     private val mapper: PaymentMethodMapper,
+    private val accessService: KycAccessService,
 ) {
     @GetMapping
     fun search(
@@ -33,6 +35,7 @@ class PaymentMethodEndpoints(
         @PathVariable id: String,
     ): GetPaymentMethodResponse {
         val paymentMethod = service.findById(id)
+        accessService.ensureCanRead(paymentMethod)
         return GetPaymentMethodResponse(paymentMethod = mapper.toPaymentMethod(paymentMethod))
     }
 }
