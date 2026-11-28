@@ -7,6 +7,7 @@ import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.DocumentType
+import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.OwnershipLocation
 import com.wutsi.ndopify.mandate.dto.OwnershipLocationStatus
 import com.wutsi.ndopify.mandate.dto.OwnershipVerification
@@ -38,6 +39,7 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.Optional
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class OwnershipVerdictServiceTest {
@@ -47,6 +49,7 @@ class OwnershipVerdictServiceTest {
         private val TODAY: LocalDate = LocalDate.of(2026, 11, 27)
         private val NOW: Instant = Instant.parse("2026-01-01T23:30:00Z")
         private const val CUSTOMER_NAME = "Jean Paul Mbarga"
+        private const val OWNER_OVERRIDE_REASON = "Titre au nom de son père, vérifié en agence"
     }
 
     private val codec = DocumentDataCodec(JsonHelper(JsonMapper()))
@@ -663,6 +666,74 @@ class OwnershipVerdictServiceTest {
         service.verify(MandateEntity(id = MANDATE_ID, customerId = 10, cityId = 2370101))
 
         assertTrue(logger.entries.none { it.second?.contains("Douala") == true || it.second?.contains("Yaounde") == true })
+    }
+
+    @Test
+    fun `an override with both kinds verifies the owner`() {
+        TenantContext.set(TENANT_ID)
+        mockVerdictInputs(
+            document(DocumentType.NATIONAL_ID, DocumentStatus.FAILED),
+            document(DocumentType.LAND_TITLE, DocumentStatus.FAILED),
+        )
+
+        val verification = service.verify(mandate(OWNER_OVERRIDE_REASON))
+
+        assertVerdict(verification, OwnershipVerificationStatus.VERIFIED)
+        assertTrue(verification.overridden)
+        assertTrue(verification.reasons.isEmpty())
+        assertTrue(logger.entries.contains("ownership_overridden" to "true"))
+    }
+
+    @Test
+    fun `an override without one kind does not apply`() {
+        TenantContext.set(TENANT_ID)
+        mockVerdictInputs(document(DocumentType.NATIONAL_ID, DocumentStatus.FAILED))
+
+        val verification = service.verify(mandate(OWNER_OVERRIDE_REASON))
+
+        assertEquals(OwnershipVerificationStatus.FAILED, verification.status)
+        assertFalse(verification.overridden)
+    }
+
+    @Test
+    fun `a normal verdict is not overridden`() {
+        val verification = evaluate(
+            document(DocumentType.NATIONAL_ID, DocumentStatus.EXTRACTED, nationalId("Jean Paul", "Mbarga", "2030-01-01")),
+            document(DocumentType.LAND_TITLE, DocumentStatus.EXTRACTED, landTitle("Jean Paul Mbarga")),
+        )
+
+        assertVerdict(verification, OwnershipVerificationStatus.VERIFIED)
+        assertFalse(verification.overridden)
+    }
+
+    @Test
+    fun `an override applies again when the missing kind is back`() {
+        TenantContext.set(TENANT_ID)
+        mockVerdictInputs(document(DocumentType.NATIONAL_ID, DocumentStatus.FAILED))
+        assertFalse(service.verify(mandate(OWNER_OVERRIDE_REASON)).overridden)
+
+        whenever(documentDao.findByMandateIdOrderByIdDesc(MANDATE_ID)) doReturn listOf(
+            document(DocumentType.NATIONAL_ID, DocumentStatus.FAILED),
+            document(DocumentType.CERTIFICATE_OF_OWNERSHIP, DocumentStatus.FAILED),
+        )
+        assertTrue(service.verify(mandate(OWNER_OVERRIDE_REASON)).overridden)
+    }
+
+    private fun mandate(ownershipOverrideReason: String? = null) = MandateEntity(
+        id = MANDATE_ID,
+        customerId = 10,
+        mandateType = MandateType.LISTING,
+        ownershipOverrideReason = ownershipOverrideReason,
+    )
+
+    /** The tenant, customer and documents a computed verdict reads; an override with both kinds needs the documents. */
+    private fun mockVerdictInputs(vararg documents: MandateDocumentEntity) {
+        whenever(tenantService.findById(TENANT_ID)) doReturn TenantEntity(id = TENANT_ID, timeZone = "Africa/Douala")
+        whenever(customerService.findById(10)) doReturn CustomerEntity(
+            id = 10,
+            party = PartyEntity(firstName = "Jean Paul", lastName = "Mbarga"),
+        )
+        whenever(documentDao.findByMandateIdOrderByIdDesc(MANDATE_ID)) doReturn documents.toList()
     }
 
     private fun mockMandate(id: DocumentData) {
