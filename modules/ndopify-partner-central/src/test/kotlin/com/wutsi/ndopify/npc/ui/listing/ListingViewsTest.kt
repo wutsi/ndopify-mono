@@ -317,6 +317,38 @@ class ListingViewsTest {
     }
 
     @Test
+    fun `a verified own-agent listing is a neutral publication hold, not an ownership block`() {
+        val view = of(COMPLETE.copy(status = ListingStatus.VERIFIED, modifiedAt = SENT))
+
+        assertEquals(ListingRules.Tag("Vérifiée — publication en cours", "warning"), view.tag)
+        assertTrue(view.publicationHold)
+        assertNull(view.panel)
+    }
+
+    @Test
+    fun `publication hold does not apply to read-only or other statuses`() {
+        val readOnly = ListingViews.of(
+            COMPLETE.copy(status = ListingStatus.VERIFIED, modifiedAt = SENT),
+            IMAGES,
+            locations,
+            formatter,
+            readOnly = true,
+        )
+        assertFalse(readOnly.publicationHold)
+        assertEquals(ListingRules.Tag("Vérifiée", "success"), readOnly.tag)
+
+        listOf(
+            ListingStatus.PUBLISHING,
+            ListingStatus.PUBLISHED,
+            ListingStatus.RENTED,
+            ListingStatus.SOLD,
+        ).forEach { status ->
+            val view = of(COMPLETE.copy(status = status, publishedAt = SENT))
+            assertFalse(view.publicationHold)
+        }
+    }
+
+    @Test
     fun published() {
         val listing = COMPLETE.copy(
             status = ListingStatus.PUBLISHED,

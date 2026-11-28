@@ -34,6 +34,7 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers.anyLong
 import org.springframework.http.HttpStatus
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.MvcResult
@@ -47,6 +48,7 @@ import org.springframework.web.servlet.view.InternalResourceViewResolver
 import org.springframework.web.util.UriComponentsBuilder
 import org.springframework.web.util.UriUtils
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -117,6 +119,52 @@ class ListingControllerTest {
         assertEquals("2 photos · 5 au moins", view.rows.first { it.url.endsWith("/photos") }.summary)
         assertEquals("SN", model(result)["initials"])
         assertNull(model(result)["locked"])
+    }
+
+    @Test
+    fun `a verified listing reads the neutral publication hold, no ownership read`() {
+        doReturn(COMPLETE.copy(status = ListingStatus.VERIFIED, modifiedAt = SENT)).whenever(listingClient).get(501)
+
+        val view = model(mvc.perform(get("/listings/501")).andReturn())["listing"] as ListingView
+
+        assertEquals(ListingRules.Tag("Vérifiée — publication en cours", "warning"), view.tag)
+        assertTrue(view.publicationHold)
+        assertNull(view.panel)
+        verify(mandateClient, never()).ownership(anyLong())
+    }
+
+    @Test
+    fun `no listing page reads the ownership verdict`() {
+        listOf(
+            ListingStatus.DRAFT,
+            ListingStatus.PENDING_VERIFICATION,
+            ListingStatus.UNDER_VERIFICATION,
+            ListingStatus.PUBLISHING,
+            ListingStatus.PUBLISHED,
+            ListingStatus.RENTED,
+            ListingStatus.SOLD,
+            ListingStatus.EXPIRED,
+            ListingStatus.CANCELLED,
+        ).forEach { status ->
+            doReturn(COMPLETE.copy(status = status, publishedAt = SENT)).whenever(listingClient).get(501)
+
+            val view = model(mvc.perform(get("/listings/501")).andReturn())["listing"] as ListingView
+
+            assertFalse(view.publicationHold)
+            verify(mandateClient, never()).ownership(anyLong())
+        }
+    }
+
+    @Test
+    fun `another agent's listing page reads no ownership verdict`() {
+        doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999, publishedAt = SENT))
+            .whenever(listingClient).get(501)
+
+        val view = model(mvc.perform(get("/listings/501")).andReturn())["listing"] as ListingView
+
+        assertTrue(view.readOnly)
+        assertFalse(view.publicationHold)
+        verify(mandateClient, never()).ownership(anyLong())
     }
 
     @Test
