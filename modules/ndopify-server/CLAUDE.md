@@ -332,9 +332,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `OWNERSHIP_PROPERTY_MISMATCH`; an unresolved locality, no locality, a missing/non-`CITY` `cityId` or a country
   mismatch never fails, and the verdict carries `location` (`mandateCity`, `documentLocality`, `UNKNOWN` / `MATCH` /
   `MISMATCH` / `UNRESOLVED`) for the mandate page's hint. The answer carries a status, reason codes and the
-  comparison's two display names only — never a document, a page, a path, a name, a city or a locality. The verdict
-  also gates publication (#299): a VERIFIED listing whose owner is not verified is not sent for publication, by the
-  endpoint nor by `ListingJobs.publish`.
+  comparison's two display names only — never a document, a page, a path, a name or another extracted value; never
+  log the city or the locality. The verdict also gates publication (#299): a VERIFIED listing whose owner is not
+  verified is not sent for publication, by the endpoint nor by `ListingJobs.publish`.
   A search's `MandateSummary` has what a card shows (criteria, amenities, `movingPeriod`, `availableFrom`) and its
   `contractId` only (a client needing the contract's dates searches `/v1/contracts?id=`), not the terms nor the
   customer's comments. `GET /v1/mandates/{id}` carries `visitFee` (`Money`), read through from the mandate's signed
