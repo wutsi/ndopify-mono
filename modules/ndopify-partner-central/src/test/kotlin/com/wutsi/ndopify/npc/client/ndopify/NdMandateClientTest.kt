@@ -36,6 +36,7 @@ import org.springframework.web.client.RestClient
 import tools.jackson.databind.json.JsonMapper
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class NdMandateClientTest {
@@ -130,7 +131,7 @@ class NdMandateClientTest {
             .andRespond(
                 withSuccess(
                     """
-                    {"verification":{"status":"FAILED","reasons":[{"code":"OWNERSHIP_ID_EXPIRED","details":[]}],"location":{"mandateCity":"","documentLocality":"","status":"UNKNOWN"}}}
+                    {"verification":{"status":"FAILED","reasons":[{"code":"OWNERSHIP_ID_EXPIRED","details":[]}],"location":{"mandateCity":"","documentLocality":"","status":"UNKNOWN"},"overridden":false}}
                     """.trimIndent(),
                     MediaType.APPLICATION_JSON,
                 ),
@@ -140,6 +141,27 @@ class NdMandateClientTest {
 
         assertEquals(OwnershipVerificationStatus.FAILED, verdict.status)
         assertEquals(listOf("OWNERSHIP_ID_EXPIRED"), verdict.reasons.map { it.code })
+        assertFalse(verdict.overridden)
+        server.verify()
+    }
+
+    @Test
+    fun `an overridden ownership verdict`() {
+        server.expect(requestTo("http://localhost:8080/v1/mandates/201/ownership"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    """
+                    {"verification":{"status":"VERIFIED","reasons":[],"location":{"mandateCity":"","documentLocality":"","status":"UNKNOWN"},"overridden":true}}
+                    """.trimIndent(),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val verdict = client.ownership(201)
+
+        assertEquals(OwnershipVerificationStatus.VERIFIED, verdict.status)
+        assertTrue(verdict.overridden)
         server.verify()
     }
 
