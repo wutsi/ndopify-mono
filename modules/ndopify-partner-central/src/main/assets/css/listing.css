@@ -14,6 +14,50 @@
     color: var(--color-fg);
 }
 
+/*
+ * #375: a VERIFIED listing, verified but not yet published. The hold label is a sentence, not a status word:
+ * the pill wraps inside the page (and takes its own line under the title at 390 px) instead of widening it.
+ */
+.status-tag--hold {
+    max-width: 100%;
+    white-space: normal;
+    line-height: 1.4;
+    text-align: left;
+}
+
+/* The neutral *Publication en cours* block (#375): its title keeps the alert's body-face look while staying a real
+   h2, at the same level as the page's sections. */
+.listing-publication__title {
+    font-family: var(--font-body);
+    font-size: var(--step-body);
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+/* Its body wraps inside the block on a phone; no sideways scrolling. */
+.listing-publication__intro {
+    overflow-wrap: anywhere;
+}
+
+/* Its one action sits on its own line and never widens the page on a phone: the label wraps inside the button. */
+.listing-publication__actions {
+    margin-top: var(--space-3);
+    overflow-wrap: anywhere;
+}
+
+.listing-publication__actions .btn {
+    display: inline-block;
+    max-width: 100%;
+    white-space: normal;
+    text-align: left;
+}
+
+/* The action keeps the global focus ring. */
+.listing-publication__actions .btn:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
 /* The public page's link and its share button, once the listing is published or closed. */
 .listing-public {
     display: flex;

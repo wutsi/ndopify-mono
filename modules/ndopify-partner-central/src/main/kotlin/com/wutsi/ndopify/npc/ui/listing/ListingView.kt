@@ -39,6 +39,11 @@ data class ListingView(
     val editable: Boolean,
     /** Every required section done: "Envoyer pour vérification" is active. */
     val sendable: Boolean,
+    /**
+     * A VERIFIED listing of its own agent, read before ndopify-server publishes it: the page reads the hold tag and
+     * the one neutral *Publication en cours* block instead of the *En vérification* panel. No ownership is read.
+     */
+    val publicationHold: Boolean = false,
     /** Another agent's read-only lens: the published sheet without the owner's blocks nor the checklist. */
     val readOnly: Boolean = false,
     /** The published sheet; null until PUBLISHED, RENTED or SOLD. */

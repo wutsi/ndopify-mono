@@ -199,6 +199,34 @@ class ListingRulesTest {
     }
 
     @Test
+    fun `a verified listing not yet published reads the neutral hold tag`() {
+        assertEquals(
+            ListingRules.Tag("Vérifiée — publication en cours", "warning"),
+            ListingRules.tag(Listing(status = ListingStatus.VERIFIED), publicationHold = true),
+        )
+        assertEquals(
+            ListingRules.Tag("Vérifiée", "success"),
+            ListingRules.tag(Listing(status = ListingStatus.VERIFIED)),
+        )
+        assertEquals(
+            ListingRules.Tag("Vérifiée", "success"),
+            ListingRules.tag(Listing(status = ListingStatus.VERIFIED), publicationHold = false),
+        )
+    }
+
+    @Test
+    fun `the hold tag never leaks to other statuses`() {
+        assertEquals(
+            ListingRules.Tag("En vérification", "warning"),
+            ListingRules.tag(Listing(status = ListingStatus.PUBLISHING), publicationHold = true),
+        )
+        assertEquals(
+            ListingRules.Tag("Publiée", "success"),
+            ListingRules.tag(Listing(status = ListingStatus.PUBLISHED), publicationHold = true),
+        )
+    }
+
+    @Test
     fun editable() {
         assertTrue(ListingRules.editable(Listing(status = ListingStatus.DRAFT)))
         assertFalse(ListingRules.editable(Listing(status = ListingStatus.UNDER_VERIFICATION)))

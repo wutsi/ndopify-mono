@@ -453,9 +453,16 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   says which sections are required (`ListingSectionSummary.required`, `ListingRules.required`), the photos' counts
   from `GET /v1/listings/{id}/images`. "Envoyer pour vérification" (`POST /listings/{id}/verify`) is inactive
   (`aria-disabled`) until every required section is done, and re-checked on POST (`incomplete` outcome, also for
-  ndopify-server's 409 `LISTING_INCOMPLETE`) since the button still posts without JS; sent, the listing is read-only (PENDING_VERIFICATION, UNDER_VERIFICATION,
-  VERIFIED, PUBLISHING: "En vérification", "Envoyée le" its `modifiedAt`, the server having no sent date; VERIFIED
-  included since ndopify-server publishes it, the agent doesn't), then PUBLISHED, with no panel: its date in the
+  ndopify-server's 409 `LISTING_INCOMPLETE`) since the button still posts without JS; sent, the listing is read-only
+  (PENDING_VERIFICATION, UNDER_VERIFICATION, PUBLISHING: "En vérification", "Envoyée le" its `modifiedAt`, the server
+  having no sent date). A `VERIFIED` listing of its own agent is verified but not yet published: its tag reads
+  "Vérifiée — publication en cours" (warning) and the *En vérification* panel gives way to one neutral *Publication en
+  cours* block above the checklist (`fragments/listing-publication.html`, `ListingView.publicationHold`): the exact
+  body says the publication may take a few minutes and names the mandate's documents as the likely cause, with one
+  action, *Voir les documents du mandat*, to `/mandates/{id}#documents-title`. No ownership is read
+  (`GET /v1/mandates/{id}/ownership` is never called for this page), no owner verification is claimed and no reason is
+  listed; the wording holds whether the publication gate is on or off, and every other status and the read-only lens
+  render as today. Then PUBLISHED, with no panel: its date in the
   tag ("Publiée le …"), its hero image (`Listing.heroImageId`, when its photo can be loaded) and "Voir l'annonce en
   ligne" under the title, `{publicPortalUrl}{Listing.url}` for PUBLISHED, RENTED and SOLD (none without either a URL or the
   tenant's portal). Its

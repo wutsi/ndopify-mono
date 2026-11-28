@@ -162,6 +162,7 @@ object ListingRules {
     private val DRAFT_TAG = Tag("Brouillon", "info")
     private val SENT_TAG = Tag("En vérification", "warning")
     private val VERIFIED_TAG = Tag("Vérifiée", "success")
+    private val HOLD_TAG = Tag("Vérifiée — publication en cours", "warning")
     private val PUBLISHED_TAG = Tag("Publiée", "success")
     private val TO_FIX_TAG = Tag("À corriger", "warning")
 
@@ -198,8 +199,16 @@ object ListingRules {
         else -> PENDING_TAG
     }
 
-    /** A DRAFT sent back by the verification ([rejections]) is "À corriger", else as its status says. */
-    fun tag(listing: Listing): Tag = if (rejections(listing).isNotEmpty()) TO_FIX_TAG else tag(listing.status)
+    /**
+     * A DRAFT sent back by the verification ([rejections]) is "À corriger", else as its status says. [publicationHold]
+     * is the listing page's own variant for a VERIFIED listing that isn't published yet; every other caller keeps the
+     * plain *Vérifiée* (the mandate line and the Espace agent's cards).
+     */
+    fun tag(listing: Listing, publicationHold: Boolean = false): Tag = when {
+        publicationHold && listing.status == ListingStatus.VERIFIED -> HOLD_TAG
+        rejections(listing).isNotEmpty() -> TO_FIX_TAG
+        else -> tag(listing.status)
+    }
 
     /** Being checked by Ndopify: sent, not published yet. */
     fun sent(status: ListingStatus): Boolean = status in SENT

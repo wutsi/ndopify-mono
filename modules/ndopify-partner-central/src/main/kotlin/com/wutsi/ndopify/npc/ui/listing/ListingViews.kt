@@ -87,6 +87,9 @@ object ListingViews {
         val done = required.count { ListingRules.done(listing, it) }
         val left = required.filter { !ListingRules.done(listing, it) }.map { missing(listing, it, images) }
         val published = listing.status == ListingStatus.PUBLISHED
+        // #375: the agent's own VERIFIED listing isn't published yet. The page says so neutrally, without reading
+        // whether the publication gate is on or off: another status is before or past that point.
+        val publicationHold = !readOnly && listing.status == ListingStatus.VERIFIED
         val rejections = ListingRules.rejections(listing)
         val toFix = rejections.mapNotNull { it.section }.toSet()
         val neighborhood = listing.neighborhoodId?.let { locations[it]?.name }
@@ -97,11 +100,12 @@ object ListingViews {
             mandateId = listing.mandateId,
             title = if (readOnly) title.removePrefix(TITLE_PREFIX) else title,
             sale = listing.listingType == ListingType.SALE,
-            tag = ListingRules.tag(listing),
+            tag = ListingRules.tag(listing, publicationHold),
             status = listing.status,
             createdAt = formatter.date(listing.createdAt),
             panel = when {
                 readOnly -> null
+                publicationHold -> null
                 editable && rejections.isNotEmpty() -> ListingView.PANEL_TO_FIX
                 editable -> ListingView.PANEL_DRAFT
                 ListingRules.sent(listing.status) -> ListingView.PANEL_SENT
@@ -134,6 +138,7 @@ object ListingViews {
             },
             editable = editable,
             sendable = editable && left.isEmpty(),
+            publicationHold = publicationHold,
             readOnly = readOnly,
             published = if (listing.status in ListingRules.PUBLIC_STATUSES) {
                 PublishedListingViews.of(listing, images, locations, formatter, owner = !readOnly)
