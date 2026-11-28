@@ -1,6 +1,6 @@
 ---
 name: story
-description: Use to take a story through its lifecycle by orchestrating the analyst, developer, reviewer and deployer agents - `groom <story-id>`, `implement <story-id>` (`push` is an alias), `review <pr-number>`, `merge <pr-number>`, `ship <story-id>`. Triggers on "groom story", "implement story", "push story", "review story PR", "merge story PR", "ship story" - not for a generic PR review.
+description: Use to take a story through its lifecycle by orchestrating the analyst, developer, reviewer and deployer agents - `groom <story-id>`, `implement <story-id>` (`push` is an alias), `review <pr-number>`, `merge <pr-number>`, `ship <story-id>` (`--to-review` stops at the approved pull request). Triggers on "groom story", "implement story", "push story", "review story PR", "merge story PR", "ship story" - not for a generic PR review.
 ---
 
 # Story workflow
@@ -10,8 +10,9 @@ right agent, relay its gates and follow its report. You never implement, review,
 git yourself.
 
 **Arguments:** `$ARGUMENTS` is `<mode> <id>`. Modes: `groom <story-id>`, `implement <story-id>`, `push <story-id>`
-(an alias of `implement`), `review <pr-number>`, `merge <pr-number>`, `ship <story-id>`. If the mode or the id is
-missing, ask for it — never guess the story or the pull request.
+(an alias of `implement`), `review <pr-number>`, `merge <pr-number>`, `ship <story-id>`, `ship <story-id> --to-review`
+(the chain stops at the approved pull request). If the mode or the id is missing, ask for it — never guess the story or
+the pull request.
 
 **Read first:** the repository's agent instructions (`AGENTS.md`, or `CLAUDE.md` when there is no `AGENTS.md`),
 `MEMORY.md` when it exists, and the project profile (`.claude/project-profile.md`). Their rules win. The profile
@@ -27,6 +28,7 @@ supplies `tracker.statuses.*`, `repository.story_ref` and `repository.default_br
 | `review <pr-number>` | `reviewer` | `APPROVAL: yes`, `NEXT: merge <pr>` — or `OUTCOME: handoff`, `NEXT: implement <id>` |
 | `merge <pr-number>` | `deployer` | `STATUS: <tracker.statuses.done>`, `NEXT: none` |
 | `ship <story-id>` | `developer` → `reviewer` → `deployer` | the chain in *Ship* |
+| `ship <story-id> --to-review` | `developer` → `reviewer` | `OUTCOME: staged`, `STATUS: <tracker.statuses.review>` |
 
 `designer` is the analyst's child: the analyst dispatches it for a UI story. Never dispatch it from this skill.
 
@@ -43,6 +45,8 @@ supplies `tracker.statuses.*`, `repository.story_ref` and `repository.default_br
   `OUTCOME`, `GATE`, `STORY`, `BRANCH`, `WORKTREE`, `PR`, `PLAN`, `PROTOTYPE`, `STATUS`, `RELEASES`, `APPROVAL`,
   `NEXT`, `NOTES`. Read that, never its tool transcript.
 - `OUTCOME: done` — in `ship`, follow `NEXT`; in an explicit mode, report the result and stop.
+- `OUTCOME: staged` — only under `--to-review`: report the pull request and the status, and stop. `ship-sprint` owns the
+  merge from there.
 - `OUTCOME: gate` — show the user the questions in `NOTES`, or the prototype paths (`GATE: prototype`), then send their
   answer to the same child session and wait. If the harness cannot resume a child, re-dispatch the same agent for the
   same phase with the questions already asked and the answers so far: the later phases rebuild their state from git,
@@ -81,6 +85,11 @@ branch the deployer could not delete is a block, reported with the branch name �
 ## Ship
 
 `ship <story-id>` runs the phases in sequence, each in a fresh agent session. Resolve the start point first.
+
+`--to-review` ends the chain at the reviewer's approval: where the routing below would dispatch the `deployer`, stop
+instead and report `OUTCOME: staged` with `PR` and `STATUS: <tracker.statuses.review>`. Nothing else changes — the
+routing, the review rounds and the gates are the same. A pull request already merged under `--to-review` is reported
+the same way, staged, without dispatching anyone.
 
 Read the story's status and its pull request:
 
@@ -142,5 +151,6 @@ needs the user's answer. Never guess a story or a pull request.
 
 The mode's agent reported `done` and the report names the next action — after a `merge`, that report also shows the
 story's worktree and local branch removed — or the reviewer handed a pass to the developer and the chain is at the
-developer, or the chain stopped on `blocked` (including a branch the deployer could not delete), on a `Final` review,
-or on a gate, and the user knows why.
+developer, or with `--to-review` the reviewer approved and the report is `OUTCOME: staged`, or the chain stopped on
+`blocked` (including a branch the deployer could not delete), on a `Final` review, or on a gate, and the user knows
+why.
