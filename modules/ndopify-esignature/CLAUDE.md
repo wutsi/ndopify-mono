@@ -37,8 +37,9 @@ the sign or verify page may show (see the rules below) needs a template test ass
   be resolved, so that an error page still renders.
 - The JWT is kept in the HTTP-only `__nes_access_token` cookie (`AccessTokenService`, `Path=/`, 1 hour like the token's
   TTL) and decoded by `JwtAuthenticationFilter`, like Partner Central's.
-- `SecurityConfiguration` permits only `/assets/**`, `/sign/**`, `/verify/**` and `/error`; every other path is denied (nothing else
-  is served). The 403 / 404 pages (`templates/error/`) show the logo only, no account menu.
+- `SecurityConfiguration` permits only `/assets/**`, `/sign/**`, `/verify/**`, `/actuator/health` and `/error`; every
+  other path is denied (nothing else is served). The 403 / 404 pages (`templates/error/`) show the logo only, no
+  account menu. `TenantAdvice` is restricted to `ui/`: the health probe must answer without a tenant lookup.
 - `client/ndopify/` holds the ndopify-server clients: `NdOtpClient` / `NdAuthClient` (as Partner Central's),
   `NdContractClient` (get, search incl. `contract-party-id`, `sign`, `getSignature`); the global `NdTenantClient` is
   web-core's.

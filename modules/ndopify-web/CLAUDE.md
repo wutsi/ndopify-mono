@@ -98,7 +98,8 @@ Package `com.wutsi.ndopify.web`:
   with the same status (`templates/error/404.html`); a 401 (it rejected the cookie's token) clears the cookie and
   redirects to the same page (a 404 when the request had no cookie, so it can't loop).
 - `ui/layout/TenantAdvice` — puts the tenant in every page's model as `tenant`. Controllers read it from the model
-  (`model.getAttribute("tenant")`), never as a `@ModelAttribute` parameter, which request parameters could bind.
+  (`model.getAttribute("tenant")`), never as a `@ModelAttribute` parameter, which request parameters could bind. It is
+  restricted to `ui/`: `/actuator/health` must answer without a tenant lookup.
 - `TenantContext` (web-core) — the tenant whose `publicPortalUrl` prefixes the request URL (from web-core's
   `NdTenantClient`, a plain `RestTemplate`); `TenantFormatter` (web-core) — dates and amounts.
 - `client/ndopify/NdListingClient`, `NdLocationClient`, `NdMatchClient` (get/accept/reject), `NdMandateClient`,

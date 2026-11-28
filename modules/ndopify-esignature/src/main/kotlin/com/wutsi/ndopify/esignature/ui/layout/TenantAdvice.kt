@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.ModelAttribute
  * by Spring Boot's error controller. Null when the tenant can't be resolved (unknown URL, ndopify-server down): the
  * pages then fall back to Ndopify's logo, rather than failing, since an error page must always render.
  */
-@ControllerAdvice
+@ControllerAdvice(basePackages = ["com.wutsi.ndopify.esignature.ui"])
 class TenantAdvice(private val tenantContext: TenantContext) {
     @ModelAttribute("tenant")
     fun tenant(): Tenant = tenantContext.getTenant()

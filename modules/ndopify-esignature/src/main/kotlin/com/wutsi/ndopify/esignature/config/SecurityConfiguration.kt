@@ -24,6 +24,7 @@ class SecurityConfiguration(
                     .requestMatchers("/assets/**").permitAll()
                     .requestMatchers("/sign", "/sign/**").permitAll()
                     .requestMatchers("/verify/**").permitAll()
+                    .requestMatchers("/actuator/health").permitAll() // Heroku's probe, no session, no details
                     .requestMatchers("/error").permitAll()
                     .anyRequest().denyAll() // nothing else is served
             }
