@@ -3,6 +3,8 @@ package com.wutsi.ndopify.mandate.server.service
 import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.DocumentType
+import com.wutsi.ndopify.mandate.dto.OwnershipLocation
+import com.wutsi.ndopify.mandate.dto.OwnershipLocationStatus
 import com.wutsi.ndopify.mandate.dto.OwnershipVerification
 import com.wutsi.ndopify.mandate.dto.OwnershipVerificationReason
 import com.wutsi.ndopify.mandate.dto.OwnershipVerificationStatus
@@ -15,6 +17,9 @@ import com.wutsi.ndopify.mandate.server.service.document.TitleData
 import com.wutsi.ndopify.platform.logger.KVLogger
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.platform.util.KycUtils
+import com.wutsi.ndopify.refdata.dto.LocationType
+import com.wutsi.ndopify.refdata.server.domain.LocationEntity
+import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
@@ -45,6 +50,7 @@ class OwnershipVerdictService(
     private val codec: DocumentDataCodec,
     private val customerService: CustomerService,
     private val tenantService: TenantService,
+    private val locationService: LocationService,
     private val logger: KVLogger,
     private val clock: Clock,
     @param:Value("\${ndopify.mandate.ownership.name-threshold}") private val nameThreshold: Double,
@@ -59,11 +65,12 @@ class OwnershipVerdictService(
 
     /** How one check ended; only [Pass] and [InFlight] contribute no reason. */
     private sealed interface Outcome {
-        object Pass : Outcome
+        data class Pass(val location: OwnershipLocation = OwnershipLocation()) : Outcome
         object Missing : Outcome
         object InFlight : Outcome
         object Expired : Outcome
         object Mismatch : Outcome
+        data class PropertyMismatch(val location: OwnershipLocation) : Outcome
         data class Unusable(val details: List<String>) : Outcome
     }
 
@@ -77,7 +84,19 @@ class OwnershipVerdictService(
         val tenant = tenantService.findById(tenantId)
         val today = LocalDate.now(clock.withZone(ZoneId.of(tenant.timeZone)))
         val customerName = customerService.findById(mandate.customerId).party.fullName()
-        val verification = evaluate(documentDao.findByMandateIdOrderByIdDesc(mandate.id!!), customerName, today)
+        val mandateCity = mandate.cityId.takeIf { it > 0 }?.let { locationService.findByIdOrNull(it) }
+        val resolveCity: (String) -> LocationEntity? = { name ->
+            mandateCity
+                ?.takeIf { it.type == LocationType.CITY }
+                ?.let { city -> locationService.findCity(name, city.country) }
+        }
+        val verification = evaluate(
+            documentDao.findByMandateIdOrderByIdDesc(mandate.id!!),
+            customerName,
+            today,
+            mandateCity,
+            resolveCity,
+        )
 
         logger.add("mandate_id", mandate.id)
         logger.add("ownership_status", verification.status.name)
@@ -96,18 +115,31 @@ class OwnershipVerdictService(
         documents: List<MandateDocumentEntity>,
         customerName: String,
         today: LocalDate,
+        mandateCity: LocationEntity? = null,
+        resolveCity: (String) -> LocationEntity? = { null },
     ): OwnershipVerification {
         val identity = identityOutcome(documents.filter { it.type in IDENTITY_TYPES }, customerName, today)
-        val ownership = ownershipOutcome(documents.filter { it.type in OWNERSHIP_TYPES }, customerName)
+        val ownership = ownershipOutcome(
+            documents.filter { it.type in OWNERSHIP_TYPES },
+            customerName,
+            mandateCity,
+            resolveCity,
+        )
 
         val status = when {
             identity is Outcome.Pass && ownership is Outcome.Pass -> OwnershipVerificationStatus.VERIFIED
             identity.isDecisive() || ownership.isDecisive() -> OwnershipVerificationStatus.FAILED
             else -> OwnershipVerificationStatus.PENDING
         }
+        val location = when (ownership) {
+            is Outcome.Pass -> ownership.location
+            is Outcome.PropertyMismatch -> ownership.location
+            else -> OwnershipLocation()
+        }
         return OwnershipVerification(
             status = status,
             reasons = listOfNotNull(reason(identity, identityCheck = true), reason(ownership, identityCheck = false)),
+            location = location,
         )
     }
 
@@ -132,7 +164,7 @@ class OwnershipVerdictService(
             expiry != null && !expiry.isBefore(today) && matches(identity.fullName(), customerName)
         }
         if (valid != null) {
-            return Outcome.Pass
+            return Outcome.Pass()
         }
         if (candidates.any { it.isInFlight() }) {
             return Outcome.InFlight
@@ -149,18 +181,47 @@ class OwnershipVerdictService(
         return Outcome.Unusable(details(candidates))
     }
 
-    /** The ownership check: `Pass` on an `EXTRACTED` candidate whose owners name the customer; then `InFlight`, `Unusable`, `Mismatch`, `Unusable`. */
-    private fun ownershipOutcome(candidates: List<MandateDocumentEntity>, customerName: String): Outcome {
+    /**
+     * The ownership check (#297 + #376): `Pass` on an `EXTRACTED` candidate whose owners name the customer; then
+     * `InFlight`, `Unusable`, `Mismatch`, `Unusable`. A customer-naming title additionally has its city compared with
+     * [mandateCity] (exact normalised `CITY` name in the same country, [resolveCity]): a valid candidate in the
+     * mandate's city wins; else a title in another known city is `PropertyMismatch`; else `Pass(UNRESOLVED)`. The
+     * location on a `Pass` / `PropertyMismatch` carries only the two display names, never a document.
+     */
+    private fun ownershipOutcome(
+        candidates: List<MandateDocumentEntity>,
+        customerName: String,
+        mandateCity: LocationEntity?,
+        resolveCity: (String) -> LocationEntity?,
+    ): Outcome {
         if (candidates.isEmpty()) {
             return Outcome.Missing
         }
         val extracted = candidates.filter { it.status == DocumentStatus.EXTRACTED }
         val data = extracted.associateWith { document -> titleData(document) }
-        val valid = data.values.firstOrNull { title ->
-            title?.owners.orEmpty().any { owner -> matches(owner, customerName) }
+        val named = extracted.mapNotNull { document ->
+            data[document]
+                ?.takeIf { title -> title.owners.orEmpty().any { owner -> matches(owner, customerName) } }
+                ?.let { title -> title }
         }
-        if (valid != null) {
-            return Outcome.Pass
+        if (named.isNotEmpty()) {
+            val mandateCityName = mandateCity?.name.orEmpty()
+            val mandateCityId = mandateCity?.takeIf { it.type == LocationType.CITY }?.id
+            val attempts = named.map { title -> resolveTitle(title, resolveCity) }
+
+            if (mandateCityId != null) {
+                attempts.firstOrNull { (_, city) -> city?.id == mandateCityId }?.let { (value, _) ->
+                    return Outcome.Pass(OwnershipLocation(mandateCityName, value, OwnershipLocationStatus.MATCH))
+                }
+                attempts.firstOrNull { (_, city) -> city != null && city.id != mandateCityId }?.let { (value, _) ->
+                    return Outcome.PropertyMismatch(
+                        OwnershipLocation(mandateCityName, value, OwnershipLocationStatus.MISMATCH),
+                    )
+                }
+            }
+            return Outcome.Pass(
+                OwnershipLocation(mandateCityName, attempts.first().first, OwnershipLocationStatus.UNRESOLVED),
+            )
         }
         if (candidates.any { it.isInFlight() }) {
             return Outcome.InFlight
@@ -174,9 +235,25 @@ class OwnershipVerdictService(
         return Outcome.Unusable(details(candidates))
     }
 
+    /**
+     * The locality then the `arrondissement` of a customer-naming title, each trimmed and non-blank, matched through
+     * [resolveCity]: the first value that resolves wins; otherwise the first value tried (locality, else
+     * arrondissement) with null; a title stating neither returns `"" to null`.
+     */
+    private fun resolveTitle(title: TitleData, resolveCity: (String) -> LocationEntity?): Pair<String, LocationEntity?> {
+        val locality = title.locality?.trim()?.takeIf { it.isNotEmpty() }
+        val arrondissement = title.arrondissement?.trim()?.takeIf { it.isNotEmpty() }
+        for (value in listOfNotNull(locality, arrondissement)) {
+            val resolved = resolveCity(value)
+            if (resolved != null) return value to resolved
+        }
+        return (locality ?: arrondissement ?: "") to null
+    }
+
     /** The reason of a failed check; null for `Pass` and `InFlight`. */
     private fun reason(outcome: Outcome, identityCheck: Boolean): OwnershipVerificationReason? = when (outcome) {
-        Outcome.Pass, Outcome.InFlight -> null
+        is Outcome.Pass -> null
+        Outcome.InFlight -> null
         Outcome.Missing -> OwnershipVerificationReason(
             if (identityCheck) OwnershipReasonCodes.ID_MISSING else OwnershipReasonCodes.DOCUMENT_MISSING,
         )
@@ -184,6 +261,7 @@ class OwnershipVerdictService(
         Outcome.Mismatch -> OwnershipVerificationReason(
             if (identityCheck) OwnershipReasonCodes.ID_NAME_MISMATCH else OwnershipReasonCodes.DOCUMENT_NAME_MISMATCH,
         )
+        is Outcome.PropertyMismatch -> OwnershipVerificationReason(OwnershipReasonCodes.PROPERTY_MISMATCH)
         is Outcome.Unusable -> OwnershipVerificationReason(
             if (identityCheck) OwnershipReasonCodes.ID_UNUSABLE else OwnershipReasonCodes.DOCUMENT_UNUSABLE,
             outcome.details,
@@ -191,7 +269,7 @@ class OwnershipVerdictService(
     }
 
     private fun Outcome.isDecisive(): Boolean =
-        this is Outcome.Expired || this is Outcome.Mismatch || this is Outcome.Unusable
+        this is Outcome.Expired || this is Outcome.Mismatch || this is Outcome.PropertyMismatch || this is Outcome.Unusable
 
     /**
      * A name matches [customerName] when [KycUtils.verifyName] scores at least [nameThreshold]; a blank name or a blank

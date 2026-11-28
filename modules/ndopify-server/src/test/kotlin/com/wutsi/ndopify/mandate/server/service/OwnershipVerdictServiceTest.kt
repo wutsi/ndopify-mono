@@ -7,6 +7,8 @@ import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.DocumentType
+import com.wutsi.ndopify.mandate.dto.OwnershipLocation
+import com.wutsi.ndopify.mandate.dto.OwnershipLocationStatus
 import com.wutsi.ndopify.mandate.dto.OwnershipVerification
 import com.wutsi.ndopify.mandate.dto.OwnershipVerificationStatus
 import com.wutsi.ndopify.mandate.server.dao.MandateDocumentRepository
@@ -21,7 +23,10 @@ import com.wutsi.ndopify.mandate.server.service.document.Passport
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.logger.KVLogger
 import com.wutsi.ndopify.platform.tenant.TenantContext
+import com.wutsi.ndopify.refdata.dto.LocationType
+import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
+import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.util.jpa.JsonHelper
 import org.junit.jupiter.api.AfterEach
@@ -33,6 +38,7 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.Optional
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class OwnershipVerdictServiceTest {
@@ -48,6 +54,7 @@ class OwnershipVerdictServiceTest {
     private val documentDao = mock<MandateDocumentRepository>()
     private val customerService = mock<CustomerService>()
     private val tenantService = mock<TenantService>()
+    private val locationService = mock<LocationService>()
     private val logger = CapturingKVLogger()
 
     private var nextId = 1L
@@ -59,6 +66,7 @@ class OwnershipVerdictServiceTest {
         codec = codec,
         customerService = customerService,
         tenantService = tenantService,
+        locationService = locationService,
         logger = logger,
         clock = Clock.fixed(NOW, ZoneOffset.UTC),
         nameThreshold = threshold,
@@ -423,6 +431,222 @@ class OwnershipVerdictServiceTest {
         )
     }
 
+    @Test
+    fun `a title in the mandate's city matches case and accents`() {
+        val yaounde = city(2370101, "Yaounde", "CM")
+        val verification = evaluate(
+            document(DocumentType.NATIONAL_ID, DocumentStatus.EXTRACTED, nationalId("Jean Paul", "Mbarga", "2030-01-01")),
+            document(DocumentType.LAND_TITLE, DocumentStatus.EXTRACTED, landTitle("Jean Paul Mbarga", locality = "yaoundé")),
+            mandateCity = yaounde,
+            resolveCity = { name -> if (name == "yaoundé") yaounde else null },
+        )
+
+        assertVerdict(verification, OwnershipVerificationStatus.VERIFIED)
+        assertEquals(OwnershipLocationStatus.MATCH, verification.location.status)
+        assertEquals("Yaounde", verification.location.mandateCity)
+        assertEquals("yaoundé", verification.location.documentLocality)
+    }
+
+    @Test
+    fun `a title in another known city fails the owner`() {
+        val yaounde = city(2370101, "Yaounde", "CM")
+        val douala = city(2370201, "Douala", "CM")
+        val verification = evaluate(
+            document(DocumentType.NATIONAL_ID, DocumentStatus.EXTRACTED, nationalId("Jean Paul", "Mbarga", "2030-01-01")),
+            document(DocumentType.LAND_TITLE, DocumentStatus.EXTRACTED, landTitle("Jean Paul Mbarga", locality = "Douala")),
+            mandateCity = yaounde,
+            resolveCity = { name -> if (name == "Douala") douala else null },
+        )
+
+        assertVerdict(verification, OwnershipVerificationStatus.FAILED, OwnershipReasonCodes.PROPERTY_MISMATCH)
+        assertEquals(OwnershipLocationStatus.MISMATCH, verification.location.status)
+        assertEquals("Yaounde", verification.location.mandateCity)
+        assertEquals("Douala", verification.location.documentLocality)
+    }
+
+    @Test
+    fun `an unresolved quarter is a hint, not a failure`() {
+        val yaounde = city(2370101, "Yaounde", "CM")
+        val verification = evaluate(
+            document(DocumentType.NATIONAL_ID, DocumentStatus.EXTRACTED, nationalId("Jean Paul", "Mbarga", "2030-01-01")),
+            document(DocumentType.LAND_TITLE, DocumentStatus.EXTRACTED, landTitle("Jean Paul Mbarga", locality = "Mvog-Ada")),
+            mandateCity = yaounde,
+            resolveCity = { null },
+        )
+
+        assertVerdict(verification, OwnershipVerificationStatus.VERIFIED)
+        assertEquals(OwnershipLocationStatus.UNRESOLVED, verification.location.status)
+        assertEquals("Yaounde", verification.location.mandateCity)
+        assertEquals("Mvog-Ada", verification.location.documentLocality)
+    }
+
+    @Test
+    fun `the arrondissement resolves when the locality is blank`() {
+        val yaounde = city(2370101, "Yaounde", "CM")
+        val verification = evaluate(
+            document(DocumentType.NATIONAL_ID, DocumentStatus.EXTRACTED, nationalId("Jean Paul", "Mbarga", "2030-01-01")),
+            document(
+                DocumentType.LAND_TITLE,
+                DocumentStatus.EXTRACTED,
+                landTitle("Jean Paul Mbarga", locality = null, arrondissement = "Yaoundé"),
+            ),
+            mandateCity = yaounde,
+            resolveCity = { name -> if (name == "Yaoundé") yaounde else null },
+        )
+
+        assertVerdict(verification, OwnershipVerificationStatus.VERIFIED)
+        assertEquals(OwnershipLocationStatus.MATCH, verification.location.status)
+        assertEquals("Yaoundé", verification.location.documentLocality)
+    }
+
+    @Test
+    fun `no mandate city is a hint, never a mismatch`() {
+        val verification = evaluate(
+            document(DocumentType.NATIONAL_ID, DocumentStatus.EXTRACTED, nationalId("Jean Paul", "Mbarga", "2030-01-01")),
+            document(DocumentType.LAND_TITLE, DocumentStatus.EXTRACTED, landTitle("Jean Paul Mbarga", locality = "Douala")),
+            mandateCity = null,
+            resolveCity = { null },
+        )
+
+        assertVerdict(verification, OwnershipVerificationStatus.VERIFIED)
+        assertEquals(OwnershipLocationStatus.UNRESOLVED, verification.location.status)
+        assertEquals("", verification.location.mandateCity)
+        assertEquals("Douala", verification.location.documentLocality)
+    }
+
+    @Test
+    fun `a non-city mandate location is a hint`() {
+        val neighborhood = city(237010101, "Bastos", "CM", LocationType.NEIGHBORHOOD)
+        val verification = evaluate(
+            document(DocumentType.NATIONAL_ID, DocumentStatus.EXTRACTED, nationalId("Jean Paul", "Mbarga", "2030-01-01")),
+            document(DocumentType.LAND_TITLE, DocumentStatus.EXTRACTED, landTitle("Jean Paul Mbarga", locality = "Douala")),
+            mandateCity = neighborhood,
+            resolveCity = { null },
+        )
+
+        assertVerdict(verification, OwnershipVerificationStatus.VERIFIED)
+        assertEquals(OwnershipLocationStatus.UNRESOLVED, verification.location.status)
+        assertEquals("Bastos", verification.location.mandateCity)
+    }
+
+    @Test
+    fun `a title with no locality is a hint`() {
+        val yaounde = city(2370101, "Yaounde", "CM")
+        val verification = evaluate(
+            document(DocumentType.NATIONAL_ID, DocumentStatus.EXTRACTED, nationalId("Jean Paul", "Mbarga", "2030-01-01")),
+            document(DocumentType.LAND_TITLE, DocumentStatus.EXTRACTED, landTitle("Jean Paul Mbarga")),
+            mandateCity = yaounde,
+            resolveCity = { null },
+        )
+
+        assertVerdict(verification, OwnershipVerificationStatus.VERIFIED)
+        assertEquals(OwnershipLocationStatus.UNRESOLVED, verification.location.status)
+        assertEquals("", verification.location.documentLocality)
+    }
+
+    @Test
+    fun `a title naming someone else keeps the name mismatch`() {
+        val yaounde = city(2370101, "Yaounde", "CM")
+        val douala = city(2370201, "Douala", "CM")
+        val verification = evaluate(
+            document(DocumentType.NATIONAL_ID, DocumentStatus.EXTRACTED, nationalId("Jean Paul", "Mbarga", "2030-01-01")),
+            document(DocumentType.LAND_TITLE, DocumentStatus.EXTRACTED, landTitle("Pierre Durand", locality = "Douala")),
+            mandateCity = yaounde,
+            resolveCity = { name -> if (name == "Douala") douala else null },
+        )
+
+        assertVerdict(verification, OwnershipVerificationStatus.FAILED, OwnershipReasonCodes.DOCUMENT_NAME_MISMATCH)
+        assertEquals(OwnershipLocationStatus.UNKNOWN, verification.location.status)
+    }
+
+    @Test
+    fun `a valid title in the mandate's city wins over another city`() {
+        val yaounde = city(2370101, "Yaounde", "CM")
+        val douala = city(2370201, "Douala", "CM")
+        val verification = evaluate(
+            document(DocumentType.NATIONAL_ID, DocumentStatus.EXTRACTED, nationalId("Jean Paul", "Mbarga", "2030-01-01")),
+            document(DocumentType.LAND_TITLE, DocumentStatus.EXTRACTED, landTitle("Jean Paul Mbarga", locality = "Douala")),
+            document(DocumentType.LAND_TITLE, DocumentStatus.EXTRACTED, landTitle("Jean Paul Mbarga", locality = "Yaoundé")),
+            mandateCity = yaounde,
+            resolveCity = { name ->
+                if (name == "Yaoundé") {
+                    yaounde
+                } else if (name == "Douala") {
+                douala
+            } else {
+                null
+            }
+            },
+        )
+
+        assertVerdict(verification, OwnershipVerificationStatus.VERIFIED)
+        assertEquals(OwnershipLocationStatus.MATCH, verification.location.status)
+    }
+
+    @Test
+    fun `verify - the mandate's city is resolved and the title compared`() {
+        TenantContext.set(TENANT_ID)
+        val yaounde = city(2370101, "Yaounde", "CM")
+        whenever(tenantService.findById(TENANT_ID)) doReturn TenantEntity(id = TENANT_ID, timeZone = "Africa/Douala")
+        whenever(customerService.findById(10)) doReturn CustomerEntity(
+            id = 10,
+            party = PartyEntity(firstName = "Jean Paul", lastName = "Mbarga"),
+        )
+        whenever(documentDao.findByMandateIdOrderByIdDesc(MANDATE_ID)) doReturn listOf(
+            document(DocumentType.NATIONAL_ID, DocumentStatus.EXTRACTED, nationalId("Jean Paul", "Mbarga", "2026-01-02")),
+            document(DocumentType.LAND_TITLE, DocumentStatus.EXTRACTED, landTitle("Jean Paul Mbarga", locality = "Yaoundé")),
+        )
+        whenever(locationService.findByIdOrNull(2370101)) doReturn yaounde
+        whenever(locationService.findCity("Yaoundé", "CM")) doReturn yaounde
+
+        val verification = service.verify(MandateEntity(id = MANDATE_ID, customerId = 10, cityId = 2370101))
+
+        assertEquals(OwnershipVerificationStatus.VERIFIED, verification.status)
+        assertEquals(OwnershipLocationStatus.MATCH, verification.location.status)
+    }
+
+    @Test
+    fun `verify - an unknown cityId is a hint, mandateCity blank`() {
+        TenantContext.set(TENANT_ID)
+        whenever(tenantService.findById(TENANT_ID)) doReturn TenantEntity(id = TENANT_ID, timeZone = "Africa/Douala")
+        whenever(customerService.findById(10)) doReturn CustomerEntity(
+            id = 10,
+            party = PartyEntity(firstName = "Jean Paul", lastName = "Mbarga"),
+        )
+        whenever(documentDao.findByMandateIdOrderByIdDesc(MANDATE_ID)) doReturn listOf(
+            document(DocumentType.NATIONAL_ID, DocumentStatus.EXTRACTED, nationalId("Jean Paul", "Mbarga", "2026-01-02")),
+            document(DocumentType.LAND_TITLE, DocumentStatus.EXTRACTED, landTitle("Jean Paul Mbarga", locality = "Douala")),
+        )
+
+        val verification = service.verify(MandateEntity(id = MANDATE_ID, customerId = 10, cityId = -1))
+
+        assertEquals(OwnershipVerificationStatus.VERIFIED, verification.status)
+        assertEquals(OwnershipLocationStatus.UNRESOLVED, verification.location.status)
+        assertEquals("", verification.location.mandateCity)
+    }
+
+    @Test
+    fun `the log line carries no city or locality`() {
+        TenantContext.set(TENANT_ID)
+        val yaounde = city(2370101, "Yaounde", "CM")
+        val douala = city(2370201, "Douala", "CM")
+        whenever(tenantService.findById(TENANT_ID)) doReturn TenantEntity(id = TENANT_ID, timeZone = "Africa/Douala")
+        whenever(customerService.findById(10)) doReturn CustomerEntity(
+            id = 10,
+            party = PartyEntity(firstName = "Jean Paul", lastName = "Mbarga"),
+        )
+        whenever(documentDao.findByMandateIdOrderByIdDesc(MANDATE_ID)) doReturn listOf(
+            document(DocumentType.NATIONAL_ID, DocumentStatus.EXTRACTED, nationalId("Jean Paul", "Mbarga", "2026-01-02")),
+            document(DocumentType.LAND_TITLE, DocumentStatus.EXTRACTED, landTitle("Jean Paul Mbarga", locality = "Douala")),
+        )
+        whenever(locationService.findByIdOrNull(2370101)) doReturn yaounde
+        whenever(locationService.findCity("Douala", "CM")) doReturn douala
+
+        service.verify(MandateEntity(id = MANDATE_ID, customerId = 10, cityId = 2370101))
+
+        assertTrue(logger.entries.none { it.second?.contains("Douala") == true || it.second?.contains("Yaounde") == true })
+    }
+
     private fun mockMandate(id: DocumentData) {
         whenever(tenantService.findById(TENANT_ID)) doReturn TenantEntity(id = TENANT_ID, timeZone = "Africa/Douala")
         whenever(customerService.findById(10)) doReturn CustomerEntity(
@@ -439,7 +663,9 @@ class OwnershipVerdictServiceTest {
         vararg documents: MandateDocumentEntity,
         customerName: String = CUSTOMER_NAME,
         service: OwnershipVerdictService = this.service,
-    ): OwnershipVerification = service.evaluate(documents.toList(), customerName, TODAY)
+        mandateCity: LocationEntity? = null,
+        resolveCity: (String) -> LocationEntity? = { null },
+    ): OwnershipVerification = service.evaluate(documents.toList(), customerName, TODAY, mandateCity, resolveCity)
 
     private fun assertVerdict(
         verification: OwnershipVerification,
@@ -496,13 +722,25 @@ class OwnershipVerdictServiceTest {
         fieldConfidences = confidences,
     )
 
-    private fun landTitle(vararg owners: String) = LandTitle(
+    private fun landTitle(
+        vararg owners: String,
+        locality: String? = null,
+        arrondissement: String? = null,
+    ) = LandTitle(
         detectedType = "LAND_TITLE",
         titleNumber = "TF-1",
         owners = owners.toList(),
+        arrondissement = arrondissement,
+        locality = locality,
         valid = true,
         fieldConfidences = confidences,
     )
+
+    private fun city(id: Long, name: String, country: String, type: LocationType = LocationType.CITY) =
+        LocationEntity(id = id, name = name, country = country, type = type, asciiName = name)
+
+    private fun resolve(vararg pairs: Pair<String, LocationEntity>): (String) -> LocationEntity? =
+        { name -> pairs.firstOrNull { it.first == name }?.second }
 
     private val confidences = mapOf(
         "number" to 0.9,
