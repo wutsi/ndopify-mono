@@ -31,7 +31,7 @@ class ShortlistMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     fun `a run leaves it shortlisted`() {
         rest.postForEntity("/v1/matches/1/shortlist", null, Any::class.java)
 
-        val response = rest.postForEntity("/v1/matches/run?mandate-id=1", null, Any::class.java)
+        val response = asAdmin { rest.postForEntity("/v1/matches/run?mandate-id=1", null, Any::class.java) }
 
         assertEquals(HttpStatus.OK, response.statusCode)
         val match = dao.findById(1L).get()

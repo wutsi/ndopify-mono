@@ -40,7 +40,7 @@ class DismissMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     fun `a run leaves it dismissed`() {
         rest.postForEntity("/v1/matches/1/dismiss", null, Any::class.java)
 
-        val response = rest.postForEntity("/v1/matches/run?mandate-id=1", null, Any::class.java)
+        val response = asAdmin { rest.postForEntity("/v1/matches/run?mandate-id=1", null, Any::class.java) }
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(MatchStatus.DISMISSED, dao.findById(1L).get().status)

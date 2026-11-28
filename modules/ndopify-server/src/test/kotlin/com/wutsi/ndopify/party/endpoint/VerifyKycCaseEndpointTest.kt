@@ -25,6 +25,7 @@ import com.wutsi.ndopify.party.server.service.kyc.KycCaseVerifierIdentification
 import com.wutsi.ndopify.party.server.service.kyc.KycCaseVerifierMoMo
 import com.wutsi.ndopify.party.server.service.kyc.KycCaseVerifierSelfie
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
@@ -46,6 +47,11 @@ import kotlin.test.assertTrue
  */
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/VerifyKycCaseEndpoint.sql"])
 class VerifyKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    private var admin = true
+
+    override val roles: Array<String>
+        get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
+
     @Autowired
     private lateinit var dao: KycCaseRepository
 
@@ -187,6 +193,17 @@ class VerifyKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         verify(idVerifier, never()).verify(any())
         verify(selfieVerifier, never()).verify(any())
         verify(paymentMethodVerifier, never()).verify(any())
+    }
+
+    @Test
+    fun `a non-admin is forbidden and nothing is verified`() {
+        admin = false
+
+        val response = verifyWithError("kyc-case-submitted")
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
+        assertCase(KycStatus.SUBMITTED, null)
     }
 
     @Test

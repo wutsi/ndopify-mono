@@ -5,6 +5,7 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.SearchMandateDocumentResponse
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
@@ -15,6 +16,8 @@ import kotlin.test.assertNull
 /** Requeues a whole type: its documents but the extracting ones go back to UPLOADED, cleared. */
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/ExtractMandateDocumentsByTypeEndpoint.sql"])
 class ExtractMandateDocumentsByTypeEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    override val roles = arrayOf(RoleCode.ADMIN)
+
     private fun documents() = rest
         .getForEntity("/v1/mandates/100/documents", SearchMandateDocumentResponse::class.java)
         .body!!.documents
