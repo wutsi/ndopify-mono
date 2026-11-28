@@ -1,4 +1,4 @@
-/* Ndopify — listing page (annonce.html): the "Être contacté par un agent" popup (a search mandate seeded from the
+/* Ndopify — listing page (annonce.html): the "Contacter l'agent" popup (a search mandate seeded from the
    listing, or an accepted match) and the photo viewer. Tokens come from styles.css. */
 
 .icon {
@@ -157,6 +157,13 @@
   font-size: 0.8125rem;
   opacity: 0.85;
 }
+/* #401: a checked fact's tick is success-green on the verified note and still green on the warning one — a check never
+   reads as a warning. Only the glyphs change, not the text: the unverified rows' alert and the registry footnote keep
+   the note's own colour (amber on the warning note). Contrast of the green on both backgrounds: 8.3:1 on #f0fdf4,
+   7.8:1 on #fef3c7, AA for text and well past the 3:1 of a non-text glyph. */
+.audit-note__list .icon { color: var(--color-text-success); }
+.audit-note .audit-note__icon[data-owner-unverified-icon] .icon,
+.audit-note .audit-note__limit .icon { color: inherit; }
 
 .listing__section {
   padding-block: var(--space-xl) 0;

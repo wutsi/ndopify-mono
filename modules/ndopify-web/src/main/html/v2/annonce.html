@@ -46,6 +46,10 @@
   identity and title were verified at publication, warning-yellow when the listing was audited but the owner was not
   (?owner=unverified), both out when it was never audited (?audit=none). The note lists what was checked, in two
   columns from 640px. A SOLD page keeps the state frozen at publication.
+  #401 — every call to action that opens the #visit popup, and the popup's own heading (#visit-title), read "Contacter
+  l'agent": the price card button (with its search icon), the bottom bar's link and the heading at the top of the
+  sheet. The audit note's checked facts keep a success-green tick in both states (annonce.css); on the amber note only
+  the unverified rows' alert glyph and the registry footnote keep the note's own colour.
 -->
 <body class="listing-page" data-listing-page>
 <a class="skip-link" href="#main">Aller au contenu principal</a>
@@ -225,7 +229,9 @@
                 <!-- #300: what was audited is a list, compact in two columns from 640px. The owner item and the whole
                      block turn warning-yellow when the owner was not verified (?owner=unverified: a listing published
                      before the gate); ?audit=none takes the note and the head badge out (a listing never audited).
-                     Production renders the same states from verifiedAt / ownershipVerified. -->
+                     Production renders the same states from verifiedAt / ownershipVerified.
+                     #401: the checked facts' tick is success-green in both states (annonce.css); on the amber note
+                     only the unverified rows' alert glyph and the registry footnote keep the note's own colour. -->
                 <div class="audit-note" data-audit-note data-rental-only>
                     <svg aria-hidden="true" class="icon icon--lg"><use href="#i-shield"/></svg>
                     <div>
@@ -483,7 +489,7 @@
                         <li>Libre maintenant</li>
                     </ul>
                     <a class="btn btn-primary price-card__cta" data-interest-cta data-modal-open href="#visit">
-                        <svg aria-hidden="true" class="icon"><use href="#i-search"/></svg>Être contacté par un agent
+                        <svg aria-hidden="true" class="icon"><use href="#i-search"/></svg>Contacter l'agent
                     </a>
                     <p class="price-card__hint" data-interest-cta>Un agent vous contacte sous 24 h pour organiser la
                         visite.</p>
@@ -502,14 +508,14 @@
         <p class="cta-bar__price" data-sale-only data-property-only hidden><strong>250M&nbsp;FCFA</strong></p>
         <p class="cta-bar__price" data-building-only hidden><strong>180M&nbsp;FCFA</strong></p>
         <div class="cta-bar__actions" data-interest-cta>
-            <a class="btn btn-primary" data-modal-open href="#visit">Être contacté par un agent</a>
+            <a class="btn btn-primary" data-modal-open href="#visit">Contacter l'agent</a>
         </div>
         <p class="cta-bar__note" data-sold-only hidden>Bien vendu</p>
     </div>
 </main>
 
 <!--
-  "Être contacté par un agent" popup: the customer asks an agent to call them about this listing, never a booking. With
+  "Contacter l'agent" popup: the customer asks an agent to call them about this listing, never a booking. With
   no search of this city and type yet, the listing is an entry point to a SEARCH mandate seeded from it
   (originListingId); with one, the server records the interest as an accepted match. The confirmation is the same in
   every case. No day or time here: the visit itself is organised with the agent. Without JavaScript it opens with
@@ -526,7 +532,7 @@
     <div class="modal__panel">
         <header class="modal__header">
             <div>
-                <h2 class="modal__title" id="visit-title">Être contacté par un agent</h2>
+                <h2 class="modal__title" id="visit-title">Contacter l'agent</h2>
                 <p class="modal__subtitle" data-rental-only>Appartement meublé 2 chambres · Bonapriso<span
                         class="modal__price">&nbsp;· <strong>175K&nbsp;FCFA</strong> / mois</span></p>
                 <p class="modal__subtitle" data-sale-only data-property-only hidden>Villa 5 chambres · Bonapriso<span

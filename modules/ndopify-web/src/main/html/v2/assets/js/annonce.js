@@ -1,4 +1,4 @@
-// Ndopify — listing page: the "Être contacté par un agent" popup, the photo viewer and the share button; its
+// Ndopify — listing page: the "Contacter l'agent" popup, the photo viewer and the share button; its
 // popups code is shared with proposition.html and visite.html. Everything only enhances: without JavaScript the popups
 // open with :target and their forms post, the photos are links. #380's ?state=email-invalid / -empty samples are the
 // prototype's switch, like ?sale=1 and ?state=sold; production renders the same state server-side.
