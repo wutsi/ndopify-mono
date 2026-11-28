@@ -106,6 +106,12 @@ class ListingPagesTest {
     ) = ListingPages.of(listing, images, locations, tenant, FORMATTER, today)
 
     @Test
+    fun `the page carries the owner verification`() {
+        assertFalse(page().ownershipVerified)
+        assertTrue(page(listing = listing.copy(ownershipVerified = true)).ownershipVerified)
+    }
+
+    @Test
     fun `full listing`() {
         val page = page()
 

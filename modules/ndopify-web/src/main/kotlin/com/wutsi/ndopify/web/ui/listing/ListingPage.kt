@@ -19,6 +19,8 @@ data class ListingPage(
     val place: String,
     val landmark: String?,
     val verifiedAt: String?,
+    /** True when the owner's identity and title were verified at publication; false with a [verifiedAt] is the warning state. */
+    val ownershipVerified: Boolean,
     val photos: List<Photo>,
     val keyFacts: List<Fact>,
     val description: List<String>,

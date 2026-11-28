@@ -120,6 +120,7 @@ object ListingPages {
             place = listOfNotNull(neighborhood, city).joinToString(", "),
             landmark = listing.landmark?.ifBlank { null }?.let { "près de $it" },
             verifiedAt = listing.verifiedAt?.let { formatter.date(it) },
+            ownershipVerified = listing.ownershipVerified,
             photos = photos(listing, images, title),
             keyFacts = keyFacts(listing, formatter, sale),
             description = paragraphs(listing.description),

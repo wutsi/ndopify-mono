@@ -26,7 +26,13 @@ Package `com.wutsi.ndopify.web`:
   `ListingPages` builds the `ListingPage` view (every text formatted, never `agentRemarks`); its body (head, gallery,
   content sections) is `templates/fragments/listing-body.html`, shared with `match.html`. A SOLD or RENTED listing keeps
   its public page, marked "Vendu"/"Loué": its price card and bottom bar show its last published listing price, never a
-  closing price, its conditions are left out, and it has no call to action. Its *Conditions de location* note is
+  closing price, its conditions are left out, and it has no call to action. Its head badge « Propriété auditée »
+  (`fragments/listing-body.html`, shared with `match.html`) is green when the owner's identity and title were verified
+  at publication (`ListingPage.ownershipVerified`) and yellow when only the agent's audit exists, with a
+  visually-hidden « propriétaire non vérifié » so the state never rests on colour; a listing with no audit date renders
+  neither the badge nor the note. The note is the audit date followed by a list — the agent's visit, the GPS check, the
+  owner's identity, the title, and the quiet « Ndopify ne consulte pas le registre foncier. » — one column below
+  640px, two equal columns above it. Its *Conditions de location* note is
   `ListingPage.termsNote`: on the public page the neutral *Les visites sont organisées par votre agent.* (never the
   Pass Visite promise), which the match page replaces with the fee. A building sold as a whole shows its unités and
   étages as its key facts and specs (no bedroom, bathroom nor parking), no *Équipements vérifiés* block, and its

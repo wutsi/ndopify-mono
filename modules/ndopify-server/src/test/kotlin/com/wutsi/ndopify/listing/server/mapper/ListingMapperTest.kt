@@ -1,11 +1,13 @@
 package com.wutsi.ndopify.listing.server.mapper
 
+import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
 import com.wutsi.ndopify.platform.image.ImageService
 import com.wutsi.ndopify.platform.image.ImageServiceLocal
 import com.wutsi.ndopify.platform.image.Transformation
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ListingMapperTest {
@@ -32,5 +34,13 @@ class ListingMapperTest {
 
         assertTrue(dto.variants.all { it.url == url })
         assertEquals(url, dto.socialUrl)
+    }
+
+    @Test
+    fun `toListing maps the ownership verification both ways`() {
+        val mapper = ListingMapper(ImageServiceLocal())
+
+        assertTrue(mapper.toListing(ListingEntity(ownershipVerified = true), emptyList()).ownershipVerified)
+        assertFalse(mapper.toListing(ListingEntity(), emptyList()).ownershipVerified)
     }
 }

@@ -641,4 +641,13 @@ class MatchTemplateTest {
         assertFalse(doc.selectFirst(".proposal")!!.text().contains("chambre"))
         assertNull(doc.selectFirst("#amenities-heading"))
     }
+
+    @Test
+    fun `the match page keeps its audited badge and note, without the ownership suffix`() {
+        val doc = render(page(listing = listing.copy(verifiedAt = java.util.Date(), ownershipVerified = true)))
+
+        assertEquals("Propriété auditée", doc.selectFirst(".listing__badges .badge--success")?.text())
+        assertTrue(doc.selectFirst(".audit-note__list")!!.text().contains("Identité du propriétaire vérifiée."))
+        assertEquals("Serge a visité le logement.", doc.selectFirst(".audit-note__list li")?.text())
+    }
 }

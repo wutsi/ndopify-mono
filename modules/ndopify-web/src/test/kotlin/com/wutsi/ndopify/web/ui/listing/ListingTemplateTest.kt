@@ -92,7 +92,8 @@ class ListingTemplateTest {
         summary = "Un bel appartement.",
         description = "Lumineux.\n\nCalme.",
         url = "/douala/bonapriso/listing/123/appartement",
-        verifiedAt = Date(),
+        verifiedAt = Date.from(LocalDate.of(2026, 10, 12).atStartOfDay(ZoneId.of("Africa/Douala")).toInstant()),
+        ownershipVerified = true,
     )
 
     private val images = (1..8).map { ListingImage(id = it.toLong(), url = "https://cdn/$it.jpg", title = "Photo $it") }
@@ -159,6 +160,9 @@ class ListingTemplateTest {
         )
         return Jsoup.parse(mvc.perform(get("/listing")).andReturn().response.contentAsString)
     }
+
+    private fun icons(doc: Document) =
+        doc.select(".audit-note__list li svg use").map { it.attr("href").removePrefix("#") }
 
     @Test
     fun `listing content`() {
@@ -301,6 +305,63 @@ class ListingTemplateTest {
     }
 
     @Test
+    fun `the audit note lists what was checked`() {
+        val doc = render()
+
+        assertEquals("Propriété auditée par Ndopify le 12 oct. 2026.", doc.selectFirst(".audit-note > div > p")?.text())
+        assertEquals(
+            listOf(
+                "Un agent a visité le logement.",
+                "Position GPS contrôlée sur place.",
+                "Identité du propriétaire vérifiée.",
+                "Titre de propriété vérifié.",
+                "Ndopify ne consulte pas le registre foncier.",
+            ),
+            doc.select(".audit-note__list li").map { it.text() },
+        )
+        assertEquals(listOf("i-check", "i-check", "i-check", "i-check", "i-info"), icons(doc))
+    }
+
+    @Test
+    fun `an owner verified at publication is the success state`() {
+        val doc = render()
+
+        assertEquals("Propriété auditée", doc.selectFirst(".listing__badges .badge--success")?.text())
+        val note = doc.selectFirst(".audit-note")!!
+        assertTrue(note.classNames().contains("audit-note"))
+        assertFalse(note.classNames().contains("audit-note--warning"))
+    }
+
+    @Test
+    fun `an owner not verified is the warning state, in words`() {
+        val doc = render(page(listing = listing.copy(ownershipVerified = false)))
+
+        val badge = doc.selectFirst(".listing__badges .badge--warning")!!
+        assertEquals("Propriété auditée, propriétaire non vérifié", badge.text())
+        val note = doc.selectFirst(".audit-note")!!
+        assertTrue(note.classNames().contains("audit-note--warning"))
+        assertEquals(
+            listOf(
+                "Un agent a visité le logement.",
+                "Position GPS contrôlée sur place.",
+                "Identité du propriétaire non vérifiée.",
+                "Titre de propriété non vérifié.",
+                "Ndopify ne consulte pas le registre foncier.",
+            ),
+            note.select(".audit-note__list li").map { it.text() },
+        )
+        assertEquals(listOf("i-check", "i-check", "i-alert", "i-alert", "i-info"), icons(doc))
+    }
+
+    @Test
+    fun `a listing never audited has neither badge nor note`() {
+        val doc = render(page(listing = listing.copy(verifiedAt = null)))
+
+        assertTrue(doc.select(".listing__badges .badge--success, .listing__badges .badge--warning").isEmpty())
+        assertTrue(doc.select(".audit-note").isEmpty())
+    }
+
+    @Test
     fun `description is escaped`() {
         val doc = render(page(listing.copy(description = "<b>x</b>")))
 
@@ -406,7 +467,7 @@ class ListingTemplateTest {
         val doc = render(page(listing = saleListing))
 
         assertEquals("À vendre", doc.selectFirst(".listing__badges .badge")?.text())
-        assertEquals("Bien audité", doc.selectFirst(".listing__badges .badge--success")?.text())
+        assertEquals("Propriété auditée", doc.selectFirst(".listing__badges .badge--success")?.text())
         assertEquals("250M FCFA", doc.selectFirst(".price-card__price")?.text())
         assertEquals("250M FCFA", doc.selectFirst(".cta-bar__price")?.text())
         assertEquals(listOf("Disponible le 01 déc. 2026"), doc.select(".price-card__terms li").map { it.text() })
@@ -415,8 +476,8 @@ class ListingTemplateTest {
         assertEquals("À propos de ce bien", doc.selectFirst("#description-heading")?.text())
         assertEquals("Photos du bien", doc.selectFirst(".gallery")?.attr("aria-label"))
         assertEquals("Photos du bien", doc.selectFirst(".lightbox")?.attr("aria-label"))
-        assertTrue(doc.selectFirst(".audit-note")!!.text().contains("Bien audité par Ndopify le "))
-        assertTrue(doc.selectFirst(".audit-note")!!.text().contains("Ndopify vérifie l'agent, pas les documents du bien"))
+        assertTrue(doc.selectFirst(".audit-note")!!.text().contains("Propriété auditée par Ndopify le "))
+        assertFalse(doc.selectFirst(".audit-note")!!.text().contains("Ndopify vérifie l'agent, pas les documents du bien"))
         assertEquals("Quand souhaitez-vous acheter ?", doc.selectFirst("#moving-period-label")?.text())
         // The #ask drawer is still the prototype's: out of this story's scope
         assertFalse(doc.selectFirst(".listing__content")!!.text().contains("logement"))

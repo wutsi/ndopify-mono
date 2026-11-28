@@ -85,6 +85,7 @@ class GetListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals("Two rooms in Bastos", listing.summary)
         assertEquals("A long description", listing.description)
         assertNotNull(listing.publishedAt)
+        assertTrue(listing.ownershipVerified)
 
         assertEquals(ListingSection.entries.drop(1), listing.sections.map { it.section })
         val sections = listing.sections.associateBy { it.section }
@@ -100,6 +101,13 @@ class GetListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(ListingSectionStatus.TO_VERIFY, sections[ListingSection.REMARKS]?.status)
         assertTrue(listing.sections.filter { it.section != ListingSection.REMARKS }.all { it.required })
         assertFalse(sections[ListingSection.REMARKS]!!.required)
+    }
+
+    @Test
+    fun `a listing published before the gate has no frozen fact`() {
+        val listing = rest.getForEntity("/v1/listings/102", GetListingResponse::class.java).body!!.listing
+
+        assertFalse(listing.ownershipVerified)
     }
 
     @Test

@@ -15,9 +15,10 @@
         <p class="listing__badges">
             <span class="badge" th:classappend="${listing.closedNotice} ? 'badge--warning' : 'badge--info'"
                   th:text="${listing.typeBadge}">À louer</span>
-            <span class="badge badge--success" th:if="${listing.verifiedAt}">
-                <svg aria-hidden="true" class="icon"><use href="#i-shield"/></svg><th:block
-                    th:text="${listing.sale} ? 'Bien audité' : 'Logement audité'">Logement audité</th:block>
+            <span class="badge" th:classappend="${listing.ownershipVerified} ? 'badge--success' : 'badge--warning'"
+                  th:if="${listing.verifiedAt}">
+                <svg aria-hidden="true" class="icon"><use href="#i-shield"/></svg>Propriété auditée<span
+                    class="visually-hidden" th:unless="${listing.ownershipVerified}">, propriétaire non vérifié</span>
             </span>
             <span class="badge badge--state" data-state-badge th:if="${state}" th:text="${state}">Vous intéresse</span>
         </p>
@@ -56,17 +57,38 @@
         <li th:each="fact : ${listing.keyFacts}"><svg aria-hidden="true" class="icon"><use th:href="'#i-' + ${fact.icon}"/></svg><strong th:if="${fact.count}" th:text="${fact.count}">2</strong> [[${fact.label}]]</li>
     </ul>
 
-    <div class="audit-note" th:if="${listing.verifiedAt}">
+    <div class="audit-note" th:classappend="${listing.ownershipVerified} ? null : 'audit-note--warning'"
+         th:if="${listing.verifiedAt}">
         <svg aria-hidden="true" class="icon icon--lg"><use href="#i-shield"/></svg>
         <div>
-            <p th:if="${listing.sale}"><strong th:text="'Bien audité par Ndopify le ' + ${listing.verifiedAt} + '.'">Bien
-                audité par Ndopify le 12 octobre 2026.</strong></p>
-            <p th:unless="${listing.sale}"><strong th:text="'Logement audité par Ndopify le ' + ${listing.verifiedAt} + '.'">Logement
-                audité par Ndopify le 12 octobre 2026.</strong></p>
-            <p th:if="${listing.sale}">Un agent vérifié a visité ce bien : photos, surface et position GPS ont été
-                contrôlés sur place. Ndopify vérifie l'agent, pas les documents du bien.</p>
-            <p th:unless="${listing.sale}">Un agent vérifié a visité ce logement : compteurs, photos et position GPS ont
-                été contrôlés sur place.</p>
+            <p><strong th:text="'Propriété auditée par Ndopify le ' + ${listing.verifiedAt} + '.'">Propriété auditée par
+                Ndopify le 12 octobre 2026.</strong></p>
+            <ul class="audit-note__list">
+                <li class="audit-note__item">
+                    <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
+                    <span th:text="${agent != null ? agent + (listing.sale ? ' a visité le bien.' : ' a visité le logement.')
+                        : (listing.sale ? 'Un agent a visité le bien.' : 'Un agent a visité le logement.')}">Un agent a
+                        visité le logement.</span>
+                </li>
+                <li class="audit-note__item">
+                    <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
+                    <span>Position GPS contrôlée sur place.</span>
+                </li>
+                <li class="audit-note__item">
+                    <svg aria-hidden="true" class="icon"><use th:href="${listing.ownershipVerified} ? '#i-check' : '#i-alert'"/></svg>
+                    <span th:text="${listing.ownershipVerified} ? 'Identité du propriétaire vérifiée.'
+                        : 'Identité du propriétaire non vérifiée.'">Identité du propriétaire vérifiée.</span>
+                </li>
+                <li class="audit-note__item">
+                    <svg aria-hidden="true" class="icon"><use th:href="${listing.ownershipVerified} ? '#i-check' : '#i-alert'"/></svg>
+                    <span th:text="${listing.ownershipVerified} ? 'Titre de propriété vérifié.'
+                        : 'Titre de propriété non vérifié.'">Titre de propriété vérifié.</span>
+                </li>
+                <li class="audit-note__item audit-note__limit">
+                    <svg aria-hidden="true" class="icon"><use href="#i-info"/></svg>
+                    <span>Ndopify ne consulte pas le registre foncier.</span>
+                </li>
+            </ul>
         </div>
     </div>
 

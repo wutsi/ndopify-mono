@@ -125,6 +125,34 @@
 .audit-note p { margin: 0; }
 .audit-note p + p { margin-top: var(--space-sm); }
 
+/* #300: audited before the owner-verification gate: the whole block takes the warning tokens, like the badge. */
+.audit-note--warning {
+  background: var(--color-bg-warning);
+  border-color: var(--color-border-warning);
+  color: var(--color-text-warning);
+}
+/* #300: what was checked, one item per fact: one column on a phone, two from 640px (1024px included). */
+.audit-note__list {
+  list-style: none;
+  margin: var(--space-md) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-md) var(--space-xl);
+  font-size: 0.875rem;
+}
+@media (min-width: 640px) {
+  .audit-note__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.audit-note__item { display: flex; align-items: flex-start; gap: var(--space-md); }
+.audit-note__list .icon { margin-top: 0.2em; }
+/* #300: the registry limit is a footnote, not a fact like the others: full width and set back. */
+.audit-note__limit {
+  grid-column: 1 / -1;
+  font-size: 0.8125rem;
+  opacity: 0.85;
+}
+
 .listing__section {
   padding-block: var(--space-xl) 0;
   margin-top: var(--space-xl);

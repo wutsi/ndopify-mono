@@ -121,10 +121,13 @@ class SellTemplateTest {
             "du prix de vente versé directement à vous",
             "un pourcentage du prix de vente, écrit dans le mandat",
             "chez le notaire",
-            "Ndopify ne les contrôle pas",
+            "lit votre pièce d'identité et votre titre de propriété",
+            "vérifie que le titre est à votre nom",
+            "ne consulte pas le registre foncier",
             "Ndopify ne perçoit aucun paiement",
         ).forEach { assertTrue(text.contains(it), it) }
-        listOf("spécialiste", "titre foncier vérifié").forEach { assertFalse(text.contains(it), it) }
+        listOf("spécialiste", "titre foncier vérifié", "Ndopify ne les contrôle pas")
+            .forEach { assertFalse(text.contains(it), it) }
     }
 
     @Test
