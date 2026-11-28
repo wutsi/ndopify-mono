@@ -347,7 +347,12 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `MATCH` and `UNKNOWN` show nothing. Those two places are the section's only property data: no document id, type,
   title, page, path, URL or other extracted value. A failed read (5xx, network, 403/404) or an `UNKNOWN` status only
   makes the section say *Vérification indisponible*; every other section renders as before. No script: every state is
-  server-rendered. `src/main/assets/css/ownership.css` (after `document.css` in `build-assets.mjs`) lays it out.
+  server-rendered. #377 adds the overridden `VERIFIED` state: the pill reads *Vérifiée par Ndopify* (success), the
+  intro drops its *à partir des pièces de la section Documents* clause, and the success block adds *Ndopify a vérifié
+  le propriétaire après examen de sa situation.* after *Propriétaire vérifié* — never that the documents passed; the
+  publication hint and the listing link are unchanged, and it shows no reason, date, admin identity nor admin reason
+  (the verdict carries `overridden` only). The non-overridden state reads as today.
+  `src/main/assets/css/ownership.css` (after `document.css` in `build-assets.mjs`) lays it out.
   Prototype: `src/main/html/v2/mandate.html` (approved 2026-11-27).
 - A mandate's **documents** (`MandateDocumentController`, `ui/document/`, `templates/mandate/document-new.html` and
   `templates/mandate/document.html`) are the *Documents* section of the mandate page and a document's own page, on a
