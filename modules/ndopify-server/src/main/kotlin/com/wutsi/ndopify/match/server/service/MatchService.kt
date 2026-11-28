@@ -63,6 +63,7 @@ class MatchService(
     @param:Value("\${ndopify.match.min-score}") private val minScore: Double,
     @param:Value("\${ndopify.match.nearby-radius-km}") private val nearbyRadiusKm: Double,
     @param:Value("\${ndopify.match.nearby-max-neighborhoods}") private val nearbyMaxNeighborhoods: Int,
+    @param:Value("\${ndopify.match.ownership-bonus}") private val ownershipBonus: Double,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(MatchService::class.java)
@@ -82,8 +83,9 @@ class MatchService(
     /**
      * The matches of the mandates [SearchMatchRequest.mandateIds] and / or of the listings
      * [SearchMatchRequest.listingIds] (both when both are given), in [SearchMatchRequest.statuses] (default: ACTIVE),
-     * best score first, all mandates together. Only while the mandate is APPROVED and the listing PUBLISHED: a closed search, or a rented listing, keeps its rows but isn't
-     * listed.
+     * best rank first (`rankingScore`, the score plus the verified-owner bonus when the listing's owner was verified at
+     * publication, capped at 1.0; ties by score then id), all mandates together. Only while the mandate is APPROVED and
+     * the listing PUBLISHED: a closed search, or a rented listing, keeps its rows but isn't listed.
      */
     fun search(request: SearchMatchRequest): List<MatchEntity> {
         val statuses = request.statuses.ifEmpty { listOf(MatchStatus.ACTIVE) }
@@ -106,6 +108,7 @@ class MatchService(
 
         val sort = Sort.by(
             Sort.Order.asc("coBrokerage"),
+            Sort.Order.desc("rankingScore"),
             Sort.Order.desc("score"),
             Sort.Order.asc("id"),
         )
@@ -377,6 +380,7 @@ class MatchService(
             match.copy(
                 coBrokerage = coBrokerage,
                 score = score.total,
+                rankingScore = rank(listing, score.total),
                 typeScore = score.type,
                 neighborhoodScore = score.neighborhood,
                 priceScore = score.price,
@@ -394,6 +398,11 @@ class MatchService(
         )
         return StoreOutcome.STORED
     }
+
+    // A listing whose owner was verified ranks `ownership-bonus` higher, never above 1.0: a bonus, not a strict sort.
+    // The raw score keeps deciding min-score and the display.
+    private fun rank(listing: ListingEntity, score: Double): Double =
+        if (listing.ownershipVerified) minOf(1.0, score + ownershipBonus) else score
 
     /**
      * The match of (mandate, listing) the customer asked for on the listing's public page: recorded ACCEPTED,
@@ -449,6 +458,7 @@ class MatchService(
             rejectionReasonCode = null,
             rejectionReason = null,
             score = score.total,
+            rankingScore = rank(listing, score.total),
             typeScore = score.type,
             neighborhoodScore = score.neighborhood,
             priceScore = score.price,

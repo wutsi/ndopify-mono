@@ -24,6 +24,7 @@ import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.match.dto.MatchRejectionReason
 import com.wutsi.ndopify.match.dto.MatchStatus
+import com.wutsi.ndopify.match.dto.SearchMatchRequest
 import com.wutsi.ndopify.match.server.dao.MatchRepository
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.match.server.mapper.MatchMapper
@@ -34,6 +35,10 @@ import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Sort
+import org.springframework.data.jpa.domain.Specification
 import org.springframework.orm.ObjectOptimisticLockingFailureException
 import java.time.Clock
 import java.time.Instant
@@ -84,6 +89,7 @@ class MatchServiceTest {
         0.5,
         3.0,
         20,
+        0.1, // ndopify.match.ownership-bonus
     )
 
     private val search = MandateEntity(
@@ -105,6 +111,9 @@ class MatchServiceTest {
         price = 240_000,
     )
     private val listing2 = listing1.copy(id = 12L, price = 200_000)
+
+    // listing2 (id 12) as if its owner had been verified at publication
+    private val verifiedListing = listing2.copy(ownershipVerified = true)
     private val otherListing = listing1.copy(id = 20L, price = 90_000, agent = AgentEntity(id = 30L))
 
     private fun score(total: Double): MatchScore =
@@ -162,6 +171,112 @@ class MatchServiceTest {
         val captor = argumentCaptor<MatchEntity>()
         verify(matchDao).save(captor.capture())
         assertEquals(0.85, captor.firstValue.typeScore, 0.000001)
+    }
+
+    @Test
+    fun `store ranks a verified owner's listing with the bonus`() {
+        doReturn(listOf(listing1, verifiedListing)).whenever(listingDao)
+            .findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(scored(0.8)).whenever(matcher).evaluate(eq(search), eq(listing1), any(), eq(today))
+        doReturn(scored(0.72)).whenever(matcher).evaluate(eq(search), eq(verifiedListing), any(), eq(today))
+
+        assertEquals(2, service.matchMandate(MANDATE_ID))
+
+        val saved = argumentCaptor<MatchEntity>()
+        verify(matchDao, times(2)).save(saved.capture())
+        assertEquals(0.8, saved.firstValue.rankingScore, 0.000001) // Not verified: the score itself
+        assertEquals(0.82, saved.secondValue.rankingScore, 0.000001) // Verified: the score + 0.10
+    }
+
+    @Test
+    fun `caps a verified owner's rank at 1`() {
+        doReturn(listOf(verifiedListing)).whenever(listingDao)
+            .findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(scored(0.95)).whenever(matcher).evaluate(eq(search), eq(verifiedListing), any(), eq(today))
+
+        service.matchMandate(MANDATE_ID)
+
+        val saved = argumentCaptor<MatchEntity>()
+        verify(matchDao).save(saved.capture())
+        assertEquals(1.0, saved.firstValue.rankingScore, 0.000001)
+        assertEquals(0.95, saved.firstValue.score, 0.000001) // The relevance keeps its own value
+    }
+
+    @Test
+    fun `a verified owner's listing below min-score is not stored`() {
+        doReturn(listOf(verifiedListing)).whenever(listingDao)
+            .findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(scored(0.45)).whenever(matcher).evaluate(any(), any(), any(), any())
+
+        assertEquals(0, service.matchMandate(MANDATE_ID))
+
+        verify(matchDao, never()).save(any<MatchEntity>())
+    }
+
+    @Test
+    fun `a re-score recomputes the rank of an existing match`() {
+        val existing = MatchEntity(
+            id = 9L,
+            mandate = search,
+            listing = verifiedListing,
+            status = MatchStatus.ACTIVE,
+            score = 0.6,
+            rankingScore = 0.7,
+        )
+        doReturn(existing).whenever(matchDao).findByMandateAndListing(search, verifiedListing)
+        doReturn(listOf(verifiedListing)).whenever(listingDao)
+            .findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(scored(0.8)).whenever(matcher).evaluate(eq(search), eq(verifiedListing), any(), eq(today))
+
+        service.matchMandate(MANDATE_ID)
+
+        val saved = argumentCaptor<MatchEntity>()
+        verify(matchDao).save(saved.capture())
+        assertEquals(9L, saved.firstValue.id)
+        assertEquals(0.8, saved.firstValue.score, 0.000001)
+        assertEquals(0.9, saved.firstValue.rankingScore, 0.000001) // 0.8 + 0.10, not the old 0.7
+    }
+
+    @Test
+    fun `a zero bonus stores the score as the rank`() {
+        val service = MatchService(
+            matchDao,
+            mandateDao,
+            listingDao,
+            matcher,
+            locationService,
+            tenantService,
+            clock,
+            mock(),
+            0.5,
+            3.0,
+            20,
+            0.0,
+        )
+        doReturn(listOf(verifiedListing)).whenever(listingDao)
+            .findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(scored(0.72)).whenever(matcher).evaluate(eq(search), eq(verifiedListing), any(), eq(today))
+
+        service.matchMandate(MANDATE_ID)
+
+        val saved = argumentCaptor<MatchEntity>()
+        verify(matchDao).save(saved.capture())
+        assertEquals(0.72, saved.firstValue.rankingScore, 0.000001)
+    }
+
+    @Test
+    fun `acceptInterest ranks the accepted match too`() {
+        val verified = listing1.copy(ownershipVerified = true)
+        doReturn(Optional.of(verified)).whenever(listingDao).findById(LISTING_ID)
+        doReturn(score(0.9)).whenever(matcher).scoreInterest(eq(search), eq(verified), any(), eq(today))
+        doReturn(null).whenever(matchDao).findByMandateAndListing(search, verified)
+
+        service.acceptInterest(MANDATE_ID, LISTING_ID)
+
+        val saved = argumentCaptor<MatchEntity>()
+        verify(matchDao).save(saved.capture())
+        assertEquals(0.9, saved.firstValue.score, 0.000001)
+        assertEquals(1.0, saved.firstValue.rankingScore, 0.000001) // 0.9 + 0.10, capped
     }
 
     @Test
@@ -410,6 +525,26 @@ class MatchServiceTest {
         doReturn(Optional.empty<ListingEntity>()).whenever(listingDao).findById(LISTING_ID)
 
         assertFailsWith<NotFoundException> { service.matchListing(LISTING_ID) }
+    }
+
+    @Test
+    fun `the list sorts by co-brokerage, then rank, then relevance, then id`() {
+        doReturn(PageImpl(emptyList<MatchEntity>()))
+            .whenever(matchDao).findAll(any<Specification<MatchEntity>>(), any<Pageable>())
+
+        service.search(SearchMatchRequest(mandateIds = listOf(MANDATE_ID)))
+
+        val pageable = argumentCaptor<Pageable>()
+        verify(matchDao).findAll(any<Specification<MatchEntity>>(), pageable.capture())
+        assertEquals(
+            listOf(
+                Sort.Order.asc("coBrokerage"),
+                Sort.Order.desc("rankingScore"),
+                Sort.Order.desc("score"),
+                Sort.Order.asc("id"),
+            ),
+            pageable.firstValue.sort.toList(),
+        )
     }
 
     @Test

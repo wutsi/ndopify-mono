@@ -126,6 +126,16 @@ class SearchMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `a verified owner's listing ranks above a better score`() {
+        val matches = rest.getForEntity("/v1/matches?mandate-id=6", SearchMatchResponse::class.java).body!!.matches
+
+        // 24 and 23 both rank 1.0 (the cap): the raw score orders them. 22 (rank 0.82) beats 21 (0.80) although it
+        // scores less; 25 (0.70) loses to both; 26 (rank 0.99) is co-brokerage, so last whatever its rank
+        assertEquals(listOf(24L, 23L, 22L, 21L, 25L, 26L), matches.map { it.id })
+        assertEquals(listOf(1.0, 0.95, 0.72, 0.80, 0.60, 0.99), matches.map { it.score })
+    }
+
+    @Test
     fun `listing of another agent`() {
         val response = rest.getForEntity("/v1/matches?listing-id=101&listing-id=109", ErrorResponse::class.java)
 

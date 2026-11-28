@@ -46,7 +46,14 @@ class MatchAutoProposalService(
 
     private fun propose(matches: List<MatchEntity>): Int {
         val mandateId = matches.first().mandate.id!!
-        val ids = matches.sortedByDescending { it.score }.take(MAX_PER_PROPOSAL).map { it.id!! }
+        val ids = matches
+            .sortedWith(
+                compareByDescending<MatchEntity> { it.rankingScore }
+                    .thenByDescending { it.score }
+                    .thenBy { it.id ?: Long.MAX_VALUE },
+            )
+            .take(MAX_PER_PROPOSAL)
+            .map { it.id!! }
         return try {
             proposalService.propose(ids)
             LOGGER.info("Mandate#$mandateId - Auto-proposed ${ids.size} match(es)")
