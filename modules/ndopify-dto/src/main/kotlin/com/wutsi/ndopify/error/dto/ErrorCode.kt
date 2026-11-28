@@ -93,6 +93,9 @@ object ErrorCode {
 
     /** The ownership verdict only exists for a LISTING mandate (#297). */
     val MANDATE_NOT_LISTING = "$PREFIX:mandate:not-listing"
+
+    /** An override is refused unless the mandate still has an identity and an ownership document (#377). */
+    val MANDATE_OWNERSHIP_OVERRIDE_WITHOUT_DOCUMENTS = "$PREFIX:mandate:ownership-override-without-documents"
     val MANDATE_NOT_ASSIGNED = "$PREFIX:mandate:not-assigned"
     val MANDATE_NOT_APPROVED = "$PREFIX:mandate:not-approved"
     val MANDATE_CANNOT_BE_APPROVED = "$PREFIX:mandate:cannot-be-approved"
