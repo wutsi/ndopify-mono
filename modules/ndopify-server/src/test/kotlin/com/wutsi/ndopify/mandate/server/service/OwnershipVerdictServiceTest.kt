@@ -38,7 +38,6 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.Optional
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class OwnershipVerdictServiceTest {
@@ -500,6 +499,25 @@ class OwnershipVerdictServiceTest {
     }
 
     @Test
+    fun `the arrondissement resolves when the locality does not`() {
+        val yaounde = city(2370101, "Yaounde", "CM")
+        val verification = evaluate(
+            document(DocumentType.NATIONAL_ID, DocumentStatus.EXTRACTED, nationalId("Jean Paul", "Mbarga", "2030-01-01")),
+            document(
+                DocumentType.LAND_TITLE,
+                DocumentStatus.EXTRACTED,
+                landTitle("Jean Paul Mbarga", locality = "Mvog-Ada", arrondissement = "Yaoundé"),
+            ),
+            mandateCity = yaounde,
+            resolveCity = { name -> if (name == "Yaoundé") yaounde else null },
+        )
+
+        assertVerdict(verification, OwnershipVerificationStatus.VERIFIED)
+        assertEquals(OwnershipLocationStatus.MATCH, verification.location.status)
+        assertEquals("Yaoundé", verification.location.documentLocality)
+    }
+
+    @Test
     fun `no mandate city is a hint, never a mismatch`() {
         val verification = evaluate(
             document(DocumentType.NATIONAL_ID, DocumentStatus.EXTRACTED, nationalId("Jean Paul", "Mbarga", "2030-01-01")),
@@ -572,10 +590,10 @@ class OwnershipVerdictServiceTest {
                 if (name == "Yaoundé") {
                     yaounde
                 } else if (name == "Douala") {
-                douala
-            } else {
-                null
-            }
+                    douala
+                } else {
+                    null
+                }
             },
         )
 
@@ -738,9 +756,6 @@ class OwnershipVerdictServiceTest {
 
     private fun city(id: Long, name: String, country: String, type: LocationType = LocationType.CITY) =
         LocationEntity(id = id, name = name, country = country, type = type, asciiName = name)
-
-    private fun resolve(vararg pairs: Pair<String, LocationEntity>): (String) -> LocationEntity? =
-        { name -> pairs.firstOrNull { it.first == name }?.second }
 
     private val confidences = mapOf(
         "number" to 0.9,
