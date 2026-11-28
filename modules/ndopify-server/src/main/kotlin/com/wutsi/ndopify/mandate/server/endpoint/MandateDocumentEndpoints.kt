@@ -115,7 +115,7 @@ class MandateDocumentEndpoints(
 
     /**
      * The ops re-run of one document, synchronously (off in prod): whatever its status, it's read again and the
-     * following GET shows the new fields and codes. No access check: it's operational only.
+     * following GET shows the new fields and codes. Admin-only (the `@OpsEndpoint` rule); no domain access check.
      */
     @OpsEndpoint
     @ResponseStatus(HttpStatus.NO_CONTENT)

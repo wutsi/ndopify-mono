@@ -912,9 +912,9 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
 - `platform/endpoint` — `@OpsEndpoint`: marks an operational endpoint method (ex: dispatching a mandate by hand).
   `OpsEndpointHandlerMapping` (wired by `EndpointConfiguration`) doesn't map them unless `ndopify.endpoints.ops` is
   `true` (default config; `false` in `application-prod.yml`, and when missing): the route doesn't exist, and
-  `ControllerErrorHandler` answers 404 `HTTP_NOT_FOUND` for an unknown path (`NoResourceFoundException`). They need a
-  token (any user's: none checks a role yet), like every non-public endpoint: mark any endpoint that mustn't be open
-  in prod with it.
+  `ControllerErrorHandler` answers 404 `HTTP_NOT_FOUND` for an unknown path (`NoResourceFoundException`). They're an
+  admin's: an `admin-console` token with the `admin` role (`CallerService.isAdmin`), else 403 `HTTP_ACCESS_DENIED`;
+  401 without a token, 404 when disabled. Mark any endpoint that mustn't be open in prod with it.
 ## Multi-Tenancy — current state
 
 Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not hand-rolled predicates:

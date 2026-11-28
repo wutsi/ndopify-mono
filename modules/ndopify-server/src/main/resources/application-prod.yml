@@ -37,7 +37,7 @@ springdoc:
 
 ndopify:
     endpoints:
-        ops: false                         # The @OpsEndpoint endpoints are unauthenticated
+        ops: false                         # The @OpsEndpoint endpoints are admin-only, and still off here
     security:
         jwt:
             secret: ${JWT_SECRET}          # No default: the server doesn't start without it

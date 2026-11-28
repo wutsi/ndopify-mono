@@ -1,6 +1,7 @@
 package com.wutsi.ndopify
 
 import com.wutsi.ndopify.refdata.dto.ApplicationCode
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import com.wutsi.ndopify.security.server.service.AccessTokenService
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
@@ -23,6 +24,8 @@ abstract class AuthorizationAwareEndpointIntegrationTest : TenantAwareEndpointIn
     protected var anonymousUser: Boolean = false
     protected var userId: Long = USER_ID
 
+    private var accessTokenOverride: String? = null
+
     // The token's roles: override with RoleCode.ADMIN to call as an admin of the admin console
     protected open val roles: Array<String> = arrayOf("ROLE_USER")
 
@@ -42,7 +45,7 @@ abstract class AuthorizationAwareEndpointIntegrationTest : TenantAwareEndpointIn
         execution: ClientHttpRequestExecution
     ): ClientHttpResponse {
         if (!this.anonymousUser) {
-            val accessToken = createAccessToken(application)
+            val accessToken = accessTokenOverride ?: createAccessToken(application)
             // set, not add: the interceptors of earlier test instances still run, and this one (the last) must win
             request.headers.set(HttpHeaders.AUTHORIZATION, "Bearer $accessToken")
         } else {
@@ -51,7 +54,10 @@ abstract class AuthorizationAwareEndpointIntegrationTest : TenantAwareEndpointIn
         return super.intercept(request, body, execution)
     }
 
-    protected open fun createAccessToken(application: String = ApplicationCode.ADMIN_CONSOLE): String {
+    protected open fun createAccessToken(
+        application: String = ApplicationCode.ADMIN_CONSOLE,
+        roles: Array<String> = this.roles,
+    ): String {
         return accessTokenService.create(
             application = application,
             tenantId = overrideTenantId ?: TENANT_ID,
@@ -59,5 +65,15 @@ abstract class AuthorizationAwareEndpointIntegrationTest : TenantAwareEndpointIn
             ttlSeconds = 60 * 60, // 1 hour
             roles = roles,
         )
+    }
+
+    /** Runs [block] as an `admin-console` admin, whatever the test's own caller. */
+    protected fun <T> asAdmin(block: () -> T): T {
+        accessTokenOverride = createAccessToken(roles = arrayOf(RoleCode.ADMIN))
+        try {
+            return block()
+        } finally {
+            accessTokenOverride = null
+        }
     }
 }

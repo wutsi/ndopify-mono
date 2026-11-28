@@ -243,7 +243,7 @@ logging:
 
 ndopify:
     endpoints:
-        ops: true                          # @OpsEndpoint endpoints (unauthenticated): off in prod
+        ops: true                          # @OpsEndpoint endpoints (admin-only): off in prod
     image:
         type: local                        # local | image-kit
         image-kit:

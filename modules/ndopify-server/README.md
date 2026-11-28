@@ -47,7 +47,8 @@ A non-domain **`platform`** package holds infrastructure shared across domains:
 - `platform.ai` — the Spring AI `ChatClient`s (`ChatClients.VISION` for images, `TEXT` for text) and their cached
   health indicators.
 - `platform.endpoint` — `@OpsEndpoint`, for operational endpoints (ex: dispatching a mandate by hand), only mapped
-  when `ndopify.endpoints.ops` is `true` (off in prod).
+  when `ndopify.endpoints.ops` is `true` (off in prod), and admin-only (an `admin-console` token with the `admin`
+  role).
 - `platform.config` — Spring `@Configuration` classes wiring the above.
 
 See the root [CLAUDE.md](../../CLAUDE.md) for architecture notes aimed at AI-assisted development, and this

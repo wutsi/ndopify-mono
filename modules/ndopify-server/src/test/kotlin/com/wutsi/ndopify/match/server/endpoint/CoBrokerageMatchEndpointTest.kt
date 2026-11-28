@@ -70,7 +70,7 @@ class CoBrokerageMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest()
     }
 
     private fun run(mandateId: Long) {
-        rest.postForEntity("/v1/matches/run?mandate-id=$mandateId", null, String::class.java)
+        asAdmin { rest.postForEntity("/v1/matches/run?mandate-id=$mandateId", null, String::class.java) }
     }
 
     // Read with SQL rather than the repository, whose queries are filtered by the tenant

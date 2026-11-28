@@ -5,10 +5,12 @@ import com.wutsi.ndopify.web.core.service.security.AccessTokenRenewalFilter
 import com.wutsi.ndopify.web.core.service.security.AccessTokenService
 import com.wutsi.ndopify.web.core.service.security.JwtAuthenticationFilter
 import com.wutsi.ndopify.web.core.service.security.JwtDecoder
+import jakarta.servlet.http.HttpServletResponse
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
+import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter
 import java.time.Clock
@@ -21,6 +23,18 @@ class SecurityConfiguration(
     private val tokenClient: NdTokenClient,
     private val clock: Clock,
 ) {
+    private val signInEntryPoint = SignInTargetEntryPoint("/login")
+
+    // An anonymous call to an actuator path is refused with 403, never sent to the sign-in page: only
+    // /actuator/health is permitted, the rest is denied (the rule above).
+    private val entryPoint = AuthenticationEntryPoint { request, response, exception ->
+        if (request.requestURI.startsWith("/actuator/")) {
+            response.status = HttpServletResponse.SC_FORBIDDEN
+        } else {
+            signInEntryPoint.commence(request, response, exception)
+        }
+    }
+
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
         return http
@@ -34,12 +48,14 @@ class SecurityConfiguration(
                     .requestMatchers("/find-property", "/find-property/**").permitAll()
                     .requestMatchers("/offer-property", "/offer-property/**").permitAll()
                     .requestMatchers("/locations", "/locations/**").permitAll()
+                    .requestMatchers("/actuator/health").permitAll() // Heroku's probe, without a session
+                    .requestMatchers("/actuator/**").denyAll() // never beans, mappings, info or the others
                     .anyRequest().authenticated()
             }
             // The JWT filter first: Spring Security resolves the renewal one's anchor only once it is registered.
             .addFilterBefore(authorizationFilter(), AnonymousAuthenticationFilter::class.java)
             .addFilterBefore(accessTokenRenewalFilter(), JwtAuthenticationFilter::class.java)
-            .exceptionHandling { it.authenticationEntryPoint(SignInTargetEntryPoint("/login")) }
+            .exceptionHandling { it.authenticationEntryPoint(entryPoint) }
             .csrf { customizer -> customizer.disable() }
             .httpBasic { customizer -> customizer.disable() }
             .logout { customizer -> customizer.disable() } // Disable spring logout, we handle it in our own controller

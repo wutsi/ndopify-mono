@@ -27,7 +27,7 @@ class RefreshAuthenticationEndpointTest : AuthorizationAwareEndpointIntegrationT
     private var sessionStartedAt: Instant = issuedAt
     private var ttlSeconds: Int = 3600
 
-    override fun createAccessToken(application: String): String = tokenService.create(
+    override fun createAccessToken(application: String, roles: Array<String>): String = tokenService.create(
         application = application,
         userId = USER_ID,
         roles = roles,

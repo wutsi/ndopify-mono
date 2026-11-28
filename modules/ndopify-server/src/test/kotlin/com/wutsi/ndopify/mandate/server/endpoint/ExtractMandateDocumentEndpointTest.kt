@@ -21,6 +21,7 @@ import com.wutsi.ndopify.mandate.server.service.document.PaySlipData
 import com.wutsi.ndopify.platform.image.ImageResizer
 import com.wutsi.ndopify.platform.storage.StorageService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import com.wutsi.ndopify.refdata.dto.StorageType
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
@@ -35,6 +36,8 @@ import kotlin.test.assertTrue
 /** The ops re-run of one document: synchronous, whatever its status. */
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/ExtractMandateDocumentEndpoint.sql"])
 class ExtractMandateDocumentEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    override val roles = arrayOf(RoleCode.ADMIN)
+
     @MockitoBean
     private lateinit var storageProvider: StorageServiceProvider
 

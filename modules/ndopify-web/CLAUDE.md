@@ -98,7 +98,8 @@ Package `com.wutsi.ndopify.web`:
   with the same status (`templates/error/404.html`); a 401 (it rejected the cookie's token) clears the cookie and
   redirects to the same page (a 404 when the request had no cookie, so it can't loop).
 - `ui/layout/TenantAdvice` — puts the tenant in every page's model as `tenant`. Controllers read it from the model
-  (`model.getAttribute("tenant")`), never as a `@ModelAttribute` parameter, which request parameters could bind.
+  (`model.getAttribute("tenant")`), never as a `@ModelAttribute` parameter, which request parameters could bind. It is
+  restricted to `ui/`: `/actuator/health` must answer without a tenant lookup.
 - `TenantContext` (web-core) — the tenant whose `publicPortalUrl` prefixes the request URL (from web-core's
   `NdTenantClient`, a plain `RestTemplate`); `TenantFormatter` (web-core) — dates and amounts.
 - `client/ndopify/NdListingClient`, `NdLocationClient`, `NdMatchClient` (get/accept/reject), `NdMandateClient`,
@@ -109,8 +110,9 @@ Package `com.wutsi.ndopify.web`:
 - `config/` — `SecurityConfiguration` permits only `/`, `/agent`, `/owner`, GET of the listing paths
   (`/*/listing/*`, `/*/*/listing/*/*`…), `POST /listings/*/interest`, `GET /match/*`,
   `POST /match/*/accept|reject|visit`, `GET /visits/*`,
-  `POST /visits/*/cancel`, `POST /visits/*/feedback`, `/assets/**`, `/sw.js`, `/offline.html`, `/manifest.json` and
-  `/error` (everything else is denied: a new page must be added there), `RestConfiguration`, `ClockConfiguration`,
+  `POST /visits/*/cancel`, `POST /visits/*/feedback`, `/assets/**`, `/sw.js`, `/offline.html`, `/manifest.json`,
+  `/actuator/health` and `/error` (everything else is denied: a new page must be added there), `RestConfiguration`,
+  `ClockConfiguration`,
   `AssetCacheConfiguration` and `WebCoreConfiguration` (`TenantContext` on `TenantPortal.PUBLIC_PORTAL`,
   `@Import(NdTenantClient)`).
 
