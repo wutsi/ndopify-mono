@@ -24,12 +24,16 @@ data class OwnershipLocationView(
  * sentence and the Documents link's label, never a document id, type, title, page, path or storage URL.
  *
  * [unavailable] when the verdict couldn't be read (or is `UNKNOWN`): the section says so and shows nothing else.
+ * [overridden] is a `VERIFIED` verdict an admin's override decided (#377): its own pill and copy, never worded as a
+ * document check; [overriddenText] is that copy, null otherwise. The intro drops its documents clause when it is set.
  */
 data class OwnershipSectionView(
     val status: OwnershipVerificationStatus,
     val unavailable: Boolean,
     val tagLabel: String?,
     val tagStyle: String?,
+    val overridden: Boolean,
+    val overriddenText: String?,
     val intro: String,
     val missing: List<String>,
     val waiting: String?,

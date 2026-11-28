@@ -2134,6 +2134,34 @@ class MandateTemplateTest {
     }
 
     @Test
+    fun `an overridden owner verification has its own state`() {
+        doReturn(OwnershipVerification(OwnershipVerificationStatus.VERIFIED, overridden = true))
+            .whenever(mandateClient).ownership(201)
+
+        val section = verificationSection()
+
+        assertEquals("Vérifiée par Ndopify", section.selectFirst(".status-tag")!!.text())
+        assertTrue(section.text().contains("Propriétaire vérifié"))
+        assertTrue(section.text().contains("Ndopify a vérifié le propriétaire après examen de sa situation."))
+        assertTrue(section.text().contains("Un propriétaire vérifié est ce qui permet de publier l'annonce."))
+        assertFalse(section.text().contains("à partir des pièces de la section Documents"))
+        assertFalse(Regex("\\d{2}/\\d{2}/\\d{4}").containsMatchIn(section.text()))
+        assertTrue(section.select("a[href^='/listings']").isEmpty())
+    }
+
+    @Test
+    fun `an overridden verified owner links the mandate's listing`() {
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
+        doReturn(OwnershipVerification(OwnershipVerificationStatus.VERIFIED, overridden = true))
+            .whenever(mandateClient).ownership(201)
+
+        val section = verificationSection()
+
+        assertEquals("Vérifiée par Ndopify", section.selectFirst(".status-tag")!!.text())
+        assertEquals("/listings/501", section.selectFirst("a[href='/listings/501']")!!.attr("href"))
+    }
+
+    @Test
     fun `the owner verification says when it is unavailable`() {
         doThrow(RestClientException("down")).whenever(mandateClient).ownership(201)
 
