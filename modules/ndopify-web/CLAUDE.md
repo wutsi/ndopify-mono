@@ -109,8 +109,9 @@ Package `com.wutsi.ndopify.web`:
 - `config/` — `SecurityConfiguration` permits only `/`, `/agent`, `/owner`, GET of the listing paths
   (`/*/listing/*`, `/*/*/listing/*/*`…), `POST /listings/*/interest`, `GET /match/*`,
   `POST /match/*/accept|reject|visit`, `GET /visits/*`,
-  `POST /visits/*/cancel`, `POST /visits/*/feedback`, `/assets/**`, `/sw.js`, `/offline.html`, `/manifest.json` and
-  `/error` (everything else is denied: a new page must be added there), `RestConfiguration`, `ClockConfiguration`,
+  `POST /visits/*/cancel`, `POST /visits/*/feedback`, `/assets/**`, `/sw.js`, `/offline.html`, `/manifest.json`,
+  `/actuator/health` and `/error` (everything else is denied: a new page must be added there), `RestConfiguration`,
+  `ClockConfiguration`,
   `AssetCacheConfiguration` and `WebCoreConfiguration` (`TenantContext` on `TenantPortal.PUBLIC_PORTAL`,
   `@Import(NdTenantClient)`).
 
