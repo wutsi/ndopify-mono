@@ -83,8 +83,9 @@ class MatchService(
     /**
      * The matches of the mandates [SearchMatchRequest.mandateIds] and / or of the listings
      * [SearchMatchRequest.listingIds] (both when both are given), in [SearchMatchRequest.statuses] (default: ACTIVE),
-     * best score first, all mandates together. Only while the mandate is APPROVED and the listing PUBLISHED: a closed search, or a rented listing, keeps its rows but isn't
-     * listed.
+     * best rank first (`rankingScore`, the score plus the verified-owner bonus when the listing's owner was verified at
+     * publication, capped at 1.0; ties by score then id), all mandates together. Only while the mandate is APPROVED and
+     * the listing PUBLISHED: a closed search, or a rented listing, keeps its rows but isn't listed.
      */
     fun search(request: SearchMatchRequest): List<MatchEntity> {
         val statuses = request.statuses.ifEmpty { listOf(MatchStatus.ACTIVE) }
@@ -107,6 +108,7 @@ class MatchService(
 
         val sort = Sort.by(
             Sort.Order.asc("coBrokerage"),
+            Sort.Order.desc("rankingScore"),
             Sort.Order.desc("score"),
             Sort.Order.asc("id"),
         )

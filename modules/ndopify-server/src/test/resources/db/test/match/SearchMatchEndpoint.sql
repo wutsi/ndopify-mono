@@ -70,21 +70,59 @@ INSERT INTO T_LISTING(
 -- 1, 2: active   3: active, listing rented   4: dismissed   5: agent 30's   6: closed search   7: search 4's   9: other tenant
 -- 10: search 4's, accepted by its customer
 INSERT INTO T_MATCH(
-    id, tenant_id, mandate_id, listing_id, agent_id, status, score, listing_price,
+    id, tenant_id, mandate_id, listing_id, agent_id, status, score, ranking_score, listing_price,
     neighborhood_score, price_score, rooms_score, amenities_score, availability_score, furniture_score,
     created_at, modified_at
 ) VALUES
-    (1, 1, 1, 101, 20, 'ACTIVE', 0.9, 160000, 1.0, 1.0, 0.7, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
-    (2, 1, 1, 102, 20, 'ACTIVE', 0.7, 140000, 0.5, 1.0, 0.7, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
-    (3, 1, 1, 103, 20, 'ACTIVE', 0.95, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
-    (4, 1, 1, 104, 20, 'DISMISSED', 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
-    (5, 1, 2, 109, 30, 'ACTIVE', 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
-    (6, 1, 3, 101, 20, 'ACTIVE', 0.8, 160000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
-    (7, 1, 4, 102, 20, 'ACTIVE', 0.85, 140000, 1.0, 1.0, 0.7, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
-    (9, 2, 9, 901, 90, 'ACTIVE', 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
-    (10, 1, 4, 101, 20, 'ACCEPTED', 0.75, 160000, 1.0, 1.0, 0.7, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00');
+    (1, 1, 1, 101, 20, 'ACTIVE', 0.9, 0.9, 160000, 1.0, 1.0, 0.7, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
+    (2, 1, 1, 102, 20, 'ACTIVE', 0.7, 0.7, 140000, 0.5, 1.0, 0.7, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
+    (3, 1, 1, 103, 20, 'ACTIVE', 0.95, 0.95, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
+    (4, 1, 1, 104, 20, 'DISMISSED', 0.8, 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
+    (5, 1, 2, 109, 30, 'ACTIVE', 0.8, 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
+    (6, 1, 3, 101, 20, 'ACTIVE', 0.8, 0.8, 160000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
+    (7, 1, 4, 102, 20, 'ACTIVE', 0.85, 0.85, 140000, 1.0, 1.0, 0.7, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
+    (9, 2, 9, 901, 90, 'ACTIVE', 0.8, 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
+    (10, 1, 4, 101, 20, 'ACCEPTED', 0.75, 0.75, 160000, 1.0, 1.0, 0.7, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00');
 
 -- 11: own inventory (below the co-brokerage score)   12: another agent's listing
-INSERT INTO T_MATCH(id, tenant_id, mandate_id, listing_id, agent_id, status, score, listing_price, co_brokerage) VALUES
-    (11, 1, 5, 104, 20, 'ACTIVE', 0.4, 150000, FALSE),
-    (12, 1, 5, 109, 20, 'ACTIVE', 0.99, 150000, TRUE);
+INSERT INTO T_MATCH(
+    id, tenant_id, mandate_id, listing_id, agent_id, status, score, ranking_score, listing_price, co_brokerage
+) VALUES
+    (11, 1, 5, 104, 20, 'ACTIVE', 0.4, 0.4, 150000, FALSE),
+    (12, 1, 5, 109, 20, 'ACTIVE', 0.99, 0.99, 150000, TRUE);
+
+-- Search 6 (agent 20's) and its listings' mandates: the verified-owner rank. 22: the co-brokerage listing's
+INSERT INTO T_MANDATE(
+    id, tenant_id, customer_id, agent_id, status, mandate_type, listing_type, property_category, city_id,
+    property_type, rooms, price, price_periodicity_type, currency_code
+) VALUES
+    (6, 1, 10, 20, 'APPROVED', 'SEARCH', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
+    (15, 1, 11, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
+    (16, 1, 11, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
+    (17, 1, 11, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
+    (18, 1, 11, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
+    (21, 1, 11, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
+    (22, 1, 11, 30, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF');
+
+INSERT INTO T_LISTING(
+    id, tenant_id, mandate_id, agent_id, property_category, listing_type, status, city_id, neighborhood_id,
+    property_type, rooms, price, currency_code, price_periodicity_type, title, ownership_verified
+) VALUES
+    (105, 1, 15, 20, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 2, 150000, 'XAF', 'MONTHLY', 'Unverified 0.80', 0),
+    (106, 1, 16, 20, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 2, 150000, 'XAF', 'MONTHLY', 'Verified 0.72', 1),
+    (107, 1, 17, 20, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 2, 150000, 'XAF', 'MONTHLY', 'Verified 0.95', 1),
+    (108, 1, 18, 20, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 2, 150000, 'XAF', 'MONTHLY', 'Unverified 1.00', 0),
+    (111, 1, 21, 20, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 2, 150000, 'XAF', 'MONTHLY', 'Verified 0.60', 1),
+    (112, 1, 22, 30, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 2, 150000, 'XAF', 'MONTHLY', 'Co-brokerage 0.99', 0);
+
+-- 21: 0.80, unverified (rank 0.80)      22: 0.72, verified (rank 0.82)   23: 0.95, verified (rank 1.0, capped)
+-- 24: 1.00, unverified (rank 1.0)       25: 0.60, verified (rank 0.70)   26: 0.99, co-brokerage
+INSERT INTO T_MATCH(
+    id, tenant_id, mandate_id, listing_id, agent_id, status, score, ranking_score, listing_price, co_brokerage
+) VALUES
+    (21, 1, 6, 105, 20, 'ACTIVE', 0.80, 0.80, 150000, FALSE),
+    (22, 1, 6, 106, 20, 'ACTIVE', 0.72, 0.82, 150000, FALSE),
+    (23, 1, 6, 107, 20, 'ACTIVE', 0.95, 1.00, 150000, FALSE),
+    (24, 1, 6, 108, 20, 'ACTIVE', 1.00, 1.00, 150000, FALSE),
+    (25, 1, 6, 111, 20, 'ACTIVE', 0.60, 0.70, 150000, FALSE),
+    (26, 1, 6, 112, 20, 'ACTIVE', 0.99, 0.99, 150000, TRUE);

@@ -24,6 +24,7 @@ import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.match.dto.MatchRejectionReason
 import com.wutsi.ndopify.match.dto.MatchStatus
+import com.wutsi.ndopify.match.dto.SearchMatchRequest
 import com.wutsi.ndopify.match.server.dao.MatchRepository
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.match.server.mapper.MatchMapper
@@ -34,6 +35,10 @@ import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Sort
+import org.springframework.data.jpa.domain.Specification
 import org.springframework.orm.ObjectOptimisticLockingFailureException
 import java.time.Clock
 import java.time.Instant
@@ -520,6 +525,26 @@ class MatchServiceTest {
         doReturn(Optional.empty<ListingEntity>()).whenever(listingDao).findById(LISTING_ID)
 
         assertFailsWith<NotFoundException> { service.matchListing(LISTING_ID) }
+    }
+
+    @Test
+    fun `the list sorts by co-brokerage, then rank, then relevance, then id`() {
+        doReturn(PageImpl(emptyList<MatchEntity>()))
+            .whenever(matchDao).findAll(any<Specification<MatchEntity>>(), any<Pageable>())
+
+        service.search(SearchMatchRequest(mandateIds = listOf(MANDATE_ID)))
+
+        val pageable = argumentCaptor<Pageable>()
+        verify(matchDao).findAll(any<Specification<MatchEntity>>(), pageable.capture())
+        assertEquals(
+            listOf(
+                Sort.Order.asc("coBrokerage"),
+                Sort.Order.desc("rankingScore"),
+                Sort.Order.desc("score"),
+                Sort.Order.asc("id"),
+            ),
+            pageable.firstValue.sort.toList(),
+        )
     }
 
     @Test
