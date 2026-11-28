@@ -1953,8 +1953,9 @@
                 comments: "Achat avec un prêt bancaire."
             }
         },
-        // #375: a seller's villa (LISTING · SALE), signed, whose listing 706 is verified and waits on its owner's
-        // verification (#297, the gate of #299). No card on index.html: opened by URL, and through listing.html?id=706.
+        // #375: a seller's villa (LISTING · SALE), signed, whose listing 706 is verified but not yet published; the
+        // neutral publication-in-progress block is explained on its own page. No card on index.html: opened by URL,
+        // and through listing.html?id=706.
         312: {
             party: "bailleur",
             listingType: "SALE",
@@ -3567,7 +3568,7 @@
             text.textContent = tag === "PUBLISHED" ? "Annonce publiée le " + formatDate(listing.publishedAt) + "."
                 : tag === "PENDING" ? "Annonce envoyée le " + formatDate(listing.submittedAt) + ", en vérification."
                     : tag === "REJECTED" ? "Annonce à corriger : " + listing.rejection.reason
-                        // #375: the line keeps the plain tag; the wait on the owner is explained on its own page only.
+                        // #375: the line keeps the plain tag; the publication wait is explained on its own page only.
                         : tag === "VERIFIED" ? "Annonce vérifiée."
                             : "Annonce en brouillon : " + (missingSections(listing).length
                                 ? "encore à faire, " + missingSections(listing).join(", ") + "."
@@ -4747,11 +4748,12 @@
         DRAFT: ["Brouillon", "info"],
         REJECTED: ["À corriger", "warning"],
         PENDING: ["En vérification", "warning"],
-        // #375: verified, but published only once #297's verdict answers VERIFIED (#299's gate). The hold label is
-        // opt-in: the listing page only, when the owner isn't verified yet (see listingTag).
+        // #375: verified but not yet published. The neutral hold label is opt-in: the listing page only, on the
+        // listing's own agent's VERIFIED listing; no ownership verdict is read, no owner verification is claimed,
+        // and Partner Central cannot read whether publication is blocked (see listingTag).
         VERIFIED: ["Vérifiée", "success"],
-        VERIFIED_HOLD: ["Vérifiée — publication en attente", "warning"],
-        // Past the ownership gate: publication has started, today's "En vérification" tag and panel (as PENDING).
+        VERIFIED_HOLD: ["Vérifiée — publication en cours", "warning"],
+        // Publication has started: today's "En vérification" tag and panel (as PENDING).
         PUBLISHING: ["En vérification", "warning"],
         PUBLISHED: ["Publiée", "success"],
         RENTED: ["Loué", "warning"],
@@ -4868,10 +4870,12 @@
             stateOf(mandateId).status === "APPROVED";
     }
 
-    // The listing's status as a tag. #375: the hold variant is opt-in — only the listing page passes [blocked], when a
-    // VERIFIED listing's mandate owner isn't verified yet; every other page (and the mandate's line) keeps "Vérifiée".
-    function listingTag(listing, blocked) {
-        if (listing.status === "VERIFIED") return blocked ? "VERIFIED_HOLD" : "VERIFIED";
+    // The listing's status as a tag. #375: the hold variant is opt-in — only the listing page passes [hold], for the
+    // listing's own agent's VERIFIED listing (verified but not yet published; no ownership verdict is read, no owner
+    // verification is claimed, no ownership read; it is not blocked by owner); every other page (and the mandate's
+    // line) keeps "Vérifiée", and every other status is unchanged.
+    function listingTag(listing, hold) {
+        if (listing.status === "VERIFIED") return hold ? "VERIFIED_HOLD" : "VERIFIED";
         return listing.status === "DRAFT" && listing.rejection ? "REJECTED" : listing.status;
     }
 
@@ -5003,11 +5007,11 @@
     };
 
     /*
-     * #375: a VERIFIED listing whose publication waits on its owner's verification (GET
-     * /v1/mandates/{id}/ownership, #297; the gate of #299). From seller 312, whose own mandate it is, so it never
-     * competes with the published 501 (203) nor the villa 601 (301). Every section was checked on site and its five
-     * photos verified, and the listing passed its own check: only the owner's verdict stands between it and
-     * publication. ?ownership= switches the verdict (see listingVerdict); production reads it on every page load.
+     * #375: a VERIFIED listing, verified but not yet published. From seller 312, whose own mandate it is, so it
+     * never competes with the published 501 (203) nor the villa 601 (301). Every section was checked on site and its
+     * five photos verified, and the listing passed its own check. The page shows a neutral *Publication en cours*
+     * block: no ownership verdict is read, no owner verification is claimed, no publication gate is read; the
+     * mandate's documents are only a likely cause, not an assertion. Nothing is published or retried here.
      */
     var VERIFIED_LISTING_SAMPLE = { id: "706", mandateId: "312", createdDaysAgo: 4, submittedDaysAgo: 2 };
 
@@ -5238,119 +5242,24 @@
         var missing = $("[data-listing-missing]");
 
         /*
-         * #375 (prototype only): the verdict ?ownership= asks for, as GET /v1/mandates/{id}/ownership (#297) sends it
-         * — a status, then one reason per missing piece (PENDING) or per failed check (FAILED), a *_UNUSABLE one
-         * carrying the document's problemCodes. The static markup is the default (PENDING, both pieces missing), so
-         * no switch keeps it. Production reads the verdict for the listing's own agent's VERIFIED listing only, once
-         * per page load, and makes no call for any other status nor on the read-only lens.
+         * #375: a VERIFIED listing (the listing's own agent, not the read-only lens) reads the neutral hold label and
+         * one neutral *Publication en cours* block above the checklist. No ownership verdict is read, no owner
+         * verification is claimed, no publication gate is read, no ownership call; no reason is listed; the mandate's
+         * documents are only a likely cause. The block's one action opens the mandate's
+         * Documents section; it is not owner verification. No loading, empty or error state is added because there
+         * is no new read.
          */
-        var OWNERSHIP_PENDING = {
-            both: [{ code: "OWNERSHIP_ID_MISSING" }, { code: "OWNERSHIP_DOCUMENT_MISSING" }],
-            "id-missing": [{ code: "OWNERSHIP_ID_MISSING" }],
-            "document-missing": [{ code: "OWNERSHIP_DOCUMENT_MISSING" }],
-            // A piece still UPLOADED or EXTRACTING: no reason, the reading is in progress.
-            "in-flight": []
-        };
-        var OWNERSHIP_FAILED = {
-            // The story's example: several reasons, one of them *_UNUSABLE with the document's problem codes.
-            mixed: [
-                { code: "OWNERSHIP_ID_EXPIRED" },
-                { code: "OWNERSHIP_DOCUMENT_UNUSABLE", details: ["DOCUMENT_TYPE_MISMATCH", "DOCUMENT_PAGE_MISSING"] },
-                { code: "OWNERSHIP_DOCUMENT_NAME_MISMATCH" }
-            ],
-            "id-expired": [{ code: "OWNERSHIP_ID_EXPIRED" }],
-            "id-unusable": [{ code: "OWNERSHIP_ID_UNUSABLE", details: ["DOCUMENT_UNREADABLE"] }],
-            "id-name": [{ code: "OWNERSHIP_ID_NAME_MISMATCH" }],
-            "document-unusable": [{
-                code: "OWNERSHIP_DOCUMENT_UNUSABLE",
-                details: ["DOCUMENT_TYPE_MISMATCH", "DOCUMENT_PAGE_MISSING"]
-            }],
-            "document-name": [{ code: "OWNERSHIP_DOCUMENT_NAME_MISMATCH" }]
-        };
-
-        function listingVerdict() {
-            var choice = params.get("ownership");
-            if (choice === "unavailable") return { status: "UNAVAILABLE", reasons: [] };
-            if (choice === "verified") return { status: "VERIFIED", reasons: [] };
-            if (choice === "failed") {
-                return {
-                    status: "FAILED",
-                    reasons: OWNERSHIP_FAILED[params.get("reason")] || OWNERSHIP_FAILED.mixed
-                };
-            }
-            if (choice === "pending") {
-                return {
-                    status: "PENDING",
-                    reasons: OWNERSHIP_PENDING[params.get("reason")] || OWNERSHIP_PENDING.both
-                };
-            }
-            return { status: "PENDING", reasons: OWNERSHIP_PENDING.both };
+        function publicationHref() {
+            return "mandate.html?id=" + encodeURIComponent(listing.mandateId) + "#documents-title";
         }
 
-        var ownership = window.NdOwnership;
-
-        // The one action of the block: the mandate's *Vérification du propriétaire* section, immediately before its
-        // Documents (/mandates/{id}#ownership-title). PROTOTYPE: the switch is carried along, so that the mandate page
-        // shows the verdict this block words; production links the plain section.
-        function ownershipHref() {
-            var choice = params.get("ownership");
-            if (!choice || choice === "verified") {
-                return "mandate.html?id=" + encodeURIComponent(listing.mandateId) + "#ownership-title";
-            }
-            var reason = params.get("reason") || (choice === "failed" ? "mixed" : "");
-            return "mandate.html?id=" + encodeURIComponent(listing.mandateId) + "&ownership=" +
-                encodeURIComponent(choice) +
-                (reason ? "&reason=" + encodeURIComponent(reason) : "") +
-                "#ownership-title";
-        }
-
-        // One block per verdict, server-rendered in production: the *En vérification* panel gives way while the wait
-        // is the owner's, and only the verdict's own block shows. No verdict (VERIFIED, or any other status) shows none.
-        function renderOwnership(verdict) {
-            var shown = verdict && verdict.status !== "VERIFIED" ? verdict.status : "";
-            $all("[data-listing-ownership]").forEach(function (block) {
-                block.hidden = block.getAttribute("data-listing-ownership") !== shown;
-            });
-            if (!shown) return;
-            var block = $("[data-listing-ownership='" + shown + "']");
-            var link = $("[data-listing-ownership-link]", block);
-            if (link) link.href = ownershipHref();
-            if (shown === "PENDING") {
-                var pieces = $("[data-listing-ownership-pieces]", block);
-                pieces.textContent = "";
-                verdict.reasons.forEach(function (reason) {
-                    var item = document.createElement("li");
-                    item.textContent = ownership.MISSING_PIECES[reason.code] || ownership.MISSING_OTHER;
-                    pieces.appendChild(item);
-                });
-                // Without a reason, the piece is being read: nothing to add, and no error styling.
-                var reading = verdict.reasons.length === 0;
-                pieces.hidden = reading;
-                $("[data-listing-ownership-reading]", block).hidden = !reading;
-            }
-            if (shown === "FAILED") {
-                var reasons = $("[data-listing-ownership-reasons]", block);
-                var reasonTemplate = $("[data-listing-ownership-reason-template]");
-                reasons.textContent = "";
-                verdict.reasons.forEach(function (reason) {
-                    var item = reasonTemplate.content.firstElementChild.cloneNode(true);
-                    var wording = ownership.REASON_WORDING[reason.code] || ownership.REASON_OTHER;
-                    // The check's kind, never a document type, title, id, page, path, URL nor extracted value.
-                    var check = $("[data-reason-check]", item);
-                    check.textContent = ownership.checkKind(reason.code);
-                    check.hidden = !check.textContent;
-                    $("[data-reason-text]", item).textContent = wording.text;
-                    var problems = $("[data-reason-problems]", item);
-                    (reason.details || []).forEach(function (code) {
-                        var problem = document.createElement("li");
-                        problem.textContent = ownership.PROBLEM_INSTRUCTIONS[code] || ownership.PROBLEM_OTHER;
-                        problems.appendChild(problem);
-                    });
-                    problems.hidden = problems.children.length === 0;
-                    $("[data-reason-action]", item).textContent = wording.action;
-                    reasons.appendChild(item);
-                });
-            }
+        // The one neutral block, server-rendered: shown exactly when the tag is the hold label; everything else as today.
+        function renderPublication(hold) {
+            var block = $("[data-listing-publication]");
+            if (!block) return;
+            block.hidden = !hold;
+            var link = $("[data-listing-publication-link]", block);
+            if (link) link.href = publicationHref();
         }
 
         function showFlash(text) {
@@ -5361,11 +5270,10 @@
 
         function render() {
             listing = readOnly ? CO_BROKERAGE_LISTING : listings()[id];
-            // #375: the ownership verdict, read only on the listing's own agent's VERIFIED page — no call for any
-            // other status, nor on the read-only lens (which never admits a VERIFIED listing).
-            var verdict = listing.status === "VERIFIED" && !readOnly ? listingVerdict() : null;
-            var blocked = !!verdict && verdict.status !== "VERIFIED";
-            var tag = listingTag(listing, blocked);
+            // #375: a VERIFIED listing (the listing's own agent, not the read-only lens) reads the neutral hold
+            // label; no ownership verdict is read, no ownership call; every other status renders as today.
+            var hold = listing.status === "VERIFIED" && !readOnly;
+            var tag = listingTag(listing, hold);
             var editable = listing.status === "DRAFT";
             var title = (readOnly ? "" : "Annonce · ") + listingTitle(listing);
             document.title = title + " — Ndopify Partner Central";
@@ -5380,13 +5288,14 @@
             tagEl.className = "status-tag status-tag--" + LISTING_TAGS[tag][1] +
                 (tag === "VERIFIED_HOLD" ? " status-tag--hold" : "");
 
-            // A VERIFIED listing keeps today's *En vérification* panel; blocked, the ownership block replaces it.
-            // PUBLISHING is past the gate (#299): today's panel too.
-            var panelTag = tag === "VERIFIED" || tag === "PUBLISHING" ? "PENDING" : tag;
+            // A VERIFIED listing's *En vérification* panel gives way to the neutral *Publication en cours* block;
+            // PUBLISHING keeps today's panel.
+            var panelTag = tag === "PUBLISHING" ? "PENDING" : tag;
+            var holdTag = tag === "VERIFIED_HOLD";
             $all("[data-listing-panel]").forEach(function (panel) {
-                panel.hidden = readOnly || blocked || panel.getAttribute("data-listing-panel") !== panelTag;
+                panel.hidden = readOnly || holdTag || panel.getAttribute("data-listing-panel") !== panelTag;
             });
-            renderOwnership(verdict);
+            renderPublication(holdTag);
             if (listing.rejection) $("[data-rejection-reason]").textContent = listing.rejection.reason;
             if (listing.submittedAt) $("[data-submitted-at]").textContent = formatDate(listing.submittedAt);
             // PROTOTYPE: no public portal here, the link goes to a stub

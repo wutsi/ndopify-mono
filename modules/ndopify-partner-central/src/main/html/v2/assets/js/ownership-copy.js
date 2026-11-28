@@ -1,20 +1,16 @@
 /*
- * Ndopify Partner Central — the owner verification's French wording (#298), shared by the mandate page's
- * *Vérification du propriétaire* section (mandate-ownership.js) and the listing page's publication block (#375,
- * partner-central.js), static prototype.
+ * Ndopify Partner Central — the owner verification's French wording (#298), for the mandate page's
+ * *Vérification du propriétaire* section (mandate-ownership.js), static prototype.
  *
- * Production words the verdict once, in the server's views (MandateOwnershipViews, reused by ListingViews), so that
- * the two pages cannot drift; this file plays that single source here. Loaded before mandate-ownership.js
- * (mandate.html) and before partner-central.js (listing.html).
- *
+ * Production words the verdict once, in the server's views (MandateOwnershipViews); this file plays that single
+ * source here. Loaded before mandate-ownership.js (mandate.html).
  * The shipped verdict (#297, ndopify-dto 0.0.113) is a status and its reasons only:
  * { status, reasons: [{ code, details }] } — no evidence date, no document type, title, page, path nor extracted
  * value. A *_MISSING reason is a piece to add, a decisive reason is a check that failed and the one action it calls
  * for; a *_UNUSABLE reason carries the document's problemCodes as details, worded as the document page words them
  * (#331). A reason never names a document id, page, path, URL, extracted value, type nor agent title.
  * #376 adds the city comparison (OwnershipLocation: mandateCity, documentLocality, status) and its reason,
- * OWNERSHIP_PROPERTY_MISMATCH: the two places are the verdict's only property data, the mandate page shows them, the
- * listing page words the sentence alone.
+ * OWNERSHIP_PROPERTY_MISMATCH: the two places are the verdict's only property data, the mandate page shows them.
  */
 (function () {
     "use strict";
@@ -59,8 +55,8 @@
             action: "Ajoutez un titre foncier ou un certificat de propriété au nom du propriétaire."
         },
         // #376: the title names the customer, but its locality is a known city other than the mandate's. The two
-        // places are the comparison's only data; the mandate's page shows them above this wording, the listing page
-        // words the sentence alone. No document type, title, id, page, path, URL nor extracted value.
+        // places are the comparison's only data; the mandate's page shows them above this wording. No document type,
+        // title, id, page, path, URL nor extracted value.
         OWNERSHIP_PROPERTY_MISMATCH: {
             text: "Le document désigne un bien dans une autre ville que celle du mandat : il ne justifie pas la " +
                 "propriété de ce bien.",
