@@ -1,3 +1,12 @@
+management:
+    endpoint:
+        health:
+            show-details: never
+    endpoints:
+        web:
+            exposure:
+                include: "health"
+
 spring:
     flyway:
         clean-disabled: false
@@ -28,6 +37,8 @@ logging:
         com.wutsi: INFO
 
 ndopify:
+    endpoints:
+        ops: true                          # Kept on in TEST: admin-only (platform/endpoint)
     database:
         pool-size: 16
     mail:
