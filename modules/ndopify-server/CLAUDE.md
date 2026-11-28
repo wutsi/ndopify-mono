@@ -335,6 +335,23 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   comparison's two display names only — never a document, a page, a path, a name or another extracted value; never
   log the city or the locality. The verdict also gates publication (#299): a VERIFIED listing whose owner is not
   verified is not sent for publication, by the endpoint nor by `ListingJobs.publish`.
+  #377 adds the admin's audited override of it: three columns on `T_MANDATE` (`ownership_override_reason` /
+  `_by` / `_at`, `V24_0`), set and cleared together, a null reason meaning no override (no history table: the log line
+  is the trace). `POST /v1/mandates/{id}/ownership/override` (body `OverrideOwnershipVerificationRequest.reason`,
+  mandatory, 500 at most) and `…/override/clear` are `@OpsEndpoint`s (404 in prod), run by
+  `MandateOwnershipOpsEndpoints` / `MandateOwnershipOverrideService` for an `admin-console` admin only (a local
+  `CallerService.isAdmin` check keeps a non-admin's 403 before the mandate is read, as #360's interceptor does); a set
+  refuses a SEARCH mandate (400 `MANDATE_NOT_LISTING`) and a mandate without at least one identity (`NATIONAL_ID` /
+  `PASSPORT`) and one ownership (`LAND_TITLE` / `CERTIFICATE_OF_OWNERSHIP`) document, any status (409
+  `MANDATE_OWNERSHIP_OVERRIDE_WITHOUT_DOCUMENTS`, nothing written); a closed or cancelled listing mandate accepts one,
+  and clearing without an override is a no-op. `OwnershipVerdictService.verify` reads the override first: while the
+  reason is set and both kinds of piece exist it answers `VERIFIED`, no reasons, `overridden = true`, without reading
+  the customer nor the city; otherwise it computes the verdict as above with `overridden = false`, so the override
+  stops applying at the next read when a kind is gone and applies again when both are back, without clearing the audit
+  fields. The reasons, the author and the time never reach a DTO nor a page: the verdict carries `overridden` only,
+  and the log carries the mandate id, the action, the admin's user id and, for a set, the reason. The mandate page
+  shows the overridden `VERIFIED` as *Vérifiée par Ndopify* with the owner verified after review, never that the
+  documents passed; #300 keeps the generic public badge and never reads `overridden`.
   A search's `MandateSummary` has what a card shows (criteria, amenities, `movingPeriod`, `availableFrom`) and its
   `contractId` only (a client needing the contract's dates searches `/v1/contracts?id=`), not the terms nor the
   customer's comments. `GET /v1/mandates/{id}` carries `visitFee` (`Money`), read through from the mandate's signed

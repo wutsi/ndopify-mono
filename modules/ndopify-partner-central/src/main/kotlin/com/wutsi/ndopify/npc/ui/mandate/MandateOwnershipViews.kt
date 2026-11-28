@@ -30,6 +30,9 @@ object MandateOwnershipViews {
     private const val ADD_DOCUMENTS = "Ajouter ces pièces dans Documents"
     private const val SEE_DOCUMENTS = "Voir les documents"
 
+    private const val OVERRIDDEN_TAG = "Vérifiée par Ndopify"
+    private const val OVERRIDDEN_TEXT = "Ndopify a vérifié le propriétaire après examen de sa situation."
+
     private const val ID_CHECK = "La pièce d'identité"
     private const val DOCUMENT_CHECK = "Le document de propriété"
 
@@ -88,15 +91,19 @@ object MandateOwnershipViews {
         listingId: Long?,
         labels: DocumentFieldLabels,
     ): OwnershipSectionView {
-        val intro = "Ndopify vérifie que ${MandateRules.words(mandate.mandateType, mandate.listingType).the} est bien " +
-            "le propriétaire du bien, à partir des pièces de la section Documents."
+        val owner = MandateRules.words(mandate.mandateType, mandate.listingType).the
         val status = verification?.status ?: OwnershipVerificationStatus.UNKNOWN
+        val overridden = status == OwnershipVerificationStatus.VERIFIED && verification?.overridden == true
+        val intro = "Ndopify vérifie que $owner est bien le propriétaire du bien" +
+            if (overridden) "." else ", à partir des pièces de la section Documents."
         if (verification == null || status == OwnershipVerificationStatus.UNKNOWN) {
             return OwnershipSectionView(
                 status = OwnershipVerificationStatus.UNKNOWN,
                 unavailable = true,
                 tagLabel = null,
                 tagStyle = null,
+                overridden = false,
+                overriddenText = null,
                 intro = intro,
                 missing = emptyList(),
                 waiting = null,
@@ -115,8 +122,10 @@ object MandateOwnershipViews {
         return OwnershipSectionView(
             status = status,
             unavailable = false,
-            tagLabel = tag?.first,
-            tagStyle = tag?.second,
+            tagLabel = if (overridden) OVERRIDDEN_TAG else tag?.first,
+            tagStyle = if (overridden) "success" else tag?.second,
+            overridden = overridden,
+            overriddenText = if (overridden) OVERRIDDEN_TEXT else null,
             intro = intro,
             missing = if (pending && !waiting) verification.reasons.map(::missing) else emptyList(),
             waiting = if (waiting) WAITING else null,

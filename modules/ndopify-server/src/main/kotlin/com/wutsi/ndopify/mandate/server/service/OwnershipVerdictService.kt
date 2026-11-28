@@ -2,7 +2,6 @@ package com.wutsi.ndopify.mandate.server.service
 
 import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
-import com.wutsi.ndopify.mandate.dto.DocumentType
 import com.wutsi.ndopify.mandate.dto.OwnershipLocation
 import com.wutsi.ndopify.mandate.dto.OwnershipLocationStatus
 import com.wutsi.ndopify.mandate.dto.OwnershipVerification
@@ -42,7 +41,13 @@ import java.time.ZoneId
  * `SURVEY_PLAN`, a `POWER_OF_ATTORNEY` and the rest are not ownership evidence in v1. The verdict is type-agnostic
  * here; the endpoint that only answers for a LISTING mandate is `MandateEndpoints`.
  *
- * Never logs a name, a document number or any extracted value: the mandate's id, the status and the reason codes only.
+ * An admin's override (#377) decides `VERIFIED` without reasons while the mandate keeps at least one identity and one
+ * ownership document, of any status (the pieces exist; a failed or mis-named reading is what the override covers).
+ * It is a read guard, never a write: a document change neither clears the stored audit fields nor keeps the override
+ * applying once a kind is gone, and it applies again when both kinds are back.
+ *
+ * Never logs a name, a document number or any extracted value: the mandate's id, the status, the reason codes and the
+ * `overridden` flag only.
  */
 @Service
 class OwnershipVerdictService(
@@ -55,14 +60,6 @@ class OwnershipVerdictService(
     private val clock: Clock,
     @param:Value("\${ndopify.mandate.ownership.name-threshold}") private val nameThreshold: Double,
 ) {
-    companion object {
-        /** The types that prove who the customer is. */
-        private val IDENTITY_TYPES = setOf(DocumentType.NATIONAL_ID, DocumentType.PASSPORT)
-
-        /** The types that prove the customer owns the property; a lease or a utility bill never does in v1. */
-        private val OWNERSHIP_TYPES = setOf(DocumentType.LAND_TITLE, DocumentType.CERTIFICATE_OF_OWNERSHIP)
-    }
-
     /** How one check ended; only [Pass] and [InFlight] contribute no reason. */
     private sealed interface Outcome {
         data class Pass(val location: OwnershipLocation = OwnershipLocation()) : Outcome
@@ -77,33 +74,40 @@ class OwnershipVerdictService(
     /**
      * The verdict of [mandate]: the tenant's today (`clock`, in the tenant's time zone), the customer's name and the
      * mandate's documents, newest first, as the repository returns them. `TenantContext` must hold the tenant, as for
-     * every tenant-scoped read. Logs the verdict once, without any extracted value.
+     * every tenant-scoped read. A backed override (#377) answers `VERIFIED` without reading the mandate's city nor the
+     * customer. Logs the verdict once, without any extracted value.
      */
     fun verify(mandate: MandateEntity): OwnershipVerification {
         val tenantId = TenantContext.get() ?: throw IllegalStateException("No tenant in context")
-        val tenant = tenantService.findById(tenantId)
-        val today = LocalDate.now(clock.withZone(ZoneId.of(tenant.timeZone)))
-        val customerName = customerService.findById(mandate.customerId).party.fullName()
-        val mandateCity = mandate.cityId.takeIf { it > 0 }?.let { locationService.findByIdOrNull(it) }
-        val resolveCity: (String) -> LocationEntity? = { name ->
-            mandateCity
-                ?.takeIf { it.type == LocationType.CITY }
-                ?.let { city -> locationService.findCity(name, city.country) }
+        val documents = documentDao.findByMandateIdOrderByIdDesc(mandate.id!!)
+        val verification = if (mandate.hasBackedOverride(documents)) {
+            OwnershipVerification(status = OwnershipVerificationStatus.VERIFIED, overridden = true)
+        } else {
+            val tenant = tenantService.findById(tenantId)
+            val today = LocalDate.now(clock.withZone(ZoneId.of(tenant.timeZone)))
+            val customerName = customerService.findById(mandate.customerId).party.fullName()
+            val mandateCity = mandate.cityId.takeIf { it > 0 }?.let { locationService.findByIdOrNull(it) }
+            val resolveCity: (String) -> LocationEntity? = { name ->
+                mandateCity
+                    ?.takeIf { it.type == LocationType.CITY }
+                    ?.let { city -> locationService.findCity(name, city.country) }
+            }
+            evaluate(documents, customerName, today, mandateCity, resolveCity)
         }
-        val verification = evaluate(
-            documentDao.findByMandateIdOrderByIdDesc(mandate.id!!),
-            customerName,
-            today,
-            mandateCity,
-            resolveCity,
-        )
 
         logger.add("mandate_id", mandate.id)
         logger.add("ownership_status", verification.status.name)
         logger.add("ownership_reason_codes", verification.reasons.map { reason -> reason.code })
+        logger.add("ownership_overridden", verification.overridden)
         logger.log()
         return verification
     }
+
+    /** An override only applies while both kinds of piece still exist, in any status: it is always backed (#377). */
+    private fun MandateEntity.hasBackedOverride(documents: List<MandateDocumentEntity>): Boolean =
+        ownershipOverrideReason != null &&
+            documents.any { it.type in OwnershipDocumentTypes.IDENTITY } &&
+            documents.any { it.type in OwnershipDocumentTypes.OWNERSHIP }
 
     /**
      * The verdict over [documents] for [today]: `VERIFIED` when both checks pass, `FAILED` when either is decisive
@@ -118,9 +122,9 @@ class OwnershipVerdictService(
         mandateCity: LocationEntity? = null,
         resolveCity: (String) -> LocationEntity? = { null },
     ): OwnershipVerification {
-        val identity = identityOutcome(documents.filter { it.type in IDENTITY_TYPES }, customerName, today)
+        val identity = identityOutcome(documents.filter { it.type in OwnershipDocumentTypes.IDENTITY }, customerName, today)
         val ownership = ownershipOutcome(
-            documents.filter { it.type in OWNERSHIP_TYPES },
+            documents.filter { it.type in OwnershipDocumentTypes.OWNERSHIP },
             customerName,
             mandateCity,
             resolveCity,

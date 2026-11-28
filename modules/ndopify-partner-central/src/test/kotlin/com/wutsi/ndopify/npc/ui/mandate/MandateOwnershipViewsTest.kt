@@ -78,8 +78,32 @@ class MandateOwnershipViewsTest {
         assertEquals("success", view.tagStyle)
         assertEquals(501L, view.listingId)
         assertTrue(view.reasons.isEmpty())
+        assertFalse(view.overridden)
+        assertNull(view.overriddenText)
+        assertTrue(view.intro.contains("à partir des pièces de la section Documents"))
         // The verdict has no timestamp: the copy carries no date.
         assertFalse(Regex("\\d{2}/\\d{2}/\\d{4}").containsMatchIn(view.toString()))
+    }
+
+    @Test
+    fun `an overridden verified verdict has its own pill and copy`() {
+        val view = MandateOwnershipViews.section(
+            mandate,
+            OwnershipVerification(VERIFIED, emptyList(), overridden = true),
+            listingId = 501,
+            labels = labels,
+        )
+
+        assertEquals("Vérifiée par Ndopify", view.tagLabel)
+        assertEquals("success", view.tagStyle)
+        assertTrue(view.overridden)
+        assertEquals("Ndopify a vérifié le propriétaire après examen de sa situation.", view.overriddenText)
+        assertEquals(
+            "Ndopify vérifie que le vendeur est bien le propriétaire du bien.",
+            view.intro,
+        )
+        assertEquals(501L, view.listingId)
+        assertTrue(view.reasons.isEmpty())
     }
 
     @Test

@@ -19,6 +19,10 @@
   The section also carries the verdict's city comparison (#376); the hint is `UNRESOLVED` only, a blank place reads
   *non précisée*, both blank hides it; the mismatch reason shows the two places; no document id, type, title, page,
   path, URL or other extracted value.
+
+  A VERIFIED verdict an admin overrode (#377) reads as its own state: the pill says *Vérifiée par Ndopify* and the
+  intro drops its documents clause (both built by the view), and the success block adds that Ndopify verified the
+  owner after review — never that the documents passed. It shows no reason, date, admin identity nor admin reason.
 */-->
 <section th:fragment="ownership(section)" class="home-section ownership" aria-labelledby="ownership-title">
     <div class="ownership__head">
@@ -93,6 +97,8 @@
         <svg th:replace="~{fragments/icon :: check('icon')}"></svg>
         <div>
             <p class="alert__title">Propriétaire vérifié</p>
+            <p th:if="${section.overriddenText}" th:text="${section.overriddenText}" data-ownership-overridden>
+                Ndopify a vérifié le propriétaire après examen de sa situation.</p>
             <p>Un propriétaire vérifié est ce qui permet de publier l'annonce.</p>
             <p class="ownership__actions" th:if="${section.listingId != null}">
                 <a class="btn btn--primary btn--compact"

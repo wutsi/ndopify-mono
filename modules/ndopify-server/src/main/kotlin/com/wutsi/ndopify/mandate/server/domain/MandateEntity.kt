@@ -149,6 +149,15 @@ data class MandateEntity(
     val cancellationCode: MandateCancellationCode? = null,
     val cancellationReason: String? = null,
 
+    /**
+     * The admin's override of a LISTING mandate's owner verdict (#377), set and cleared together: a null [reason]
+     * means no override; [by] is the admin's user id and [at] the time it was set. Never returned in a DTO nor
+     * rendered by a page; it only applies while both kinds of supporting document still exist.
+     */
+    val ownershipOverrideReason: String? = null,
+    val ownershipOverrideBy: Long? = null,
+    val ownershipOverrideAt: Date? = null,
+
     // Optimistic locking: a write based on a stale read fails (409) instead of silently overwriting the change
     @Version
     val version: Long? = null,
