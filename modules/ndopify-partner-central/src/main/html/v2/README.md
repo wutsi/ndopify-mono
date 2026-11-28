@@ -57,6 +57,7 @@ rentals and sales (decided 2026-11-22): no mandate is filtered on a specialisati
 | `listing.html`, `assets/js/partner-central.js`, `assets/css/listing.css` (#375) | A `VERIFIED` listing (the listing's own agent) is verified but not yet published. The tag reads *Vérifiée — publication en cours* (warning; the pill wraps inside the page on a phone) and the *En vérification* panel gives way to one neutral *Publication en cours* block above the checklist: title *Publication en cours*, body *L'annonce est vérifiée. Sa publication est en cours et peut prendre quelques minutes. Si elle n'apparaît pas, vérifiez les documents du mandat, qui sont la cause probable.*, one action *Voir les documents du mandat* opening `/mandates/{id}#documents-title`. The wording is neutral and valid whether publication is automatic or waiting on a check; **no ownership read**, **no ownership verdict**, no `GET /v1/mandates/{id}/ownership`, no owner verification is claimed, Partner Central cannot read whether publication is blocked; no reason is listed; the mandate's documents are only a likely cause, not an assertion; no #298/#376/#377 owner-verification wording is reused (`assets/js/ownership-copy.js` is untouched; this block reads none of it). Nothing to publish or retry here; no manual review; the public page is untouched. **No loading, empty or error state** is added for this block because there is no new read. Every other status, and the read-only lens of another agent, render as today; `LISTING_TAGS` gains the neutral hold label on `VERIFIED_HOLD`, opt-in for the listing page only (`listingTag`), while every other status and the mandate's line are unchanged; server-rendered, no JavaScript required. |
 | `mandate.html`, `assets/js/mandate-ownership.js` (#377) | A `VERIFIED` owner verdict **overridden by Ndopify** is a state of its own, never worded as a document check. The status pill reads *Vérifiée par Ndopify* (success) and the intro loses its *à partir des pièces de la section Documents* clause; the success block reads *Propriétaire vérifié*, then *Ndopify a vérifié le propriétaire après examen de sa situation.* — never that the documents passed — and keeps #298's publication hint (*Un propriétaire vérifié est ce qui permet de publier l'annonce.*) and *Voir l'annonce* when the mandate has a listing (same read, same no-dead-link rule). It shows no date, no reason, no admin identity and no admin reason (the verdict carries none of them). The non-overridden `VERIFIED` state reads exactly as today, every other state is untouched, and a SEARCH, `CLOSED` or `CANCELLED` mandate still has no section; every state stays server-rendered. |
 | `mandate.html`, `assets/js/mandate-ownership.js`, `assets/js/ownership-copy.js`, `assets/css/ownership.css` (#376) | The owner verdict's **city comparison**. The verdict gains `location` — the mandate's city, the title's locality, and `UNKNOWN` / `MATCH` / `MISMATCH` / `UNRESOLVED`. `UNKNOWN` and `MATCH` show nothing. `UNRESOLVED` is a **neutral hint** under the state's block, whatever the status (`PENDING`, `VERIFIED`, or `FAILED` for another check): the two places side by side (*Ville du mandat* / *Localité du titre*), *La localité du titre n'a pas pu être rattachée à une ville connue : vérifiez que le titre et le mandat désignent le même bien.* and *Vérifier le titre dans Documents* (`#documents-title`) — info styling, no status change, no blocking; a blank place reads *non précisée* and both blank hides the hint. `MISMATCH` is a `FAILED` `OWNERSHIP_PROPERTY_MISMATCH` reason: *Le document de propriété*, the same two places, *Le document désigne un bien dans une autre ville que celle du mandat : il ne justifie pas la propriété de ce bien.* and *Vérifiez le document dans Documents : il doit désigner un bien situé dans la ville du mandat.* — no document id, type, title, page, path, storage URL nor other extracted value, and the failed block's *Corriger dans les documents* stays. |
+| `mandate.html`, `mandate/document.html`, `assets/js/mandate-documents.js`, `assets/js/mandate-ownership.js`, `assets/js/ownership-copy.js`, `assets/css/documents.css`, `assets/css/ownership.css` (#402) | Failures say why, and the Documents head fits a phone. **Document page**: the `FAILED` heading reads *Ce document n'a pas pu être vérifié* for every code (it was *… n'a pas pu être lu*), and the new code `DOCUMENT_INVALID` reads *Le document n'a pas pu être vérifié. Vérifiez qu'il s'agit bien d'une pièce authentique, lisible et complète : remplacez ses pages par des photos plus nettes, droites et sans reflet, ou supprimez-le et ajoutez-le de nouveau.* — `DOCUMENT_UNREADABLE` keeps its *n'a pas pu être lu* text (the resizer's refusal), and an unknown code the generic instruction; `?codes=DOCUMENT_INVALID` renders it from any `FAILED` sample. **Ownership**: the `FAILED` alert is cut to the cause — one sentence per reason, the piece it looked at in bold: *La pièce d'identité* *n'a pas pu être vérifiée.* / *est expirée.* / *n'est pas au nom du propriétaire.*, *Le document de propriété* *n'a pas pu être vérifié.* / *ne désigne pas le propriétaire.*, *Le titre* *désigne un bien à Yaoundé, le mandat à Douala.* (`OWNERSHIP_PROPERTY_MISMATCH`, the two places inline, no `<dl>`), and *Un document* *n'a pas pu être vérifié.* for an unknown code — with no per-reason action, no document instruction list, no places list and no *Corriger dans les documents* button; the intro is cut to *À partir des pièces de la section Documents.*, with *la section Documents* linked to `#documents-title` — the section's only way to the fix, whatever the status (the #377 overridden state keeps its own party sentence, without the documents clause) (`OwnershipReasonView` loses `action` and `problems`; `.ownership__problems` / `.ownership__action` are removed and the reason separator tightens to `--space-2`). **Documents header**: the compact *n/5* pill beside the title and its screen-reader duplicate are gone; the count opens the intro — *2 documents sur 5. Identité et propriété du vendeur, jamais publiés.*, the singular *1 document sur 5.*, the piece names (*propriété* / *financement*, *vendeur* / *bailleur* / *acheteur* / *client*) following the mandate kind — so *Documents* and *Ajouter un document* share one line at 390 and 360 px with the intro at two lines at most; at the cap the head keeps *Un mandat peut avoir 5 documents au plus.* in place of the button and the intro drops the count, as does an unavailable list (the count isn't known). |
 
 To review #329 (a mandate's documents), with the session fresh (or `&docs=reset` once): `mandate.html?id=301` (a
 seller: *Titre foncier n° 4521 — Bonapriso* *Analysé*, *Facture d'eau — octobre 2026* *En cours d'analyse*, *Carte
@@ -97,8 +98,10 @@ pill. Then one URL per state of the document page:
 | `mandate/document.html?id=301&document=3102` | `EXTRACTED` + expired when it was read: the notice *Pièce expirée le 12/01/2025*, *Elle était déjà expirée lors de sa lecture.*, the way out, then the seven identity rows (*Date d'expiration* 12/01/2025, *Pays* CM). |
 | `mandate/document.html?id=301&document=3105` | `EXTRACTING`: *La lecture du document est en cours. Ses données apparaîtront ici dès qu'elle sera terminée : rien à faire.* — no field, no problem. |
 | `mandate/document.html?id=301&document=3104` | `UPLOADED`: *Le document est reçu : sa lecture va commencer…* — on `mandate.html?id=301` its row has no *Expirée* marker (no `expiresAt`). |
-| `mandate/document.html?id=301&document=3101` | `FAILED`: *Ce document n'a pas pu être lu* and two instructions, in the server's order (missing page, then the doubtful required field: *Un champ obligatoire n'a pas pu être lu avec certitude…*), no field row. |
+| `mandate/document.html?id=301&document=3101` | `FAILED`: *Ce document n'a pas pu être vérifié* (#402; the heading is the same for every code) and two instructions, in the server's order (missing page, then the doubtful required field: *Un champ obligatoire n'a pas pu être lu avec certitude…*), no field row. |
 | `mandate/document.html?id=301&document=3101&codes=DOCUMENT_UNREADABLE` | `FAILED` with the unreadable code, which no sample carries: `?codes=` replaces the sample's codes (prototype switch, comma-separated), so the instruction reads *Le document n'a pas pu être lu. Remplacez ses pages par des photos plus nettes, droites et sans reflet, ou supprimez-le et ajoutez-le de nouveau.* |
+| `mandate/document.html?id=301&document=3101&codes=DOCUMENT_INVALID` | `FAILED` with #402's new code (the model refused a document it read): the same heading, and the instruction *Le document n'a pas pu être vérifié. Vérifiez qu'il s'agit bien d'une pièce authentique, lisible et complète : remplacez ses pages par des photos plus nettes, droites et sans reflet, ou supprimez-le et ajoutez-le de nouveau.* |
+| `mandate/document.html?id=311&document=3111&codes=DOCUMENT_INVALID` | The same instruction on a cancelled mandate (read-only): no action of the page's own. |
 | `mandate/document.html?id=303&document=3305` | `EXTRACTED` without a field (an older payload): *Aucune donnée n'a été lue sur ce document…*, its status still *Analysé*. |
 | `mandate/document.html?id=303&document=3304` | A proof of funds: *Montant* 12,5M FCFA, *Nature du montant* Solde, *Date du relevé* 20/11/2026, *Compte* •••• 0123 — no `currency` row, no confidence. |
 | `mandate/document.html?id=303&document=3302` | A pay slip: *Mois de paie* Octobre 2026, *Salaire brut* 412K FCFA, *Salaire net* 350K FCFA, and the unknown key `position` as *Autre donnée* *Chargée de clientèle*. |
@@ -146,13 +149,13 @@ To review #369 (the mandate's document limits), one URL per state:
 
 | URL | State |
 |---|---|
-| `mandate.html?id=301` | A seller at the cap: *5/5* (its accessible label *5 documents sur 5*), the five rows, no *Ajouter un document*, *Un mandat peut avoir 5 documents au plus.* in its place (the static render). |
+| `mandate.html?id=301` | A seller at the cap: the five rows, no *Ajouter un document*, *Un mandat peut avoir 5 documents au plus.* in its place (the static render); since #402 the intro carries no count there — *Identité et propriété du vendeur, jamais publiés.* |
 | `mandate.html?id=303` | A buyer at the cap: the same, with the buyer's five documents. |
-| `mandate.html?id=302` | A seller below the cap: *0/5*, the empty hint and *Ajouter un document* on the heading's line. |
+| `mandate.html?id=302` | A seller below the cap: the empty hint and *Ajouter un document* on the heading's line; since #402 the intro opens *0 document sur 5.* |
 | `mandate.html?id=201` | A renter below the cap: the same. |
-| `mandate.html?id=311` | A cancelled search: *3/5* (its accessible label *3 documents sur 5*), the read-only hint, no action (not the cap notice). |
-| `mandate.html?id=301&docs=error` | *Documents indisponibles*: no count, the add action stays. |
-| `mandate.html?id=301&docs=none` | Empty at *0/5*, the seller's hint, the add action. |
+| `mandate.html?id=311` | A cancelled search: *3 documents sur 5.* + *Identité et financement de l'acheteur, jamais publiés.* (#402), the read-only hint, no action (not the cap notice). |
+| `mandate.html?id=301&docs=error` | *Documents indisponibles*: the add action stays, and #402's intro carries the sentence alone (no count lead). |
+| `mandate.html?id=301&docs=none` | Empty at *0 document sur 5.*, the seller's hint, the add action. |
 | `mandate/document-new.html?id=301` | At the cap: the notice *Un mandat peut avoir 5 documents au plus.*, how to free a place and *Voir les documents du mandat* — no form (the same for `?id=303`). |
 | `mandate/document-new.html?id=302` | The add form below the cap: the hint names the three caps, then the type, the title and the pages. `?id=201` is a client's (identity and financing first). |
 | `mandate/document-new.html?id=302&errors=mixed` | The server's 400 for photos and a PDF (or two PDFs): the pages field's error, the type and title kept. |
@@ -168,18 +171,18 @@ To review #369 (the mandate's document limits), one URL per state:
 With JS on `mandate/document-new.html?id=302`, choose a photo and a PDF (or two PDFs): the pages field's error shows as
 the list becomes mixed and *Ajouter le document* sends nothing; remove the PDF (or one of the two) and it clears. The
 6th document is caught before sending only from a tab left open below the cap (the page at 5 shows no form). Delete two
-of 301's documents from their pages and come back to `mandate.html?id=301`: *3/5*, *Ajouter un document* back, the cap
-notice gone. The static markup is the server's render, JavaScript or not — the section at 5, the add page's notice and
-the form's hint — and every form still posts; the `?errors=` / `?replaceError=` states are this prototype's script
-switches (production renders them server-side). At 390 px the compact count keeps *Ajouter un document* on the
-heading's line; if space runs out it wraps under the title, never the action, and at 5 the notice takes its own line
-under the title and its count. The long hint wraps inside its field, the kind pill follows the status on its line, and
-no page scrolls sideways. Assumptions: 301 and 303 being at 5, the add form moved to 302 (a seller) and 201 (a client),
+of 301's documents from their pages and come back to `mandate.html?id=301`: *3 documents sur 5.*, *Ajouter un document*
+back, the cap notice gone. The static markup is the server's render, JavaScript or not — the section at 5, the add page's
+notice and the form's hint — and every form still posts; the `?errors=` / `?replaceError=` states are this prototype's
+script switches (production renders them server-side). At 360 and 390 px *Documents* and *Ajouter un document* share one
+line (no count beside the title since #402), the intro stays two lines, and at 5 the notice takes its own line under the
+title. The long hint wraps inside its field, the kind pill follows the status on its line, and no page scrolls
+sideways. Assumptions: 301 and 303 being at 5, the add form moved to 302 (a seller) and 201 (a client),
 whose suggested types are the same; a document's kind is a neutral pill in its header, not a status; `?errors=limit` is
 a form-level error (the cap is not a field's mistake); a document with no recorded kind (grandfathered) accepts either
-kind, as #366, and has no sample; data over a cap stays readable (the section counts it, *6/5*, and hides the add; an
-11-page document still lists its pages and replaces one), and no sample seeds one; the count comes from the session's
-stored list, so adding and deleting on the add and document pages moves it.
+kind, as #366, and has no sample; data over a cap stays readable (the head says the cap and hides the add, #402's intro
+carries no count; an 11-page document still lists its pages and replaces one), and no sample seeds one; the count comes
+from the session's stored list, so adding and deleting on the add and document pages moves it.
 
 To review #372 (a document's page preview, and its way back), start on `mandate/document.html?id=301&document=3103`
 and follow *Voir*: the preview opens **in this tab**, with a single bar whose whole left side is one link — *←* and
@@ -205,18 +208,20 @@ section, its status pill beside its title:
 
 | URL | State |
 |---|---|
-| `mandate.html?id=301` | The default render: `FAILED`, *Propriétaire non vérifié*, the expired identity check (*La pièce d'identité* — the reason carries no type nor title), its wording and its action, then *Corriger dans les documents* — the static markup, as the server renders it. |
+| `mandate.html?id=301` | The default render: `FAILED`, *Propriétaire non vérifié*, and since #402 the cause alone — *La pièce d'identité* in bold, *est expirée.* — with no action and no *Corriger dans les documents* button (the intro's *section Documents* link is the way to the fix); the static markup, as the server renders it. |
 | `mandate.html?id=302` | `PENDING` and empty: a seller with no document, *Vérification du propriétaire en cours*, both missing pieces and what counts, *Ajouter ces pièces dans Documents*. |
 | `mandate.html?id=302&ownership=pending&reason=id-missing` | `PENDING` with the identity piece missing only (`document-missing` for the ownership one, `both` for both). |
 | `mandate.html?id=301&ownership=pending&reason=in-flight` | `PENDING` with no reason: a piece is being read (301's facture d'eau), *La lecture des pièces est en cours…*, *Voir les documents* — no error styling. |
 | `mandate.html?id=301&ownership=verified` | `VERIFIED`: *Propriétaire vérifié*, the publication hint, no date (the verdict carries none), and **no** listing link (the mandate has no listing yet). |
 | `mandate.html?id=301&listing=published&ownership=verified` | The same, plus *Voir l'annonce* — the mandate has a listing (601). |
 | `mandate.html?id=302&ownership=verified` | The no-listing variant on the plot of land: the hint, no dead link, no date. |
-| `mandate.html?id=301&ownership=failed&reason=id-expired` | `OWNERSHIP_ID_EXPIRED` (301's own): *La pièce d'identité*, *La pièce est expirée…*, *Reprenez la photo d'une pièce en cours de validité…* |
-| `mandate.html?id=301&ownership=failed&reason=id-unusable` | `OWNERSHIP_ID_UNUSABLE`: *La pièce d'identité*, its `DOCUMENT_UNREADABLE` detail under the wording, *Corrigez la pièce dans Documents : reprenez sa photo, ou changez son type.* — no title. |
-| `mandate.html?id=301&ownership=failed&reason=id-name` | `OWNERSHIP_ID_NAME_MISMATCH`: *La pièce d'identité*, *La pièce ne porte pas le nom du propriétaire…*, *Ajoutez une pièce d'identité au nom du propriétaire.* |
-| `mandate.html?id=301&ownership=failed&reason=document-unusable` | `OWNERSHIP_DOCUMENT_UNUSABLE`: *Le document de propriété*, two details in the server's order (wrong type, then the missing page). |
-| `mandate.html?id=301&ownership=failed&reason=document-name` | `OWNERSHIP_DOCUMENT_NAME_MISMATCH`: *Le document de propriété*, *Le document ne désigne pas le propriétaire du bien.* |
+| `mandate.html?id=301&ownership=failed&reason=id-expired` | `OWNERSHIP_ID_EXPIRED` (301's own): *La pièce d'identité est expirée.* |
+| `mandate.html?id=301&ownership=failed&reason=id-unusable` | `OWNERSHIP_ID_UNUSABLE`: *La pièce d'identité n'a pas pu être vérifiée.* — no title, no document instruction list. |
+| `mandate.html?id=301&ownership=failed&reason=id-name` | `OWNERSHIP_ID_NAME_MISMATCH`: *La pièce d'identité n'est pas au nom du propriétaire.* |
+| `mandate.html?id=301&ownership=failed&reason=document-unusable` | `OWNERSHIP_DOCUMENT_UNUSABLE`: *Le document de propriété n'a pas pu être vérifié.* |
+| `mandate.html?id=301&ownership=failed&reason=document-name` | `OWNERSHIP_DOCUMENT_NAME_MISMATCH`: *Le document de propriété ne désigne pas le propriétaire.* |
+| `mandate.html?id=301&ownership=failed&reason=mixed` | Three reasons in one alert (#402): one sentence each, separated by a light rule — *La pièce d'identité est expirée.* / *Le document de propriété n'a pas pu être vérifié.* / *Le document de propriété ne désigne pas le propriétaire.* — about 8 lines at 390 px, nothing scrolling sideways. |
+| `mandate.html?id=301&ownership=failed&reason=unknown` | An unknown reason code (a server code added later): *Un document n'a pas pu être vérifié.* — never an error, never a blank block. |
 | `mandate.html?id=301&ownership=unavailable` | *Vérification indisponible*, warning styling; every other section renders as before. |
 | `mandate.html?id=301&ownership=none` | No section at all, as a SEARCH mandate or a closed / cancelled page renders it. |
 | `mandate.html?id=303&ownership=failed` | A buyer's SEARCH mandate: the switch is ignored, no section (no ownership request in production). |
@@ -225,18 +230,21 @@ section, its status pill beside its title:
 
 To see a CLOSED / CANCELLED LISTING mandate (the section absent), cancel `mandate.html?id=301` at the bottom of the page
 (or close it through `mandate/close.html?id=301`): the section leaves with the status, while the Documents section stays
-readable. Check every state at 390 px: the title's pill wraps under it when it must, the check's kind and a long problem
-instruction (*Le document n'a pas pu être lu…*) wrap inside the reason without scrolling sideways, and the action sits on
-its own line under the text; tab through the section — the action links of the pending, failed and verified states take
-the global focus ring, and the section's heading keeps the page's h2 order. Assumptions: the shipped verdict (#297,
+readable. Check every state at 390 px: the title's pill wraps under it when it must, the intro — *À partir des pièces de
+la section Documents.* — stays on two lines at most and its link takes the global focus ring, and a reason is one or
+two lines without scrolling sideways; tab through the section — the intro's link and the pending and verified states'
+action links take the global focus ring, and the section's heading keeps the page's h2 order. Assumptions: the shipped
+verdict (#297,
 `ndopify-dto` 0.0.112) is a status and its reasons only — each reason a code and, for `*_UNUSABLE`, the document's
 `problemCodes` as details, with **no evidence date and no document type nor title** — so the section shows no date and
-names the check's kind (*La pièce d'identité* / *Le document de propriété*), while the Documents rows below carry each
-piece's type, title and status (*À corriger*, *Expirée*); the section opens the documents block (before Documents, after
-the day's work, before *Sa recherche*); a `*_MISSING` reason is `PENDING`, a `*_UNUSABLE` one `FAILED` with the
-document's problem codes; no reason ever names an id, a page, a path, a URL, an extracted value, a type nor an agent
-title, and its action points at `#documents-title`; every state is server-rendered in production — `?ownership=` and
-`&reason=` are this prototype's script switches, and `mandate-ownership.js` only renders the samples.
+names the piece it looked at (*La pièce d'identité* / *Le document de propriété* / *Le titre* / *Un document*), while the
+Documents rows below carry each piece's type, title and status (*À corriger*, *Expirée*); the section opens the documents
+block (before Documents, after the day's work, before *Sa recherche*); a `*_MISSING` reason is `PENDING`, a `*_UNUSABLE`
+one `FAILED`; since #402 the `problemCodes` details are carried by the verdict but no longer shown here, a reason has no
+action of its own, and the intro's link to `#documents-title` is the section's only way to the fix; no reason ever names
+an id, a page, a path, a URL, an extracted value, a type nor an agent title; every state is server-rendered in
+production — `?ownership=` and `&reason=` are this prototype's script switches, and `mandate-ownership.js` only renders
+the samples.
 
 To review #375 (a verified listing, not yet published), the sample is **listing 706** — seller 312's villa, verified,
 publication in progress — opened at `listing.html?id=706` (it is seeded on its first visit; 312 has no card on
@@ -272,13 +280,13 @@ with one state more. One URL per state:
 
 | URL | State |
 |---|---|
-| `mandate.html?id=301` | The default render, unchanged: `FAILED`, *Propriétaire non vérifié*, the expired identity check and its action (the static markup). |
-| `mandate.html?id=301&ownership=overridden` | `VERIFIED` by override: the pill *Vérifiée par Ndopify*, *Propriétaire vérifié*, *Ndopify a vérifié le propriétaire après examen de sa situation.*, then the publication hint; the intro has no *à partir des pièces* clause; no date, no reason, no admin name nor reason, and **no** listing link (301 has no listing yet). |
+| `mandate.html?id=301` | The default render: `FAILED`, *Propriétaire non vérifié*, the expired identity check as one sentence — *La pièce d'identité est expirée.* (no action since #402; the static markup). |
+| `mandate.html?id=301&ownership=overridden` | `VERIFIED` by override: the pill *Vérifiée par Ndopify*, *Propriétaire vérifié*, *Ndopify a vérifié le propriétaire après examen de sa situation.*, then the publication hint; the intro is the party sentence alone — *Ndopify vérifie que le vendeur est bien le propriétaire du bien.* — with no documents clause; no date, no reason, no admin name nor reason, and **no** listing link (301 has no listing yet). |
 | `mandate.html?id=301&listing=published&ownership=overridden` | The same, plus *Voir l'annonce* — the mandate has a listing (601). |
 | `mandate.html?id=302&ownership=overridden` | The no-listing variant on the plot of land: the same block and intro, no dead link. |
 | `mandate.html?id=203&listing=published&ownership=overridden` | A landlord's rental LISTING: *le bailleur* and the 501 listing link. |
 | `mandate.html?id=305&ownership=overridden` | An ASSIGNED seller's building: the overridden state before approval too, with no listing to link. |
-| `mandate.html?id=301&ownership=verified` | The non-overridden `VERIFIED` state, as today: *Vérifié*, *Propriétaire vérifié*, the intro keeps its documents clause, no date. |
+| `mandate.html?id=301&ownership=verified` | The non-overridden `VERIFIED` state: *Vérifié*, *Propriétaire vérifié*, the intro *À partir des pièces de la section Documents.* (#402), no date. |
 | `mandate.html?id=301&ownership=pending&reason=in-flight` | Unchanged loading state: `PENDING`, *Vérification du propriétaire en cours*, the reading sentence, *Voir les documents*. |
 | `mandate.html?id=301&ownership=unavailable` | Unchanged error state: *Vérification indisponible*, every other section as before. |
 | `mandate.html?id=301&ownership=none` | Unchanged empty state: no section at all, as a SEARCH or a closed / cancelled mandate renders it. |
@@ -292,9 +300,10 @@ the after-review sentence and the publication hint wrap inside the block, the ac
 the global focus ring; the section's title stays an `h2`, and nothing scrolls sideways. Cancel `mandate.html?id=301`
 at the bottom of the page to see the section leave, the overridden state included. Assumptions: an overridden verdict
 is still `VERIFIED`, so the state is success-styled and carries no error styling; the copy says *après examen de sa
-situation* and never names the documents, the admin, a date nor the reason; the intro drops only its *à partir des
-pièces de la section Documents* clause, since the documents didn't decide this verdict; the publication hint and the
-listing link are #298's, unchanged; the public badge (#300) is out of this story.
+situation* and never names the documents, the admin, a date nor the reason; the overridden intro is the party sentence
+alone, never the documents clause, since the documents didn't decide this verdict (#402 cuts the other states' intro to
+that clause); the publication hint and the listing link are #298's, unchanged; the public badge (#300) is out of this
+story.
 
 To review #376 (the owner verification's city comparison), the section is still #298's *Vérification du propriétaire*:
 301 is a seller in **Douala**, so its samples compare Douala with the title's locality. One URL per state:
@@ -306,8 +315,8 @@ To review #376 (the owner verification's city comparison), the section is still 
 | `mandate.html?id=301&ownership=hint&city=none` | The mandate has no city: *Ville du mandat* *non précisée*, with the title's locality. |
 | `mandate.html?id=301&ownership=hint&locality=none&city=none` | Both places blank: no hint at all — the verdict alone, as #298 renders it. |
 | `mandate.html?id=301&ownership=hint&state=pending` | The hint under `PENDING` (the identity piece missing): the pending block and its action are unchanged, the hint sits below them. |
-| `mandate.html?id=301&ownership=hint&state=failed` | The hint under `FAILED` for another check (301's expired identity card): the failed block, its wording and its action are unchanged, the hint sits below them. |
-| `mandate.html?id=301&ownership=failed&reason=property-mismatch` | `FAILED` `OWNERSHIP_PROPERTY_MISMATCH`: *Propriétaire non vérifié*, *Le document de propriété*, the two places (Douala / Yaoundé), *Le document désigne un bien dans une autre ville que celle du mandat…*, its action, then *Corriger dans les documents*; no hint. |
+| `mandate.html?id=301&ownership=hint&state=failed` | The hint under `FAILED` for another check (301's expired identity card): the failed block and its one-sentence reason are unchanged (no action since #402), the hint sits below them. |
+| `mandate.html?id=301&ownership=failed&reason=property-mismatch` | `FAILED` `OWNERSHIP_PROPERTY_MISMATCH`: *Propriétaire non vérifié*, then one inline sentence with the two places — *Le titre désigne un bien à Yaoundé, le mandat à Douala.* (#402: no places `<dl>`, no action, no button); no hint. |
 | `mandate.html?id=301&ownership=verified` | `MATCH`: the title resolves to the mandate's city, so *Propriétaire vérifié* as today and **no** hint. |
 | `mandate.html?id=301` / `mandate.html?id=301&ownership=failed&reason=id-expired` | `UNKNOWN`, and a `FAILED` for another reason: unchanged, no hint. |
 | `mandate.html?id=301&ownership=unavailable` | Unchanged: *Vérification indisponible*, no hint. |
@@ -316,15 +325,47 @@ To review #376 (the owner verification's city comparison), the section is still 
 The static markup is still 301's `FAILED` render and carries no hint (301's comparison is `UNKNOWN`); the hint and
 the mismatch are this prototype's `?ownership=` switches, while production renders them server-side from the same
 verdict (`location.status` `UNRESOLVED` or `MISMATCH`). At 390 px the two places stack one under the other inside the
-hint as in the failed reason, long city names wrap (`overflow-wrap: anywhere`) and the action link keeps its own line;
-from 480 px up they sit side by side, two equal columns, and the failed reason's action stays above the fold. Tab
-through the hint: *Vérifier le titre dans Documents* takes the global focus ring, after the state's own action.
-Assumptions: the hint shows under the state's block, so the status and its wording always read first and the neutral
-comparison second; it is the app's existing `.hint` (info tokens), never `.alert--warning`; the two places are the
-verdict's only property data — no document type, title, id, page, path, URL nor other extracted value — and the
-labels (*Ville du mandat* / *Localité du titre*) are static page wording, not server data; a sample's mandate city
-is 301's own (Douala) and the title's locality is this prototype's (Bonabéri for the hint, Yaoundé for the
-mismatch); `?ownership=overridden` and every #298 state are untouched.
+hint, long city names wrap (`overflow-wrap: anywhere`) and the link keeps its own line; from 480 px up they sit side by
+side, two equal columns. Tab through the hint: *Vérifier le titre dans Documents* takes the global focus ring, after the
+intro's *section Documents* link and the state's own action. Assumptions: the hint shows under the state's block, so the
+status and its wording always read first and the neutral comparison second; it is the app's existing `.hint` (info
+tokens), never `.alert--warning`; the two places are the verdict's only property data — no document type, title, id,
+page, path, URL nor other extracted value — and the labels (*Ville du mandat* / *Localité du titre*) are static page
+wording, not server data; a sample's mandate city is 301's own (Douala) and the title's locality is this prototype's
+(Bonabéri for the hint, Yaoundé for the mismatch); #402 keeps the mismatch's two places in its one-sentence reason and
+leaves `?ownership=overridden` and every other #298 state untouched.
+
+To review #402 (failures say why, and the Documents head fits a phone), one URL per state. The FAILED heading and the
+new code are on the document page; on the mandate page the ownership alert is cut to one sentence per reason, its intro
+is *À partir des pièces de la section Documents.* for every state but the #377 override, and the Documents header loses
+its count pill:
+
+| URL | State |
+|---|---|
+| `mandate/document.html?id=301&document=3101` | `FAILED`: *Ce document n'a pas pu être vérifié* — the same heading for every code — and its two instructions. |
+| `mandate/document.html?id=301&document=3101&codes=DOCUMENT_UNREADABLE` | `DOCUMENT_UNREADABLE` keeps today's *Le document n'a pas pu être lu…* text (the resizer's refusal). |
+| `mandate/document.html?id=301&document=3101&codes=DOCUMENT_INVALID` | `DOCUMENT_INVALID`: *Le document n'a pas pu être vérifié. Vérifiez qu'il s'agit bien d'une pièce authentique, lisible et complète : …* |
+| `mandate/document.html?id=301&document=3101&codes=DOCUMENT_UNKNOWN` | An unknown code keeps the generic instruction (never an error). |
+| `mandate.html?id=301` | The default: a seller at 5 — the five rows, *Un mandat peut avoir 5 documents au plus.* in place of *Ajouter un document*, the intro *Identité et propriété du vendeur, jamais publiés.* (no count at the cap), and the `FAILED` ownership section above it: intro *À partir des pièces de la section Documents.*, then *La pièce d'identité est expirée.*, no action, no button. |
+| `mandate.html?id=301&docs=2` | 2 of 5: *2 documents sur 5. Identité et propriété du vendeur, jamais publiés.* and *Ajouter un document* on the heading's line. |
+| `mandate.html?id=301&docs=1` | The singular: *1 document sur 5. …* |
+| `mandate.html?id=301&docs=3` | Below the cap (as `?id=311` reads *3 documents sur 5.*): the lead, the rows, the action. |
+| `mandate.html?id=301&docs=error` | *Documents indisponibles*: the sentence alone (no lead), the add action stays. |
+| `mandate.html?id=302` | Empty: *0 document sur 5. Identité et propriété du vendeur, jamais publiés.*, the empty hint and the action. |
+| `mandate.html?id=201&docs=2` | A renter: *Identité et financement du client, jamais publiés.* |
+| `mandate.html?id=203&docs=2` | A landlord: *Identité et propriété du bailleur, jamais publiés.* |
+| `mandate.html?id=104&docs=2` | A buyer (once offer 104 is accepted): *Identité et financement de l'acheteur, jamais publiés.* |
+| `mandate.html?id=301&ownership=failed&reason=unknown` | An unknown ownership reason: *Un document n'a pas pu être vérifié.* |
+
+The ownership reasons are #298's table above, each now one sentence; `?ownership=failed&reason=mixed` is the
+three-reason case. Check the Documents head at **390 and 360 px**: *Documents* and *Ajouter un document* stay on one
+line, the intro fits two lines, nothing scrolls sideways and the button keeps its 44 px target; at 5 the notice takes its
+own line under the title. With JavaScript off, the same static markup is 301's server render (the ownership sentence, the
+cap notice and the intro without a count) — the `?docs=`, `?ownership=` and `?codes=` switches only pick samples.
+Assumptions: the lead is *n* documents against the 5-document cap and reads *0 document sur 5.* / *1 document sur 5.*
+(0 takes the singular in French); the intro drops the lead at the cap (the head says 5 and why there is no action) and on
+an unreadable list (no count); a read-only mandate keeps the count when it is below the cap; `?docs=<n>` is this
+prototype's switch for the partial states and never changes the session's list.
 
 To review the sale states: `index.html` (offer 104, card 301), `mandate.html?id=301` (a seller's villa) and
 `mandate.html?id=302` (a seller's plot of land, whose criteria show its *Document de propriété*), `mandate/close.html?id=301`;

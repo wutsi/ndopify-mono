@@ -1,5 +1,5 @@
 /*
- * Ndopify Partner Central — a mandate's documents (#329, #331, #366, #369, #372), static prototype.
+ * Ndopify Partner Central — a mandate's documents (#329, #331, #366, #369, #372, #402), static prototype.
  *   - mandate.html (data-page="mandate"): the *Documents* section, after partner-central.js has rendered the page;
  *   - mandate/document-new.html (data-page="mandate-document-new"): *Ajouter un document*;
  *   - mandate/document.html (data-page="mandate-document"): one document, what was read on it, its pages,
@@ -20,23 +20,26 @@
  * keeps its shrink and direct upload. A PDF over 5 Mo is refused here; a password-protected, empty or damaged PDF,
  * more than 10 pages on add and a multi-page PDF on replace are the server's errors, shown as the field's error.
  * #369: a mandate holds 5 documents at most, and a document is either photos or one PDF (never both, never two PDFs).
- * The section's head counts them compactly ("3/5" beside the title, its accessible label reading "3 documents sur
- * 5"), hides *Ajouter un document* at 5 and says the cap instead; the
- * add page opened at the cap shows the notice in place of the form, and a list mixing photos with a PDF (or two PDFs)
- * is refused here before sending. The document page names the document's kind (a "PDF" / "Photos" tag) and its
- * Remplacer accepts that kind only (an image document a photo, a PDF document a one-page PDF); a document with no
- * recorded kind (grandfathered) accepts either.
+ * The section hides *Ajouter un document* at 5 and says the cap instead; the add page opened at the cap shows the
+ * notice in place of the form, and a list mixing photos with a PDF (or two PDFs) is refused here before sending. The
+ * document page names the document's kind (a "PDF" / "Photos" tag) and its Remplacer accepts that kind only (an image
+ * document a photo, a PDF document a one-page PDF); a document with no recorded kind (grandfathered) accepts either.
+ * #402: the count against the cap opens the section's intro paragraph ("2 documents sur 5. Identité et propriété du
+ * vendeur, jamais publiés.") instead of a compact pill beside the title, so *Documents* and *Ajouter un document*
+ * share one line on a phone; at the cap and on an unavailable list the paragraph drops the count. The document page
+ * words DOCUMENT_INVALID next to DOCUMENT_UNREADABLE and heads every FAILED document "Ce document n'a pas pu être
+ * vérifié".
  * #372: "Voir" opens the page's preview page in the same tab — GET /mandates/{id}/documents/{documentId}/pages/{pageId},
  * rendered by templates/mandate/document-preview.html — never a new browsing context (the installed app has no back
  * button nor history to return with). This script only fills that page's bar, rank and sample from
  * ?id=&document=&page=; production renders them server-side, so the page, its link and its image need no JavaScript.
- * Query switches: mandate.html ?docs=none|error, ?documentOutcome=added|deleted|changed; document-new.html
+ * Query switches: mandate.html ?docs=none|error|<n>, ?documentOutcome=added|deleted|changed; document-new.html
  * ?errors=missing|file|size|server|pdf-size|pdf-protected|pdf-unreadable|pdf-pages|mixed|pages|limit
  * (?errors=1 = missing); document.html ?delete=1, ?outcome=renamed|replaced&page=N, ?errors=blank|long, ?conflict=1,
  * ?replaceError=type|size|empty|mixed|pdf-size|pdf-protected|pdf-unreadable|pdf-pages&page=N,
- * ?codes=DOCUMENT_UNREADABLE[,CODE…] (a FAILED sample's codes replaced, in the order given); document-preview.html
- * ?id=&document=&page=N; the reading states come from the samples (?id=&document=, see DOCUMENTS). ?docs=reset (any
- * page) forgets the session.
+ * ?codes=DOCUMENT_INVALID|DOCUMENT_UNREADABLE[,CODE…] (a FAILED sample's codes replaced, in the order given);
+ * document-preview.html ?id=&document=&page=N; the reading states come from the samples (?id=&document=, see
+ * DOCUMENTS). ?docs=reset (any page) forgets the session.
  */
 (function () {
     "use strict";
@@ -175,12 +178,17 @@
      * agent can actually do from this page — replace a page, or delete the document and add it again; there is no
      * re-analysis and no field to correct. DOCUMENT_EXPIRED is a warning, never an instruction: the expiry notice is
      * what the agent sees. PROBLEM_OTHER answers an unknown code.
+     * #402: DOCUMENT_INVALID is the model's refusal of a document it read (a specimen, a forgery, a blurry page);
+     * DOCUMENT_UNREADABLE is now only a page the reader couldn't turn into an image, so its wording stays.
      */
     var PROBLEM_INSTRUCTIONS = {
         DOCUMENT_TYPE_MISMATCH: "Le document ne correspond pas au type choisi. Supprimez-le, puis ajoutez-le avec " +
             "le bon type.",
         DOCUMENT_UNREADABLE: "Le document n'a pas pu être lu. Remplacez ses pages par des photos plus nettes, " +
             "droites et sans reflet, ou supprimez-le et ajoutez-le de nouveau.",
+        DOCUMENT_INVALID: "Le document n'a pas pu être vérifié. Vérifiez qu'il s'agit bien d'une pièce authentique, " +
+            "lisible et complète : remplacez ses pages par des photos plus nettes, droites et sans reflet, ou " +
+            "supprimez-le et ajoutez-le de nouveau.",
         DOCUMENT_PAGE_MISSING: "Il manque une page du document, son verso par exemple. Remplacez la page manquante " +
             "par une photo, ou supprimez le document et ajoutez-le avec toutes ses pages.",
         DOCUMENT_FIELD_LOW_CONFIDENCE: "Un champ obligatoire n'a pas pu être lu avec certitude. Vérifiez-le " +
@@ -634,7 +642,6 @@
         var list = $("[data-documents-list]", section);
         var template = $("[data-documents-template]", section);
         var add = $("[data-documents-add]", section);
-        var count = $("[data-documents-count]", section);
         var limit = $("[data-documents-limit]", section);
         var flash = $("[data-documents-flash]", section);
 
@@ -652,27 +659,21 @@
             var readOnly = closed();
             var unavailable = params.get("docs") === "error";
             var documents = params.get("docs") === "none" ? [] : documentsOf(id);
+            // PROTOTYPE: ?docs=<n> keeps the sample's first n documents — the singular and the 2-of-5 intros, without
+            // deleting anything.
+            if (/^\d+$/.test(params.get("docs") || "")) documents = documents.slice(0, Number(params.get("docs")));
 
+            // #402: the count against the cap opens the paragraph (the head is the title and the action only); at
+            // the cap the head's notice already says 5 and why there is no action, so the lead leaves rather than
+            // repeat it, and an unavailable list has no count to state.
             var whose = listing ? "du " + party : mandate.sale ? "de l'acheteur" : "du client";
-            $("[data-documents-intro]", section).textContent = "Les pièces d'identité et " +
-                (listing ? "de propriété " : "de financement ") + whose +
-                ". Privées : jamais publiées ni montrées à un autre agent.";
+            var lead = !unavailable && documents.length < MAX_DOCUMENTS
+                ? documents.length + " document" + (documents.length > 1 ? "s" : "") + " sur " + MAX_DOCUMENTS + ". "
+                : "";
+            $("[data-documents-intro]", section).textContent = lead + "Identité et " +
+                (listing ? "propriété " : "financement ") + whose + ", jamais publiés.";
 
-            // #369: the count against the cap, compact next to the heading ("3/5") so that the action stays on its
-            // line at 390 px; its accessible label reads "3 documents sur 5". An unavailable list keeps the action
-            // (adding doesn't need the list) and shows no count (it isn't known).
             var atLimit = !readOnly && !unavailable && documents.length >= MAX_DOCUMENTS;
-            count.textContent = "";
-            var countLabel = document.createElement("span");
-            countLabel.className = "visually-hidden";
-            countLabel.textContent = documents.length + " document" + (documents.length > 1 ? "s" : "") + " sur " +
-                MAX_DOCUMENTS;
-            var countValue = document.createElement("span");
-            countValue.setAttribute("aria-hidden", "true");
-            countValue.textContent = documents.length + "/" + MAX_DOCUMENTS;
-            count.appendChild(countLabel);
-            count.appendChild(countValue);
-            count.hidden = unavailable;
             add.hidden = readOnly || atLimit;
             add.href = "mandate/document-new.html?id=" + id;
             limit.hidden = !atLimit;

@@ -15,12 +15,12 @@
     <link rel="stylesheet" href="../assets/css/rejoindre.css">
     <link rel="stylesheet" href="../assets/css/home.css">
     <link rel="stylesheet" href="../assets/css/listing.css">
-    <link rel="stylesheet" href="../assets/css/documents.css?v=20261126d">
+    <link rel="stylesheet" href="../assets/css/documents.css?v=20261128a">
     <script src="../assets/js/partner-central.js?v=20261125a" defer></script>
-    <script src="../assets/js/mandate-documents.js?v=20261126d" defer></script>
+    <script src="../assets/js/mandate-documents.js?v=20261128a" defer></script>
 </head>
 <!--
-    PROTOTYPE (#329, #331, #366, #369, #372): one document of a mandate
+    PROTOTYPE (#329, #331, #366, #369, #372, #402): one document of a mandate
     (GET /mandates/{id}/documents/{documentId}), opened from a row of the mandate page's Documents section. Its
     header: the title (the type's name when it has none of its own), the status pill, the document's kind (#369:
     "PDF" / "Photos" / "Photos ou PDF" for a grandfathered one), the type (when the title differs from it) and ONE
@@ -147,9 +147,10 @@
                       - EXTRACTED without fields (an older payload): "Aucune donnée n'a été lue…", status unchanged.
                       - UPLOADED / EXTRACTING: a hint that the reading happens on its own; no field row.
                       - FAILED: one instruction per problem code, in the server's order (DOCUMENT_TYPE_MISMATCH,
-                        DOCUMENT_UNREADABLE, DOCUMENT_PAGE_MISSING, DOCUMENT_FIELD_LOW_CONFIDENCE,
-                        EXPIRY_DATE_UNREADABLE, EXTRACTION_FAILED); an unknown code reads the generic instruction. No
-                        field row.
+                        DOCUMENT_UNREADABLE, DOCUMENT_INVALID (#402), DOCUMENT_PAGE_MISSING,
+                        DOCUMENT_FIELD_LOW_CONFIDENCE, EXPIRY_DATE_UNREADABLE, EXTRACTION_FAILED); an unknown code
+                        reads the generic instruction. The heading is neutral for every code — "Ce document n'a pas pu
+                        être vérifié" (#402) — and the instruction says what to correct. No field row.
                       - expiresAt before today (tenant clock): the notice "Pièce expirée le …", saying whether it was
                         already expired when it was read (the DOCUMENT_EXPIRED warning) or has expired since, and the
                         way out (replace its pages, or delete it and add the valid one). DOCUMENT_EXPIRED is a warning,
@@ -185,11 +186,11 @@
                             consultable.</p>
                     </div>
 
-                    <!-- FAILED: one instruction per problem code, in the server's order. -->
+                    <!-- FAILED: one instruction per problem code, in the server's order (#402: DOCUMENT_INVALID too). -->
                     <div class="alert alert--warning" data-reading-problems hidden>
                         <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
                         <div>
-                            <p class="alert__title">Ce document n'a pas pu être lu</p>
+                            <p class="alert__title">Ce document n'a pas pu être vérifié</p>
                             <p>Corrigez ce qui suit&nbsp;: la lecture repart d'elle-même.</p>
                             <ul class="doc-problems" data-reading-problem-list></ul>
                         </div>

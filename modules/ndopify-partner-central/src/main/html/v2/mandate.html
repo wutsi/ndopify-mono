@@ -17,13 +17,13 @@
     <link rel="stylesheet" href="assets/css/home.css?v=20261126a">
     <link rel="stylesheet" href="assets/css/listing.css">
     <link rel="stylesheet" href="assets/css/visit.css">
-    <link rel="stylesheet" href="assets/css/documents.css?v=20261126d">
-    <link rel="stylesheet" href="assets/css/ownership.css?v=20261127c">
+    <link rel="stylesheet" href="assets/css/documents.css?v=20261128a">
+    <link rel="stylesheet" href="assets/css/ownership.css?v=20261128a">
     <script src="assets/js/partner-central.js?v=20261125a" defer></script>
     <script src="assets/js/visit.js?v=20261118a" defer></script>
-    <script src="assets/js/mandate-documents.js?v=20261126d" defer></script>
-    <script src="assets/js/ownership-copy.js" defer></script>
-    <script src="assets/js/mandate-ownership.js?v=20261127d" defer></script>
+    <script src="assets/js/mandate-documents.js?v=20261128a" defer></script>
+    <script src="assets/js/ownership-copy.js?v=20261128a" defer></script>
+    <script src="assets/js/mandate-ownership.js?v=20261128b" defer></script>
 </head>
 <!--
     v2: a SALE mandate (?id=301, a seller's villa, signed; ?id=302, a seller's plot of land whose criteria show its
@@ -591,8 +591,9 @@
                     The shipped verdict is a status and its reasons only (OwnershipVerification: status + reasons;
                     each reason a code and, for *_UNUSABLE, the document's problemCodes as details). It carries no
                     evidence date and no document type or title, so the section shows neither: no date at all, and
-                    the faulty piece is named by its check (*la pièce d'identité* / *le document de propriété*),
-                    while the Documents rows just below show each piece's type, title and status.
+                    the faulty piece is named by its check (*la pièce d'identité* / *le document de propriété* /
+                    *le titre* / *un document*), while the Documents rows just below show each piece's type, title and
+                    status.
 
                     PENDING: *Vérification du propriétaire en cours*, no error styling: one line per missing piece,
                     with what counts (*une carte nationale d'identité (recto et verso) ou un passeport* / *un titre
@@ -602,32 +603,34 @@
                     (#299), with a link to the mandate's listing (the *Actif* panel's read) — no link, and no dead
                     one, when the mandate has no listing yet. No date, since the verdict has none.
                     #377: the same VERIFIED verdict can come from an admin's override of the owner verification.
-                    That is a state of its own: the pill reads *Vérifiée par Ndopify*, the intro drops its "à partir
-                    des pièces de la section Documents" clause (the documents didn't decide it), and the block says
+                    That is a state of its own: the pill reads *Vérifiée par Ndopify*, its intro is the party
+                    sentence alone — *Ndopify vérifie que le vendeur est bien le propriétaire du bien.* — never the
+                    documents clause (#402 makes that clause the section's intro for the other states), since the
+                    documents didn't decide it; and the block says
                     Ndopify verified the owner after review (*Propriétaire vérifié* / *Ndopify a vérifié le
                     propriétaire après examen de sa situation.*) — never that the documents passed — then keeps the
                     publication hint and the listing link unchanged. It shows no date, no reason, no admin identity
                     and no admin reason: the verdict carries none of them. The non-overridden VERIFIED state, and
                     every other state, is unchanged.
-                    FAILED: *Propriétaire non vérifié*, one block per reason code: the check's kind (*la pièce
-                    d'identité* for OWNERSHIP_ID_*, *le document de propriété* for OWNERSHIP_DOCUMENT_*), the reason
-                    in French, its action (reprendre la photo / changer le type / ajouter un titre), and for
-                    *_UNUSABLE the document's own problem codes, worded as the document page words them (#331). No
-                    manual review. A reason names no document id, page, path, storage URL, extracted value, type nor
-                    agent title, and the action links to #documents-title, where the faulty row is. An unknown
-                    reason code reads the generic line, with no kind.
+                    FAILED: *Propriétaire non vérifié*, one short sentence per reason code (#402): the piece in bold
+                    (*La pièce d'identité* for OWNERSHIP_ID_*, *Le document de propriété* for OWNERSHIP_DOCUMENT_*,
+                    *Le titre* for #376's OWNERSHIP_PROPERTY_MISMATCH, *Un document* for an unknown code), then the
+                    cause — no per-reason action, no instruction list, no button. No manual review. A reason names no
+                    document id, page, path, storage URL, extracted value, type nor agent title. The intro — *À partir
+                    des pièces de la section Documents.* — is the section's only way to the fix (its link goes to
+                    #documents-title); the how stays on the document page.
                     UNAVAILABLE: a failed read (5xx, network, 403/404) or an UNKNOWN status only makes this section
                     say *Vérification indisponible*; every other section renders as before.
                     #376: the verdict also carries the city comparison (location: the mandate's city, the title's
                     locality and UNKNOWN / MATCH / MISMATCH / UNRESOLVED). UNKNOWN and MATCH show nothing. MISMATCH
                     is the FAILED OWNERSHIP_PROPERTY_MISMATCH reason, worded with the two places (*Ville du mandat*,
-                    *Localité du titre*) inside its block — the only property data the verdict carries, no document
-                    id, type, title, page, path, URL nor other extracted value. UNRESOLVED is not a verdict: a neutral
-                    hint under the state's block, whatever the status (PENDING, VERIFIED or FAILED for another
-                    check), with the two places side by side (stacked on a phone), the sentence that the title's
-                    locality can't be matched to a known city and a link to #documents-title. It never changes the
-                    status, never blocks, and shows nothing when both places are blank; a blank place reads *non
-                    précisée*.
+                    *Localité du titre*) inline in its sentence for that reason (#402) — the only property data the
+                    verdict carries, no document id, type, title, page, path, URL nor other extracted value.
+                    UNRESOLVED is not a verdict: a neutral hint under the state's block, whatever the status (PENDING,
+                    VERIFIED or FAILED for another check), with the two places side by side (stacked on a phone), the
+                    sentence that the title's locality can't be matched to a known city and a link to
+                    #documents-title. It never changes the status, never blocks, and shows nothing when both places
+                    are blank; a blank place reads *non précisée*.
 
                     PROTOTYPE: the static markup is ?id=301's render (its identity card is expired: FAILED), as the
                     server would send it. mandate-ownership.js only switches the samples from ?ownership=:
@@ -636,7 +639,8 @@
                     same link with &listing=published; the intro loses its documents clause), hint (#376's UNRESOLVED
                     comparison on &state=verified (default), pending or failed; &locality=none blanks the title's
                     locality, &city=none the mandate's city), failed (&reason=id-expired (default), id-unusable,
-                    id-name, document-unusable, document-name, property-mismatch), unavailable, none. A SEARCH mandate
+                    id-name, document-unusable, document-name, property-mismatch, unknown), unavailable, none. A SEARCH
+                    mandate
                     (?id=303, ?id=204) and a CLOSED / CANCELLED one (301 cancelled or closed from this page) hide the
                     section whatever the switch. Production renders the state and the reasons server-side; no state
                     needs JavaScript.
@@ -646,9 +650,19 @@
                         <h2 id="ownership-title">Vérification du propriétaire</h2>
                         <p class="status-tag status-tag--warning" data-ownership-tag>Non vérifié</p>
                     </div>
-                    <p class="ownership__intro">Ndopify vérifie que <span data-ownership-party>le vendeur</span> est
-                        bien le propriétaire du bien<span data-ownership-intro-documents>, à partir des pièces de la
-                        section Documents</span>.</p>
+                    <!--
+                        #402: the intro is the section's only way to the fix — "À partir des pièces de la section
+                        Documents." — whatever the status, and it says nothing else about the check.
+                        #377's overridden verdict keeps its own intro, "Ndopify vérifie que le vendeur est bien le
+                        propriétaire du bien.", with no documents clause (the documents didn't decide it); the same
+                        mandate kind says *le bailleur*.
+                    -->
+                    <p class="ownership__intro">
+                        <span data-ownership-intro-documents>À partir des pièces de la
+                            <a href="#documents-title">section Documents</a>.</span>
+                        <span data-ownership-intro-overridden hidden>Ndopify vérifie que
+                            <span data-ownership-party>le vendeur</span> est bien le propriétaire du bien.</span>
+                    </p>
 
                     <div class="alert alert--warning" hidden data-ownership-unavailable>
                         <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
@@ -678,24 +692,21 @@
                         </div>
                     </div>
 
-                    <!-- Default (301): FAILED, its identity card expired. No type or title: the verdict has none. -->
+                    <!--
+                        Default (301): FAILED, its identity card expired. No type or title: the verdict has none.
+                        #402: one short sentence per reason, the piece in bold — the cause only, with no per-reason
+                        action, no instruction list and no button; the intro's *section Documents* link is the
+                        section's one way to the fix.
+                    -->
                     <div class="alert alert--warning" data-ownership-failed>
                         <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
                         <div>
                             <p class="alert__title">Propriétaire non vérifié</p>
                             <ul class="ownership__reasons" data-ownership-reasons>
                                 <li class="ownership__reason">
-                                    <p class="ownership__check">La pièce d'identité</p>
-                                    <p>La pièce est expirée&nbsp;: elle ne peut plus servir à vérifier le
-                                        propriétaire.</p>
-                                    <p class="ownership__action">Reprenez la photo d'une pièce en cours de validité,
-                                        puis ajoutez-la dans Documents.</p>
+                                    <p><strong class="ownership__check">La pièce d'identité</strong> est expirée.</p>
                                 </li>
                             </ul>
-                            <p class="ownership__actions">
-                                <a class="btn btn--outline btn--compact" href="#documents-title">Corriger dans les
-                                    documents</a>
-                            </p>
                         </div>
                     </div>
 
@@ -755,24 +766,15 @@
                         </div>
                     </div>
 
-                    <!-- One reason of a FAILED verdict: the check's kind, the wording, its details and its action. -->
+                    <!--
+                        One reason of a FAILED verdict (#402): one short sentence, the piece it looked at in bold,
+                        and — for #376's mismatch only — the two places inline, in the same sentence. The action, the
+                        document's instruction list and the `<dl>` left this section: the intro's link and the
+                        document page carry the fix.
+                    -->
                     <template data-ownership-reason-template>
                         <li class="ownership__reason">
-                            <p class="ownership__check" data-reason-check></p>
-                            <p data-reason-text></p>
-                            <!-- #376: the mismatch's two places, above its action (the verdict's only property data). -->
-                            <dl class="ownership__places" data-reason-places hidden>
-                                <div class="ownership__place">
-                                    <dt>Ville du mandat</dt>
-                                    <dd data-place-mandate-city></dd>
-                                </div>
-                                <div class="ownership__place">
-                                    <dt>Localité du titre</dt>
-                                    <dd data-place-document-locality></dd>
-                                </div>
-                            </dl>
-                            <ul class="ownership__problems" data-reason-problems hidden></ul>
-                            <p class="ownership__action" data-reason-action></p>
+                            <p><strong class="ownership__check" data-reason-check></strong> <span data-reason-text></span></p>
                         </li>
                     </template>
                 </section>
@@ -793,32 +795,34 @@
                     whether the list is empty or not; absent on a CLOSED / CANCELLED mandate, which keeps the
                     list read-only. The documents failing to load only affect this section ("unavailable"). The outcome
                     of an add or a delete (flash documentOutcome) shows here, the page coming back to #documents-title.
-                    #369: the head counts the stored documents against the cap as a compact "3/5" beside the title
-                    (its accessible label reads "3 documents sur 5"), all types together, LISTING and SEARCH alike.
-                    The compact count keeps "Ajouter un document" on the title's line at 390 px; if space runs out,
-                    the count wraps under the title, never the action. At 5 the section hides "Ajouter un document" and
-                    shows "Un mandat peut avoir 5 documents au plus." in its place; the count stays. An unavailable list
-                    keeps the action (adding doesn't need the list) and shows no count (it isn't known); a closed or
-                    cancelled mandate keeps its read-only hint and no action, whatever the count.
+                    #402: the count against the cap opens the intro paragraph instead of sitting beside the title
+                    ("2 documents sur 5. Identité et propriété du vendeur, jamais publiés."; the singular "1 document
+                    sur 5."), all types together, LISTING and SEARCH alike, the piece names following the mandate's
+                    kind. The head is the title and the action only, so "Documents" and "Ajouter un document" share
+                    one line at 390 and 360 px, and the intro stays two lines there. At 5 the section hides "Ajouter un
+                    document" and shows "Un mandat peut avoir 5 documents au plus." in its place, and the intro drops
+                    the count lead rather than repeat it; an unavailable list keeps the action (adding doesn't need
+                    the list) and its intro carries no count (it isn't known); a closed or cancelled mandate keeps its
+                    read-only hint and no action.
                     PROTOTYPE: ?id=301 (a seller at 5: titre foncier read, facture d'eau being read, CNI expired,
                     procuration waiting, plan de bornage to fix), ?id=303 (a buyer at 5: attestation de solde,
                     procuration, bulletin de paie, CNI, accord de principe expired), ?id=302 / 201 / 104 once accepted
                     (none: below the cap, the empty state and its hint for that mandate), ?id=311 (a cancelled search:
-                    read-only, 3 documents); &docs=none, &docs=error, &documentOutcome=added|deleted|changed
+                    read-only, 3 documents); &docs=none (empty), &docs=error (unavailable), &docs=<n> (the sample's
+                    first n documents: the singular and the 2-of-5 intros), &documentOutcome=added|deleted|changed
                     &documentTitle=…; &docs=reset forgets the session's changes. mandate-documents.js renders it.
                 -->
                 <section class="home-section documents" aria-labelledby="documents-title" data-documents>
                     <div class="documents__head">
                         <div class="documents__title">
                             <h2 id="documents-title">Documents</h2>
-                            <p class="documents__count" data-documents-count><span class="visually-hidden" data-count-label>5 documents sur 5</span><span aria-hidden="true" data-count-value>5/5</span></p>
                         </div>
                         <a class="btn btn--secondary btn--compact" href="mandate/document-new.html?id=301"
                            data-documents-add hidden>Ajouter un document</a>
                         <p class="documents__limit" data-documents-limit>Un mandat peut avoir 5 documents au plus.</p>
                     </div>
-                    <p class="documents__intro" data-documents-intro>Les pièces d'identité et de propriété du vendeur.
-                        Privées : jamais publiées ni montrées à un autre agent.</p>
+                    <p class="documents__intro" data-documents-intro>Identité et propriété du vendeur, jamais
+                        publiés.</p>
 
                     <div class="alert alert--success" role="status" tabindex="-1" hidden data-documents-flash>
                         <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>

@@ -1,16 +1,18 @@
 /*
- * Ndopify Partner Central — the owner verification's French wording (#298), for the mandate page's
+ * Ndopify Partner Central — the owner verification's French wording (#298, #402), for the mandate page's
  * *Vérification du propriétaire* section (mandate-ownership.js), static prototype.
  *
  * Production words the verdict once, in the server's views (MandateOwnershipViews); this file plays that single
  * source here. Loaded before mandate-ownership.js (mandate.html).
  * The shipped verdict (#297, ndopify-dto 0.0.113) is a status and its reasons only:
  * { status, reasons: [{ code, details }] } — no evidence date, no document type, title, page, path nor extracted
- * value. A *_MISSING reason is a piece to add, a decisive reason is a check that failed and the one action it calls
- * for; a *_UNUSABLE reason carries the document's problemCodes as details, worded as the document page words them
- * (#331). A reason never names a document id, page, path, URL, extracted value, type nor agent title.
+ * value. A *_MISSING reason is a piece to add; #402 cuts a decisive reason to ONE short sentence naming the cause,
+ * with the piece it looked at in bold and no action of its own (the section's intro links to the Documents section,
+ * the document page carries the how). A reason never names a document id, page, path, URL, extracted value, type nor
+ * agent title.
  * #376 adds the city comparison (OwnershipLocation: mandateCity, documentLocality, status) and its reason,
- * OWNERSHIP_PROPERTY_MISMATCH: the two places are the verdict's only property data, the mandate page shows them.
+ * OWNERSHIP_PROPERTY_MISMATCH: the two places are the verdict's only property data, and #402 keeps them inline in
+ * that reason's sentence.
  */
 (function () {
     "use strict";
@@ -27,89 +29,70 @@
     };
     var MISSING_OTHER = "Une pièce manque pour vérifier le propriétaire : vérifiez les documents du mandat.";
 
+    // A place the comparison carries as blank reads "non précisée" — never an empty cell.
+    var UNKNOWN_PLACE = "non précisée";
+
     /*
-     * A decisive reason: its French wording and the one action it calls for — retake the photo, change the type, or
-     * upload a title. The reason carries no document type or title, so the block names the check's kind above this
-     * wording (checkKind below); the document's problem codes (*_UNUSABLE only) come under it. The action stays the
-     * same whatever the details are, since both the photo and the type are corrected from the same document row.
+     * #402: a decisive reason, cut to the cause alone — the piece it looked at (bold on the page) and the rest of the
+     * sentence. No action, no instruction list: the section's intro links to the Documents section and the document
+     * page says what to correct. The verdict carries no document type or title, so the piece is named by its check,
+     * never by a title. #376's mismatch keeps its two places in the sentence (the verdict's only property data); a
+     * blank place reads "non précisée".
      */
-    var REASON_WORDING = {
-        OWNERSHIP_ID_EXPIRED: {
-            text: "La pièce est expirée : elle ne peut plus servir à vérifier le propriétaire.",
-            action: "Reprenez la photo d'une pièce en cours de validité, puis ajoutez-la dans Documents."
-        },
+    var REASONS = {
         OWNERSHIP_ID_UNUSABLE: {
-            text: "La pièce n'a pas pu être vérifiée.",
-            action: "Corrigez la pièce dans Documents : reprenez sa photo, ou changez son type."
+            piece: "La pièce d'identité",
+            text: "n'a pas pu être vérifiée."
+        },
+        OWNERSHIP_ID_EXPIRED: {
+            piece: "La pièce d'identité",
+            text: "est expirée."
         },
         OWNERSHIP_ID_NAME_MISMATCH: {
-            text: "La pièce ne porte pas le nom du propriétaire : elle ne peut pas l'identifier.",
-            action: "Ajoutez une pièce d'identité au nom du propriétaire."
+            piece: "La pièce d'identité",
+            text: "n'est pas au nom du propriétaire."
         },
         OWNERSHIP_DOCUMENT_UNUSABLE: {
-            text: "Le document n'a pas pu être vérifié.",
-            action: "Corrigez le document dans Documents : reprenez sa photo, ou changez son type."
+            piece: "Le document de propriété",
+            text: "n'a pas pu être vérifié."
         },
         OWNERSHIP_DOCUMENT_NAME_MISMATCH: {
-            text: "Le document ne désigne pas le propriétaire du bien.",
-            action: "Ajoutez un titre foncier ou un certificat de propriété au nom du propriétaire."
+            piece: "Le document de propriété",
+            text: "ne désigne pas le propriétaire."
         },
-        // #376: the title names the customer, but its locality is a known city other than the mandate's. The two
-        // places are the comparison's only data; the mandate's page shows them above this wording. No document type,
-        // title, id, page, path, URL nor extracted value.
         OWNERSHIP_PROPERTY_MISMATCH: {
-            text: "Le document désigne un bien dans une autre ville que celle du mandat : il ne justifie pas la " +
-                "propriété de ce bien.",
-            action: "Vérifiez le document dans Documents : il doit désigner un bien situé dans la ville du mandat."
+            piece: "Le titre",
+            text: function (places) {
+                return "désigne un bien à " + (places.locality || UNKNOWN_PLACE) + ", le mandat à " +
+                    (places.city || UNKNOWN_PLACE) + ".";
+            }
         }
     };
-    // #298's decision 7: one label per code, and a generic line for a code the page doesn't know yet.
+    // A code the page doesn't know yet (#298's decision 7): one generic sentence, never an error.
     var REASON_OTHER = {
-        text: "La vérification du propriétaire a échoué sur ce document.",
-        action: "Vérifiez la pièce dans Documents."
+        piece: "Un document",
+        text: "n'a pas pu être vérifié."
     };
-
-    // The check a reason belongs to: the verdict names no type or title, only the kind of piece it looked at.
-    // #376's OWNERSHIP_PROPERTY_MISMATCH is the ownership title's own check, hence the same kind as the *_DOCUMENT_
-    // codes.
-    function checkKind(code) {
-        code = String(code || "");
-        if (code.indexOf("OWNERSHIP_ID_") === 0) return "La pièce d'identité";
-        if (code === "OWNERSHIP_PROPERTY_MISMATCH") return "Le document de propriété";
-        if (code.indexOf("OWNERSHIP_DOCUMENT_") === 0) return "Le document de propriété";
-        return "";
-    }
 
     /*
-     * #331's problem instructions, verbatim: production words them once in messages.properties
-     * (document.problem.<code>), which the document page and the owner verification both read. DOCUMENT_EXPIRED is a
-     * warning, never an instruction, and doesn't reach a verdict reason's details.
+     * The piece and the rest of the sentence of one reason. The mismatch's sentence is built from the verdict's two
+     * places, so the caller passes them (the section's location data).
      */
-    var PROBLEM_INSTRUCTIONS = {
-        DOCUMENT_TYPE_MISMATCH: "Le document ne correspond pas au type choisi. Supprimez-le, puis ajoutez-le avec " +
-            "le bon type.",
-        DOCUMENT_UNREADABLE: "Le document n'a pas pu être lu. Remplacez ses pages par des photos plus nettes, " +
-            "droites et sans reflet, ou supprimez-le et ajoutez-le de nouveau.",
-        DOCUMENT_PAGE_MISSING: "Il manque une page du document, son verso par exemple. Remplacez la page manquante " +
-            "par une photo, ou supprimez le document et ajoutez-le avec toutes ses pages.",
-        DOCUMENT_FIELD_LOW_CONFIDENCE: "Un champ obligatoire n'a pas pu être lu avec certitude. Vérifiez-le " +
-            "sur la pièce : si la photo est floue, remplacez la page ; sinon, supprimez le document et " +
-            "ajoutez-le de nouveau.",
-        EXPIRY_DATE_UNREADABLE: "La date d'expiration de la pièce n'a pas pu être lue. Remplacez la page où elle " +
-            "figure par une photo plus nette, ou supprimez le document et ajoutez-le de nouveau.",
-        EXTRACTION_FAILED: "La lecture du document a échoué. Remplacez ses pages, ou supprimez le document et " +
-            "ajoutez-le de nouveau pour relancer la lecture."
-    };
-    var PROBLEM_OTHER = "Un problème a été signalé sur ce document. Supprimez-le et ajoutez-le de nouveau pour " +
-        "relancer la lecture.";
+    function reasonOf(code, location) {
+        var reason = REASONS[String(code || "")] || REASON_OTHER;
+        var places = location || {};
+        return {
+            piece: reason.piece,
+            text: typeof reason.text === "function"
+                ? reason.text({ locality: places.documentLocality, city: places.mandateCity })
+                : reason.text
+        };
+    }
 
     window.NdOwnership = {
         MISSING_PIECES: MISSING_PIECES,
         MISSING_OTHER: MISSING_OTHER,
-        REASON_WORDING: REASON_WORDING,
         REASON_OTHER: REASON_OTHER,
-        checkKind: checkKind,
-        PROBLEM_INSTRUCTIONS: PROBLEM_INSTRUCTIONS,
-        PROBLEM_OTHER: PROBLEM_OTHER
+        reasonOf: reasonOf
     };
 })();

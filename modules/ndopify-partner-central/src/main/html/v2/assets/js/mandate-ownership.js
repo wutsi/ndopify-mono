@@ -9,23 +9,24 @@
  * The shipped verdict (#297, ndopify-dto 0.0.112) is a status and its reasons only:
  * { status, reasons: [{ code, details }] } — no evidence date, no document type, no agent title. PENDING carries one
  * reason per missing piece (none while a piece is still UPLOADED or EXTRACTING); VERIFIED has no reason and no date;
- * FAILED carries one reason per failed check, named by its kind (*la pièce d'identité* / *le document de propriété*)
- * because a reason doesn't say which type or title it was, and a *_UNUSABLE reason carries the document's problem
- * codes as details, worded as the document page words them (#331; the French wording is shared with the listing
- * page's publication block in ownership-copy.js, and production reads the same document.problem.<code> bundle).
+ * FAILED carries one reason per failed check (#402: one short sentence, the piece it looked at in bold, and only the
+ * cause — no action, no instruction list, no button; the section's intro links to the Documents section and the
+ * document page says what to correct). A reason still carries the document's problem codes as `details`, but this
+ * section no longer shows them; it never names a document id, type, title, page, path, value nor agent title.
  * UNAVAILABLE is the section's own state when the read fails or answers UNKNOWN.
  * The Documents rows just below the section are what name each piece's type, title and status.
  * #376: the verdict also carries location { mandateCity, documentLocality, status }, the city comparison of the
  * title's locality against the mandate's city. UNKNOWN (nothing to compare) and MATCH show nothing; UNRESOLVED
  * shows the neutral hint under the verdict, whatever the status, with the two places and a link to the Documents
- * section; MISMATCH is the FAILED OWNERSHIP_PROPERTY_MISMATCH reason, worded with the two places inside the failed
- * block. The comparison never decides a verdict by itself beyond that one reason, and a missing place reads
+ * section; MISMATCH is the FAILED OWNERSHIP_PROPERTY_MISMATCH reason, with the two places inline in its sentence
+ * (#402). The comparison never decides a verdict by itself beyond that one reason, and a missing place reads
  * "non précisée".
  * #377: a VERIFIED verdict may carry overridden: true (an admin overrode the owner verification). It is still
- * VERIFIED, but it is its own state: the pill reads "Vérifiée par Ndopify", the intro loses its documents clause,
- * and the block says Ndopify verified the owner after review — never that the documents passed; the publication
- * hint and the listing link stay the verified ones. No date, reason, admin identity nor admin reason is shown.
- * The section is absent on a SEARCH mandate and on a CLOSED / CANCELLED one.
+ * VERIFIED, but it is its own state: the pill reads "Vérifiée par Ndopify", its intro is the party sentence alone
+ * ("Ndopify vérifie que le vendeur est bien le propriétaire du bien.", no documents clause — #402 makes that clause
+ * the intro of the other states), and the block says Ndopify verified the owner after review — never that the
+ * documents passed; the publication hint and the listing link stay the verified ones. No date, reason, admin identity
+ * nor admin reason is shown. The section is absent on a SEARCH mandate and on a CLOSED / CANCELLED one.
  *
  * Query switch (prototype only; production renders all of it server-side):
  *   ?ownership=pending[&reason=both|id-missing|document-missing|in-flight]   (both is the default)
@@ -37,9 +38,10 @@
  *                                            (#376's UNRESOLVED comparison, on any status: the default is a VERIFIED
  *                                             verdict of 301 with the title's locality "Bonabéri"; &locality=none blanks
  *                                             it, &city=none blanks the mandate's city — both blank shows no hint)
- *   ?ownership=failed[&reason=mixed|id-expired|id-unusable|id-name|document-unusable|document-name|property-mismatch]
+ *   ?ownership=failed[&reason=mixed|id-expired|id-unusable|id-name|document-unusable|document-name|property-mismatch|unknown]
  *                                            (id-expired is the default; 301's own verdict; property-mismatch is
- *                                             #376's OWNERSHIP_PROPERTY_MISMATCH, Douala against Yaoundé)
+ *                                             #376's OWNERSHIP_PROPERTY_MISMATCH, Douala against Yaoundé; unknown is a
+ *                                             code this page doesn't know yet, #402)
  *   ?ownership=unavailable                   (the verdict read failed: only the section says so)
  *   ?ownership=none                          (the section as a SEARCH or CLOSED / CANCELLED page renders it: absent)
  * The samples for 301 and 302 are the mandates' own: 301 has an expired identity card, 302 has no document.
@@ -47,15 +49,15 @@
 (function () {
     "use strict";
 
-    // #375: the French wording is one source, shared with the listing page's publication block (ownership-copy.js,
-    // loaded before this file), so that the two pages cannot drift.
+    // The French wording is one source (ownership-copy.js, loaded before this file), so every reason of the section
+    // reads the same words.
     var copy = window.NdOwnership;
 
     /*
      * PROTOTYPE: the sample verdicts, as GET /v1/mandates/{id}/ownership would send them — a status and reasons, no
-     * date, no type nor title; details are the failed document's problemCodes, in the server's order. The default is
-     * FAILED for 301 (its expired identity card) and PENDING with both pieces missing for any other LISTING mandate
-     * (302 has no document yet).
+     * date, no type nor title; details are the failed document's problemCodes, in the server's order (carried by the
+     * verdict, no longer shown here since #402). The default is FAILED for 301 (its expired identity card) and
+     * PENDING with both pieces missing for any other LISTING mandate (302 has no document yet).
      */
     var PENDING_SAMPLES = {
         both: [
@@ -84,6 +86,8 @@
             details: ["DOCUMENT_TYPE_MISMATCH", "DOCUMENT_PAGE_MISSING"]
         }],
         "document-name": [{ code: "OWNERSHIP_DOCUMENT_NAME_MISMATCH" }],
+        // #402: a code this page doesn't know yet (a server code added later) reads the generic sentence.
+        "unknown": [{ code: "OWNERSHIP_UNKNOWN_CHECK" }],
         // #376: the title's locality is a known city other than the mandate's (301 is in Douala, the title says
         // Yaoundé). One reason only, and the two places are the comparison's only data.
         "property-mismatch": [{ code: "OWNERSHIP_PROPERTY_MISMATCH" }]
@@ -227,30 +231,12 @@
         list.innerHTML = "";
         verdict.reasons.forEach(function (reason) {
             var item = template.content.firstElementChild.cloneNode(true);
-            var wording = copy.REASON_WORDING[reason.code] || copy.REASON_OTHER;
-            // The check's kind, never a document type, title, id, page, path, URL nor extracted value.
-            var check = $("[data-reason-check]", item);
-            check.textContent = copy.checkKind(reason.code);
-            check.hidden = !check.textContent;
+            // #402: one short sentence per reason — the piece it looked at, in bold, then the cause. No action, no
+            // instruction list and no places list: the intro links to the Documents section, the document page says
+            // what to correct.
+            var wording = copy.reasonOf(reason.code, location);
+            $("[data-reason-check]", item).textContent = wording.piece;
             $("[data-reason-text]", item).textContent = wording.text;
-            // #376: the mismatch's two places — the only property data the verdict carries.
-            var places = $("[data-reason-places]", item);
-            var showPlaces = reason.code === "OWNERSHIP_PROPERTY_MISMATCH" &&
-                !!(location.mandateCity || location.documentLocality);
-            places.hidden = !showPlaces;
-            if (showPlaces) {
-                $("[data-place-mandate-city]", places).textContent = location.mandateCity || UNKNOWN_PLACE;
-                $("[data-place-document-locality]", places).textContent = location.documentLocality || UNKNOWN_PLACE;
-            }
-            var problems = $("[data-reason-problems]", item);
-            problems.innerHTML = "";
-            (reason.details || []).forEach(function (code) {
-                var problem = document.createElement("li");
-                problem.textContent = copy.PROBLEM_INSTRUCTIONS[code] || copy.PROBLEM_OTHER;
-                problems.appendChild(problem);
-            });
-            problems.hidden = problems.children.length === 0;
-            $("[data-reason-action]", item).textContent = wording.action;
             list.appendChild(item);
         });
     }
@@ -294,11 +280,12 @@
         section.hidden = !verdict;
         if (!verdict) return;
 
-        $("[data-ownership-party]", section).textContent = party === "sale" ? "le vendeur" : "le bailleur";
-        // #377: an overridden VERIFIED verdict is its own block, and its intro no longer says the documents decided
-        // it — the verdict came from Ndopify's review.
+        // #402: the intro is the section's short way to the fix, whatever the status. #377's overridden verdict keeps
+        // its own sentence instead, without the documents clause — the documents didn't decide it.
         var overridden = verdict.status === "VERIFIED" && verdict.overridden;
         $("[data-ownership-intro-documents]", section).hidden = overridden;
+        $("[data-ownership-intro-overridden]", section).hidden = !overridden;
+        $("[data-ownership-party]", section).textContent = party === "sale" ? "le vendeur" : "le bailleur";
         setTag(section, verdict);
         var block = showBlock(section, overridden ? "overridden" : verdict.status.toLowerCase());
         if (verdict.status === "PENDING") renderPending(section, verdict);

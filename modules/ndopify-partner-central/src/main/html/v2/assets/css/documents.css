@@ -1,9 +1,10 @@
 /*
- * Ndopify Partner Central — a mandate's documents (#329, #331, #369, #372): the *Documents* section of mandate.html,
- * mandate/document-new.html, mandate/document.html and mandate/document-preview.html.
+ * Ndopify Partner Central — a mandate's documents (#329, #331, #369, #372, #402): the *Documents* section of
+ * mandate.html, mandate/document-new.html, mandate/document.html and mandate/document-preview.html.
  * #331 adds what the AI read on the document page (its fields, the waiting hint, the problem instructions and the
  * expiry notice) and the "Expirée" marker of an expired document's row on mandate.html.
- * #369 adds the count against the cap and the cap notice of the section's head, and the add page's cap notice.
+ * #369 adds the cap notice of the section's head and of the add page; #402 moves the count against the cap from the
+ * head into the intro paragraph, so the head is the title and the action only.
  * #372 adds the viewer of a document's page, a full-screen page of the app: a compact dark bar (back to the
  * document, its title, the page's rank) over the page's image on the overlay.
  * Loaded after partner-central.css, home.css and listing.css; uses their tier-2 semantic tokens only, no new colours.
@@ -23,25 +24,15 @@
 }
 
 /*
- * #369: the title with the compact count against the cap ("3/5"), then the action — or, at the cap, the notice in its
- * place. The count reads as a hint right after the heading (its accessible label carries "3 documents sur 5"); its
- * small size keeps "Ajouter un document" on the same line at 390 px. A zero flex basis keeps the action on the title's
- * line whatever the count's width: the title takes what is left, and the count wraps under it if that is too narrow.
- * Never the action.
+ * #402: the title and the action — or, at the cap, the notice in its place — without the compact count that used to
+ * sit beside the heading: the number opens the intro paragraph below. A zero flex basis keeps the action on the
+ * title's line at 390 and 360 px: the title takes what is left, never the action.
  */
 .documents__title {
     display: flex;
-    flex-wrap: wrap;
     align-items: baseline;
-    gap: var(--space-1);
     flex: 1 1 0;
     min-width: min-content;
-}
-
-.documents__count {
-    font-size: var(--step-hint);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
 }
 
 .documents__limit {
@@ -49,7 +40,14 @@
     font-weight: 600;
 }
 
-/* On a phone the cap notice takes its own line under the title and its count (it is long and replaces no action). */
+/* At the narrowest phones the gap tightens so that the title and the action keep one line (#402, 360 px). */
+@media (max-width: 399.98px) {
+    .documents__head {
+        gap: var(--space-1);
+    }
+}
+
+/* On a phone the cap notice takes its own line under the title (it is long and replaces no action). */
 @media (max-width: 639.98px) {
     .documents__limit {
         flex-basis: 100%;

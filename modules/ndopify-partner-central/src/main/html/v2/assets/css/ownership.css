@@ -5,7 +5,7 @@
  * success once the owner is verified, warning when it failed or can't be read (the hue of a document to fix). The
  * status pill beside the title picks the same hue; the alert's title carries the verdict in words.
  * #376 adds the city comparison: a neutral info hint under the verdict when the title's locality can't be matched
- * (UNRESOLVED), and the two places inside the FAILED OWNERSHIP_PROPERTY_MISMATCH reason.
+ * (UNRESOLVED), and the two places inline in the FAILED OWNERSHIP_PROPERTY_MISMATCH reason (#402).
  * Every state is rendered server-side: no rule here depends on JavaScript, and each block is complete on its own.
  * Loaded after documents.css; uses partner-central.css's tier-2 semantic tokens only, no new colours.
  */
@@ -33,7 +33,7 @@
     margin-top: var(--space-1);
 }
 
-/* A FAILED verdict: one block per reason, separated by a rule, the last one carrying the section's action. */
+/* A FAILED verdict (#298, #402): one short sentence per reason, the piece in bold, a light rule between reasons. */
 .ownership__reasons {
     margin: var(--space-2) 0 0;
     padding: 0;
@@ -46,37 +46,19 @@
     margin-top: var(--space-2);
 }
 
+/* One cause per reason (#402): a rule between them, at the tight rhythm of a one-line block. */
 .ownership__reason + .ownership__reason {
-    margin-top: var(--space-3);
-    padding-top: var(--space-3);
+    margin-top: var(--space-2);
+    padding-top: var(--space-2);
     border-top: 1px solid var(--color-border);
 }
 
-.ownership__reason > * + * {
-    margin-top: var(--space-1);
-}
-
-/* The check a reason belongs to (the verdict names no type nor title): "La pièce d'identité". */
+/* The piece a reason looked at (the verdict names no type nor title): "La pièce d'identité". */
 .ownership__check {
     font-weight: 600;
 }
 
-/* The *_UNUSABLE details: the document's own problem codes, one instruction per line (#331). */
-.ownership__problems {
-    margin: var(--space-1) 0 0;
-    padding-left: var(--space-4);
-}
-
-.ownership__problems > li + li {
-    margin-top: var(--space-1);
-}
-
-/* The reason's action, under its wording: the instruction the agent follows from the Documents section. */
-.ownership__action {
-    font-weight: 600;
-}
-
-/* The state's one action (add the pieces, correct them, open the listing), under the block's text. */
+/* The state's one action (add the pieces, open the listing), under the block's text. */
 .alert > div > .ownership__actions {
     margin-top: var(--space-3);
 }
@@ -85,7 +67,7 @@
  * #376: the city comparison. UNRESOLVED is a neutral hint under the verdict — the mandate's city and the title's
  * locality side by side, the sentence and the way to the Documents section — never an error and never a change of
  * status (the block above keeps the status's own styling, the hint the app's info tokens). MISMATCH is not a hint:
- * its two places sit inside the FAILED reason, in the same definition list.
+ * its two places sit inline in the FAILED reason's sentence (#402), so this definition list belongs to the hint only.
  */
 .ownership__location > div {
     min-width: 0;
@@ -115,11 +97,6 @@
 /* The hint's sentence sits under its two places, at the hint's own rhythm (the section spaces the hint itself). */
 .ownership__location .ownership__places + p {
     margin-top: var(--space-2);
-}
-
-/* Inside a FAILED reason the list follows the wording: the reason's own rhythm, as its other children. */
-.ownership__reason > .ownership__places {
-    margin-top: var(--space-1);
 }
 
 /* On the narrowest phones the two places stack, one under the other, rather than squeeze onto one line. */
