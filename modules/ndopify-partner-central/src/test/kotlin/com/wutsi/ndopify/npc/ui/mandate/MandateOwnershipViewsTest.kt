@@ -4,6 +4,8 @@ import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.OwnershipLocation
+import com.wutsi.ndopify.mandate.dto.OwnershipLocationStatus
 import com.wutsi.ndopify.mandate.dto.OwnershipVerification
 import com.wutsi.ndopify.mandate.dto.OwnershipVerificationReason
 import com.wutsi.ndopify.mandate.dto.OwnershipVerificationStatus.FAILED
@@ -157,5 +159,82 @@ class MandateOwnershipViewsTest {
         )
     }
 
+    @Test
+    fun `an unresolved comparison adds the neutral hint`() {
+        val view = section(
+            OwnershipVerification(
+                VERIFIED,
+                location = OwnershipLocation("Yaounde", "Bonabéri", OwnershipLocationStatus.UNRESOLVED),
+            ),
+        )
+
+        assertEquals(OwnershipPlacesView("Yaounde", "Bonabéri"), view.location!!.places)
+        assertEquals(
+            "La localité du titre n'a pas pu être rattachée à une ville connue : vérifiez que le titre et le mandat " +
+                "désignent le même bien.",
+            view.location!!.text,
+        )
+        assertEquals("Vérifier le titre dans Documents", view.location!!.action)
+    }
+
+    @Test
+    fun `a blank place reads non precisée`() {
+        val view = section(
+            OwnershipVerification(
+                VERIFIED,
+                location = OwnershipLocation("", "Bonabéri", OwnershipLocationStatus.UNRESOLVED),
+            ),
+        )
+
+        assertEquals("non précisée", view.location!!.places.mandateCity)
+        assertEquals("Bonabéri", view.location!!.places.documentLocality)
+    }
+
+    @Test
+    fun `both places blank shows no hint`() {
+        val view = section(
+            OwnershipVerification(VERIFIED, location = OwnershipLocation("", "", OwnershipLocationStatus.UNRESOLVED)),
+        )
+
+        assertNull(view.location)
+    }
+
+    @Test
+    fun `a match and an unknown comparison add no hint`() {
+        assertNull(
+            section(
+                OwnershipVerification(VERIFIED, location = OwnershipLocation("Yaounde", "Yaounde", OwnershipLocationStatus.MATCH)),
+            ).location,
+        )
+        assertNull(section(OwnershipVerification(VERIFIED)).location)
+    }
+
+    @Test
+    fun `a property mismatch shows the places in its reason`() {
+        val view = section(
+            OwnershipVerification(
+                FAILED,
+                listOf(reason("OWNERSHIP_PROPERTY_MISMATCH")),
+                location = OwnershipLocation("Douala", "Yaoundé", OwnershipLocationStatus.MISMATCH),
+            ),
+        )
+
+        assertEquals("Le document de propriété", view.reasons[0].check)
+        assertEquals(OwnershipPlacesView("Douala", "Yaoundé"), view.reasons[0].places)
+        assertEquals(
+            "Le document désigne un bien dans une autre ville que celle du mandat : il ne justifie pas la propriété de " +
+                "ce bien.",
+            view.reasons[0].text,
+        )
+        assertEquals(
+            "Vérifiez le document dans Documents : il doit désigner un bien situé dans la ville du mandat.",
+            view.reasons[0].action,
+        )
+        assertNull(view.location)
+    }
+
     private fun reason(code: String, details: List<String> = emptyList()) = OwnershipVerificationReason(code, details)
+
+    private fun section(verification: OwnershipVerification) =
+        MandateOwnershipViews.section(mandate, verification, null, labels)
 }

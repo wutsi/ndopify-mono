@@ -1,6 +1,8 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.mandate.dto.Mandate
+import com.wutsi.ndopify.mandate.dto.OwnershipLocation
+import com.wutsi.ndopify.mandate.dto.OwnershipLocationStatus
 import com.wutsi.ndopify.mandate.dto.OwnershipVerification
 import com.wutsi.ndopify.mandate.dto.OwnershipVerificationReason
 import com.wutsi.ndopify.mandate.dto.OwnershipVerificationStatus
@@ -31,6 +33,13 @@ object MandateOwnershipViews {
     private const val ID_CHECK = "La pièce d'identité"
     private const val DOCUMENT_CHECK = "Le document de propriété"
 
+    private const val LOCATION_HINT =
+        "La localité du titre n'a pas pu être rattachée à une ville connue : vérifiez que le titre et le mandat " +
+            "désignent le même bien."
+    private const val LOCATION_ACTION = "Vérifier le titre dans Documents"
+    private const val UNKNOWN_PLACE = "non précisée"
+    private const val PROPERTY_MISMATCH = "OWNERSHIP_PROPERTY_MISMATCH"
+
     private val TAGS = mapOf(
         OwnershipVerificationStatus.PENDING to ("En cours" to "info"),
         OwnershipVerificationStatus.VERIFIED to ("Vérifié" to "success"),
@@ -59,6 +68,11 @@ object MandateOwnershipViews {
         "OWNERSHIP_DOCUMENT_NAME_MISMATCH" to Wording(
             "Le document ne désigne pas le propriétaire du bien.",
             "Ajoutez un titre foncier ou un certificat de propriété au nom du propriétaire.",
+        ),
+        PROPERTY_MISMATCH to Wording(
+            "Le document désigne un bien dans une autre ville que celle du mandat : il ne justifie pas la propriété " +
+                "de ce bien.",
+            "Vérifiez le document dans Documents : il doit désigner un bien situé dans la ville du mandat.",
         ),
     )
 
@@ -89,11 +103,15 @@ object MandateOwnershipViews {
                 documentsLabel = null,
                 reasons = emptyList(),
                 listingId = null,
+                location = null,
             )
         }
         val tag = TAGS[status]
         val pending = status == OwnershipVerificationStatus.PENDING
         val waiting = pending && verification.reasons.isEmpty()
+        val location = verification.location
+        val places = places(location)
+        val mismatchPlaces = if (location.status == OwnershipLocationStatus.MISMATCH) places else null
         return OwnershipSectionView(
             status = status,
             unavailable = false,
@@ -108,11 +126,16 @@ object MandateOwnershipViews {
                 else -> ADD_DOCUMENTS
             },
             reasons = if (status == OwnershipVerificationStatus.FAILED) {
-                verification.reasons.map { reason(reason = it, labels = labels) }
+                verification.reasons.map { reason(reason = it, labels = labels, mismatchPlaces = mismatchPlaces) }
             } else {
                 emptyList()
             },
             listingId = listingId.takeIf { status == OwnershipVerificationStatus.VERIFIED },
+            location = if (location.status == OwnershipLocationStatus.UNRESOLVED) {
+                places?.let { OwnershipLocationView(it, LOCATION_HINT, LOCATION_ACTION) }
+            } else {
+                null
+            },
         )
     }
 
@@ -123,19 +146,36 @@ object MandateOwnershipViews {
         else -> MISSING_OTHER
     }
 
-    private fun reason(reason: OwnershipVerificationReason, labels: DocumentFieldLabels): OwnershipReasonView {
+    private fun reason(
+        reason: OwnershipVerificationReason,
+        labels: DocumentFieldLabels,
+        mismatchPlaces: OwnershipPlacesView?,
+    ): OwnershipReasonView {
         val wording = REASON_WORDING[reason.code] ?: REASON_OTHER
         return OwnershipReasonView(
             check = check(reason.code),
             text = wording.text,
             action = wording.action,
             problems = reason.details.map(labels::instruction),
+            places = if (reason.code == PROPERTY_MISMATCH) mismatchPlaces else null,
         )
     }
+
+    /** The two display names, a blank one reads "non précisée"; null when both are blank. */
+    private fun places(location: OwnershipLocation): OwnershipPlacesView? =
+        if (location.mandateCity.isBlank() && location.documentLocality.isBlank()) {
+            null
+        } else {
+            OwnershipPlacesView(
+                location.mandateCity.ifBlank { UNKNOWN_PLACE },
+                location.documentLocality.ifBlank { UNKNOWN_PLACE },
+            )
+        }
 
     /** The kind of check a reason belongs to; null for a code this page doesn't know (no empty heading). */
     private fun check(code: String): String? = when {
         code.startsWith("OWNERSHIP_ID_") -> ID_CHECK
+        code == PROPERTY_MISMATCH -> DOCUMENT_CHECK
         code.startsWith("OWNERSHIP_DOCUMENT_") -> DOCUMENT_CHECK
         else -> null
     }

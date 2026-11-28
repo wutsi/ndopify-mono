@@ -326,9 +326,15 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   extracting; otherwise a missing or in-flight check makes it `PENDING`.
   The reasons (`OwnershipReasonCodes`) are plain strings, one per failed check (ID first), and `*_UNUSABLE` carries
   the documents' `problemCodes`; a page change resets a document to `UPLOADED` so the next read flips the verdict at
-  once, since nothing is stored. The answer carries a status and codes only — never a document, a page, a path or a
-  name. The verdict also gates publication (#299): a VERIFIED listing whose owner is not verified is not sent for
-  publication, by the endpoint nor by `ListingJobs.publish`.
+  once, since nothing is stored. #376 adds the city comparison — a customer-naming `LAND_TITLE` /
+  `CERTIFICATE_OF_OWNERSHIP` whose `locality` (else `arrondissement`) resolves by exact normalised name
+  (`LocationService.findCity`, `CITY` only, the mandate city's country) to a city other than `mandate.cityId` fails
+  `OWNERSHIP_PROPERTY_MISMATCH`; an unresolved locality, no locality, a missing/non-`CITY` `cityId` or a country
+  mismatch never fails, and the verdict carries `location` (`mandateCity`, `documentLocality`, `UNKNOWN` / `MATCH` /
+  `MISMATCH` / `UNRESOLVED`) for the mandate page's hint. The answer carries a status, reason codes and the
+  comparison's two display names only — never a document, a page, a path, a name or another extracted value; never
+  log the city or the locality. The verdict also gates publication (#299): a VERIFIED listing whose owner is not
+  verified is not sent for publication, by the endpoint nor by `ListingJobs.publish`.
   A search's `MandateSummary` has what a card shows (criteria, amenities, `movingPeriod`, `availableFrom`) and its
   `contractId` only (a client needing the contract's dates searches `/v1/contracts?id=`), not the terms nor the
   customer's comments. `GET /v1/mandates/{id}` carries `visitFee` (`Money`), read through from the mandate's signed

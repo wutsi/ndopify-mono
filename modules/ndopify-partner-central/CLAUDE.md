@@ -338,9 +338,15 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   otherwise); `FAILED` shows one block per reason — the check's kind (*La pièce d'identité* for `OWNERSHIP_ID_*`,
   *Le document de propriété* for `OWNERSHIP_DOCUMENT_*`, none for an unknown code), its wording and its action, then
   the `*_UNUSABLE` problem codes worded by `DocumentFieldLabels` as the document page words them (#331) — and links to
-  the documents. The verdict carries no date and no document, so the section shows neither: no document id, type,
-  title, page, path or storage URL. A failed read (5xx, network, 403/404) or an `UNKNOWN` status only makes the
-  section say *Vérification indisponible*; every other section renders as before. No script: every state is
+  the documents. The verdict carries no date and no document, so the section shows neither a date nor a document's id,
+  type, title, page, path or storage URL. #376 adds the verdict's city comparison — `UNRESOLVED` is a neutral `.hint`
+  under the state's block (whatever the status) with *Ville du mandat* / *Localité du titre*, *La localité du titre
+  n'a pas pu être rattachée à une ville connue : vérifiez que le titre et le mandat désignent le même bien.* and
+  *Vérifier le titre dans Documents* (to `#documents-title`); a blank place reads *non précisée*, both blank hide it;
+  `MISMATCH` is the `OWNERSHIP_PROPERTY_MISMATCH` reason with the same two places inside *Le document de propriété*;
+  `MATCH` and `UNKNOWN` show nothing. Those two places are the section's only property data: no document id, type,
+  title, page, path, URL or other extracted value. A failed read (5xx, network, 403/404) or an `UNKNOWN` status only
+  makes the section say *Vérification indisponible*; every other section renders as before. No script: every state is
   server-rendered. `src/main/assets/css/ownership.css` (after `document.css` in `build-assets.mjs`) lays it out.
   Prototype: `src/main/html/v2/mandate.html` (approved 2026-11-27).
 - A mandate's **documents** (`MandateDocumentController`, `ui/document/`, `templates/mandate/document-new.html` and

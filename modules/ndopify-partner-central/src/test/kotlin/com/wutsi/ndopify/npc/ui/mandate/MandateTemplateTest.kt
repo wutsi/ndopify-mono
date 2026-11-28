@@ -21,6 +21,8 @@ import com.wutsi.ndopify.mandate.dto.MandateDocument
 import com.wutsi.ndopify.mandate.dto.MandateDocumentPage
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.OwnershipLocation
+import com.wutsi.ndopify.mandate.dto.OwnershipLocationStatus
 import com.wutsi.ndopify.mandate.dto.OwnershipVerification
 import com.wutsi.ndopify.mandate.dto.OwnershipVerificationReason
 import com.wutsi.ndopify.mandate.dto.OwnershipVerificationStatus
@@ -1984,7 +1986,81 @@ class MandateTemplateTest {
     // A LISTING mandate in flight (LAND_SALE's sale, approved): the owner verification only renders on those.
     private val listingMandate = LAND_SALE.copy(mandateType = MandateType.LISTING)
 
+    @Test
+    fun `an unresolved comparison renders the neutral hint`() {
+        doReturn(
+            OwnershipVerification(
+                OwnershipVerificationStatus.VERIFIED,
+                location = OwnershipLocation("Douala", "Bonabéri", OwnershipLocationStatus.UNRESOLVED),
+            ),
+        ).whenever(mandateClient).ownership(201)
+
+        val hint = verificationSection().selectFirst("[data-ownership-location]")!!
+
+        assertTrue(hint.text().contains("Ville du mandat"))
+        assertTrue(hint.text().contains("Localité du titre"))
+        assertTrue(hint.text().contains("Douala"))
+        assertTrue(hint.text().contains("Bonabéri"))
+        assertTrue(hint.text().contains("La localité du titre n'a pas pu être rattachée à une ville connue"))
+        assertEquals("#documents-title", hint.selectFirst("a[href='#documents-title']")!!.attr("href"))
+        assertEquals("Vérifié", verificationSection().selectFirst(".status-tag")!!.text())
+    }
+
+    @Test
+    fun `a blank place reads non precisée and both blanks hide the hint`() {
+        doReturn(
+            OwnershipVerification(
+                OwnershipVerificationStatus.VERIFIED,
+                location = OwnershipLocation("", "Bonabéri", OwnershipLocationStatus.UNRESOLVED),
+            ),
+        ).whenever(mandateClient).ownership(201)
+        assertTrue(verificationSection().selectFirst("[data-ownership-location]")!!.text().contains("non précisée"))
+
+        doReturn(
+            OwnershipVerification(
+                OwnershipVerificationStatus.VERIFIED,
+                location = OwnershipLocation("", "", OwnershipLocationStatus.UNRESOLVED),
+            ),
+        ).whenever(mandateClient).ownership(201)
+        assertNull(verificationSection().selectFirst("[data-ownership-location]"))
+    }
+
+    @Test
+    fun `a property mismatch renders its places, not a hint`() {
+        doReturn(
+            OwnershipVerification(
+                OwnershipVerificationStatus.FAILED,
+                listOf(reason("OWNERSHIP_PROPERTY_MISMATCH")),
+                location = OwnershipLocation("Douala", "Yaoundé", OwnershipLocationStatus.MISMATCH),
+            ),
+        ).whenever(mandateClient).ownership(201)
+
+        val section = verificationSection()
+        val places = section.selectFirst("[data-reason-places]")!!
+
+        assertTrue(section.text().contains("Le document de propriété"))
+        assertTrue(places.text().contains("Douala"))
+        assertTrue(places.text().contains("Yaoundé"))
+        assertTrue(section.text().contains("il ne justifie pas la propriété de ce bien"))
+        assertNull(section.selectFirst("[data-ownership-location]"))
+    }
+
+    @Test
+    fun `a match renders no hint`() {
+        doReturn(
+            OwnershipVerification(
+                OwnershipVerificationStatus.VERIFIED,
+                location = OwnershipLocation("Douala", "Douala", OwnershipLocationStatus.MATCH),
+            ),
+        ).whenever(mandateClient).ownership(201)
+
+        assertNull(verificationSection().selectFirst("[data-ownership-location]"))
+    }
+
     private fun reason(code: String, details: List<String> = emptyList()) = OwnershipVerificationReason(code, details)
+
+    private fun location(mandateCity: String, documentLocality: String, status: OwnershipLocationStatus) =
+        OwnershipLocation(mandateCity, documentLocality, status)
 
     // The rendered owner verification of a LISTING mandate, any state stubbed before.
     private fun verificationSection(mandate: Mandate = listingMandate): Element =

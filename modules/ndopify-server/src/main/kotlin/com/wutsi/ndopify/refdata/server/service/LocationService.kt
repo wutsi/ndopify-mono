@@ -67,6 +67,33 @@ class LocationService(
         return dao.findById(id).orElse(null)
     }
 
+    /**
+     * The [LocationType.CITY] named [name] in [country], compared after [normalize] — accents, case and punctuation
+     * ignored, no substring. Null when [name] or [country] is blank, when only a neighbourhood or a city of another
+     * country matches, or when no city name is exactly equal. The `search` prefix narrows the candidates; the equality
+     * is checked here, in Kotlin.
+     */
+    fun findCity(name: String?, country: String?): LocationEntity? {
+        val keyword = name?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        if (country.isNullOrBlank()) return null
+        val wanted = normalize(keyword)
+        return search(
+            SearchLocationRequest(
+                keyword = keyword,
+                types = listOf(LocationType.CITY),
+                country = country,
+                limit = OffsetLimitPageRequest.MAX_LIMIT,
+            ),
+        ).firstOrNull { city -> normalize(city.name) == wanted }
+    }
+
+    /** The comparable form of a city or locality name: accents, case and punctuation removed. */
+    private fun normalize(value: String): String =
+        Normalizer.normalize(value, Normalizer.Form.NFD)
+            .replace(REGEX_UNACCENT, "")
+            .lowercase()
+            .replace(Regex("[^a-z0-9]+"), "")
+
     @Transactional
     fun save(location: LocationEntity): LocationEntity {
         location.asciiName = toAscii(location.name)

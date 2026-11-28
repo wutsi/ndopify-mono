@@ -5,6 +5,7 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.mandate.dto.DocumentStatus
 import com.wutsi.ndopify.mandate.dto.GetOwnershipVerificationResponse
+import com.wutsi.ndopify.mandate.dto.OwnershipLocationStatus
 import com.wutsi.ndopify.mandate.dto.OwnershipVerificationStatus
 import com.wutsi.ndopify.mandate.server.dao.MandateDocumentRepository
 import com.wutsi.ndopify.mandate.server.service.OwnershipReasonCodes
@@ -134,6 +135,71 @@ class GetMandateOwnershipEndpointTest : AuthorizationAwareEndpointIntegrationTes
         val verification = get(100)
         assertEquals(OwnershipVerificationStatus.PENDING, verification.status)
         assertTrue(verification.reasons.isEmpty())
+    }
+
+    @Test
+    fun `a title in the mandate's city verifies with a match`() {
+        val verification = get(108)
+
+        assertEquals(OwnershipVerificationStatus.VERIFIED, verification.status)
+        assertEquals(OwnershipLocationStatus.MATCH, verification.location.status)
+        assertEquals("Yaounde", verification.location.mandateCity)
+        assertEquals("Yaoundé", verification.location.documentLocality)
+    }
+
+    @Test
+    fun `a title in another city fails on the property`() {
+        val verification = get(109)
+
+        assertEquals(OwnershipVerificationStatus.FAILED, verification.status)
+        assertEquals(listOf(OwnershipReasonCodes.PROPERTY_MISMATCH), verification.reasons.map { it.code })
+        assertEquals(OwnershipLocationStatus.MISMATCH, verification.location.status)
+        assertEquals("Yaounde", verification.location.mandateCity)
+        assertEquals("Douala", verification.location.documentLocality)
+    }
+
+    @Test
+    fun `an unresolved quarter is a hint, not a failure`() {
+        val verification = get(110)
+
+        assertEquals(OwnershipVerificationStatus.VERIFIED, verification.status)
+        assertEquals(OwnershipLocationStatus.UNRESOLVED, verification.location.status)
+        assertEquals("Bonabéri", verification.location.documentLocality)
+    }
+
+    @Test
+    fun `a mandate without a city is a hint`() {
+        val verification = get(111)
+
+        assertEquals(OwnershipVerificationStatus.VERIFIED, verification.status)
+        assertEquals(OwnershipLocationStatus.UNRESOLVED, verification.location.status)
+        assertEquals("", verification.location.mandateCity)
+        assertEquals("Douala", verification.location.documentLocality)
+    }
+
+    @Test
+    fun `a title without a locality is a hint`() {
+        val verification = get(112)
+
+        assertEquals(OwnershipVerificationStatus.VERIFIED, verification.status)
+        assertEquals(OwnershipLocationStatus.UNRESOLVED, verification.location.status)
+        assertEquals("", verification.location.documentLocality)
+    }
+
+    @Test
+    fun `the property mismatch leaks no document`() {
+        val body = rest.getForEntity("/v1/mandates/109/ownership", String::class.java).body!!
+
+        assertTrue(body.contains("Yaounde"), body)
+        assertTrue(body.contains("Douala"), body)
+        assertFalse(body.contains("TF-"), body)
+        assertFalse(body.contains("mandate/"), body)
+        assertFalse(body.contains("1014"), body)
+        assertFalse(body.contains("1015"), body)
+        assertFalse(body.contains("1016"), body)
+        assertFalse(body.contains("1017"), body)
+        assertFalse(body.contains("LAND_TITLE"), body)
+        assertFalse(body.contains("NATIONAL_ID"), body)
     }
 
     private fun get(id: Long) =
