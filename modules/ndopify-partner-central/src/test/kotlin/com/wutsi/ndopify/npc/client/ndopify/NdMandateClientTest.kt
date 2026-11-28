@@ -130,7 +130,7 @@ class NdMandateClientTest {
             .andRespond(
                 withSuccess(
                     """
-                    {"verification":{"status":"FAILED","reasons":[{"code":"OWNERSHIP_ID_EXPIRED","details":[]}]}}
+                    {"verification":{"status":"FAILED","reasons":[{"code":"OWNERSHIP_ID_EXPIRED","details":[]}],"location":{"mandateCity":"","documentLocality":"","status":"UNKNOWN"}}}
                     """.trimIndent(),
                     MediaType.APPLICATION_JSON,
                 ),

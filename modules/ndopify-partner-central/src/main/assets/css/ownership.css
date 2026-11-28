@@ -78,3 +78,51 @@
 .alert > div > .ownership__actions {
     margin-top: var(--space-3);
 }
+
+/*
+ * #376: the city comparison. UNRESOLVED is a neutral hint under the verdict — the mandate's city and the title's
+ * locality side by side, the sentence and the way to the Documents section — never an error and never a change of
+ * status (the block above keeps the status's own styling, the hint the app's info tokens). MISMATCH is not a hint:
+ * its two places sit inside the FAILED reason, in the same definition list.
+ */
+.ownership__location > div {
+    min-width: 0;
+}
+
+.ownership__places {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-1) var(--space-4);
+    margin: 0;
+}
+
+.ownership__place {
+    min-width: 0;
+}
+
+.ownership__place dt {
+    font-size: var(--step-hint);
+    font-weight: 600;
+}
+
+.ownership__place dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+/* The hint's sentence sits under its two places, at the hint's own rhythm (the section spaces the hint itself). */
+.ownership__location .ownership__places + p {
+    margin-top: var(--space-2);
+}
+
+/* Inside a FAILED reason the list follows the wording: the reason's own rhythm, as its other children. */
+.ownership__reason > .ownership__places {
+    margin-top: var(--space-1);
+}
+
+/* On the narrowest phones the two places stack, one under the other, rather than squeeze onto one line. */
+@media (max-width: 479.98px) {
+    .ownership__places {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
