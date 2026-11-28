@@ -4,7 +4,10 @@ INSERT INTO T_TENANT(id, name, domain_name, locales, country_code) VALUES
     (2, 'Autre', 'other.localhost', 'fr-CM', 'CM');
 
 INSERT INTO T_LOCATION(id, parent_fk, type, country, name, ascii_name) VALUES
-    (2370201, NULL, 'CITY', 'CM', 'Yaounde', 'Yaounde');
+    (2370201, NULL, 'CITY', 'CM', 'Yaounde', 'Yaounde'),
+    (2370202, NULL, 'CITY', 'CM', 'Douala', 'Douala'),
+    (237020101, 2370201, 'NEIGHBORHOOD', 'CM', 'Bonabéri', 'Bonaberi'),
+    (-1, NULL, 'UNKNOWN', 'CM', '', '');
 
 -- 100: customer (user 13)   200: agent 20 (user 11, the caller)   300: agent 30 (user 12)   90: tenant 2's customer
 INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name) VALUES
@@ -94,5 +97,51 @@ INSERT INTO T_MANDATE_DOCUMENT(
      '{"detectedType":"NATIONAL_ID","number":"AA1","firstName":"Customer","lastName":"One","expiryDate":"2099-01-01","sidesPresent":["FRONT","BACK"],"valid":true,"fieldConfidences":{"number":0.9,"firstName":0.9,"lastName":0.9}}',
      1, NULL, '2099-01-01', 0, '2024-06-11 00:00:00', '2024-06-11 00:00:00'),
     (1013, 1, 107, 'LAND_TITLE', 'Titre foncier', 'EXTRACTED', NULL,
+     '{"detectedType":"LAND_TITLE","titleNumber":"TF-1","owners":["Customer One"],"valid":true,"fieldConfidences":{"titleNumber":0.9,"owners":0.9}}',
+     1, NULL, NULL, 0, '2024-06-11 00:00:00', '2024-06-11 00:00:00');
+
+-- 108-112: ownership-city comparison (#376); mandates on tenant 1, agent 20, customer 10, LISTING/RENTAL, city 2370201 (111: -1)
+INSERT INTO T_MANDATE(
+    id, tenant_id, customer_id, agent_id, status, mandate_type, listing_type, city_id, property_type,
+    rooms, price, price_periodicity_type, currency_code, comments, created_at, modified_at
+) VALUES
+    (108, 1, 10, 20, 'ASSIGNED', 'LISTING', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', 'Same city', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (109, 1, 10, 20, 'ASSIGNED', 'LISTING', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', 'Other city', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (110, 1, 10, 20, 'ASSIGNED', 'LISTING', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', 'Quarter', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (111, 1, 10, 20, 'ASSIGNED', 'LISTING', 'RENTAL', -1, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', 'No city', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (112, 1, 10, 20, 'ASSIGNED', 'LISTING', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', 'No locality', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
+
+INSERT INTO T_MANDATE_DOCUMENT(
+    id, tenant_id, mandate_id, type, title, status, problem_codes, data, data_version, issued_at, expires_at,
+    version, created_at, modified_at
+) VALUES
+    (1014, 1, 108, 'NATIONAL_ID', 'Carte d''identité', 'EXTRACTED', NULL,
+     '{"detectedType":"NATIONAL_ID","number":"AA1","firstName":"Customer","lastName":"One","expiryDate":"2099-01-01","sidesPresent":["FRONT","BACK"],"valid":true,"fieldConfidences":{"number":0.9,"firstName":0.9,"lastName":0.9}}',
+     1, NULL, '2099-01-01', 0, '2024-06-11 00:00:00', '2024-06-11 00:00:00'),
+    (1015, 1, 108, 'LAND_TITLE', 'Titre foncier', 'EXTRACTED', NULL,
+     '{"detectedType":"LAND_TITLE","titleNumber":"TF-1","owners":["Customer One"],"locality":"Yaoundé","valid":true,"fieldConfidences":{"titleNumber":0.9,"owners":0.9,"locality":0.9}}',
+     1, NULL, NULL, 0, '2024-06-11 00:00:00', '2024-06-11 00:00:00'),
+    (1016, 1, 109, 'NATIONAL_ID', 'Carte d''identité', 'EXTRACTED', NULL,
+     '{"detectedType":"NATIONAL_ID","number":"AA1","firstName":"Customer","lastName":"One","expiryDate":"2099-01-01","sidesPresent":["FRONT","BACK"],"valid":true,"fieldConfidences":{"number":0.9,"firstName":0.9,"lastName":0.9}}',
+     1, NULL, '2099-01-01', 0, '2024-06-11 00:00:00', '2024-06-11 00:00:00'),
+    (1017, 1, 109, 'LAND_TITLE', 'Titre foncier', 'EXTRACTED', NULL,
+     '{"detectedType":"LAND_TITLE","titleNumber":"TF-1","owners":["Customer One"],"locality":"Douala","valid":true,"fieldConfidences":{"titleNumber":0.9,"owners":0.9,"locality":0.9}}',
+     1, NULL, NULL, 0, '2024-06-11 00:00:00', '2024-06-11 00:00:00'),
+    (1018, 1, 110, 'NATIONAL_ID', 'Carte d''identité', 'EXTRACTED', NULL,
+     '{"detectedType":"NATIONAL_ID","number":"AA1","firstName":"Customer","lastName":"One","expiryDate":"2099-01-01","sidesPresent":["FRONT","BACK"],"valid":true,"fieldConfidences":{"number":0.9,"firstName":0.9,"lastName":0.9}}',
+     1, NULL, '2099-01-01', 0, '2024-06-11 00:00:00', '2024-06-11 00:00:00'),
+    (1019, 1, 110, 'LAND_TITLE', 'Titre foncier', 'EXTRACTED', NULL,
+     '{"detectedType":"LAND_TITLE","titleNumber":"TF-1","owners":["Customer One"],"locality":"Bonabéri","valid":true,"fieldConfidences":{"titleNumber":0.9,"owners":0.9,"locality":0.9}}',
+     1, NULL, NULL, 0, '2024-06-11 00:00:00', '2024-06-11 00:00:00'),
+    (1020, 1, 111, 'NATIONAL_ID', 'Carte d''identité', 'EXTRACTED', NULL,
+     '{"detectedType":"NATIONAL_ID","number":"AA1","firstName":"Customer","lastName":"One","expiryDate":"2099-01-01","sidesPresent":["FRONT","BACK"],"valid":true,"fieldConfidences":{"number":0.9,"firstName":0.9,"lastName":0.9}}',
+     1, NULL, '2099-01-01', 0, '2024-06-11 00:00:00', '2024-06-11 00:00:00'),
+    (1021, 1, 111, 'LAND_TITLE', 'Titre foncier', 'EXTRACTED', NULL,
+     '{"detectedType":"LAND_TITLE","titleNumber":"TF-1","owners":["Customer One"],"locality":"Douala","valid":true,"fieldConfidences":{"titleNumber":0.9,"owners":0.9,"locality":0.9}}',
+     1, NULL, NULL, 0, '2024-06-11 00:00:00', '2024-06-11 00:00:00'),
+    (1022, 1, 112, 'NATIONAL_ID', 'Carte d''identité', 'EXTRACTED', NULL,
+     '{"detectedType":"NATIONAL_ID","number":"AA1","firstName":"Customer","lastName":"One","expiryDate":"2099-01-01","sidesPresent":["FRONT","BACK"],"valid":true,"fieldConfidences":{"number":0.9,"firstName":0.9,"lastName":0.9}}',
+     1, NULL, '2099-01-01', 0, '2024-06-11 00:00:00', '2024-06-11 00:00:00'),
+    (1023, 1, 112, 'LAND_TITLE', 'Titre foncier', 'EXTRACTED', NULL,
      '{"detectedType":"LAND_TITLE","titleNumber":"TF-1","owners":["Customer One"],"valid":true,"fieldConfidences":{"titleNumber":0.9,"owners":0.9}}',
      1, NULL, NULL, 0, '2024-06-11 00:00:00', '2024-06-11 00:00:00');
