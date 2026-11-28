@@ -613,7 +613,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   identity/contact/mandate; the customer-facing proposal still names only the search agent. The same `Matcher` and
   distances apply to the matcher path, and a co-brokerage row is never deleted (sticky when own inventory appears
   later); an own-inventory row keeps the re-score/delete behaviour. `GET /v1/matches` lists the agent's own inventory
-  first, then co-brokerage, best score first. `matchListing` never creates co-brokerage rows: the daily `rematch`
+  first, then co-brokerage, best rank first. `matchListing` never creates co-brokerage rows: the daily `rematch`
   picks a newly published listing up. `Matcher` (pure, unit
   tested case by case in `MatcherTest`) rules a pair out (the customer's own property, another listing type / city /
   category — skipped only for a specified `BUILDING` or `LAND` pair — currency or periodicity, over budget +
@@ -624,7 +624,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   neighbourhood 0.30, price 0.25, units 0.20, levels 0.15, availability 0.10, with rooms, amenities and furniture
   neither weighed nor listed as gaps; its `units`/`levels` partials are the closeness `1 - |listing - search| / search`
   clamped 0..1 and `1.0` when either side states none (never a rule-out), stored as `unitsScore`/`levelsScore`
-  (`T_MATCH`, `V18_2`). Every other pair keeps today's six weights. Under `min-score` it isn't stored. Each score also keeps what explains it to
+  (`T_MATCH`, `V18_2`). Every other pair keeps today's six weights. Under `min-score` it isn't stored — the bonus never
+  counts towards it. Each score also keeps what explains it to
   the agent (`V9_1`, `V10_3`): `distanceKm` (to the nearest searched neighbourhood: 0 inside one, null when not nearby
   or none searched), `missingAmenities` (the amenities searched that the listing lacks, by DTO field name, ex:
   `waterTank`) and `typeScore` (the property-type factor). `ACTIVE` rows are created, re-scored or deleted; any other status (`SHORTLISTED`, `DISMISSED`,
@@ -636,10 +637,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   (`mandate-id` and / or `listing-id`, repeatable, at least one of them, else 400 `HTTP_MISSING_PARAMETER`, each one
   checked: a mandate as below, a listing by its agent or an admin, `ListingAccessService`: 404 `LISTING_NOT_FOUND`
   then 403 `HTTP_ACCESS_DENIED`, ex: who a published listing interests with `status=ACCEPTED`; `status` default
-  ACTIVE; best score first across them, only while the mandate is APPROVED and the listing
+  ACTIVE; best rank first across them (`rankingScore`: the score plus `ndopify.match.ownership-bonus` (0.10) when
+  the listing's `ownershipVerified` was frozen `true` at publication, capped at 1.0; ties by score then id — the agent
+  still reads `score`), only while the mandate is APPROVED and the listing
   PUBLISHED), get, `POST /{id}/shortlist` (the agent keeps it to propose later: ACTIVE → SHORTLISTED, else 409
   `MATCH_NOT_ACTIVE`), `POST /{id}/dismiss` (ACTIVE, SHORTLISTED or EXPIRED, `MatchService.OPEN_STATUSES`, else 409 `MATCH_NOT_ACTIVE`), access as the mandate's (`MandateAccessService`:
-  404, then 403 `MANDATE_ACCESS_DENIED`); `POST /run?mandate-id=` (`@OpsEndpoint`) re-runs a mandate. `MatchJobs.rematch` (daily, `ndopify.match.rematch.cron`, `MatchService.matchAll`) re-runs every APPROVED SEARCH mandate with an agent: it catches up on a run lost after an approval or a publication (the listener only logs a failure) and re-scores against today (availability); a mandate failing is logged and skipped.
+  404, then 403 `MANDATE_ACCESS_DENIED`); `POST /run?mandate-id=` (`@OpsEndpoint`) re-runs a mandate. `MatchJobs.rematch` (daily, `ndopify.match.rematch.cron`, `MatchService.matchAll`) re-runs every APPROVED SEARCH mandate with an agent: it catches up on a run lost after an approval or a publication (the listener only logs a failure) and re-scores against today (availability) and the listing's stored `ownershipVerified` (the rank); a mandate failing is logged and skipped.
   **Agent alert** (`docs/superpowers/plans/2026-10-31-match-agent-alert.md`): `notifiedAt` (`V9_2`) is null until the
   agent is told, and never touched by the matcher (a re-score or re-run doesn't alert again). `MatchJobs.notifyAgents`
   (hourly, `ndopify.match.notify.cron`) has `MatchNotificationService` e-mail each agent, once for all its ACTIVE
@@ -692,7 +695,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   **Auto-proposal**: `MatchJobs.autoPropose` (every 15 minutes, hourly in prod, `ndopify.match.auto-propose.cron`)
   has `MatchAutoProposalService.autoProposeDue` propose the `ACTIVE` matches of an `APPROVED` search whose listing is
   `PUBLISHED` and that the agent hasn't touched for `after-hours` (24): `batch-size` (100) matches per run, grouped by
-  mandate, at most 20 per proposal, through `MatchProposalService.propose` — so the customer gets the normal proposal
+  mandate, the 20 best-ranked per proposal (ties by score then id), through `MatchProposalService.propose` — so the
+  customer gets the normal proposal
   e-mail and can accept/reject it. `SHORTLISTED`, `DISMISSED`, `PROPOSED`, `ACCEPTED`, `REJECTED` and `EXPIRED` are
   never touched; an agent answering meanwhile fails on `@Version` and skips that mandate. No new status nor flag:
   auto-proposals look like manual ones (logged per mandate).

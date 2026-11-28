@@ -69,6 +69,34 @@ class MatchAutoProposalServiceTest {
     }
 
     @Test
+    fun `the top 20 are the best ranks, not the best scores`() {
+        doReturn(
+            (1L..25L).map { match(id = it, mandateId = 1, score = (26L - it).toDouble(), rankingScore = it.toDouble()) },
+        ).whenever(dao).findStalled(any(), any(), any(), any(), any())
+        doReturn(emptyList<MatchEntity>()).whenever(proposalService).propose(any())
+
+        assertEquals(20, service.autoProposeDue())
+
+        verify(proposalService).propose((25L downTo 6L).toList())
+    }
+
+    @Test
+    fun `equal ranks fall back to the relevance, then the id`() {
+        doReturn(
+            listOf(
+                match(id = 12, mandateId = 1, score = 0.7, rankingScore = 0.8),
+                match(id = 11, mandateId = 1, score = 0.9, rankingScore = 0.8),
+                match(id = 13, mandateId = 1, score = 0.7, rankingScore = 0.8),
+            ),
+        ).whenever(dao).findStalled(any(), any(), any(), any(), any())
+        doReturn(emptyList<MatchEntity>()).whenever(proposalService).propose(any())
+
+        service.autoProposeDue()
+
+        verify(proposalService).propose(listOf(11L, 12L, 13L))
+    }
+
+    @Test
     fun `an optimistic-lock conflict skips that mandate only`() {
         doReturn(listOf(match(id = 10, mandateId = 1, score = 0.9), match(id = 20, mandateId = 2, score = 0.8)))
             .whenever(dao).findStalled(any(), any(), any(), any(), any())
@@ -81,13 +109,14 @@ class MatchAutoProposalServiceTest {
         verify(proposalService).propose(listOf(20L))
     }
 
-    private fun match(id: Long, mandateId: Long, score: Double) = MatchEntity(
+    private fun match(id: Long, mandateId: Long, score: Double, rankingScore: Double = score) = MatchEntity(
         id = id,
         mandate = MandateEntity(id = mandateId),
         listing = ListingEntity(id = 1000 + id),
         agentId = 20,
         status = MatchStatus.ACTIVE,
         score = score,
+        rankingScore = rankingScore,
         createdAt = Date.from(Instant.parse("2026-11-13T10:00:00Z")),
     )
 }
