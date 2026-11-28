@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/*
+  #375: the listing page's one neutral *Publication en cours* block, above the checklist. A VERIFIED listing of its
+  own agent is verified but not published yet: the page says so, valid whether publication is automatic or waiting on
+  a check. It names no reason and claims no owner verification: Partner Central cannot read whether publication is
+  blocked, and the mandate's documents are only a likely cause. The one action opens the mandate's Documents section.
+  No customer, document id, type, title, page, path, storage URL, extracted value nor verdict JSON is named. No
+  script: the block is server-rendered; every other status and the read-only lens render as today.
+*/-->
+<div class="alert alert--info listing-publication" th:fragment="publication(mandateId)" data-listing-publication>
+    <svg th:replace="~{fragments/icon :: info}"></svg>
+    <div>
+        <h2 class="alert__title listing-publication__title">Publication en cours</h2>
+        <p class="listing-publication__intro">L'annonce est vérifiée. Sa publication est en cours et
+            peut prendre quelques minutes. Si elle n'apparaît pas, vérifiez les documents du mandat,
+            qui sont la cause probable.</p>
+        <p class="listing-publication__actions">
+            <a class="btn btn--outline btn--compact" th:href="@{|/mandates/${mandateId}#documents-title|}"
+               data-listing-publication-link>Voir les documents du mandat</a>
+        </p>
+    </div>
+</div>
+</body>
+</html>

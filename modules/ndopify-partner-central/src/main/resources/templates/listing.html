@@ -68,6 +68,7 @@
                     <div class="mandate-intro__head">
                         <h1 th:text="${l.title}">Annonce</h1>
                         <p th:class="|status-tag status-tag--${l.tag.style}|"
+                           th:classappend="${l.publicationHold} ? 'status-tag--hold'"
                            th:text="${l.status.name() == 'PUBLISHED' and l.publishedAt != null} ? |${l.tag.label} le ${l.publishedAt}| : ${l.tag.label}"
                            data-listing-tag>Brouillon</p>
                     </div>
@@ -120,6 +121,15 @@
                 </section>
 
                 <div th:replace="~{:: flash}"></div>
+
+                <!--
+                    #375: a VERIFIED listing of its own agent isn't published yet. The *En vérification* panel gives
+                    way to one neutral *Publication en cours* block; the wording never claims an owner verification
+                    and the one action opens the mandate's Documents. No script; every other status renders as today.
+                -->
+                <th:block th:if="${l.publicationHold}">
+                    <div th:replace="~{fragments/listing-publication :: publication(${l.mandateId})}"></div>
+                </th:block>
 
                 <!-- One panel per status but PUBLISHED, above the checklist. -->
                 <div class="hint" th:if="${l.panel == 'DRAFT'}" data-listing-panel="DRAFT">

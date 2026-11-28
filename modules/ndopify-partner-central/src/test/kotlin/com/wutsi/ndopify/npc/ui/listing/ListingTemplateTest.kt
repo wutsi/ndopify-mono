@@ -41,6 +41,7 @@ import org.jsoup.nodes.Document
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers.anyLong
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.test.web.servlet.MockMvc
@@ -220,6 +221,56 @@ class ListingTemplateTest {
         assertTrue(page.selectFirst("[data-listing-panel=SENT]")!!.text().contains("Envoyée le 22 oct. 2026."))
         assertNull(page.selectFirst("[data-listing-send]"))
         assertEquals(7, page.select("a.checklist__row").size)
+    }
+
+    @Test
+    fun `a verified listing not yet published shows neutral publication in progress`() {
+        val page = render(COMPLETE.copy(status = ListingStatus.VERIFIED, modifiedAt = SENT))
+
+        val tag = page.selectFirst(".mandate-intro .status-tag")!!
+        val block = page.selectFirst("[data-listing-publication]")!!
+
+        assertEquals("Vérifiée — publication en cours", tag.text())
+        assertTrue(tag.hasClass("status-tag--warning"))
+        assertTrue(tag.hasClass("status-tag--hold"))
+        assertEquals("Publication en cours", block.selectFirst("h2")!!.text())
+        assertEquals(
+            "L'annonce est vérifiée. Sa publication est en cours et peut prendre quelques minutes. " +
+                "Si elle n'apparaît pas, vérifiez les documents du mandat, qui sont la cause probable.",
+            block.selectFirst(".listing-publication__intro")!!.text(),
+        )
+        assertEquals("/mandates/203#documents-title", block.selectFirst("a")!!.attr("href"))
+        assertEquals("Voir les documents du mandat", block.selectFirst("a")!!.text())
+        assertTrue(page.select("[data-listing-panel=SENT]").isEmpty())
+        assertFalse(page.html().contains("Propriétaire non vérifié"))
+        assertFalse(page.html().contains("Vérification du propriétaire"))
+        assertFalse(page.html().contains("ownership-title"))
+        verify(mandateClient, never()).ownership(anyLong())
+    }
+
+    @Test
+    fun `every other status and read-only lens show no publication block`() {
+        listOf(
+            ListingStatus.DRAFT,
+            ListingStatus.PENDING_VERIFICATION,
+            ListingStatus.UNDER_VERIFICATION,
+            ListingStatus.PUBLISHING,
+            ListingStatus.PUBLISHED,
+            ListingStatus.RENTED,
+            ListingStatus.SOLD,
+            ListingStatus.EXPIRED,
+            ListingStatus.CANCELLED,
+        ).forEach { status ->
+            val page = render(COMPLETE.copy(status = status, publishedAt = SENT))
+
+            assertNull(page.selectFirst("[data-listing-publication]"), status.name)
+            verify(mandateClient, never()).ownership(anyLong())
+        }
+
+        val readOnly = render(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999, publishedAt = SENT))
+        assertNull(readOnly.selectFirst("[data-listing-publication]"))
+        assertTrue(readOnly.select("[data-listing-panel]").isEmpty())
+        verify(mandateClient, never()).ownership(anyLong())
     }
 
     @Test
