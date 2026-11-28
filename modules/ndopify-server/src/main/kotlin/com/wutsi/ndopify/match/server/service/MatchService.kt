@@ -63,6 +63,7 @@ class MatchService(
     @param:Value("\${ndopify.match.min-score}") private val minScore: Double,
     @param:Value("\${ndopify.match.nearby-radius-km}") private val nearbyRadiusKm: Double,
     @param:Value("\${ndopify.match.nearby-max-neighborhoods}") private val nearbyMaxNeighborhoods: Int,
+    @param:Value("\${ndopify.match.ownership-bonus}") private val ownershipBonus: Double,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(MatchService::class.java)
@@ -377,6 +378,7 @@ class MatchService(
             match.copy(
                 coBrokerage = coBrokerage,
                 score = score.total,
+                rankingScore = rank(listing, score.total),
                 typeScore = score.type,
                 neighborhoodScore = score.neighborhood,
                 priceScore = score.price,
@@ -394,6 +396,11 @@ class MatchService(
         )
         return StoreOutcome.STORED
     }
+
+    // A listing whose owner was verified ranks `ownership-bonus` higher, never above 1.0: a bonus, not a strict sort.
+    // The raw score keeps deciding min-score and the display.
+    private fun rank(listing: ListingEntity, score: Double): Double =
+        if (listing.ownershipVerified) minOf(1.0, score + ownershipBonus) else score
 
     /**
      * The match of (mandate, listing) the customer asked for on the listing's public page: recorded ACCEPTED,
@@ -449,6 +456,7 @@ class MatchService(
             rejectionReasonCode = null,
             rejectionReason = null,
             score = score.total,
+            rankingScore = rank(listing, score.total),
             typeScore = score.type,
             neighborhoodScore = score.neighborhood,
             priceScore = score.price,

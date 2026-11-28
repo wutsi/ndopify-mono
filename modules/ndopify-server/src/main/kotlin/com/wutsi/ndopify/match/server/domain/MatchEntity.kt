@@ -44,6 +44,10 @@ data class MatchEntity(
     val status: MatchStatus = MatchStatus.UNKNOWN,
 
     val score: Double = 0.0,
+
+    // The relevance with the verified-owner bonus, capped at 1.0: what the lists order by. Internal to the server,
+    // the agent reads score (ranking_score, V23_0)
+    val rankingScore: Double = 0.0,
     val typeScore: Double = 1.0,
     val neighborhoodScore: Double = 0.0,
     val priceScore: Double = 0.0,

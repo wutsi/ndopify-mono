@@ -358,6 +358,7 @@ ndopify:
     match:
         price-tolerance: 0.10           # A listing up to 10% over the budget is still a match, scored down
         min-score: 0.5                  # Below, the pair isn't stored
+        ownership-bonus: 0.10           # 0..1: a listing whose owner was verified ranks as if it scored this much higher; 0 = today's order
         nearby-radius-km: 3             # Neighbourhoods this close to the searched ones are "nearby"
         nearby-max-neighborhoods: 20
         notify:
